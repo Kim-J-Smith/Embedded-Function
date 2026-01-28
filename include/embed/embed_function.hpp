@@ -895,7 +895,8 @@ namespace detail {
       using Result_lref = invoke_result<Caller_lref, ArgsT...>;
       using Result_rref = invoke_result<Caller_rref, ArgsT...>;
 
-#if ( EMBED_CXX_VERSION >= 201703L ) && (!EMBED_CXX_ENABLE_EXCEPTION)
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L ) \
+    && (!EMBED_CXX_ENABLE_EXCEPTION)
       // The noexcept-specification is a part of the function type 
       // and may appear as part of any function declarator.
       // And only when `EMBED_CXX_ENABLE_EXCEPTION` is false,
@@ -1113,7 +1114,7 @@ namespace detail {
 
 #undef EMBED_FN_OVERLOAD_UNIQUE_CALL_SIGNATURE_CVREF
 
-#if EMBED_CXX_VERSION >= 201703L
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 
     // See https://en.cppreference.com/w/cpp/language/noexcept_spec
     // The noexcept-specification is a part of the function type and 
