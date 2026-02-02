@@ -567,6 +567,9 @@ namespace detail {
       std::size_t BufSize, bool Is_volatile, bool Is_rref>
     struct FnManagerMoveOnly;
 
+    // `FnManagerHelper` is the Base class of both 
+    // `FnManagerCopyable` and `FnManagerMoveOnly`.
+    // M_create, M_destroy, M_init_functor are defined in FnManagerHelper.
     template <typename Signature, typename Functor,
       std::size_t BufSize, bool Is_volatile, bool Is_rref>
     struct FnManagerHelper;
@@ -618,13 +621,14 @@ namespace detail {
     class invoke_tag_memobj_pointer_like {};
 
     /// @e inv_unwrap
+    /// @brief Unwrap the `std::reference_wrapper` recursively.
     template <typename T, typename U = remove_cvref_t<T>>
     struct inv_unwrap { using type = T; };
 
 #if !defined(EMBED_NO_STD_HEADER)
     template <typename T, typename RealType>
     struct inv_unwrap<T, std::reference_wrapper<RealType>>
-    { using type = RealType&; };
+    { using type = typename inv_unwrap<RealType&>::type; };
 #else
     // Users can overload the inv_unwrap function
     // for the custom reference_wrapper here.
@@ -935,9 +939,7 @@ namespace detail {
     /// @e results_are_same
     template <typename RetFrom, typename RetTo>
     struct results_are_same
-    {
-      static constexpr bool value = std::is_same<RetFrom, RetTo>::value;
-    };
+    : public std::is_same<RetFrom, RetTo>::type {};
 
     /// @e args_package
     template <typename... ArgsT>
@@ -994,7 +996,7 @@ namespace detail {
     /// @e arguments_are_same
     template <typename ArgsPackageFrom, typename ArgsPackageTo, std::size_t ArgNum>
     struct arguments_are_same : public std::conditional<
-      ArgNum == 0, std::true_type,
+      ArgNum == 0, std::true_type, /* recursively check */
       arguments_are_same_impl<ArgsPackageFrom, ArgsPackageTo, ArgNum-1>
     >::type { };
 
