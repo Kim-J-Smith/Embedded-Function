@@ -157,6 +157,8 @@ SOFTWARE.
 #ifndef EMBED_HAS_BUILTIN
 # if defined(__has_builtin) && defined(__is_identifier)
 #  define EMBED_HAS_BUILTIN(x) (__has_builtin(x) || !__is_identifier(x))
+# elif defined(__has_builtin)
+#  define EMBED_HAS_BUILTIN(x) __has_builtin(x)
 # else
 #  define EMBED_HAS_BUILTIN(x) 0
 # endif
