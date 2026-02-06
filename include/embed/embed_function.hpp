@@ -1396,11 +1396,11 @@ namespace detail {
       Is_volatile, volatile FnFunctor<BufSize>, FnFunctor<BufSize>
     >::type;
     using Func_Qualifier = typename std::conditional<
-      Is_volatile, volatile Functor, Functor
+      Is_volatile, volatile typename std::remove_reference<Functor>::type,
+      typename std::remove_reference<Functor>::type
     >::type;
-    using FnFunctor_Cast = typename std::conditional<
-      Is_rref, typename std::remove_reference<Functor>::type&&,
-      typename std::remove_reference<Functor>::type&
+    using Func_Cast = typename std::conditional<
+      Is_rref, Func_Qualifier&&, Func_Qualifier&
     >::type;
 
     static EMBED_INLINE Functor*
@@ -1415,7 +1415,7 @@ namespace detail {
     EMBED_FN_CASE_NOEXCEPT
     {
       return FnTraits::invoke_r<RetType>(
-        static_cast<FnFunctor_Cast>(*M_get_pointer(functor)),
+        static_cast<Func_Cast>(*M_get_pointer(functor)),
         std::forward<ArgsType>(args)...);
     }
 
@@ -1436,11 +1436,11 @@ namespace detail {
       Is_volatile, volatile FnFunctor<BufSize>, FnFunctor<BufSize>
     >::type;
     using Func_Qualifier = typename std::conditional<
-      Is_volatile, volatile Functor, Functor
+      Is_volatile, volatile typename std::remove_reference<Functor>::type,
+      typename std::remove_reference<Functor>::type
     >::type;
-    using FnFunctor_Cast = typename std::conditional<
-      Is_rref, typename std::remove_reference<Functor>::type&&,
-      typename std::remove_reference<Functor>::type&
+    using Func_Cast = typename std::conditional<
+      Is_rref, Func_Qualifier&&, Func_Qualifier&
     >::type;
 
   public:
@@ -1521,7 +1521,7 @@ namespace detail {
     noexcept(FnTraits::Callable<RetType, Functor, ArgsType...>::NoThrow_v)
     {
       return FnTraits::invoke_r<RetType>(
-        static_cast<FnFunctor_Cast>(*M_get_pointer(functor)),
+        static_cast<Func_Cast>(*M_get_pointer(functor)),
         std::forward<ArgsType>(args)...);
     }
 
