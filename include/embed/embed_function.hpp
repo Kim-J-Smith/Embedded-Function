@@ -1004,27 +1004,37 @@ namespace detail {
 
     /**
      * @e invoke_impl
-     * @brief Distribute the call of normal function,
-     * member function and member object.
+     * @brief Distribute the call of callable objects, including normal functions, 
+     *        pointer to member functions, and pointer to member objects (distinguish 
+     *        reference-like/pointer-like class object callers).
      */
+
+    // Invokes the callable object directly with the given arguments.
+    // Used for free function, static member function, and functors (classes that overload operator()).
     template <typename RetT, typename Func, typename... Args>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_normal, Func&& fn, Args&&... args)
       noexcept(noexcept(std::forward<Func>(fn)(std::forward<Args>(args)...)))
     { return std::forward<Func>(fn)(std::forward<Args>(args)...); }
 
+    // Invokes the pointer to member object by the given "reference" of class object.
+    // Note: The `std::reference_wrapper` is also regarded as "reference".
     template <typename RetT, typename MemObj, typename Arg>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_memobj_ref_like, MemObj&& obj, Arg&& arg)
       noexcept(noexcept(static_cast<inv_unwrap_t<Arg>&&>(arg).*std::forward<MemObj>(obj)))
     { return static_cast<inv_unwrap_t<Arg>&&>(arg).*std::forward<MemObj>(obj); }
 
+    // Invokes the pointer to member object by the given "pointer" of class object.
+    // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
     template <typename RetT, typename MemObj, typename Arg>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_memobj_pointer_like, MemObj&& obj, Arg&& arg)
       noexcept(noexcept((*std::forward<Arg>(arg)).*std::forward<MemObj>(obj)))
     { return (*std::forward<Arg>(arg)).*std::forward<MemObj>(obj); }
 
+    // Invokes the pointer to member function by the given "reference" of class object.
+    // Note: The `std::reference_wrapper` is also regarded as "reference".
     template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
@@ -1037,6 +1047,8 @@ namespace detail {
       );
     }
 
+    // Invokes the pointer to member function by the given "pointer" of class object.
+    // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
     template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_memfn_pointer_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
