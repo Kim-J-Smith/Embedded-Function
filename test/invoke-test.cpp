@@ -137,7 +137,7 @@ TEST(InvokeTest, VirtualMethodTest) {
 
 struct InvokeTest_CVRefQualifierTest__struct
 {
-    int operator()() const {
+    int operator()() const volatile {
         volatile int a = 123456;
         return a;
     }
