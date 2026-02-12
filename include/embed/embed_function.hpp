@@ -801,24 +801,67 @@ namespace detail {
       Func, ArgsT...
     >::type {};
 
-    template <typename To, typename From>
-    struct reference_converts_from_temporary
-    {
-      using no_cvref_To = remove_cvref_t<To>;
+  // (undocumented) Extract type information from 'operator T()'.
+  template <typename Class, typename T, typename = void>
+  struct has_type_conversion_operator
+  : public std::false_type {};
 
-      // prvalue(pure right value) is being bound to const lvalue(left value)
-      static constexpr bool pr_to_l = std::is_lvalue_reference<To>::value
-        && !std::is_reference<From>::value
-        && std::is_const<typename std::remove_reference<To>::type>::value
-        && std::is_convertible<From, no_cvref_To>::value;
+  template <typename Class, typename T>
+  struct has_type_conversion_operator<Class, T,
+    void_t<decltype(&Class::operator T)>>
+  : public std::true_type {};
 
-      // prvalue is being bound to [const] xvalue(right reference)
-      static constexpr bool pr_to_x = std::is_rvalue_reference<To>::value
-        && !std::is_reference<From>::value
-        && std::is_convertible<From, no_cvref_To>::value;
+  // (undocumented) Check whether type `From` can be converted 
+  // to type `To`, without invoking the operator T <REF>.
+  template <typename To, typename From>
+  struct is_no_reference_convertible {
+    using To_no_cvref = remove_cvref_t<To>;
+    static constexpr bool value = std::is_convertible<From, To>::value
+      && !has_type_conversion_operator<From, To_no_cvref&>::value
+      && !has_type_conversion_operator<From, const To_no_cvref&>::value
+      && !has_type_conversion_operator<From, volatile To_no_cvref&>::value
+      && !has_type_conversion_operator<From, const volatile To_no_cvref&>::value
+      && !has_type_conversion_operator<From, To_no_cvref&&>::value
+      && !has_type_conversion_operator<From, const To_no_cvref&&>::value
+      && !has_type_conversion_operator<From, volatile To_no_cvref&&>::value
+      && !has_type_conversion_operator<From, const volatile To_no_cvref&&>::value;
+  };
 
-      static constexpr bool value = pr_to_l || pr_to_x;
-    };
+  // (undocumented) True if `To` is a reference type, a `From` value 
+  // can be bound to `To` in copy-initialization, and a temporary 
+  // object would be bound to the reference, false otherwise.
+  template <typename To, typename From>
+  struct reference_converts_from_temporary_impl {
+    using From_ = typename std::conditional<
+      std::is_scalar<From>::value || std::is_void<From>::value,
+      typename std::remove_cv<From>::type, From>::type;
+
+    using NoRefTo = typename std::remove_reference<To>::type;
+
+    static constexpr bool bound_rref = std::is_rvalue_reference<To>::value
+      && !std::is_reference<From_>::value 
+      && is_no_reference_convertible<To, From_>::value;
+
+    static constexpr bool bound_lref = std::is_lvalue_reference<To>::value
+      && !std::is_reference<From_>::value 
+      && std::is_const<NoRefTo>::value
+      && !std::is_volatile<NoRefTo>::value
+      && is_no_reference_convertible<To, From_>::value;
+
+    static constexpr bool value = bound_rref || bound_lref;
+  };
+
+  // See https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html .
+  template <typename To, typename From>
+  struct reference_converts_from_temporary
+  : public std::integral_constant<bool, 
+#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary) && !defined(__clang__)
+    // Clang 20 still has issues with __reference_converts_from_temporary.
+    __reference_converts_from_temporary(To, From)
+#else
+    reference_converts_from_temporary_impl<To, From>::value
+#endif
+  > {};
 
     // check Result::type --> RetT
     template <typename Result, typename RetT,
@@ -860,11 +903,7 @@ namespace detail {
       template <typename T,
         bool NoThrow_conv = noexcept(S_conv<T>(S_get())),
         typename = decltype(S_conv<T>(S_get())),
-#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
-        bool Dangle = __reference_converts_from_temporary(T, Res_T)
-#else
         bool Dangle = reference_converts_from_temporary<T, Res_T>::value
-#endif
       >
       static typename std::integral_constant<
         bool, NoThrow_conv && !Dangle
