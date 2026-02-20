@@ -609,7 +609,7 @@ namespace embed { namespace detail { namespace fn_no_std {
   template <typename R, typename Cs, typename... As>  \
   struct check_is_class<R(Cs::*)(As...) C V REF NOEXC> : public false_type {};
 
-#if ( EMBED_CXX_VERSION >= 201703L )
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 # define EMBED_FN_OVERLOAD_IS_NOT_CLASS_HELPER(C, V, REF)\
   EMBED_FN_OVERLOAD_IS_NOT_CLASS(C, V, REF, noexcept) \
   EMBED_FN_OVERLOAD_IS_NOT_CLASS(C, V, REF,)

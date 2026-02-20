@@ -53,6 +53,8 @@ embed::function<int(int, float, char) const, 3*sizeof(void*)>
 // Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
 
+- Note: This "Qualifier" is used to restrict the callable objects wrapped within "embed::function", rather than "embed::function" itself.
+
 ## Quick start
 
 - Clone the repo.
@@ -115,7 +117,7 @@ int main()
 
 ## Detail APIs
 
-  [Click here to view the detailed APIs](doc/API_embed_function.md)
+  See [doc/API_embed_function.md](./doc/API_embed_function.md) for further details.
 
 ## Solution without the C++ standard library
 

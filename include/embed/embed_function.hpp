@@ -157,6 +157,8 @@ SOFTWARE.
 #ifndef EMBED_HAS_BUILTIN
 # if defined(__has_builtin) && defined(__is_identifier)
 #  define EMBED_HAS_BUILTIN(x) (__has_builtin(x) || !__is_identifier(x))
+# elif defined(__has_builtin)
+#  define EMBED_HAS_BUILTIN(x) __has_builtin(x)
 # else
 #  define EMBED_HAS_BUILTIN(x) 0
 # endif
@@ -567,6 +569,9 @@ namespace detail {
       std::size_t BufSize, bool Is_volatile, bool Is_rref>
     struct FnManagerMoveOnly;
 
+    // `FnManagerHelper` is the Base class of both 
+    // `FnManagerCopyable` and `FnManagerMoveOnly`.
+    // M_create, M_destroy, M_init_functor are defined in FnManagerHelper.
     template <typename Signature, typename Functor,
       std::size_t BufSize, bool Is_volatile, bool Is_rref>
     struct FnManagerHelper;
@@ -618,13 +623,14 @@ namespace detail {
     class invoke_tag_memobj_pointer_like {};
 
     /// @e inv_unwrap
+    /// @brief Unwrap the `std::reference_wrapper` recursively.
     template <typename T, typename U = remove_cvref_t<T>>
     struct inv_unwrap { using type = T; };
 
 #if !defined(EMBED_NO_STD_HEADER)
     template <typename T, typename RealType>
     struct inv_unwrap<T, std::reference_wrapper<RealType>>
-    { using type = RealType&; };
+    { using type = typename inv_unwrap<RealType&>::type; };
 #else
     // Users can overload the inv_unwrap function
     // for the custom reference_wrapper here.
@@ -795,24 +801,67 @@ namespace detail {
       Func, ArgsT...
     >::type {};
 
-    template <typename To, typename From>
-    struct reference_converts_from_temporary
-    {
-      using no_cvref_To = remove_cvref_t<To>;
+  // (undocumented) Extract type information from 'operator T()'.
+  template <typename Class, typename T, typename = void>
+  struct has_type_conversion_operator
+  : public std::false_type {};
 
-      // prvalue(pure right value) is being bound to const lvalue(left value)
-      static constexpr bool pr_to_l = std::is_lvalue_reference<To>::value
-        && !std::is_reference<From>::value
-        && std::is_const<typename std::remove_reference<To>::type>::value
-        && std::is_convertible<From, no_cvref_To>::value;
+  template <typename Class, typename T>
+  struct has_type_conversion_operator<Class, T,
+    void_t<decltype(&Class::operator T)>>
+  : public std::true_type {};
 
-      // prvalue is being bound to [const] xvalue(right reference)
-      static constexpr bool pr_to_x = std::is_rvalue_reference<To>::value
-        && !std::is_reference<From>::value
-        && std::is_convertible<From, no_cvref_To>::value;
+  // (undocumented) Check whether type `From` can be converted 
+  // to type `To`, without invoking the operator T <REF>.
+  template <typename To, typename From>
+  struct is_no_reference_convertible {
+    using To_no_cvref = remove_cvref_t<To>;
+    static constexpr bool value = std::is_convertible<From, To>::value
+      && !has_type_conversion_operator<From, To_no_cvref&>::value
+      && !has_type_conversion_operator<From, const To_no_cvref&>::value
+      && !has_type_conversion_operator<From, volatile To_no_cvref&>::value
+      && !has_type_conversion_operator<From, const volatile To_no_cvref&>::value
+      && !has_type_conversion_operator<From, To_no_cvref&&>::value
+      && !has_type_conversion_operator<From, const To_no_cvref&&>::value
+      && !has_type_conversion_operator<From, volatile To_no_cvref&&>::value
+      && !has_type_conversion_operator<From, const volatile To_no_cvref&&>::value;
+  };
 
-      static constexpr bool value = pr_to_l || pr_to_x;
-    };
+  // (undocumented) True if `To` is a reference type, a `From` value 
+  // can be bound to `To` in copy-initialization, and a temporary 
+  // object would be bound to the reference, false otherwise.
+  template <typename To, typename From>
+  struct reference_converts_from_temporary_impl {
+    using From_ = typename std::conditional<
+      std::is_scalar<From>::value || std::is_void<From>::value,
+      typename std::remove_cv<From>::type, From>::type;
+
+    using NoRefTo = typename std::remove_reference<To>::type;
+
+    static constexpr bool bound_rref = std::is_rvalue_reference<To>::value
+      && !std::is_reference<From_>::value 
+      && is_no_reference_convertible<To, From_>::value;
+
+    static constexpr bool bound_lref = std::is_lvalue_reference<To>::value
+      && !std::is_reference<From_>::value 
+      && std::is_const<NoRefTo>::value
+      && !std::is_volatile<NoRefTo>::value
+      && is_no_reference_convertible<To, From_>::value;
+
+    static constexpr bool value = bound_rref || bound_lref;
+  };
+
+  // See https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html .
+  template <typename To, typename From>
+  struct reference_converts_from_temporary
+  : public std::integral_constant<bool, 
+#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary) && !defined(__clang__)
+    // Clang 20 still has issues with __reference_converts_from_temporary.
+    __reference_converts_from_temporary(To, From)
+#else
+    reference_converts_from_temporary_impl<To, From>::value
+#endif
+  > {};
 
     // check Result::type --> RetT
     template <typename Result, typename RetT,
@@ -854,11 +903,7 @@ namespace detail {
       template <typename T,
         bool NoThrow_conv = noexcept(S_conv<T>(S_get())),
         typename = decltype(S_conv<T>(S_get())),
-#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
-        bool Dangle = __reference_converts_from_temporary(T, Res_T)
-#else
         bool Dangle = reference_converts_from_temporary<T, Res_T>::value
-#endif
       >
       static typename std::integral_constant<
         bool, NoThrow_conv && !Dangle
@@ -895,7 +940,8 @@ namespace detail {
       using Result_lref = invoke_result<Caller_lref, ArgsT...>;
       using Result_rref = invoke_result<Caller_rref, ArgsT...>;
 
-#if ( EMBED_CXX_VERSION >= 201703L ) && (!EMBED_CXX_ENABLE_EXCEPTION)
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L ) \
+    && (!EMBED_CXX_ENABLE_EXCEPTION)
       // The noexcept-specification is a part of the function type 
       // and may appear as part of any function declarator.
       // And only when `EMBED_CXX_ENABLE_EXCEPTION` is false,
@@ -934,9 +980,7 @@ namespace detail {
     /// @e results_are_same
     template <typename RetFrom, typename RetTo>
     struct results_are_same
-    {
-      static constexpr bool value = std::is_same<RetFrom, RetTo>::value;
-    };
+    : public std::is_same<RetFrom, RetTo>::type {};
 
     /// @e args_package
     template <typename... ArgsT>
@@ -993,33 +1037,43 @@ namespace detail {
     /// @e arguments_are_same
     template <typename ArgsPackageFrom, typename ArgsPackageTo, std::size_t ArgNum>
     struct arguments_are_same : public std::conditional<
-      ArgNum == 0, std::true_type,
+      ArgNum == 0, std::true_type, /* recursively check */
       arguments_are_same_impl<ArgsPackageFrom, ArgsPackageTo, ArgNum-1>
     >::type { };
 
     /**
      * @e invoke_impl
-     * @brief Distribute the call of normal function,
-     * member function and member object.
+     * @brief Distribute the call of callable objects, including normal functions, 
+     *        pointer to member functions, and pointer to member objects (distinguish 
+     *        reference-like/pointer-like class object callers).
      */
+
+    // Invokes the callable object directly with the given arguments.
+    // Used for free function, static member function, and functors (classes that overload operator()).
     template <typename RetT, typename Func, typename... Args>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_normal, Func&& fn, Args&&... args)
       noexcept(noexcept(std::forward<Func>(fn)(std::forward<Args>(args)...)))
     { return std::forward<Func>(fn)(std::forward<Args>(args)...); }
 
+    // Invokes the pointer to member object by the given "reference" of class object.
+    // Note: The `std::reference_wrapper` is also regarded as "reference".
     template <typename RetT, typename MemObj, typename Arg>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_memobj_ref_like, MemObj&& obj, Arg&& arg)
       noexcept(noexcept(static_cast<inv_unwrap_t<Arg>&&>(arg).*std::forward<MemObj>(obj)))
     { return static_cast<inv_unwrap_t<Arg>&&>(arg).*std::forward<MemObj>(obj); }
 
+    // Invokes the pointer to member object by the given "pointer" of class object.
+    // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
     template <typename RetT, typename MemObj, typename Arg>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_memobj_pointer_like, MemObj&& obj, Arg&& arg)
       noexcept(noexcept((*std::forward<Arg>(arg)).*std::forward<MemObj>(obj)))
     { return (*std::forward<Arg>(arg)).*std::forward<MemObj>(obj); }
 
+    // Invokes the pointer to member function by the given "reference" of class object.
+    // Note: The `std::reference_wrapper` is also regarded as "reference".
     template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
@@ -1032,6 +1086,8 @@ namespace detail {
       );
     }
 
+    // Invokes the pointer to member function by the given "pointer" of class object.
+    // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
     template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
     static EMBED_INLINE EMBED_CXX14_CONSTEXPR RetT
     invoke_impl(invoke_tag_memfn_pointer_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
@@ -1113,7 +1169,7 @@ namespace detail {
 
 #undef EMBED_FN_OVERLOAD_UNIQUE_CALL_SIGNATURE_CVREF
 
-#if EMBED_CXX_VERSION >= 201703L
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 
     // See https://en.cppreference.com/w/cpp/language/noexcept_spec
     // The noexcept-specification is a part of the function type and 
@@ -1379,11 +1435,11 @@ namespace detail {
       Is_volatile, volatile FnFunctor<BufSize>, FnFunctor<BufSize>
     >::type;
     using Func_Qualifier = typename std::conditional<
-      Is_volatile, volatile Functor, Functor
+      Is_volatile, volatile typename std::remove_reference<Functor>::type,
+      typename std::remove_reference<Functor>::type
     >::type;
-    using FnFunctor_Cast = typename std::conditional<
-      Is_rref, typename std::remove_reference<Functor>::type&&,
-      typename std::remove_reference<Functor>::type&
+    using Func_Cast = typename std::conditional<
+      Is_rref, Func_Qualifier&&, Func_Qualifier&
     >::type;
 
     static EMBED_INLINE Functor*
@@ -1398,7 +1454,7 @@ namespace detail {
     EMBED_FN_CASE_NOEXCEPT
     {
       return FnTraits::invoke_r<RetType>(
-        static_cast<FnFunctor_Cast>(*M_get_pointer(functor)),
+        static_cast<Func_Cast>(*M_get_pointer(functor)),
         std::forward<ArgsType>(args)...);
     }
 
@@ -1419,11 +1475,11 @@ namespace detail {
       Is_volatile, volatile FnFunctor<BufSize>, FnFunctor<BufSize>
     >::type;
     using Func_Qualifier = typename std::conditional<
-      Is_volatile, volatile Functor, Functor
+      Is_volatile, volatile typename std::remove_reference<Functor>::type,
+      typename std::remove_reference<Functor>::type
     >::type;
-    using FnFunctor_Cast = typename std::conditional<
-      Is_rref, typename std::remove_reference<Functor>::type&&,
-      typename std::remove_reference<Functor>::type&
+    using Func_Cast = typename std::conditional<
+      Is_rref, Func_Qualifier&&, Func_Qualifier&
     >::type;
 
   public:
@@ -1504,7 +1560,7 @@ namespace detail {
     noexcept(FnTraits::Callable<RetType, Functor, ArgsType...>::NoThrow_v)
     {
       return FnTraits::invoke_r<RetType>(
-        static_cast<FnFunctor_Cast>(*M_get_pointer(functor)),
+        static_cast<Func_Cast>(*M_get_pointer(functor)),
         std::forward<ArgsType>(args)...);
     }
 
