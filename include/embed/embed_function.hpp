@@ -1945,7 +1945,9 @@ template <
   // [Enable] Functor must be copyable.
   typename Enable1 = detail::enable_if_t<std::is_copy_constructible<Functor>::value>,
   // [Enable] First template argument must be signature.
-  typename Enable2 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>
+  typename Enable2 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>,
+  // [Enable] Functor cannot be the function pointer.
+  typename Enable3 = detail::enable_if_t<std::is_class<detail::remove_cvref_t<Functor>>::value>
 >
 EMBED_NODISCARD inline fn<Signature, sizeof(Functor)>
 make_fn(Functor&& functor) noexcept(NoThrow) {
