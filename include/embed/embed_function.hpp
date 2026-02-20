@@ -1045,6 +1045,59 @@ inline namespace fn_traits {
   template <typename With, typename T>
   using get_qualified_with_t = typename get_qualified_with<With, T>::type;
 
+  // Check is class and qualifier of call operator.
+  template <typename Package, typename Fn, 
+    bool IsClass = std::is_class<decay_t<Fn>>::value>
+  struct is_class_call_operator {
+    static constexpr bool hasConst = false;
+    static constexpr bool hasRRef = false;
+    static constexpr bool hasLRef = false;
+    static constexpr bool noConst = false;
+    static constexpr bool noRRef = false;
+    static constexpr bool noLRef = false;
+  };
+
+  template <typename Package, typename Fn>
+  struct is_class_call_operator<Package, Fn, true> {
+    using call_const_res = invoke_result_package<const Fn, Package>;
+    using call_lref_res = invoke_result_package<Fn&, Package>;
+    using call_rref_res = invoke_result_package<Fn&&, Package>;
+
+    // check the `const` qualifier.
+    static constexpr bool hasConst = 
+      is_invocable_impl<call_const_res, void>::type::value;
+    static constexpr bool noConst = !hasConst;
+
+    // check the `&&` qualifier.
+    static constexpr bool noRRef = 
+      is_invocable_impl<call_lref_res, void>::type::value;
+    static constexpr bool hasRRef = !noRRef;
+
+    // check the `&&` qualifier.
+    static constexpr bool noLRef = 
+      is_invocable_impl<call_rref_res, void>::type::value;
+    static constexpr bool hasLRef = !noLRef;
+  };
+
+  // Check the qualifier of signature and functor is matching.
+  /// TODO: Improve the verification of the "&" and "&&" qualifier.
+  template <typename Signature, typename Functor>
+  struct qualifier_of_signature_match_functor {
+    using base_fn = remove_cvref_t<Functor>;
+    using unwrap_sig = unwrap_signature<Signature>;
+    using call_op = is_class_call_operator<typename unwrap_sig::args, base_fn>;
+
+    // The qualifier information of `Signature`.
+    static constexpr bool sig_has_const = unwrap_sig::hasConst;
+    static constexpr bool sig_has_rref = unwrap_sig::hasRRef;
+    static constexpr bool sig_has_lref = unwrap_sig::hasLRef;
+
+    static constexpr bool const_match = !(sig_has_const && call_op::noConst);
+    static constexpr bool rref_match = true; // TODO
+    static constexpr bool lref_match = true; // TODO
+    static constexpr bool value = const_match && rref_match && lref_match;
+  };
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -1634,6 +1687,10 @@ namespace command {
 
       static_assert(!move_constructor_is_deleted<Functor>::value,
         "The move constructor of Functor shouldn't be deleted.");
+
+      static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
+        "The qualifier 'const', '&' or '&&' of operator() of Functor"
+        " cannot match that of Signature.");
       
       if (check_not_empty::check(functor)) {
         m_command.template init<>(
