@@ -938,7 +938,7 @@ inline namespace fn_traits {
     }
 
     template <typename T>
-    static bool check(const T& f) {
+    static bool check(const T&) {
       return true;
     }
   };
