@@ -2100,6 +2100,17 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 
 #undef EMBED_DETAIL_MAKE_FN_DEFINE
 
+  /// @brief make_fn[9]: Make function for pointer to member object.
+  /// @return `fn<T(Class&) const, sizeof(ptr_memobj)>` 
+  template <typename Class, typename T>
+  EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
+  -> fn<T(Class&) const, sizeof(ptr_memobj)> {
+    return detail::make_function_impl<
+      fn<T(Class&) const, sizeof(ptr_memobj)>,
+      /* NoThrow = */ true
+    >(ptr_memobj);
+  }
+
 } // end namespace ebd
 
 namespace std EMBED_ABI_VISIBILITY(default) {
