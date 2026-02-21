@@ -1181,7 +1181,7 @@ namespace invocation {
                                                                     \
     struct empty {                                                  \
       /* Using when M_erasure is empty. */                          \
-      static Ret invoke(erasure_base_t* base, Args&&... args) {     \
+      static Ret invoke(erasure_base_t*, Args&&...) {               \
         throw_or_abort<Config::isThrowing>();                       \
         EMBED_UNREACHABLE();                                        \
       }                                                             \
