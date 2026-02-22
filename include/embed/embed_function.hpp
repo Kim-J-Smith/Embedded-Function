@@ -977,10 +977,12 @@ inline namespace fn_traits {
       "T must be a function pointer or pointer to member function.");
   };
 
+  // The Config::isThrowing of ebd::fn and ebd::unique_fn is true.
+  // So `get_unique_signature_impl` will ignore the `noexcept` specifier.
 #define EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE(C, V, REF, NOEXCEPT)    \
   template <typename Class, typename Ret, typename... Args>                   \
   struct get_unique_signature_impl<Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
-    using type = Ret(Args...) C V REF NOEXCEPT;                               \
+    using type = Ret(Args...) C V REF;                                        \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE)
@@ -1615,8 +1617,8 @@ namespace command {
 
     /// Check the "noexcept" is same.
     static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
-      "This 'noexcept' qualifier is in conflict with"
-      " the 'IsThrowing' configuration option.");
+      "This 'noexcept' qualifier is in conflict with the 'IsThrowing'"
+      " configuration option. (Use 'ebd::safe_fn' or 'ebd::fn_view')");
 
     using erasure_t = erasure_type::Erasure<BufferSize>;
 
