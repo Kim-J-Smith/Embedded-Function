@@ -1683,7 +1683,7 @@ namespace command {
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
       typename Enable = enable_if_t<fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value && is_copyable>
+      >::value && function<OtherSize, OtherCfg, OtherSig>::is_copyable>
     >
     function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
