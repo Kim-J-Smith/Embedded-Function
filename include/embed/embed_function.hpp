@@ -1629,7 +1629,8 @@ namespace command {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
-    static_assert(std::is_trivial<command_t>::value, 
+    static_assert(std::is_trivially_default_constructible<command_t>::value 
+      && std::is_trivially_copyable<command_t>::value,
       "command_t should be trivial. This is internal error.");
 
     // The `m_erasure` contains the type-erased object.
