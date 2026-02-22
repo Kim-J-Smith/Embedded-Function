@@ -1098,6 +1098,49 @@ inline namespace fn_traits {
     static constexpr bool value = const_match && rref_match && lref_match;
   };
 
+  // Implement the `get_member_fn_type`
+  template <typename Class, typename Signature, bool IsLRef, bool IsRRef>
+  struct get_member_fn_type_impl;
+
+#define EMBED_DETAIL_GET_MEMBER_FN_TYPE_IMPL_DEFINE(C, V, REF, NOEXCEPT)  \
+  template <typename Ret, typename Class,                                 \
+    bool IsLRef, bool IsRRef, typename... Args>                           \
+  struct get_member_fn_type_impl<Class C V REF,                           \
+    Ret(Args...) NOEXCEPT, IsLRef, IsRRef                                 \
+  > {                                                                     \
+    using type = conditional_t<IsLRef,                                    \
+      Ret (Class::*) (Args...) C V & NOEXCEPT,                            \
+      conditional_t<IsRRef || std::is_rvalue_reference<int REF>::value,   \
+      Ret (Class::*) (Args...) C V && NOEXCEPT,                           \
+      Ret (Class::*) (Args...) C V NOEXCEPT>>;                            \
+  };
+
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_MEMBER_FN_TYPE_IMPL_DEFINE)
+
+#undef EMBED_DETAIL_GET_MEMBER_FN_TYPE_IMPL_DEFINE
+
+  // From signature deduce the type of pointer to member function.
+  template <typename Signature>
+  struct get_member_fn_type {};
+
+#define EMBED_DETAIL_GET_MEMBER_FN_TYPE_DEFINE(C, V, REF, NOEXCEPT) \
+  template <typename Ret, typename Class, typename... Args>         \
+  struct get_member_fn_type<Ret(Class, Args...) C V REF NOEXCEPT> { \
+    using type = typename get_member_fn_type_impl<                  \
+      Class, Ret(Args...) NOEXCEPT,                                 \
+      std::is_lvalue_reference<int REF>::value,                     \
+      std::is_rvalue_reference<int REF>::value                      \
+    >::type;                                                        \
+  };
+
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_MEMBER_FN_TYPE_DEFINE)
+
+#undef EMBED_DETAIL_GET_MEMBER_FN_TYPE_DEFINE
+
+  // Get the type of pointer to member function.
+  template <typename Signature>
+  using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -1672,7 +1715,7 @@ namespace command {
     noexcept(is_nothrow_construct_from_functor<Functor, Config>::value) {
 
       static_assert(is_callable_functor<Functor, Signature>::value,
-        "The functor is NOT callable with given argumemts.");
+        "The functor is NOT callable with given arguments.");
 
       static_assert(align_size_is_ok<Functor, Config, BufferSize, erasure_t>::value,
         "The size of Functor is too large, and the BufferSize is too small."
@@ -1946,7 +1989,7 @@ template <
   typename Enable1 = detail::enable_if_t<std::is_copy_constructible<Functor>::value>,
   // [Enable] First template argument must be signature.
   typename Enable2 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>,
-  // [Enable] Functor cannot be the function pointer.
+  // [Enable] Functor cannot be the function pointer or pointer to member function.
   typename Enable3 = detail::enable_if_t<std::is_class<detail::remove_cvref_t<Functor>>::value>
 >
 EMBED_NODISCARD inline fn<Signature, sizeof(Functor)>
@@ -2093,23 +2136,40 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
     return detail::make_function_impl<fn_t, /* NoThrow = */ true>(memfunc);     \
   }
 
-  /// @brief make_fn[8]: Make function for pointer to member function. 
-  /// (auto deduce signature and buffer size)
-  /// @return `fn<Ret(Class, Args...) const, sizeof(Ret(Class::*)(Args...))>`
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE);
+/// @brief make_fn[8]: Make function for pointer to member function. 
+/// (auto deduce signature and buffer size)
+/// @return `fn<Ret(Class, Args...) const, sizeof(Ret(Class::*)(Args...))>`
+EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE);
 
 #undef EMBED_DETAIL_MAKE_FN_DEFINE
 
-  /// @brief make_fn[9]: Make function for pointer to member object.
-  /// @return `fn<T(Class&) const, sizeof(ptr_memobj)>` 
-  template <typename Class, typename T>
-  EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
-  -> fn<T(Class&) const, sizeof(ptr_memobj)> {
-    return detail::make_function_impl<
-      fn<T(Class&) const, sizeof(ptr_memobj)>,
-      /* NoThrow = */ true
-    >(ptr_memobj);
-  }
+/// @brief make_fn[9]: Make function for member function pointer with specified signature.
+/// @return `fn<Signature, sizeof(MemFuncPtr)>`
+template <
+  typename Signature,
+  typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
+  std::size_t BufferSize = sizeof(MemFuncPtr),
+  typename Enable1 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>,
+  typename Enable2 = detail::enable_if_t<std::is_member_function_pointer<MemFuncPtr>::value>
+>
+EMBED_NODISCARD inline fn<Signature, BufferSize>
+make_fn(MemFuncPtr memfunc_ptr) noexcept {
+  return detail::make_function_impl<
+    fn<Signature, BufferSize>,
+    /* NoThrow = */ true
+  >(memfunc_ptr);
+}
+
+/// @brief make_fn[10]: Make function for pointer to member object.
+/// @return `fn<T(Class&) const, sizeof(ptr_memobj)>` 
+template <typename Class, typename T>
+EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
+-> fn<T(Class&) const, sizeof(ptr_memobj)> {
+  return detail::make_function_impl<
+    fn<T(Class&) const, sizeof(ptr_memobj)>,
+    /* NoThrow = */ true
+  >(ptr_memobj);
+}
 
 } // end namespace ebd
 
