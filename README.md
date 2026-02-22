@@ -94,11 +94,39 @@ auto main() -> int {
 
 ### Key takeaways
 
-1. **Ownership & Copyability**: `fn`/`safe_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_view` is non-owning (view).
+1. **Ownership & Copy**: `fn`/`safe_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_view` is non-owning (view).
 
 2. **Exception Behavior**: Only `fn`/`unique_fn` throw on empty calls; `safe_fn`/`fn_view` terminate (no exceptions).
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
+
+## Automatic deduction
+
+### Brief introduction
+
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object.
+
+### Usage
+
+- `[`Optional`]` means optional.
+- `Signature`: The signature of the callable object. (such as `void(int)`)
+- `BufferSize`: The buffer size of the callable object. (such as `2*sizeof(void*)`)
+
+```cpp
+// Create empty ebd::fn.
+auto f = ebd::make_fn<Signature[, BufferSize]>([nullptr]);
+```
+
+```cpp
+// Create ebd::fn or ebd::unique_fn from unambiguous callable object.
+// If the Signature is omitted, the signature will be deduced from Callable_Object.
+auto f = ebd::make_fn[<Signature>](Callable_Object);
+```
+
+```cpp
+// Create ebd::fn or ebd::unique_fn from ambiguous callable object with specified signature.
+auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
+```
 
 ## Similar implementations
 
