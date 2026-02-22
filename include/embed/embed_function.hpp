@@ -1101,14 +1101,17 @@ inline namespace fn_traits {
   };
 
   // Implement the `get_member_fn_type`
-  template <typename Class, typename Signature, bool IsLRef, bool IsRRef>
-  struct get_member_fn_type_impl;
+  template <typename Class, typename Signature, 
+    bool IsLRef, bool IsRRef, 
+    bool IsClass = std::is_class<remove_cvref_t<Class>>::value
+  >
+  struct get_member_fn_type_impl { using type = void; };
 
 #define EMBED_DETAIL_GET_MEMBER_FN_TYPE_IMPL_DEFINE(C, V, REF, NOEXCEPT)  \
   template <typename Ret, typename Class,                                 \
     bool IsLRef, bool IsRRef, typename... Args>                           \
   struct get_member_fn_type_impl<Class C V REF,                           \
-    Ret(Args...) NOEXCEPT, IsLRef, IsRRef                                 \
+    Ret(Args...) NOEXCEPT, IsLRef, IsRRef, /* IsClass = */ true           \
   > {                                                                     \
     using type = conditional_t<IsLRef,                                    \
       Ret (Class::*) (Args...) C V & NOEXCEPT,                            \
