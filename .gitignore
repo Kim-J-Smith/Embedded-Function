@@ -9,5 +9,3 @@
 .clang-tidy
 
 *.idea*
-
-CMakeLists.txt

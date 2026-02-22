@@ -129,6 +129,8 @@ public:
     virtual int operator()(int) { return 0; }
 
     virtual int operator()(char) { return 0; }
+
+    virtual ~ebd_test_virtual_operator_ambiguous_base() = default;
 };
 
 class ebd_test_virtual_operator_ambiguous_derived 

@@ -7,7 +7,9 @@
 // InitFunction[0]
 TEST(InitFunction, fn_freeFunction_v) {
     ebd::fn<void(int, int)> f = ebd_test_free_func_vii;
-    ASSERT_EQ(f.buffer_size, ebd::detail::default_buffer_size::value);
+    const std::size_t buf_size = f.buffer_size;
+    const std::size_t buf_expect = ebd::detail::default_buffer_size::value;
+    ASSERT_EQ(buf_size, buf_expect);
     ASSERT_EQ(f != nullptr, true);
     ASSERT_EQ(f == nullptr, false);
     ASSERT_EQ(static_cast<bool>(f), true);
