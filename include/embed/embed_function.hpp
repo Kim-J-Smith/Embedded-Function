@@ -2030,7 +2030,7 @@ template <
   typename Enable = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>
 >
 EMBED_NODISCARD inline fn<Signature, BufferSize>
-make_fn() noexcept {
+make_fn(std::nullptr_t = nullptr) noexcept {
   return detail::make_function_impl<
     fn<Signature, BufferSize>, /* NoThrow = */ true
   >(nullptr);
