@@ -139,11 +139,11 @@ namespace ebd { namespace detail {
 # include <new>        // placement new, std::launder(C++17)
 # include <utility>    // std::move, std::forward, std::addressof
 # include <functional> // std::bad_function_call
+# include <exception>  // std::terminate
 # include <type_traits>
-# include <exception>
 #else
-# error The embed-function requires the support of syntax features of C++11.\
- You can use the -std=c++11 compilation option, or simply switch to a newer compiler.
+# error The 'embed_function.hpp' requires the support of syntax features of C++11.\
+ You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
 #endif
 
 // const, volatile, {& | &&}, noexcept
@@ -2151,10 +2151,14 @@ EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE);
 /// @brief make_fn[9]: Make function for member function pointer with specified signature.
 /// @return `fn<Signature, sizeof(MemFuncPtr)>`
 template <
-  typename Signature,
+  typename Signature, // [User specify] function signature.
+  // [Auto] Deduce the type of member function pointer.
   typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
+  // [Auto] Deduce the size of member function pointer.
   std::size_t BufferSize = sizeof(MemFuncPtr),
+  // [Enable] Signature must be valid.
   typename Enable1 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>,
+  // [Enable] Member function pointer must be valid.
   typename Enable2 = detail::enable_if_t<std::is_member_function_pointer<MemFuncPtr>::value>
 >
 EMBED_NODISCARD inline fn<Signature, BufferSize>
