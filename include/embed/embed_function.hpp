@@ -949,7 +949,8 @@ inline namespace fn_traits {
   struct copyable_is_ok {
     static constexpr bool copy_ok = std::is_copy_constructible<DecFunctor>::value;
     static constexpr bool move_ok = std::is_move_constructible<DecFunctor>::value;
-    static constexpr bool value = Config::isCopyable ? copy_ok : move_ok;
+    static constexpr bool no_view_ok = Config::isCopyable ? copy_ok : move_ok;
+    static constexpr bool value = Config::isView ? true : no_view_ok;
   };
 
   // Check the move-constructor be deleted or not.
