@@ -173,6 +173,16 @@ namespace ebd { namespace detail {
   EMBED_DETAIL_FN_EXPAND_IMPL(F, )
 #endif
 
+// Concatenates two tokens (identifiers) via intermediate 
+// macro to ensure proper macro expansion.
+#define EMBED_DETAIL_CONNECT(a, b) EMBED_DETAIL_CONNECT_IMPL(a, b)
+#define EMBED_DETAIL_CONNECT_IMPL(a, b) a ## b
+
+/// @brief Similar to `requires` in C++20.
+/// Using SFINAE to require the template arguments.
+#define EMBED_DETAIL_REQUIRE(enable_if_true) \
+  typename EMBED_DETAIL_CONNECT(Enable_,__LINE__) = detail::enable_if_t<(enable_if_true)>
+
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
 
@@ -1985,20 +1995,33 @@ using fn_view = detail::function<
   Signature
 >;
 
+
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
 /// @return `fn<Signature, sizeof(Functor)>`
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_copy_constructible<Functor>::value,
-  // [Enable] Functor must be copyable.
-  typename Enable1 = detail::enable_if_t<std::is_copy_constructible<Functor>::value>,
-  // [Enable] First template argument must be signature.
-  typename Enable2 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>,
-  // [Enable] Functor cannot be the function pointer or pointer to member function.
-  typename Enable3 = detail::enable_if_t<std::is_class<detail::remove_cvref_t<Functor>>::value>
+  // [Require] Functor must be copyable.
+  EMBED_DETAIL_REQUIRE(std::is_copy_constructible<Functor>::value),
+  // [Require] First template argument must be signature.
+  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature),
+  // [Require] Functor cannot be the function pointer or pointer to member function.
+  EMBED_DETAIL_REQUIRE(std::is_class<detail::remove_cvref_t<Functor>>::value)
 >
+#else
+template <
+  typename Signature, // [User specify] function signature.
+  typename Functor,   // [Auto] Functor type.
+  // [Auto] Get the nothrow guarantee of functor.
+  bool NoThrow = std::is_nothrow_copy_constructible<Functor>::value
+>
+requires std::is_copy_constructible<Functor>::value
+  && detail::unwrap_signature<Signature>::isSignature
+  && std::is_class<detail::remove_cvref_t<Functor>>::value
+#endif
 EMBED_NODISCARD inline fn<Signature, sizeof(Functor)>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
@@ -2008,19 +2031,29 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[1]: Make function with specified signature for move-only functor.
 /// @return `unique_fn<Signature, sizeof(Functor)>`
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
-  // [Enable] Functor must be movable and non-copyable.
-  typename Enable1 = detail::enable_if_t<
-    std::is_move_constructible<Functor>::value
-    && !std::is_copy_constructible<Functor>::value
-  >,
-  // [Enable] First template argument must be signature.
-  typename Enable2 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>,
+  // [Require] Functor must be movable and non-copyable.
+  EMBED_DETAIL_REQUIRE(std::is_move_constructible<Functor>::value),
+  EMBED_DETAIL_REQUIRE(!std::is_copy_constructible<Functor>::value),
+  // [Require] First template argument must be signature.
+  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature),
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_move_constructible<Functor>::value
 >
+#else
+template <
+  typename Signature, // [User specify] function signature.
+  typename Functor,   // [Auto] Functor type.
+  // [Auto] Get the nothrow guarantee of functor.
+  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value
+>
+requires std::is_move_constructible<Functor>::value
+  && (!std::is_copy_constructible<Functor>::value)
+  && detail::unwrap_signature<Signature>::isSignature
+#endif
 EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor)>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
@@ -2030,12 +2063,20 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[2]: Make an empty function with specified signature and buffer size.
 /// @return `fn<Signature, BufferSize>`
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
   std::size_t BufferSize = detail::default_buffer_size::value,
-  // [Enable] First template argument must be signature.
-  typename Enable = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>
+  // [Require] First template argument must be signature.
+  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature)
 >
+#else
+template <
+  typename Signature, // [User specify] function signature.
+  std::size_t BufferSize = detail::default_buffer_size::value
+>
+requires detail::unwrap_signature<Signature>::isSignature
+#endif
 EMBED_NODISCARD inline fn<Signature, BufferSize>
 make_fn(std::nullptr_t = nullptr) noexcept {
   return detail::make_function_impl<
@@ -2056,15 +2097,25 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
   // [Auto] The type of the function pointer.
   typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*,
-  // [Enable] First template argument must be signature.
-  typename Enable1 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>,
-  // [Enable] The `FunctionPtr` must be the function pointer.
-  typename Enable2 = detail::enable_if_t<detail::is_function_ptr<FunctionPtr>::value>
+  // [Require] First template argument must be signature.
+  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature),
+  // [Require] The `FunctionPtr` must be the function pointer.
+  EMBED_DETAIL_REQUIRE(detail::is_function_ptr<FunctionPtr>::value)
 >
+#else
+template <
+  typename Signature, // [User specify] function signature.
+  // [Auto] The type of the function pointer.
+  typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*
+>
+requires detail::unwrap_signature<Signature>::isSignature
+  && detail::is_function_ptr<FunctionPtr>::value
+#endif
 EMBED_NODISCARD inline fn<Signature, sizeof(FunctionPtr)>
 make_fn(FunctionPtr func_ptr) noexcept {
   return detail::make_function_impl<
@@ -2101,6 +2152,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
 /// @note Auto deduce signature and buffer size.
 /// @return `fn<Signature, BufferSize>` or `unique_fn<Signature, BufferSize>`
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
   // [Auto] The basic type of the functor.
@@ -2116,15 +2168,31 @@ template <
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
   bool NoThrow = std::is_nothrow_constructible<Class, Lambda&&>::value,
-  // [Enable] The functor must be unique callable.
-  typename Enable1 = detail::enable_if_t<
-    detail::is_unique_callable<Class>::value
-  >,
-  // [Enable] The signature must be valid.
-  typename Enable2 = detail::enable_if_t<
-    detail::unwrap_signature<Signature>::isSignature
-  >
+  // [Require] The functor must be unique callable.
+  EMBED_DETAIL_REQUIRE(detail::is_unique_callable<Class>::value),
+  // [Require] The signature must be valid.
+  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature)
 >
+#else
+template <
+  typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
+  // [Auto] The basic type of the functor.
+  typename Class = detail::remove_cvref_t<Lambda>,
+  // [Auto] The buffersize of functor.
+  std::size_t BufferSize = sizeof(Class),
+  // [Auto] The signature of functor.
+  typename Signature = detail::get_unique_signature_t<Class>,
+  // [Auto] The function type. (fn or unique_fn)
+  typename Fn = detail::conditional_t<
+    std::is_copy_constructible<Class>::value, 
+    fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
+  >,
+  // [Auto] Get the nothrow guarantee in construction of functor.
+  bool NoThrow = std::is_nothrow_constructible<Class, Lambda&&>::value
+>
+requires detail::is_unique_callable<Class>::value
+  && detail::unwrap_signature<Signature>::isSignature
+#endif
 EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
   return detail::make_function_impl<Fn, NoThrow>(std::forward<Lambda>(fn));
 }
@@ -2152,17 +2220,29 @@ EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE);
 
 /// @brief make_fn[9]: Make function for member function pointer with specified signature.
 /// @return `fn<Signature, sizeof(MemFuncPtr)>`
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
   // [Auto] Deduce the type of member function pointer.
   typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
   // [Auto] Deduce the size of member function pointer.
   std::size_t BufferSize = sizeof(MemFuncPtr),
-  // [Enable] Signature must be valid.
-  typename Enable1 = detail::enable_if_t<detail::unwrap_signature<Signature>::isSignature>,
-  // [Enable] Member function pointer must be valid.
-  typename Enable2 = detail::enable_if_t<std::is_member_function_pointer<MemFuncPtr>::value>
+  // [Require] Signature must be valid.
+  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature),
+  // [Require] Member function pointer must be valid.
+  EMBED_DETAIL_REQUIRE(std::is_member_function_pointer<MemFuncPtr>::value)
 >
+#else
+template <
+  typename Signature, // [User specify] function signature.
+  // [Auto] Deduce the type of member function pointer.
+  typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
+  // [Auto] Deduce the size of member function pointer.
+  std::size_t BufferSize = sizeof(MemFuncPtr)
+>
+requires detail::unwrap_signature<Signature>::isSignature
+  && std::is_member_function_pointer<MemFuncPtr>::value
+#endif
 EMBED_NODISCARD inline fn<Signature, BufferSize>
 make_fn(MemFuncPtr memfunc_ptr) noexcept {
   return detail::make_function_impl<
@@ -2206,6 +2286,9 @@ namespace std EMBED_ABI_VISIBILITY(default) {
 
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
+#undef EMBED_DETAIL_CONNECT
+#undef EMBED_DETAIL_CONNECT_IMPL
+#undef EMBED_DETAIL_REQUIRE
 
 #if defined(_MSC_VER)
 # pragma warning(pop)
