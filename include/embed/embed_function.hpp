@@ -179,8 +179,8 @@ namespace ebd { namespace detail {
 #define EMBED_DETAIL_CONNECT_IMPL(a, b) a ## b
 
 /// @brief Similar to `requires` in C++20.
-/// Using SFINAE to require the template arguments.
-#define EMBED_DETAIL_REQUIRE(enable_if_true) \
+/// Using SFINAE trait `enable_if_t` to require the template arguments.
+#define EMBED_DETAIL_REQUIRES(enable_if_true) \
   typename EMBED_DETAIL_CONNECT(Enable_,__LINE__) = detail::enable_if_t<(enable_if_true)>
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -761,7 +761,7 @@ inline namespace fn_traits {
 
 #undef EMBED_DETAIL_UNWRAP_SIGNATURE_DEFINE
 
-  // Check the type is ebd::detail::function or not.
+  // Implement the "is_ebd_fn" trait.
   template <typename T>
   struct is_ebd_fn_impl : public std::false_type {};
 
@@ -772,6 +772,7 @@ inline namespace fn_traits {
     && is_config_package<Cfg>::value
   > {};
 
+  // Check whether the type is `ebd::detail::function` or not.
   template <typename T>
   using is_ebd_fn = is_ebd_fn_impl<remove_cvref_t<T>>;
 
@@ -929,7 +930,7 @@ inline namespace fn_traits {
       Config::isView || !(Config::assertNoThrow && !is_ok);
   };
 
-  // Check empty.
+  // Utility struct to check if a callable object is not empty.
   struct check_not_empty {
 
     template <std::size_t Buf, typename Cfg, typename Sig>
@@ -953,7 +954,7 @@ inline namespace fn_traits {
     }
   };
 
-  // Check copyable.
+  // Trait to check if a functor's copy/move capabilities match the configuration.
   template <typename Functor, typename Config, 
     typename DecFunctor = decay_t<Functor>>
   struct copyable_is_ok {
@@ -1005,6 +1006,8 @@ inline namespace fn_traits {
   // 3617. function/packaged_task deduction guides and deducing this.
   // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html .
 
+  // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
+  // signature by Mapping a `This` type and a base signature to a qualified function type.
   template <typename This, typename Signature>
   struct add_qualifier_with_this;
 
@@ -1238,16 +1241,16 @@ namespace invocation {
     using invoker_type = Ret (*) (                                  \
       erasure_base_t* base, Args&&... args);                        \
                                                                     \
+    /* Using when M_erasure is empty. */                            \
     struct empty {                                                  \
-      /* Using when M_erasure is empty. */                          \
       static Ret invoke(erasure_base_t*, Args&&...) {               \
         throw_or_abort<Config::isThrowing>();                       \
         EMBED_UNREACHABLE();                                        \
       }                                                             \
     };                                                              \
                                                                     \
+    /* Using when Config::isView == false. */                       \
     struct inplace {                                                \
-      /* Using when Config::isView == false. */                     \
       template <typename Functor>                                   \
       static Ret invoke(erasure_base_t* base, Args&&... args) {     \
         auto* erased = static_cast<erasure_t*>(base);               \
@@ -1260,8 +1263,9 @@ namespace invocation {
       }                                                             \
     };                                                              \
                                                                     \
+    /* Using when Config::isView == true. */                        \
     struct view {                                                   \
-      /* Using when Config::isView == true. */                      \
+      /* Using when Functor::is_stored_origin == true. */           \
       template <typename Functor>                                   \
       static enable_if_t<                                           \
         is_stored_origin<Functor, true>::value, Ret>                \
@@ -1274,6 +1278,8 @@ namespace invocation {
         return invoke_r<Ret>(static_cast<Fn>(fn),                   \
           std::forward<Args>(args)...);                             \
       }                                                             \
+                                                                    \
+      /* Using when Functor::is_stored_origin == false. */          \
       template <typename Functor>                                   \
       static enable_if_t<                                           \
         !is_stored_origin<Functor, true>::value, Ret>               \
@@ -1301,9 +1307,9 @@ namespace invocation {
 namespace management {
 
   enum class OperatorCode {
-    clone = 0,
-    move,
-    destroy
+    clone = 0,  // Indicates that the manager should clone the object.
+    move,       // Indicates that the manager should move the object.
+    destroy     // Indicates that the manager should destroy the object.
   };
 
   template <std::size_t Size, typename Config, typename Signature>
@@ -1359,13 +1365,16 @@ namespace management {
       create<Functor>(dst, std::move(src_obj));
     }
 
+    // Using when M_erasure is empty.
     struct empty {
       static void manage(OperatorCode, erasure_base_t*, erasure_base_t*) {
         // Nothing here.
       }
     };
 
+    // Using when Config::isView == false.
     struct inplace {
+      // Using when the Functor is copyable.
       template <typename Functor, bool IsCopyable>
       static enable_if_t<IsCopyable>
       manage(OperatorCode op, erasure_base_t* dst, erasure_base_t* src) {
@@ -1383,6 +1392,7 @@ namespace management {
         }
       }
 
+      // Using when the Functor is move only.
       template <typename Functor, bool IsCopyable>
       static enable_if_t<!IsCopyable> // move only
       manage(OperatorCode op, erasure_base_t* dst, erasure_base_t* src) {
@@ -1411,6 +1421,7 @@ namespace command {
     typename Config, typename Signature, typename ArgsPackage>
   struct CommandTable;
 
+  // Command Table for inplace mode.
   template <std::size_t Size, typename Config, typename Signature, typename... Args>
   struct CommandTable</* IsView = */ false, Size, Config, Signature, args_package<Args...>> {
     using invoker_impl_t = invocation::InvokerImpl<Size, Config, Signature>;
@@ -1462,6 +1473,7 @@ namespace command {
     }
   };
 
+  // Command Table for view mode.
   template <std::size_t Size, typename Config, typename Signature, typename... Args>
   struct CommandTable</* IsView = */ true, Size, Config, Signature, args_package<Args...>> {
     using invoker_impl_t = invocation::InvokerImpl<Size, Config, Signature>;
@@ -2005,11 +2017,11 @@ template <
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_copy_constructible<Functor>::value,
   // [Require] Functor must be copyable.
-  EMBED_DETAIL_REQUIRE(std::is_copy_constructible<Functor>::value),
+  EMBED_DETAIL_REQUIRES(std::is_copy_constructible<Functor>::value),
   // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature),
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
   // [Require] Functor cannot be the function pointer or pointer to member function.
-  EMBED_DETAIL_REQUIRE(std::is_class<detail::remove_cvref_t<Functor>>::value)
+  EMBED_DETAIL_REQUIRES(std::is_class<detail::remove_cvref_t<Functor>>::value)
 >
 #else
 template <
@@ -2036,10 +2048,10 @@ template <
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   // [Require] Functor must be movable and non-copyable.
-  EMBED_DETAIL_REQUIRE(std::is_move_constructible<Functor>::value),
-  EMBED_DETAIL_REQUIRE(!std::is_copy_constructible<Functor>::value),
+  EMBED_DETAIL_REQUIRES(std::is_move_constructible<Functor>::value),
+  EMBED_DETAIL_REQUIRES(!std::is_copy_constructible<Functor>::value),
   // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature),
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_move_constructible<Functor>::value
 >
@@ -2068,7 +2080,7 @@ template <
   typename Signature, // [User specify] function signature.
   std::size_t BufferSize = detail::default_buffer_size::value,
   // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature)
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
 >
 #else
 template <
@@ -2103,9 +2115,9 @@ template <
   // [Auto] The type of the function pointer.
   typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*,
   // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature),
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
   // [Require] The `FunctionPtr` must be the function pointer.
-  EMBED_DETAIL_REQUIRE(detail::is_function_ptr<FunctionPtr>::value)
+  EMBED_DETAIL_REQUIRES(detail::is_function_ptr<FunctionPtr>::value)
 >
 #else
 template <
@@ -2169,9 +2181,9 @@ template <
   // [Auto] Get the nothrow guarantee in construction of functor.
   bool NoThrow = std::is_nothrow_constructible<Class, Lambda&&>::value,
   // [Require] The functor must be unique callable.
-  EMBED_DETAIL_REQUIRE(detail::is_unique_callable<Class>::value),
+  EMBED_DETAIL_REQUIRES(detail::is_unique_callable<Class>::value),
   // [Require] The signature must be valid.
-  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature)
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
 >
 #else
 template <
@@ -2228,9 +2240,9 @@ template <
   // [Auto] Deduce the size of member function pointer.
   std::size_t BufferSize = sizeof(MemFuncPtr),
   // [Require] Signature must be valid.
-  EMBED_DETAIL_REQUIRE(detail::unwrap_signature<Signature>::isSignature),
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
   // [Require] Member function pointer must be valid.
-  EMBED_DETAIL_REQUIRE(std::is_member_function_pointer<MemFuncPtr>::value)
+  EMBED_DETAIL_REQUIRES(std::is_member_function_pointer<MemFuncPtr>::value)
 >
 #else
 template <
@@ -2288,7 +2300,7 @@ namespace std EMBED_ABI_VISIBILITY(default) {
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
 #undef EMBED_DETAIL_CONNECT
 #undef EMBED_DETAIL_CONNECT_IMPL
-#undef EMBED_DETAIL_REQUIRE
+#undef EMBED_DETAIL_REQUIRES
 
 #if defined(_MSC_VER)
 # pragma warning(pop)
