@@ -104,7 +104,9 @@ auto main() -> int {
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object.
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_ptr` only when the callable object is of the move-only type.)
+
+> The `Concepts` feature is supported if your compiler enabled C++20.
 
 ### Usage
 
@@ -113,8 +115,10 @@ In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided
 - `BufferSize`: The buffer size of the callable object. (such as `2*sizeof(void*)`)
 
 ```cpp
-// Create empty ebd::fn.
-auto f = ebd::make_fn<Signature[, BufferSize]>([nullptr]);
+// Create empty ebd::fn with specified signature and buffer size.
+// If the BufferSize is omitted, it will be set by default (usually 2*sizeof(void*)).
+auto f = ebd::make_fn<Signature[, BufferSize]>();
+auto f = ebd::make_fn<Signature[, BufferSize]>(nullptr);
 ```
 
 ```cpp
@@ -124,7 +128,7 @@ auto f = ebd::make_fn[<Signature>](Callable_Object);
 ```
 
 ```cpp
-// Create ebd::fn or ebd::unique_fn from ambiguous callable object with specified signature.
+// Create ebd::fn or ebd::unique_fn from ambiguous callable object with specified signature, such as overload free function, overload member function, etc.
 auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 ```
 
