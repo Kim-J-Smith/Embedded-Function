@@ -7,7 +7,11 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 endif()
 
 # Project name.
-project("GoogleTest-embed_function_2.0.x" LANGUAGES C CXX)
+project(
+    "embed_function_2.0.x-GoogleTest" 
+    VERSION 2.0.0 
+    LANGUAGES C CXX
+)
 
 # Include header search path
 include_directories(
@@ -26,6 +30,13 @@ file(
 add_library(
     gtest_lib STATIC
     ${GTEST_SOURCE_FILES}
+)
+
+# Configuration of GTest file.
+set_target_properties(
+    gtest_lib
+    PROPERTIES
+    CXX_STANDARD 11
 )
 
 # Get the test source files.
@@ -57,7 +68,7 @@ target_link_libraries(
 
 # Custom target to run tests and save results
 add_custom_target(
-    run
+    test
     COMMAND $<TARGET_FILE:${PROJECT_NAME}>
     DEPENDS ${PROJECT_NAME}
     COMMENT "Running tests..."
@@ -91,6 +102,10 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -fmax-errors=50
     -fno-exceptions
   )
+  target_compile_options(
+    gtest_lib PRIVATE
+    -O1
+  )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(
     ${PROJECT_NAME} PRIVATE
@@ -103,5 +118,9 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -fno-permissive
     -fno-exceptions
     -O2
+  )
+  target_compile_options(
+    gtest_lib PRIVATE
+    -O1
   )
 endif()

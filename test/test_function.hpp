@@ -142,3 +142,43 @@ public:
 
     int operator()(float) { return OVL_FLOAT; }
 };
+
+class ebd_test_move_only_callable {
+public:
+    ebd_test_move_only_callable() = default;
+    ebd_test_move_only_callable(const ebd_test_move_only_callable&) = delete;
+    ebd_test_move_only_callable(ebd_test_move_only_callable&&) = default;
+    ~ebd_test_move_only_callable() = default;
+
+    int operator()(char) && { return OVL_CHAR; }
+};
+
+enum OverloadQualifier {
+    OVL_CONST       = 0x01,
+    OVL_VOLATILE    = 0x02,
+    OVL_L_REF       = 0x04,
+    OVL_R_REF       = 0x08,
+};
+
+class ebd_test_operator_qualifier { 
+public:
+    int operator()(int) const { return OVL_CONST; }
+
+    int operator()(int) volatile { return OVL_VOLATILE; }
+
+    int operator()(char) & { return OVL_L_REF; }
+
+    int operator()(char) && { return OVL_R_REF; }
+
+    int operator()(float) const & { return OVL_CONST | OVL_L_REF; }
+
+    int operator()(float) const && { return OVL_CONST | OVL_R_REF; }
+
+    int operator()(float) volatile & { return OVL_VOLATILE | OVL_L_REF; }
+
+    int operator()(float) volatile && { return OVL_VOLATILE | OVL_R_REF; }
+
+    int operator()(double) const volatile & { return OVL_CONST | OVL_VOLATILE | OVL_L_REF; }
+
+    int operator()(double) const volatile && { return OVL_CONST | OVL_VOLATILE | OVL_R_REF; }
+};
