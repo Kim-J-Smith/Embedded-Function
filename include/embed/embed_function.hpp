@@ -1560,6 +1560,8 @@ namespace command {
     // Enable if Functor is stored origin.
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     void init(erasure_base_t* target, Functor&& obj, std::true_type) noexcept {
+      static_assert(!std::is_rvalue_reference<Functor&&>::value,
+        "function in view mode cannot be initialized with rvalue reference.");
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
     }
@@ -1567,6 +1569,8 @@ namespace command {
     // Enable if Functor is stored by pointer.
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     void init(erasure_base_t* target, Functor&& obj, std::false_type) noexcept {
+      static_assert(!std::is_rvalue_reference<Functor&&>::value,
+        "function in view mode cannot be initialized with rvalue reference.");
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template create<DecFunctor*>(target, std::addressof(obj));
     }
