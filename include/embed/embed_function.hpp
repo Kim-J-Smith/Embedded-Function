@@ -2315,26 +2315,6 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 
 } // end namespace ebd
 
-namespace std EMBED_ABI_VISIBILITY(default) {
-
-  // Swap `::ebd::safe_fn` is safe.
-  // This function will not throw exceptions.
-  template <std::size_t Buf, typename Sig>
-  inline void swap(
-    ::ebd::safe_fn<Sig, Buf>& f1,
-    ::ebd::safe_fn<Sig, Buf>& f2
-  ) noexcept { f1.swap(f2); }
-
-  // Swap `::ebd::fn_view` is safe.
-  // This function will not throw exceptions.
-  template <std::size_t Buf, typename Sig>
-  inline void swap(
-    ::ebd::fn_view<Sig, Buf>& f1,
-    ::ebd::fn_view<Sig, Buf>& f2
-  ) noexcept { f1.swap(f2); }
-
-}
-
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
 #undef EMBED_DETAIL_CONNECT
