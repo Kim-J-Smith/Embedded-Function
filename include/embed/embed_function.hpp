@@ -15,8 +15,8 @@
 
 // Just like function pointers, it is quick and efficient.
 
-#ifndef INCLUDED_EMBED_FUNCTION_HPP_
-#define INCLUDED_EMBED_FUNCTION_HPP_
+#ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
+#define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 
 #if defined(_MSC_VER)
 # pragma warning(push)
@@ -2323,5 +2323,5 @@ namespace std EMBED_ABI_VISIBILITY(default) {
 # pragma warning(pop)
 #endif
 
-#endif // INCLUDED_EMBED_FUNCTION_HPP_
+#endif // EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 
