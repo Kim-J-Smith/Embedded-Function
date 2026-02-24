@@ -661,6 +661,10 @@ inline namespace cxx_traits {
 /// @brief Here are some self-defined traits.
 inline namespace fn_traits {
 
+  // The value is always false.
+  template <typename... Args>
+  struct always_false { static constexpr bool value = false; };
+
   // Check self.
   template <typename A, typename B>
   using is_self = std::is_same<remove_cvref_t<A>, remove_cvref_t<B>>;
@@ -873,7 +877,7 @@ inline namespace fn_traits {
   // Get invoke result with arguments package.
   template <typename Fn, typename ArgsPackage>
   struct invoke_result_package {
-    static_assert(!std::is_void<void_t<Fn>>::value /* always false */,
+    static_assert(always_false<Fn>::value,
       "The input is not arguments package!");
   };
 
@@ -992,7 +996,7 @@ inline namespace fn_traits {
   // Implement the `get_unique_signature`.
   template <typename T>
   struct get_unique_signature_impl {
-    static_assert(!std::is_same<T, T>::value /* always false */,
+    static_assert(always_false<T>::value,
       "T must be a function pointer or pointer to member function.");
   };
 
@@ -1489,7 +1493,7 @@ namespace command {
 
     template <typename Functor>
     void init(erasure_base_t*, Functor&&, std::false_type) noexcept {
-      static_assert(std::is_same<Functor, void>::value /* always false */,
+      static_assert(always_false<Functor>::value,
         "Internal error: When `Config::isView` is false"
         " the Functor must be stored originally.");
       EMBED_UNREACHABLE();
