@@ -888,7 +888,8 @@ inline namespace fn_traits {
     using ret       = typename unwrap_sig::ret;
     using args_pack = typename unwrap_sig::args;
     using dec_func  = decay_t<Functor>;
-    using callee    = conditional_t<unwrap_sig::hasRRef, dec_func&&, dec_func&>;
+    using cv_func   = typename unwrap_sig::template add_cv_like<dec_func>;
+    using callee    = conditional_t<unwrap_sig::hasRRef, cv_func&&, cv_func&>;
     using res       = invoke_result_package<callee, args_pack>;
     static constexpr bool value = is_invocable_impl<res, ret>::type::value;
   };
