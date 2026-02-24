@@ -1580,9 +1580,10 @@ namespace command {
                                                                             \
     Ret operator()(Args... args) C V REF NOEXCEPT {                         \
       auto* self_q = static_cast<Self C V*>(this);                          \
-      auto* self = const_cast<Self*>(self_q);                               \
       auto* erased = &(self_q->m_erasure);                                  \
-      return self->m_command.invoke(erased, std::forward<Args>(args)...);   \
+      using command_t = const typename Self::command_t;                     \
+      auto& cmd = const_cast<command_t&>(self_q->m_command);                \
+      return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
   };
 
