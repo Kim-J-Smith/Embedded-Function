@@ -134,13 +134,13 @@ namespace ebd { namespace detail {
 #endif
 
 #if EMBED_CXX_VERSION >= 201103L
-# include <cstddef>    // std::size_t
-# include <cstring>    // std::memcpy
-# include <new>        // placement new, std::launder(C++17)
-# include <utility>    // std::move, std::forward, std::addressof
-# include <functional> // std::bad_function_call
-# include <exception>  // std::terminate
-# include <type_traits>
+# include <cstddef>     // std::size_t
+# include <cstring>     // std::memcpy
+# include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
+# include <utility>     // std::move, std::forward, std::addressof
+# include <functional>  // std::bad_function_call
+# include <exception>   // std::terminate
+# include <type_traits> // std::enable_if, ...
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
