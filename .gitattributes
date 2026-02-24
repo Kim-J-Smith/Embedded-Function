@@ -1,0 +1,6 @@
+# C++ text files
+*.h linguist-language=C++
+*.hpp linguist-language=C++
+*.cc linguist-language=C++
+*.cpp linguist-language=C++
+
