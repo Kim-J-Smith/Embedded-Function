@@ -1057,8 +1057,14 @@ inline namespace fn_traits {
   using get_unique_signature_t = typename get_unique_signature<T>::type;
 
   // Get class parameter type with qualifier.
-  template <typename With, typename T>
+  template <typename With, typename T, 
+    bool IsClass = std::is_class<remove_cvref_t<T>>::value /* false */>
   struct get_qualified_with {
+    using type = void;
+  };
+
+  template <typename With, typename T>
+  struct get_qualified_with<With, T, /* IsClass = */ true> {
     using type = conditional_t<
       std::is_rvalue_reference<With>::value,
       remove_reference_t<T>&&, remove_reference_t<T>&

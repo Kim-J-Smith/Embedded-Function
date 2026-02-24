@@ -87,6 +87,13 @@ if(MSVC)
     /Wall
     /wd4710
     /wd4127
+    /wd4514
+    /wd4626
+    /wd5045
+  )
+  target_compile_options(
+    gtest_lib INTERFACE
+    /w
   )
 elseif(CMAKE_COMPILER_IS_GNUCXX)
   target_compile_options(
