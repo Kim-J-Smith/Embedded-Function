@@ -1614,8 +1614,8 @@ namespace command {
     // Copy assignment.
     clone_impl& operator=(const clone_impl& other)
     noexcept(Config::assertNoThrow || Config::isView) {
-      auto new_item = clone_impl(other);
-      static_cast<Self&>(new_item).swap(static_cast<Self&>(*this));
+        Self tmp(static_cast<const Self&>(other));
+        tmp.swap(static_cast<Self&>(*this));
       return *this;
     }
   };
