@@ -737,6 +737,9 @@ inline namespace fn_traits {
     static constexpr bool hasRRef = false;
     static constexpr bool hasLRef = false;
     static constexpr bool isNoexcept = false;
+
+    template <typename U>
+    using add_cv_like = U;
   };
 
 #define EMBED_DETAIL_UNWRAP_SIGNATURE_DEFINE(C, V, REF, NOEXCEPT)             \
@@ -755,6 +758,9 @@ inline namespace fn_traits {
     static constexpr bool hasRRef = std::is_rvalue_reference<int REF>::value; \
     static constexpr bool hasLRef = std::is_lvalue_reference<int REF>::value; \
     static constexpr bool isNoexcept = is_ ## NOEXCEPT::value;                \
+                                                                              \
+    template <typename T>                                                     \
+    using add_cv_like = T C V;                                                \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_UNWRAP_SIGNATURE_DEFINE)
