@@ -1480,6 +1480,14 @@ namespace command {
       m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
     }
+
+    template <typename Functor>
+    void init(erasure_base_t*, Functor&&, std::false_type) noexcept {
+      static_assert(std::is_same<Functor, void>::value /* always false */,
+        "Internal error: When `Config::isView` is false"
+        " the Functor must be stored originally.");
+      EMBED_UNREACHABLE();
+    }
   };
 
   // Command Table for view mode.
@@ -1663,7 +1671,7 @@ namespace command {
 
     static_assert(std::is_trivially_default_constructible<command_t>::value 
       && std::is_trivially_copyable<command_t>::value,
-      "command_t should be trivial. This is internal error.");
+      "Internal error: command_t should be trivial.");
 
     // The `m_erasure` contains the type-erased object.
     erasure_t m_erasure{};
