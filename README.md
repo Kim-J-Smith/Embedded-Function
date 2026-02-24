@@ -1,158 +1,135 @@
 # embed-function
 
-![Version - 1.1.2](https://img.shields.io/badge/Version-1.1.2-green?style=flat&logo=github) ![License - MIT](https://img.shields.io/badge/License-MIT-orange?style=flat) ![c++ - 11/14/17/20](https://img.shields.io/badge/C++-11/14/17/20-blue?style=flat)
+![Version - 2.0.0](https://img.shields.io/badge/Version-2.0.0-yellow?style=flat&logo=github)
+![License - MIT](https://img.shields.io/badge/License-MIT-orange?style=flat)
+![C++ - 11/14/17/20](https://img.shields.io/badge/C++-11/14/17/20-blue?style=flat&logo=c%2B%2B)
 
-![gcc-c++11/14/17/20/23 - passing](https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat) ![clang-c++11/14/17/20/23 - passing](https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat) ![msvc-c++14/17/20/23 - passing](https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat)
+![gcc-C++11/14/17/20/23 - passing](https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat)
+![clang-C++11/14/17/20/23 - passing](https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat)
+![msvc-C++14/17/20/23 - passing](https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat)
 
 
-*Embedded friendly [`std::function`](http://en.cppreference.com/w/cpp/utility/functional/function) alternative. The usage method is consistent with `std::function`.*
+> *Embedded [std::function](http://en.cppreference.com/w/cpp/utility/functional/function) alternative: lightweight, deterministic, heap-free.*
 
 ## Overview
 
-- ✅ **Easy to use**
-  
-  The `embed::function` is used in the same way as `std::function`.
+**embed-function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
 
-  We also provide [`embed::make_function`](./doc/detail/make_function.md) to automatically deduce the template type.
+While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, embed-function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
 
-- ✅ **No dynamic memory allocation**
-
-  Never allocates memory on the heap. Ensure the real-time performance of the code.
-
-- ✅ **Adjustable buffer size**
-
-  Users can specify the buffer size used by each embed::function instance, which is used to wrap callable objects of different sizes.
-
-  The default value of buffer size `FnDefaultBufSize` is defined at the beginning of the embed_function.hpp header file, and it is set to the size of one pointer. Users can customize this value.
-
-- ✅ **Extremely minimal memory usage**
-
-  By default, it occupies 2 pointer-sized(manager + buffer) amounts of RAM.
-
-  If you need to package larger callable objects, you can manually adjust the buffer size of the `embed::function<Signature, BufSize>`.
-
-- ✅ **Environmentally friendly for disabling exceptions**
-
-  The `embed::function` itself supports both enabling and disabling of exceptions, but it is more recommended to use it in the mode where exceptions are disabled.
-
-  When exceptions are disabled, calling an empty `embed::function` instance by the user will invoke the `bad_function_call_handler` function for processing (by default, it simply terminates the program), and the logic of the `bad_function_call_handler` function is at the beginning of the embed_function.hpp file. Users can customize it.
-
-- ✅ **Support non-copyable objects**
-
-  According to the C++ proposal [N4159](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4159.pdf), the `embed::function` class, in addition to supporting the basic functions of `std::function`, also adds support for non-copyable objects.
-
-  When a user attempts to perform a copy operation (copy constructor, copy assignment, etc) on an `embed::function` instance that is wrapped with an uncopyable type, the program will call the `bad_function_copy_handler` function (which defaults to terminating the program). The `bad_function_copy_handler` function is located at the beginning of embed_function.hpp and is customizable.
-
-#### A function wrapper is declared as following:
+A function wrapper is declared as following:
 
 ```cpp
-embed::function<int(int, float, char) const, 3*sizeof(void*)>
-// Return type ~~^   ^     ^      ^     ^       ^
-// Parameters ~~~~~~~|~~~~~|~~~~~~|     |       |
-// Qualifier ~~~~~~~~~~~~~~~~~~~~~~~~~~~|       |
-// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
+//       ^     ^     ^     ^     ^        ^
+//       |     |     |     |     |        |
+// Return type |     |     |     |        |
+// Parameters ~|~~~~~|~~~~~|     |        |
+// Qualifier ~~~~~~~~~~~~~~~~~~~~|        |
+// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
 
-- Note: This "Qualifier" is used to restrict the callable objects wrapped within "embed::function", rather than "embed::function" itself.
+- Note: This `Qualifier` is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself.
 
 ## Quick start
+- Clone the repository.
 
-- Clone the repo.
-- Add include path <repo_root>/include
-- In program `#include "embed/embed_function.hpp"`
-- Use the `embed::function` template class.
+- Add include path `<repo_root>/include`.
+
+- In program `#include "embed/embed_function.hpp"`.
+
+- Use the `ebd::fn` template class.
 
 ```cpp
 #include "embed/embed_function.hpp"
 
 struct Example {
-    static void staticFkn(int) {};
-    void memberFkn(int) {};
+    static void static_mem_fn(int) {};
+    void mem_fn(int) {};
     void operator()(int) {};
 };
 
-int main() 
-{
+auto main() -> int {
     Example e;
+    ebd::fn<void(int)> fn_;
 
-    // Here, the second template parameter can be omitted.
-    // Same as: embed::function<void(int), sizeof(void*)> fn;
-    embed::function<void(int)> fn;
+    fn_ = &Example::static_mem_fn;
+    fn_(123);
 
-    fn = [&e](int p) { e.memberFkn(p); };
-    fn(123);
+    fn_ = [e](int arg) { e.mem_fn(arg); };
+    fn_(456);
 
-    fn = &Example::staticFkn;
-    fn(456);
-
-    fn = e;
-    fn(789);
-
-    // The type of auto_fn is 
-    // embed::function<void(Example&,int) const, sizeof(&Example::memberFkn)>
-    auto auto_fn = embed::make_function(&Example::memberFkn);
-    auto_fn(e, 101112);
+    fn_ = e;
+    fn_(789);
 }
-
 ```
 
 ## Design goals driving the design
 
   - Should behave close to a normal function pointer. Small, efficient, no heap allocation.
 
-  - Should be used in a manner similar to `std::function`, being able to truly "wrap" callable objects and manage their lifetimes.
-
   - Support the packaging of all callable objects in C++, including:
     - Free function.
     - Lambda function.
     - Functor.
     - Static member function.
-    - Member function. (should be wrapped by lambda function)
+    - Member function.
 
   - Be usable with C++11 while offering more functionality for later editions.
-    - C++11 provides most of the functionality.
-    - C++17 introduces a template type deduction guide, allowing users to use the underlying type `embed::Fn` (where `embed::function` is an alias for `embed::Fn`) without having to specify the template parameters.
 
   - Be constexpr and exception friendly. As much as possible should be declared constexpr and noexcept.
 
-## Detail APIs
+  - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_view` were designed for developers to use.
 
-  See [doc/API_embed_function.md](./doc/API_embed_function.md) for further details.
+## Core function wrappers
 
-## Solution without the C++ standard library
+### Summary table
 
-  In some embedded situations, the compiler may not support the standard libraries of C++, such as &lt;type_traits&gt;, &lt;new&gt;, and so on. Therefore, we provide [`embed_function_nostd.hpp`](./include/embed/embed_function_nostd.hpp) as a solution. This file implements all the standard library contents required by this project. Users only need to define the macro **`EMBED_NO_STD_HEADER`** during compilation to enable it.
+| Wrapper Type | Copyable | View (Non-owning) | Throws on Empty Call | Assert No-Throw (Ctor/Dtor) | Buffer Size | Primary Use Case |
+| :----------- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `ebd::fn`    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: 2×`sizeof(void*)`) | Copyable callable wrapper |
+| `ebd::unique_fn`    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: 2×`sizeof(void*)`) | Move-only callable wrapper |
+| `ebd::safe_fn`    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: 2×`sizeof(void*)`) | Exception-safe copyable callable wrapper |
+| `ebd::fn_view`    |  Yes  |   Yes  | No (`std::terminate()`) | No | Fixed (2×`sizeof(void*)`, template param unused) | Lightweight non-owning view of callables |
 
-## Tests
+### Key takeaways
 
-  The test cases have been provided in the [test](./test/) directory. Refer to the commands in the [test/ReadMe](./test/ReadMe.md) file for testing.
+1. **Ownership & Copy**: `fn`/`safe_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_view` is non-owning (view).
 
-## License
+2. **Exception Behavior**: Only `fn`/`unique_fn` throw on empty calls; `safe_fn`/`fn_view` terminate (no exceptions).
 
+3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
+
+## Automatic deduction
+
+### Brief introduction
+
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_ptr` only when the callable object is of the move-only type.)
+
+> The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard.
+
+### Usage
+
+- `[`Optional`]` means optional.
+- `Signature`: The signature of the callable object. (such as `void(int)`)
+- `BufferSize`: The buffer size of the callable object. (such as `2*sizeof(void*)`)
+
+```cpp
+// Create empty ebd::fn with specified signature and buffer size.
+// If the BufferSize is omitted, it will be set by default (usually 2*sizeof(void*)).
+auto f = ebd::make_fn<Signature[, BufferSize]>();
+auto f = ebd::make_fn<Signature[, BufferSize]>(nullptr);
 ```
-MIT License
 
-https://github.com/Kim-J-Smith/embed-function
+```cpp
+// Create ebd::fn or ebd::unique_fn from unambiguous callable object.
+// If the Signature is omitted, the signature will be deduced from Callable_Object.
+auto f = ebd::make_fn[<Signature>](Callable_Object);
+```
 
-Copyright (c) 2025 Kim-J-Smith
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+```cpp
+// Create ebd::fn or ebd::unique_fn from ambiguous callable object with specified signature, such as overload free function, overload member function, etc.
+auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 ```
 
 ## Similar implementations

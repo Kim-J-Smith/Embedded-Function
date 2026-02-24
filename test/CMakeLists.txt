@@ -1,4 +1,4 @@
-# Need CMake version >= 3.15
+# The minimum CMake version
 cmake_minimum_required(VERSION 3.15)
 
 # Prevent in-source builds (force out-of-source build in ./build/)
@@ -6,20 +6,52 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   message(FATAL_ERROR "In-source builds are not allowed. Please use 'cmake -B build'.")
 endif()
 
-# Project name
-project("test")
+# Project name.
+project(
+    "embed_function_2.0.x-GoogleTest" 
+    VERSION 2.0.0 
+    LANGUAGES C CXX
+)
 
 # Include header search path
-include_directories(${CMAKE_SOURCE_DIR}/../include)
+include_directories(
+    ${CMAKE_SOURCE_DIR}/../include
+    ${CMAKE_SOURCE_DIR}/google-test/
+    ${CMAKE_SOURCE_DIR}/google-test/include
+)
 
-file(GLOB TEST_SOURCES "*-test.cpp")
+# Get the gtest sourece files.
+file(
+    GLOB GTEST_SOURCE_FILES 
+    "${CMAKE_SOURCE_DIR}/google-test/src/*.cc"
+)
 
-# Build target
+# Library of the gtest
+add_library(
+    gtest_lib STATIC
+    ${GTEST_SOURCE_FILES}
+)
+
+# Configuration of GTest file.
+set_target_properties(
+    gtest_lib
+    PROPERTIES
+    CXX_STANDARD 11
+)
+
+# Get the test source files.
+file(
+    GLOB EMBED_FUNCTION_TEST_FILES
+    "${CMAKE_SOURCE_DIR}/test_*.cpp"
+)
+
+# Target executable file.
 add_executable(
     ${PROJECT_NAME}
-    ${CMAKE_SOURCE_DIR}/main.cpp
-    ${TEST_SOURCES}
+    ${EMBED_FUNCTION_TEST_FILES}
 )
+
+# Configuration of Target executable file.
 set_target_properties(
     ${PROJECT_NAME}
     PROPERTIES
@@ -27,15 +59,16 @@ set_target_properties(
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
 )
-target_compile_definitions(
+
+# Link GTest library.
+target_link_libraries(
     ${PROJECT_NAME}
-    PRIVATE
-    EMBED_NO_WARNING=1
+    PRIVATE gtest_lib
 )
 
 # Custom target to run tests and save results
 add_custom_target(
-    run
+    test
     COMMAND $<TARGET_FILE:${PROJECT_NAME}>
     DEPENDS ${PROJECT_NAME}
     COMMENT "Running tests..."
@@ -54,6 +87,13 @@ if(MSVC)
     /Wall
     /wd4710
     /wd4127
+    /wd4514
+    /wd4626
+    /wd5045
+  )
+  target_compile_options(
+    gtest_lib INTERFACE
+    /w
   )
 elseif(CMAKE_COMPILER_IS_GNUCXX)
   target_compile_options(
@@ -61,11 +101,17 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -Wall
     -Wextra
     -Wpedantic
+    -Wconversion
+    -Wold-style-cast
     -pedantic
     -fno-permissive
     -O2
     -fmax-errors=50
     -fno-exceptions
+  )
+  target_compile_options(
+    gtest_lib PRIVATE
+    -O1
   )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(
@@ -73,9 +119,15 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wall
     -Wextra
     -Wpedantic
+    -Wconversion
+    -Wold-style-cast
     -pedantic
     -fno-permissive
     -fno-exceptions
     -O2
+  )
+  target_compile_options(
+    gtest_lib PRIVATE
+    -O1
   )
 endif()
