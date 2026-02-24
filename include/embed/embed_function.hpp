@@ -818,11 +818,22 @@ inline namespace fn_traits {
 #endif
 
   // Check to store origin type or not (store the pointer).
-  template <typename T, bool IsView>
+  template <typename T, bool IsView, 
+    typename DecT = decay_t<T>,
+    bool IsStoredOrigin = !IsView || is_function_ptr<DecT>::value
+      || std::is_member_pointer<DecT>::value
+  >
   struct is_stored_origin : public std::integral_constant<
-    bool, !IsView || is_function_ptr<decay_t<T>>::value || 
-    std::is_member_pointer<decay_t<T>>::value
-  >::type {};
+    bool, IsStoredOrigin
+  >::type {
+    static constexpr bool isTrivial = 
+      std::is_trivially_destructible<DecT>::value
+      && std::is_trivially_copyable<DecT>::value;
+    static_assert(!(IsView && IsStoredOrigin && !isTrivial),
+      "Internal error: Stored origin type in view mode must be trivially"
+      " copyable/destructible. Here Functor is stored originally,"
+      " but it is NOT trivial.");
+  };
 
   // Get the really stored type.
   template <typename T, bool IsView>
