@@ -3,11 +3,11 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.0
+ * @version     2.0.1
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
- *              (https://github.com/Kim-J-Smith/embed-function)
  *              All rights reserved.
+ *              (https://github.com/Kim-J-Smith/embed-function)
  * 
  * @attention   This source is released under the MIT license
  *              (http://opensource.org/licenses/MIT)
