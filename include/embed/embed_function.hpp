@@ -1827,8 +1827,7 @@ namespace command {
     }
 
     // Clear the object.
-    EMBED_CXX14_CONSTEXPR void clear() 
-    noexcept(Config::assertNoThrow || Config::isView) {
+    void clear() noexcept(Config::assertNoThrow || Config::isView) {
       m_command.destroy(&m_erasure);
       m_command.set_empty();
     }
