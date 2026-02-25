@@ -13,6 +13,11 @@ project(
     LANGUAGES C CXX
 )
 
+# export command
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # Include header search path
 include_directories(
     ${CMAKE_SOURCE_DIR}/../include
@@ -32,13 +37,6 @@ add_library(
     ${GTEST_SOURCE_FILES}
 )
 
-# Configuration of GTest file.
-set_target_properties(
-    gtest_lib
-    PROPERTIES
-    CXX_STANDARD 11
-)
-
 # Get the test source files.
 file(
     GLOB EMBED_FUNCTION_TEST_FILES
@@ -49,15 +47,6 @@ file(
 add_executable(
     ${PROJECT_NAME}
     ${EMBED_FUNCTION_TEST_FILES}
-)
-
-# Configuration of Target executable file.
-set_target_properties(
-    ${PROJECT_NAME}
-    PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF
 )
 
 # Link GTest library.
@@ -94,6 +83,7 @@ if(MSVC)
   target_compile_options(
     gtest_lib INTERFACE
     /w
+    /wd4711
   )
 elseif(CMAKE_COMPILER_IS_GNUCXX)
   target_compile_options(
@@ -105,7 +95,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -Wold-style-cast
     -pedantic
     -fno-permissive
-    -O2
+    -Os
     -fmax-errors=50
     -fno-exceptions
   )
@@ -124,7 +114,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -pedantic
     -fno-permissive
     -fno-exceptions
-    -O2
+    -Os
   )
   target_compile_options(
     gtest_lib PRIVATE
