@@ -37,6 +37,13 @@ add_library(
     ${GTEST_SOURCE_FILES}
 )
 
+# Configuration of GTest file.
+set_target_properties(
+    gtest_lib
+    PROPERTIES
+    CXX_STANDARD 11
+)
+
 # Get the test source files.
 file(
     GLOB EMBED_FUNCTION_TEST_FILES
