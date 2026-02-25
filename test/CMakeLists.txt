@@ -9,8 +9,17 @@ endif()
 # Project name.
 project(
     "embed_function_2.0.x-GoogleTest" 
-    VERSION 2.0.0 
-    LANGUAGES C CXX
+    VERSION 2.0.1 
+    LANGUAGES CXX
+)
+
+# export command
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+add_compile_definitions(
+  _CRT_NONSTDC_NO_DEPRECATE
+  _CRT_SECURE_NO_WARNINGS
+  _BSD_SOURCE
 )
 
 # Include header search path
@@ -51,15 +60,6 @@ add_executable(
     ${EMBED_FUNCTION_TEST_FILES}
 )
 
-# Configuration of Target executable file.
-set_target_properties(
-    ${PROJECT_NAME}
-    PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF
-)
-
 # Link GTest library.
 target_link_libraries(
     ${PROJECT_NAME}
@@ -94,6 +94,7 @@ if(MSVC)
   target_compile_options(
     gtest_lib INTERFACE
     /w
+    /wd4711
   )
 elseif(CMAKE_COMPILER_IS_GNUCXX)
   target_compile_options(
@@ -105,7 +106,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -Wold-style-cast
     -pedantic
     -fno-permissive
-    -O2
+    -Os
     -fmax-errors=50
     -fno-exceptions
   )
@@ -124,7 +125,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -pedantic
     -fno-permissive
     -fno-exceptions
-    -O2
+    -Os
   )
   target_compile_options(
     gtest_lib PRIVATE

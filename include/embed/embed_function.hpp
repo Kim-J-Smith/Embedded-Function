@@ -3,11 +3,11 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.0
+ * @version     2.0.1
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
- *              (https://github.com/Kim-J-Smith/embed-function)
  *              All rights reserved.
+ *              (https://github.com/Kim-J-Smith/embed-function)
  * 
  * @attention   This source is released under the MIT license
  *              (http://opensource.org/licenses/MIT)
@@ -134,13 +134,13 @@ namespace ebd { namespace detail {
 #endif
 
 #if EMBED_CXX_VERSION >= 201103L
-# include <cstddef>    // std::size_t
-# include <cstring>    // std::memcpy
-# include <new>        // placement new, std::launder(C++17)
-# include <utility>    // std::move, std::forward, std::addressof
-# include <functional> // std::bad_function_call
-# include <exception>  // std::terminate
-# include <type_traits>
+# include <cstddef>     // std::size_t
+# include <cstring>     // std::memcpy
+# include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
+# include <utility>     // std::move, std::forward, std::addressof
+# include <functional>  // std::bad_function_call
+# include <exception>   // std::terminate
+# include <type_traits> // std::enable_if, ...
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
@@ -661,6 +661,10 @@ inline namespace cxx_traits {
 /// @brief Here are some self-defined traits.
 inline namespace fn_traits {
 
+  // The value is always false.
+  template <typename... Args>
+  struct always_false { static constexpr bool value = false; };
+
   // Check self.
   template <typename A, typename B>
   using is_self = std::is_same<remove_cvref_t<A>, remove_cvref_t<B>>;
@@ -814,11 +818,22 @@ inline namespace fn_traits {
 #endif
 
   // Check to store origin type or not (store the pointer).
-  template <typename T, bool IsView>
+  template <typename T, bool IsView, 
+    typename DecT = decay_t<T>,
+    bool IsStoredOrigin = !IsView || is_function_ptr<DecT>::value
+      || std::is_member_pointer<DecT>::value
+  >
   struct is_stored_origin : public std::integral_constant<
-    bool, !IsView || is_function_ptr<decay_t<T>>::value || 
-    std::is_member_pointer<decay_t<T>>::value
-  >::type {};
+    bool, IsStoredOrigin
+  >::type {
+    static constexpr bool isTrivial = 
+      std::is_trivially_destructible<DecT>::value
+      && std::is_trivially_copyable<DecT>::value;
+    static_assert(!(IsView && IsStoredOrigin && !isTrivial),
+      "Internal error: Stored origin type in view mode must be trivially"
+      " copyable/destructible. Here Functor is stored originally,"
+      " but it is NOT trivial.");
+  };
 
   // Get the really stored type.
   template <typename T, bool IsView>
@@ -873,7 +888,7 @@ inline namespace fn_traits {
   // Get invoke result with arguments package.
   template <typename Fn, typename ArgsPackage>
   struct invoke_result_package {
-    static_assert(!std::is_void<void_t<Fn>>::value /* always false */,
+    static_assert(always_false<Fn>::value,
       "The input is not arguments package!");
   };
 
@@ -992,7 +1007,7 @@ inline namespace fn_traits {
   // Implement the `get_unique_signature`.
   template <typename T>
   struct get_unique_signature_impl {
-    static_assert(!std::is_same<T, T>::value /* always false */,
+    static_assert(always_false<T>::value,
       "T must be a function pointer or pointer to member function.");
   };
 
@@ -1192,7 +1207,7 @@ namespace erasure_type {
   };
 
   template <std::size_t Size>
-  union EMBED_ALIAS ErasureCore {
+  union EMBED_ALIAS alignas(void (UndefinedClass::*) ()) ErasureCore {
     char        pod[sizeof(ErasureCoreImpl<Size>)];
     ErasureCoreImpl<Size> unused; // alignas(unused)
   };
@@ -1489,7 +1504,7 @@ namespace command {
 
     template <typename Functor>
     void init(erasure_base_t*, Functor&&, std::false_type) noexcept {
-      static_assert(std::is_same<Functor, void>::value /* always false */,
+      static_assert(always_false<Functor>::value,
         "Internal error: When `Config::isView` is false"
         " the Functor must be stored originally.");
       EMBED_UNREACHABLE();
@@ -1545,6 +1560,8 @@ namespace command {
     // Enable if Functor is stored origin.
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     void init(erasure_base_t* target, Functor&& obj, std::true_type) noexcept {
+      static_assert(!std::is_rvalue_reference<Functor&&>::value,
+        "function in view mode cannot be initialized with rvalue reference.");
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
     }
@@ -1552,6 +1569,8 @@ namespace command {
     // Enable if Functor is stored by pointer.
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     void init(erasure_base_t* target, Functor&& obj, std::false_type) noexcept {
+      static_assert(!std::is_rvalue_reference<Functor&&>::value,
+        "function in view mode cannot be initialized with rvalue reference.");
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template create<DecFunctor*>(target, std::addressof(obj));
     }
@@ -1576,9 +1595,10 @@ namespace command {
                                                                             \
     Ret operator()(Args... args) C V REF NOEXCEPT {                         \
       auto* self_q = static_cast<Self C V*>(this);                          \
-      auto* self = const_cast<Self*>(self_q);                               \
       auto* erased = &(self_q->m_erasure);                                  \
-      return self->m_command.invoke(erased, std::forward<Args>(args)...);   \
+      using command_t = const typename Self::command_t;                     \
+      auto& cmd = const_cast<command_t&>(self_q->m_command);                \
+      return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
   };
 
@@ -1609,8 +1629,8 @@ namespace command {
     // Copy assignment.
     clone_impl& operator=(const clone_impl& other)
     noexcept(Config::assertNoThrow || Config::isView) {
-      auto new_item = clone_impl(other);
-      static_cast<Self&>(new_item).swap(static_cast<Self&>(*this));
+        Self tmp(static_cast<const Self&>(other));
+        tmp.swap(static_cast<Self&>(*this));
       return *this;
     }
   };
@@ -1675,15 +1695,19 @@ namespace command {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
+    static_assert(std::is_trivially_default_constructible<erasure_t>::value 
+      && std::is_trivially_copyable<erasure_t>::value,
+      "Internal error: erasure_t should be trivial.");
+
     static_assert(std::is_trivially_default_constructible<command_t>::value 
       && std::is_trivially_copyable<command_t>::value,
       "Internal error: command_t should be trivial.");
 
     // The `m_erasure` contains the type-erased object.
-    erasure_t m_erasure{};
+    erasure_t m_erasure;
 
     // The `m_command` is responsible for managing and invoking the `m_erasure`.
-    command_t m_command{};
+    command_t m_command;
 
   public:
 
@@ -1736,6 +1760,10 @@ namespace command {
     && (OtherCfg::assertNoThrow || OtherCfg::isView)) {
       using other_fn_t = function<OtherSize, OtherCfg, OtherSig>;
       using other_erasure_t = typename other_fn_t::erasure_t;
+
+      // Suppress GCC warning: "-Wmaybe-uninitialized".
+      std::memset(&m_erasure, 0, sizeof(m_erasure));
+
       other.m_command.clone(
         &m_erasure, const_cast<other_erasure_t*>(&other.m_erasure));
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
@@ -1807,8 +1835,7 @@ namespace command {
     }
 
     // Clear the object.
-    EMBED_CXX14_CONSTEXPR void clear() 
-    noexcept(Config::assertNoThrow || Config::isView) {
+    void clear() noexcept(Config::assertNoThrow || Config::isView) {
       m_command.destroy(&m_erasure);
       m_command.set_empty();
     }
@@ -2298,26 +2325,6 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 }
 
 } // end namespace ebd
-
-namespace std EMBED_ABI_VISIBILITY(default) {
-
-  // Swap `::ebd::safe_fn` is safe.
-  // This function will not throw exceptions.
-  template <std::size_t Buf, typename Sig>
-  inline void swap(
-    ::ebd::safe_fn<Sig, Buf>& f1,
-    ::ebd::safe_fn<Sig, Buf>& f2
-  ) noexcept { f1.swap(f2); }
-
-  // Swap `::ebd::fn_view` is safe.
-  // This function will not throw exceptions.
-  template <std::size_t Buf, typename Sig>
-  inline void swap(
-    ::ebd::fn_view<Sig, Buf>& f1,
-    ::ebd::fn_view<Sig, Buf>& f2
-  ) noexcept { f1.swap(f2); }
-
-}
 
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL

@@ -1,6 +1,6 @@
 # embed-function
 
-![Version - 2.0.0](https://img.shields.io/badge/Version-2.0.0-yellow?style=flat&logo=github)
+![Version - 2.0.1](https://img.shields.io/badge/Version-2.0.1-yellow?style=flat&logo=github)
 ![License - MIT](https://img.shields.io/badge/License-MIT-orange?style=flat)
 ![C++ - 11/14/17/20](https://img.shields.io/badge/C++-11/14/17/20-blue?style=flat&logo=c%2B%2B)
 

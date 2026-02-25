@@ -29,6 +29,11 @@ TEST(AssignAndConvert, small_to_big) {
     ebd::safe_fn<int(int, int) const EBD_TEST_NOEXCEPT, b_buf> sf_big = sf_small;
     ASSERT_EQ(sf_big != nullptr, true);
     ASSERT_EQ(sf_big(1234, 5678), 1234 + 5678);
+
+    auto small = ebd::make_fn<int(int)>([](int v){ return v * 2; });
+    using Big = ebd::fn<int(int), 8 * sizeof(void*)>;
+    Big big = small;
+    ASSERT_EQ(big(11), 22);
 }
 
 // AssignAndConvert[1]
@@ -43,4 +48,25 @@ TEST(AssignAndConvert, normal_to_unique) {
     ASSERT_EQ(uf == nullptr, true);
     ASSERT_EQ(uf2 != nullptr, true);
     ASSERT_FLOAT_EQ(uf2(3.1415926f, 2.7183f), 3.1415926f * 2.7183f);
+}
+
+// AssignAndConvert[2]
+TEST(AssignAndConvert, SameTypeAssign) {
+    ebd::fn<int(int)> f1 = [](int x){ return x + 1; };
+    ebd::fn<int(int)> f2 = [](int x){ return x + 100; };
+    ASSERT_EQ(f1.is_empty(), false);
+    ASSERT_EQ(f2.is_empty(), false);
+    ASSERT_EQ(f1(2), 3);
+    ASSERT_EQ(f2(2), 102);
+    f1 = f2;
+    ASSERT_EQ(f1(3), 103);
+}
+
+// AssignAndConvert[3]
+TEST(AssignAndConvert, SafeFnAssign) {
+    ebd::safe_fn<int(int)> f1 = [](int x) noexcept { return x + 7; };
+    ebd::safe_fn<int(int)> f2 = [](int x) noexcept { return x + 9; };
+    ASSERT_EQ(f1(1), 8);
+    f1 = f2;
+    ASSERT_EQ(f1(1), 10);
 }
