@@ -17,7 +17,7 @@ sudo apt update && sudo apt install cmake -y
 ```bash
 cd ./test # Go to test directory: <repo_root>/test
 
-cmake -B build -S . # Generate build files
+cmake -B build -S . -DCMAKE_CXX_STANDARD=11 # Generate build files
 
 cmake --build build --config Release --target test # Build and run tests. Add '-j 100' if slow.
 ```

@@ -10,13 +10,17 @@ endif()
 project(
     "embed_function_2.0.x-GoogleTest" 
     VERSION 2.0.1 
-    LANGUAGES C CXX
+    LANGUAGES CXX
 )
 
 # export command
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
+add_compile_definitions(
+  _CRT_NONSTDC_NO_DEPRECATE
+  _CRT_SECURE_NO_WARNINGS
+  _BSD_SOURCE
+)
 
 # Include header search path
 include_directories(
