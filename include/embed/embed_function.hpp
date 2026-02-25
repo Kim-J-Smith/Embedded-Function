@@ -1700,10 +1700,10 @@ namespace command {
       "Internal error: command_t should be trivial.");
 
     // The `m_erasure` contains the type-erased object.
-    erasure_t m_erasure{};
+    erasure_t m_erasure;
 
     // The `m_command` is responsible for managing and invoking the `m_erasure`.
-    command_t m_command{};
+    command_t m_command;
 
   public:
 
