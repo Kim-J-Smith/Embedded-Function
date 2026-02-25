@@ -9,7 +9,7 @@ endif()
 # Project name.
 project(
     "embed_function_2.0.x-GoogleTest" 
-    VERSION 2.0.1 
+    VERSION 2.0.2 
     LANGUAGES CXX
 )
 
