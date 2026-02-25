@@ -1695,6 +1695,10 @@ namespace command {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
+    static_assert(std::is_trivially_default_constructible<erasure_t>::value 
+      && std::is_trivially_copyable<erasure_t>::value,
+      "Internal error: erasure_t should be trivial.");
+
     static_assert(std::is_trivially_default_constructible<command_t>::value 
       && std::is_trivially_copyable<command_t>::value,
       "Internal error: command_t should be trivial.");
@@ -1756,6 +1760,10 @@ namespace command {
     && (OtherCfg::assertNoThrow || OtherCfg::isView)) {
       using other_fn_t = function<OtherSize, OtherCfg, OtherSig>;
       using other_erasure_t = typename other_fn_t::erasure_t;
+
+      // Suppress GCC warning: "-Wmaybe-uninitialized".
+      std::memset(&m_erasure, 0, sizeof(m_erasure));
+
       other.m_command.clone(
         &m_erasure, const_cast<other_erasure_t*>(&other.m_erasure));
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
