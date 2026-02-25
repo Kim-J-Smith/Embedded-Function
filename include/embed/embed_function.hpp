@@ -1207,7 +1207,7 @@ namespace erasure_type {
   };
 
   template <std::size_t Size>
-  union EMBED_ALIAS ErasureCore {
+  union EMBED_ALIAS alignas(void (UndefinedClass::*) ()) ErasureCore {
     char        pod[sizeof(ErasureCoreImpl<Size>)];
     ErasureCoreImpl<Size> unused; // alignas(unused)
   };
