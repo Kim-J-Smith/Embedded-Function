@@ -32,7 +32,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 - Note: This `Qualifier` is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself.
 
 ## Quick start
-- Clone the repository.
+- Clone the repository or just download the `only_header.zip` in the "Release".
 
 - Add include path `<repo_root>/include`.
 
