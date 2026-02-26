@@ -135,7 +135,7 @@ namespace ebd { namespace detail {
 
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
-# include <cstring>     // std::memcpy
+# include <cstring>     // std::memcpy, std::memset
 # include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
 # include <utility>     // std::move, std::forward, std::addressof
 # include <functional>  // std::bad_function_call
