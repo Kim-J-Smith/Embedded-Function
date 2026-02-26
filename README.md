@@ -32,7 +32,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 - Note: This `Qualifier` is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself.
 
 ## Quick start
-- Clone the repository or just download the `only_header.zip` in the "Release".
+- Clone the repository or download the `header_only.zip` in the "Release".
 
 - Add include path `<repo_root>/include`.
 
@@ -131,6 +131,10 @@ auto f = ebd::make_fn[<Signature>](Callable_Object);
 // Create ebd::fn or ebd::unique_fn from ambiguous callable object with specified signature, such as overload free function, overload member function, etc.
 auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 ```
+
+## Test
+
+Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
 
 ## Similar implementations
 

@@ -97,6 +97,12 @@ public:
     int mem_fn_overload(int, int) { return OVL_INT_INT; }
     int mem_fn_overload(int, float) { return OVL_INT_FLOAT; }
 
+    int get_var_and_increase(int step) noexcept {
+        auto tmp = member_var;
+        member_var += step;
+        return tmp;
+    }
+    int member_var{};
 };
 
 
