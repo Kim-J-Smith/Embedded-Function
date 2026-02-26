@@ -181,7 +181,8 @@ namespace ebd { namespace detail {
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
 #define EMBED_DETAIL_REQUIRES(enable_if_true) \
-  typename EMBED_DETAIL_CONNECT(Enable_,__LINE__) = detail::enable_if_t<(enable_if_true)>
+  typename EMBED_DETAIL_CONNECT(Enable_,__LINE__) = \
+  ::ebd::detail::enable_if_t<(enable_if_true)>
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -224,14 +225,49 @@ inline namespace cxx_traits {
 
   // (undocumented) Unwrap the `std::reference_wrapper` recursively.
   template <typename T, typename U = remove_cvref_t<T>>
-  struct inv_unwrap { using type = T; };
+  struct inv_unwrap {
+    using type = T;
+    using unwrap_once = T;
+  };
 
   template <typename T, typename UnderType>
-  struct inv_unwrap<T, std::reference_wrapper<UnderType>>
-  { using type = typename inv_unwrap<UnderType&>::type; };
+  struct inv_unwrap<T, std::reference_wrapper<UnderType>> {
+    using type = typename inv_unwrap<UnderType&>::type;
+    using unwrap_once = UnderType&;
+  };
 
   template <typename T>
   using inv_unwrap_t = typename inv_unwrap<T>::type;
+
+  template <typename T>
+  using unwrap_once_t = typename inv_unwrap<T>::unwrap_once;
+
+  // (undocumented) Unwrap and forward std::reference_wrapper.
+  template <typename T>
+  EMBED_INLINE constexpr enable_if_t<
+    std::is_same<T, unwrap_once_t<T>>::value, T&&
+  > unwrap_forward(remove_reference_t<T>&& obj) noexcept
+  { return static_cast<T&&>(obj); }
+
+  template <typename T>
+  EMBED_INLINE constexpr enable_if_t<
+    std::is_same<T, unwrap_once_t<T>>::value, T&&
+  > unwrap_forward(remove_reference_t<T>& obj) noexcept
+  { return static_cast<T&&>(obj); }
+
+  template <typename T, typename Under = unwrap_once_t<T>,
+    EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
+  > EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  unwrap_forward(remove_reference_t<T>&& obj) noexcept {
+    return unwrap_forward<Under>(obj.get());
+  }
+
+  template <typename T, typename Under = unwrap_once_t<T>,
+    EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
+  > EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  unwrap_forward(remove_reference_t<T>& obj) noexcept {
+    return unwrap_forward<Under>(obj.get());
+  }
 
   // (undocumented) Provide success type for invoke_result.
   template <typename T, typename Tag>
@@ -587,7 +623,7 @@ inline namespace cxx_traits {
   inline EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_memobj_ref_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
-  { return static_cast<inv_unwrap_t<Arg>&&>(arg).*std::forward<MemObj>(obj); }
+  { return unwrap_forward<Arg>(arg).*std::forward<MemObj>(obj); }
 
   // Invokes the pointer to member object by the given "pointer" of class object.
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
@@ -603,7 +639,7 @@ inline namespace cxx_traits {
   inline EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
-    return (static_cast<inv_unwrap_t<Arg>&&>(arg).*std::forward<MemFunc>(memfn))(
+    return (unwrap_forward<Arg>(arg).*std::forward<MemFunc>(memfn))(
       std::forward<ArgsType>(args)...
     );
   }
