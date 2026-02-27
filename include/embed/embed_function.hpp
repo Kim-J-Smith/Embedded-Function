@@ -244,27 +244,27 @@ inline namespace cxx_traits {
 
   // (undocumented) Unwrap and forward std::reference_wrapper.
   template <typename T>
-  EMBED_INLINE constexpr enable_if_t<
+  EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
     std::is_same<T, unwrap_once_t<T>>::value, T&&
   > unwrap_forward(remove_reference_t<T>&& obj) noexcept
   { return static_cast<T&&>(obj); }
 
   template <typename T>
-  EMBED_INLINE constexpr enable_if_t<
+  EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
     std::is_same<T, unwrap_once_t<T>>::value, T&&
   > unwrap_forward(remove_reference_t<T>& obj) noexcept
   { return static_cast<T&&>(obj); }
 
   template <typename T, typename Under = unwrap_once_t<T>,
     EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
-  > EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
   unwrap_forward(remove_reference_t<T>&& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
   }
 
   template <typename T, typename Under = unwrap_once_t<T>,
     EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
-  > EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
   unwrap_forward(remove_reference_t<T>& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
   }
