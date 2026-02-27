@@ -970,7 +970,16 @@ inline namespace fn_traits {
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
+    // The buffer size for ebd::fn_view. Both pointer and
+    // member pointer should be able to be stored into the buffer.
+    static constexpr std::size_t view_buf = sizeof(void (UndefinedClass::*) ());
+#if defined(EMBED_FN_CONFIG_USE_BIG_BUFFER)
+    // The CommandTable size plus the buffer size is about 8 * sizeof(void).
+    // TODO: The size of this buffer zone needs further examination.
+    static constexpr std::size_t value = 6 * sizeof(void*);
+#else
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
+#endif
   };
 
   // Check the throwing is ok.
@@ -2083,7 +2092,7 @@ using safe_fn = detail::function<
  */
 template <typename Signature, std::size_t = 0 /* Unused */>
 using fn_view = detail::function<
-  detail::default_buffer_size::value, 
+  detail::default_buffer_size::view_buf, 
   detail::config_package<
     /* IsCopyable = */          true, 
     /* IsView = */              true, 
