@@ -14,7 +14,7 @@ TEST(BasicAttributes, SizeAndAlign) {
     ASSERT_EQ(f_t::buffer_size == ebd::detail::default_buffer_size::value, true);
     ASSERT_EQ(uf_t::buffer_size == ebd::detail::default_buffer_size::value, true);
     ASSERT_EQ(sf_t::buffer_size == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(fv_t::buffer_size == ebd::detail::default_buffer_size::value, true);
+    ASSERT_EQ(fv_t::buffer_size == ebd::detail::default_buffer_size::view_buf, true);
 
     ASSERT_EQ(alignof(f_t) >= alignof(void*), true);
     ASSERT_EQ(alignof(uf_t) >= alignof(void*), true);
