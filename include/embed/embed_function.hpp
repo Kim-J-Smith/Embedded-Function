@@ -1235,6 +1235,12 @@ inline namespace fn_traits {
   template <typename Signature>
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
+  // Used to choose either perfect forwarding or pass-by-value.
+  // Pass-by-value is faster for scalar types because they can
+  // be passed by the register rather than the stack.
+  template <typename T>
+  using smart_forward_t = conditional_t<std::is_scalar<T>::value, T, T&&>;
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -1304,71 +1310,63 @@ namespace invocation {
   template <std::size_t Size, typename Config, typename Signature>
   struct InvokerImpl;
 
-#define EMBED_DETAIL_INVOKER_IMPL_DEFINE(C, V, REF, NOEXCEPT)       \
-  template <std::size_t Size, typename Config,                      \
-    typename Ret, typename... Args>                                 \
-  struct InvokerImpl<Size, Config, Ret(Args...) C V REF NOEXCEPT> { \
-  public:                                                           \
-    using erasure_base_t = erasure_type::ErasureBase C V;           \
-    using erasure_t = erasure_type::Erasure<Size> C V;              \
-    static constexpr bool is_rv_ref =                               \
-      std::is_rvalue_reference<int REF>::value;                     \
-    using invoker_type = Ret (*) (                                  \
-      erasure_base_t* base, Args&&... args);                        \
-                                                                    \
-    /* Using when M_erasure is empty. */                            \
-    struct empty {                                                  \
-      static Ret invoke(erasure_base_t*, Args&&...) {               \
-        throw_or_abort<Config::isThrowing>();                       \
-        EMBED_UNREACHABLE();                                        \
-      }                                                             \
-    };                                                              \
-                                                                    \
-    /* Using when Config::isView == false. */                       \
-    struct inplace {                                                \
-      template <typename Functor>                                   \
-      static Ret invoke(erasure_base_t* base, Args&&... args) {     \
-        auto* erased = static_cast<erasure_t*>(base);               \
-        auto& fn = erased->template access<Functor>();              \
-        using Fn = conditional_t<is_rv_ref,                         \
-          remove_reference_t<decltype(fn)>&&,                       \
-          remove_reference_t<decltype(fn)>&>;                       \
-        return invoke_r<Ret>(static_cast<Fn>(fn),                   \
-          std::forward<Args>(args)...);                             \
-      }                                                             \
-    };                                                              \
-                                                                    \
-    /* Using when Config::isView == true. */                        \
-    struct view {                                                   \
-      /* Using when Functor::is_stored_origin == true. */           \
-      template <typename Functor>                                   \
-      static enable_if_t<                                           \
-        is_stored_origin<Functor, true>::value, Ret>                \
-      invoke(erasure_base_t* base, Args&&... args) {                \
-        auto* erased = static_cast<erasure_t*>(base);               \
-        auto& fn = erased->template access<Functor>();              \
-        using Fn = conditional_t<is_rv_ref,                         \
-          remove_reference_t<decltype(fn)>&&,                       \
-          remove_reference_t<decltype(fn)>&>;                       \
-        return invoke_r<Ret>(static_cast<Fn>(fn),                   \
-          std::forward<Args>(args)...);                             \
-      }                                                             \
-                                                                    \
-      /* Using when Functor::is_stored_origin == false. */          \
-      template <typename Functor>                                   \
-      static enable_if_t<                                           \
-        !is_stored_origin<Functor, true>::value, Ret>               \
-      invoke(erasure_base_t* base, Args&&... args) {                \
-        auto* erased = static_cast<erasure_t*>(base);               \
-        auto& fn = *(erased->template access<Functor*>());          \
-        using Fn = conditional_t<is_rv_ref,                         \
-          remove_reference_t<decltype(fn)>&&,                       \
-          remove_reference_t<decltype(fn)>&>;                       \
-        return invoke_r<Ret>(static_cast<Fn>(fn),                   \
-          std::forward<Args>(args)...);                             \
-      }                                                             \
-    };                                                              \
-                                                                    \
+#define EMBED_DETAIL_INVOKER_IMPL_DEFINE(C, V, REF, NOEXCEPT)                     \
+  template <std::size_t Size, typename Config,                                    \
+    typename Ret, typename... Args>                                               \
+  struct InvokerImpl<Size, Config, Ret(Args...) C V REF NOEXCEPT> {               \
+  public:                                                                         \
+    using erasure_base_t = erasure_type::ErasureBase C V;                         \
+    using erasure_t = erasure_type::Erasure<Size> C V;                            \
+    static constexpr bool is_rvalue_ref =                                         \
+      std::is_rvalue_reference<int REF>::value;                                   \
+    using invoker_type = Ret (*) (                                                \
+      erasure_base_t* base, smart_forward_t<Args>... args);                       \
+                                                                                  \
+    /* Using when M_erasure is empty. */                                          \
+    struct empty {                                                                \
+      static Ret invoke(erasure_base_t*, smart_forward_t<Args>...) {              \
+        throw_or_abort<Config::isThrowing>();                                     \
+        EMBED_UNREACHABLE();                                                      \
+      }                                                                           \
+    };                                                                            \
+                                                                                  \
+    /* Using when Config::isView == false. */                                     \
+    struct inplace {                                                              \
+      template <typename Functor>                                                 \
+      static Ret invoke(erasure_base_t* base, smart_forward_t<Args>... args) {    \
+        auto* erased = static_cast<erasure_t*>(base);                             \
+        auto& fn = erased->template access<Functor>();                            \
+        using Fn = conditional_t<is_rvalue_ref,                                   \
+          remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
+        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+      }                                                                           \
+    };                                                                            \
+                                                                                  \
+    /* Using when Config::isView == true. */                                      \
+    struct view {                                                                 \
+      /* Using when Functor::is_stored_origin == true. */                         \
+      template <typename Functor>                                                 \
+      static enable_if_t<is_stored_origin<Functor, true>::value, Ret>             \
+      invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
+        auto* erased = static_cast<erasure_t*>(base);                             \
+        auto& fn = erased->template access<Functor>();                            \
+        using Fn = conditional_t<is_rvalue_ref,                                   \
+          remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
+        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+      }                                                                           \
+                                                                                  \
+      /* Using when Functor::is_stored_origin == false. */                        \
+      template <typename Functor>                                                 \
+      static enable_if_t<!is_stored_origin<Functor, true>::value, Ret>            \
+      invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
+        auto* erased = static_cast<erasure_t*>(base);                             \
+        auto& fn = *(erased->template access<Functor*>());                        \
+        using Fn = conditional_t<is_rvalue_ref,                                   \
+          remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
+        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+      }                                                                           \
+    };                                                                            \
+                                                                                  \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_INVOKER_IMPL_DEFINE)
