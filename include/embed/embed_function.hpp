@@ -980,6 +980,8 @@ inline namespace fn_traits {
 #else
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
 #endif
+
+    static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
   };
 
   // Check the throwing is ok.
@@ -1258,7 +1260,7 @@ namespace erasure_type {
   };
 
   template <std::size_t Size>
-  union EMBED_ALIAS alignas(void (UndefinedClass::*) ()) ErasureCore {
+  union EMBED_ALIAS ErasureCore {
     char        pod[sizeof(ErasureCoreImpl<Size>)];
     ErasureCoreImpl<Size> unused; // alignas(unused)
   };
@@ -1274,6 +1276,7 @@ namespace erasure_type {
   // See https://eel.is/c++draft/basic.life#7 .
   template <std::size_t Size>
   struct EMBED_ALIAS Erasure : public ErasureBase {
+    alignas(default_buffer_size::align_value)
     ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
