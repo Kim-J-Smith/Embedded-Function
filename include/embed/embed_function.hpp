@@ -914,11 +914,10 @@ inline namespace fn_traits {
   >::type {};
 
   // Nothrow constructible from functor to ebd::fn
-  template <typename Functor, typename Config>
+  template <typename Functor, typename Class = decay_t<Functor>>
   struct is_nothrow_construct_from_functor
   : public std::integral_constant<bool, 
-    (Config::isCopyable && std::is_nothrow_copy_constructible<Functor>::value)
-    || (!Config::isCopyable && std::is_nothrow_move_constructible<Functor>::value)
+    std::is_nothrow_constructible<Class, Functor>::value
   > {};
 
   // Get invoke result with arguments package.
@@ -1018,7 +1017,7 @@ inline namespace fn_traits {
     }
 
     template <typename T>
-    static bool check(const T&) {
+    static bool check(const T&) noexcept {
       return true;
     }
   };
@@ -1542,7 +1541,8 @@ namespace command {
     }
 
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    void init(erasure_base_t* target, Functor&& obj, std::true_type) noexcept {
+    void init(erasure_base_t* target, Functor&& obj, std::true_type)
+    noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
@@ -1838,7 +1838,7 @@ namespace command {
       typename Enable1 = enable_if_t<!fn_can_convert<function, Functor>::value>,
       typename Enable2 = enable_if_t<!is_self<Functor, function>::value>>
     function(Functor&& functor)
-    noexcept(is_nothrow_construct_from_functor<Functor, Config>::value) {
+    noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
       static_assert(is_callable_functor<Functor, Signature>::value,
         "The functor is NOT callable with given arguments.");
@@ -1936,7 +1936,7 @@ namespace command {
       typename Enable1 = enable_if_t<!fn_can_convert<function, Functor>::value>,
       typename Enable2 = enable_if_t<!is_self<Functor, function>::value>>
     function& operator=(Functor&& fn)
-    noexcept(is_nothrow_construct_from_functor<Functor, Config>::value) {
+    noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
       function(std::forward<Functor>(fn)).swap(*this);
       return *this;
     }
