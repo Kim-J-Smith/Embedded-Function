@@ -915,7 +915,7 @@ inline namespace fn_traits {
 
   // Check whether Functor can be constructed as decay_t<Functor>
   // without throwing an exception. And `std::is_nothrow_constructible`
-  // has bug. (It will also check the destructor.)
+  // has bug. (It will also check the destructor)
   // See https://cplusplus.github.io/LWG/issue2116 .
   template <typename Functor, typename Class = decay_t<Functor>,
     typename = void>
