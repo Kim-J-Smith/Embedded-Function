@@ -9,18 +9,20 @@ endif()
 # Project name.
 project(
     "embed_function_2.0.x-GoogleTest" 
-    VERSION 2.0.1 
+    VERSION 2.0.2 
     LANGUAGES CXX
 )
 
 # export command
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-add_compile_definitions(
-  _CRT_NONSTDC_NO_DEPRECATE
-  _CRT_SECURE_NO_WARNINGS
-  _BSD_SOURCE
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_compile_definitions(
+    _CRT_NONSTDC_NO_DEPRECATE
+    _CRT_SECURE_NO_WARNINGS
+    _BSD_SOURCE
+  )
+endif()
 
 # Include header search path
 include_directories(

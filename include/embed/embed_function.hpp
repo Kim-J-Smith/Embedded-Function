@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.1
+ * @version     2.0.2
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -135,7 +135,7 @@ namespace ebd { namespace detail {
 
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
-# include <cstring>     // std::memcpy
+# include <cstring>     // std::memcpy, std::memset
 # include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
 # include <utility>     // std::move, std::forward, std::addressof
 # include <functional>  // std::bad_function_call
@@ -181,7 +181,8 @@ namespace ebd { namespace detail {
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
 #define EMBED_DETAIL_REQUIRES(enable_if_true) \
-  typename EMBED_DETAIL_CONNECT(Enable_,__LINE__) = detail::enable_if_t<(enable_if_true)>
+  typename EMBED_DETAIL_CONNECT(Enable_,__LINE__) = \
+  ::ebd::detail::enable_if_t<(enable_if_true)>
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -224,14 +225,49 @@ inline namespace cxx_traits {
 
   // (undocumented) Unwrap the `std::reference_wrapper` recursively.
   template <typename T, typename U = remove_cvref_t<T>>
-  struct inv_unwrap { using type = T; };
+  struct inv_unwrap {
+    using type = T;
+    using unwrap_once = T;
+  };
 
   template <typename T, typename UnderType>
-  struct inv_unwrap<T, std::reference_wrapper<UnderType>>
-  { using type = typename inv_unwrap<UnderType&>::type; };
+  struct inv_unwrap<T, std::reference_wrapper<UnderType>> {
+    using type = typename inv_unwrap<UnderType&>::type;
+    using unwrap_once = UnderType&;
+  };
 
   template <typename T>
   using inv_unwrap_t = typename inv_unwrap<T>::type;
+
+  template <typename T>
+  using unwrap_once_t = typename inv_unwrap<T>::unwrap_once;
+
+  // (undocumented) Unwrap and forward std::reference_wrapper.
+  template <typename T>
+  EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
+    std::is_same<T, unwrap_once_t<T>>::value, T&&
+  > unwrap_forward(remove_reference_t<T>&& obj) noexcept
+  { return static_cast<T&&>(obj); }
+
+  template <typename T>
+  EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
+    std::is_same<T, unwrap_once_t<T>>::value, T&&
+  > unwrap_forward(remove_reference_t<T>& obj) noexcept
+  { return static_cast<T&&>(obj); }
+
+  template <typename T, typename Under = unwrap_once_t<T>,
+    EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
+  > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  unwrap_forward(remove_reference_t<T>&& obj) noexcept {
+    return unwrap_forward<Under>(obj.get());
+  }
+
+  template <typename T, typename Under = unwrap_once_t<T>,
+    EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
+  > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  unwrap_forward(remove_reference_t<T>& obj) noexcept {
+    return unwrap_forward<Under>(obj.get());
+  }
 
   // (undocumented) Provide success type for invoke_result.
   template <typename T, typename Tag>
@@ -587,7 +623,7 @@ inline namespace cxx_traits {
   inline EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_memobj_ref_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
-  { return static_cast<inv_unwrap_t<Arg>&&>(arg).*std::forward<MemObj>(obj); }
+  { return unwrap_forward<Arg>(arg).*std::forward<MemObj>(obj); }
 
   // Invokes the pointer to member object by the given "pointer" of class object.
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
@@ -603,7 +639,7 @@ inline namespace cxx_traits {
   inline EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
-    return (static_cast<inv_unwrap_t<Arg>&&>(arg).*std::forward<MemFunc>(memfn))(
+    return (unwrap_forward<Arg>(arg).*std::forward<MemFunc>(memfn))(
       std::forward<ArgsType>(args)...
     );
   }
@@ -877,12 +913,20 @@ inline namespace fn_traits {
     >::value
   >::type {};
 
-  // Nothrow constructible from functor to ebd::fn
-  template <typename Functor, typename Config>
+  // Check whether Functor can be constructed as decay_t<Functor>
+  // without throwing an exception. And `std::is_nothrow_constructible`
+  // has bug. (It will also check the destructor)
+  // See https://cplusplus.github.io/LWG/issue2116 .
+  template <typename Functor, typename Class = decay_t<Functor>,
+    typename = void>
   struct is_nothrow_construct_from_functor
-  : public std::integral_constant<bool, 
-    (Config::isCopyable && std::is_nothrow_copy_constructible<Functor>::value)
-    || (!Config::isCopyable && std::is_nothrow_move_constructible<Functor>::value)
+  : public std::integral_constant<bool, false> {};
+
+  template <typename Functor, typename Class>
+  struct is_nothrow_construct_from_functor<
+    Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
+  : public std::integral_constant<bool,
+    noexcept(::new (0) Class(std::declval<Functor>()))
   > {};
 
   // Get invoke result with arguments package.
@@ -934,7 +978,18 @@ inline namespace fn_traits {
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
+    // The buffer size for ebd::fn_view. Both pointer and
+    // member pointer should be able to be stored into the buffer.
+    static constexpr std::size_t view_buf = sizeof(void (UndefinedClass::*) ());
+#if defined(EMBED_FN_CONFIG_USE_BIG_BUFFER)
+    // The CommandTable size plus the buffer size is about 8 * sizeof(void).
+    // TODO: The size of this buffer zone needs further examination.
+    static constexpr std::size_t value = 6 * sizeof(void*);
+#else
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
+#endif
+
+    static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
   };
 
   // Check the throwing is ok.
@@ -971,7 +1026,7 @@ inline namespace fn_traits {
     }
 
     template <typename T>
-    static bool check(const T&) {
+    static bool check(const T&) noexcept {
       return true;
     }
   };
@@ -1190,6 +1245,12 @@ inline namespace fn_traits {
   template <typename Signature>
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
+  // Used to choose either perfect forwarding or pass-by-value.
+  // Pass-by-value is faster for scalar types because they can
+  // be passed by the register rather than the stack.
+  template <typename T>
+  using smart_forward_t = conditional_t<std::is_scalar<T>::value, T, T&&>;
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -1207,7 +1268,7 @@ namespace erasure_type {
   };
 
   template <std::size_t Size>
-  union EMBED_ALIAS alignas(void (UndefinedClass::*) ()) ErasureCore {
+  union EMBED_ALIAS ErasureCore {
     char        pod[sizeof(ErasureCoreImpl<Size>)];
     ErasureCoreImpl<Size> unused; // alignas(unused)
   };
@@ -1223,6 +1284,7 @@ namespace erasure_type {
   // See https://eel.is/c++draft/basic.life#7 .
   template <std::size_t Size>
   struct EMBED_ALIAS Erasure : public ErasureBase {
+    alignas(default_buffer_size::align_value)
     ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
@@ -1259,71 +1321,63 @@ namespace invocation {
   template <std::size_t Size, typename Config, typename Signature>
   struct InvokerImpl;
 
-#define EMBED_DETAIL_INVOKER_IMPL_DEFINE(C, V, REF, NOEXCEPT)       \
-  template <std::size_t Size, typename Config,                      \
-    typename Ret, typename... Args>                                 \
-  struct InvokerImpl<Size, Config, Ret(Args...) C V REF NOEXCEPT> { \
-  public:                                                           \
-    using erasure_base_t = erasure_type::ErasureBase C V;           \
-    using erasure_t = erasure_type::Erasure<Size> C V;              \
-    static constexpr bool is_rv_ref =                               \
-      std::is_rvalue_reference<int REF>::value;                     \
-    using invoker_type = Ret (*) (                                  \
-      erasure_base_t* base, Args&&... args);                        \
-                                                                    \
-    /* Using when M_erasure is empty. */                            \
-    struct empty {                                                  \
-      static Ret invoke(erasure_base_t*, Args&&...) {               \
-        throw_or_abort<Config::isThrowing>();                       \
-        EMBED_UNREACHABLE();                                        \
-      }                                                             \
-    };                                                              \
-                                                                    \
-    /* Using when Config::isView == false. */                       \
-    struct inplace {                                                \
-      template <typename Functor>                                   \
-      static Ret invoke(erasure_base_t* base, Args&&... args) {     \
-        auto* erased = static_cast<erasure_t*>(base);               \
-        auto& fn = erased->template access<Functor>();              \
-        using Fn = conditional_t<is_rv_ref,                         \
-          remove_reference_t<decltype(fn)>&&,                       \
-          remove_reference_t<decltype(fn)>&>;                       \
-        return invoke_r<Ret>(static_cast<Fn>(fn),                   \
-          std::forward<Args>(args)...);                             \
-      }                                                             \
-    };                                                              \
-                                                                    \
-    /* Using when Config::isView == true. */                        \
-    struct view {                                                   \
-      /* Using when Functor::is_stored_origin == true. */           \
-      template <typename Functor>                                   \
-      static enable_if_t<                                           \
-        is_stored_origin<Functor, true>::value, Ret>                \
-      invoke(erasure_base_t* base, Args&&... args) {                \
-        auto* erased = static_cast<erasure_t*>(base);               \
-        auto& fn = erased->template access<Functor>();              \
-        using Fn = conditional_t<is_rv_ref,                         \
-          remove_reference_t<decltype(fn)>&&,                       \
-          remove_reference_t<decltype(fn)>&>;                       \
-        return invoke_r<Ret>(static_cast<Fn>(fn),                   \
-          std::forward<Args>(args)...);                             \
-      }                                                             \
-                                                                    \
-      /* Using when Functor::is_stored_origin == false. */          \
-      template <typename Functor>                                   \
-      static enable_if_t<                                           \
-        !is_stored_origin<Functor, true>::value, Ret>               \
-      invoke(erasure_base_t* base, Args&&... args) {                \
-        auto* erased = static_cast<erasure_t*>(base);               \
-        auto& fn = *(erased->template access<Functor*>());          \
-        using Fn = conditional_t<is_rv_ref,                         \
-          remove_reference_t<decltype(fn)>&&,                       \
-          remove_reference_t<decltype(fn)>&>;                       \
-        return invoke_r<Ret>(static_cast<Fn>(fn),                   \
-          std::forward<Args>(args)...);                             \
-      }                                                             \
-    };                                                              \
-                                                                    \
+#define EMBED_DETAIL_INVOKER_IMPL_DEFINE(C, V, REF, NOEXCEPT)                     \
+  template <std::size_t Size, typename Config,                                    \
+    typename Ret, typename... Args>                                               \
+  struct InvokerImpl<Size, Config, Ret(Args...) C V REF NOEXCEPT> {               \
+  public:                                                                         \
+    using erasure_base_t = erasure_type::ErasureBase C V;                         \
+    using erasure_t = erasure_type::Erasure<Size> C V;                            \
+    static constexpr bool is_rvalue_ref =                                         \
+      std::is_rvalue_reference<int REF>::value;                                   \
+    using invoker_type = Ret (*) (                                                \
+      erasure_base_t* base, smart_forward_t<Args>... args);                       \
+                                                                                  \
+    /* Using when M_erasure is empty. */                                          \
+    struct empty {                                                                \
+      static Ret invoke(erasure_base_t*, smart_forward_t<Args>...) {              \
+        throw_or_abort<Config::isThrowing>();                                     \
+        EMBED_UNREACHABLE();                                                      \
+      }                                                                           \
+    };                                                                            \
+                                                                                  \
+    /* Using when Config::isView == false. */                                     \
+    struct inplace {                                                              \
+      template <typename Functor>                                                 \
+      static Ret invoke(erasure_base_t* base, smart_forward_t<Args>... args) {    \
+        auto* erased = static_cast<erasure_t*>(base);                             \
+        auto& fn = erased->template access<Functor>();                            \
+        using Fn = conditional_t<is_rvalue_ref,                                   \
+          remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
+        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+      }                                                                           \
+    };                                                                            \
+                                                                                  \
+    /* Using when Config::isView == true. */                                      \
+    struct view {                                                                 \
+      /* Using when Functor::is_stored_origin == true. */                         \
+      template <typename Functor>                                                 \
+      static enable_if_t<is_stored_origin<Functor, true>::value, Ret>             \
+      invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
+        auto* erased = static_cast<erasure_t*>(base);                             \
+        auto& fn = erased->template access<Functor>();                            \
+        using Fn = conditional_t<is_rvalue_ref,                                   \
+          remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
+        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+      }                                                                           \
+                                                                                  \
+      /* Using when Functor::is_stored_origin == false. */                        \
+      template <typename Functor>                                                 \
+      static enable_if_t<!is_stored_origin<Functor, true>::value, Ret>            \
+      invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
+        auto* erased = static_cast<erasure_t*>(base);                             \
+        auto& fn = *(erased->template access<Functor*>());                        \
+        using Fn = conditional_t<is_rvalue_ref,                                   \
+          remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
+        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+      }                                                                           \
+    };                                                                            \
+                                                                                  \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_INVOKER_IMPL_DEFINE)
@@ -1496,7 +1550,8 @@ namespace command {
     }
 
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    void init(erasure_base_t* target, Functor&& obj, std::true_type) noexcept {
+    void init(erasure_base_t* target, Functor&& obj, std::true_type)
+    noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
@@ -1792,7 +1847,7 @@ namespace command {
       typename Enable1 = enable_if_t<!fn_can_convert<function, Functor>::value>,
       typename Enable2 = enable_if_t<!is_self<Functor, function>::value>>
     function(Functor&& functor)
-    noexcept(is_nothrow_construct_from_functor<Functor, Config>::value) {
+    noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
       static_assert(is_callable_functor<Functor, Signature>::value,
         "The functor is NOT callable with given arguments.");
@@ -1890,7 +1945,7 @@ namespace command {
       typename Enable1 = enable_if_t<!fn_can_convert<function, Functor>::value>,
       typename Enable2 = enable_if_t<!is_self<Functor, function>::value>>
     function& operator=(Functor&& fn)
-    noexcept(is_nothrow_construct_from_functor<Functor, Config>::value) {
+    noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
       function(std::forward<Functor>(fn)).swap(*this);
       return *this;
     }
@@ -2047,7 +2102,7 @@ using safe_fn = detail::function<
  */
 template <typename Signature, std::size_t = 0 /* Unused */>
 using fn_view = detail::function<
-  detail::default_buffer_size::value, 
+  detail::default_buffer_size::view_buf, 
   detail::config_package<
     /* IsCopyable = */          true, 
     /* IsView = */              true, 

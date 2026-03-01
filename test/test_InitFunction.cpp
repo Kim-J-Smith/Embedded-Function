@@ -3,6 +3,7 @@
 #include "test_function.hpp"
 
 #include <iostream>
+#include <memory>
 
 // InitFunction[0]
 TEST(InitFunction, fn_freeFunction_v) {
@@ -453,4 +454,37 @@ TEST(InitFunction, testQualifier) {
 
     ASSERT_EQ(f9(3.14), OVL_CONST | OVL_VOLATILE | OVL_L_REF);
     ASSERT_EQ(std::move(f10)(3.14), OVL_CONST | OVL_VOLATILE | OVL_R_REF);
+}
+
+// InitFunction[25]
+TEST(InitFunction, ReferenceWrapper) {
+    typedef ebd_test_member_fn C_t;
+    C_t c;
+    auto c_ref = std::ref(c);
+    auto c_ref_ref = std::reference_wrapper<decltype(c_ref)>(c_ref);
+    auto c_ref_ref_ref = std::reference_wrapper<decltype(c_ref_ref)>(c_ref_ref);
+    auto c_unique_ptr = std::unique_ptr<C_t>(new C_t);
+    auto c_shared_ptr1 = std::shared_ptr<C_t>(new C_t);
+    auto c_shared_ptr2 = c_shared_ptr1;
+
+    auto f1 = ebd::make_fn(&C_t::get_var_and_increase);
+    auto f2 = ebd::fn<int(decltype(c_ref), int) const>(&C_t::get_var_and_increase);
+    auto f3 = ebd::fn<int(decltype(c_ref_ref), int) const>(&C_t::get_var_and_increase);
+    auto f4 = ebd::fn<int(decltype(c_ref_ref_ref), int) const>(&C_t::get_var_and_increase);
+
+    ASSERT_EQ(f1(c, 1), 0);
+    ASSERT_EQ(f2(c_ref, 1), 1);
+    ASSERT_EQ(f3(c_ref_ref, 1), 2);
+    ASSERT_EQ(f4(c_ref_ref_ref, 1), 3);
+
+    auto f5 = ebd::fn<int(C_t*, int) const>(&C_t::get_var_and_increase);
+    auto f6 = ebd::fn<int(std::unique_ptr<C_t>, int) const>(&C_t::get_var_and_increase);
+    auto f7 = ebd::fn<int(std::shared_ptr<C_t>, int) const>(&C_t::get_var_and_increase);
+
+    ASSERT_EQ(f5(&c, 1), 4);
+    ASSERT_EQ(f6(std::move(c_unique_ptr), 1), 0);
+    ASSERT_EQ(f7(c_shared_ptr1, 5), 0);
+    ASSERT_EQ(f7(c_shared_ptr2, 0), 5);
+
+    SUCCEED();
 }

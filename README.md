@@ -1,6 +1,6 @@
 # embed-function
 
-![Version - 2.0.1](https://img.shields.io/badge/Version-2.0.1-yellow?style=flat&logo=github)
+![Version - 2.0.2](https://img.shields.io/badge/Version-2.0.2-yellow?style=flat&logo=github)
 ![License - MIT](https://img.shields.io/badge/License-MIT-orange?style=flat)
 ![C++ - 11/14/17/20](https://img.shields.io/badge/C++-11/14/17/20-blue?style=flat&logo=c%2B%2B)
 
@@ -32,7 +32,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 - Note: This `Qualifier` is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself.
 
 ## Quick start
-- Clone the repository.
+- Clone the repository or download the `header_only.zip` in the "Release".
 
 - Add include path `<repo_root>/include`.
 
@@ -131,6 +131,19 @@ auto f = ebd::make_fn[<Signature>](Callable_Object);
 // Create ebd::fn or ebd::unique_fn from ambiguous callable object with specified signature, such as overload free function, overload member function, etc.
 auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 ```
+
+## Compatibility
+
+Every compiler with modern C++11 support should work.
+*embed-function* only depends on the standard library.
+
+- GCC 5.1+
+- Clang 3.7+
+- MSVC v19.34+ (VS17.4+)
+
+## Test
+
+Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
 
 ## Similar implementations
 
