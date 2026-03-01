@@ -137,6 +137,10 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 Every compiler with modern C++11 support should work.
 *embed-function* only depends on the standard library.
 
+- GCC 5.1+
+- Clang 3.7+
+- MSVC v19.34+ (VS17.4+)
+
 ## Test
 
 Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
