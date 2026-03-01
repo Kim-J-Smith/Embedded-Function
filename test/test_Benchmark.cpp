@@ -8,17 +8,20 @@
 #if defined(_MSC_VER)
 # include <intrin.h>
 # define MEM_BARRIER() _ReadWriteBarrier()
+# define NO_INLINE __declspec(noinline)
 #elif defined(__GNUC__) || defined(__clang__)
 # define MEM_BARRIER() __asm__("" : : : "memory")
+# define NO_INLINE __attribute__((noinline))
 #else
 # define MEM_BARRIER()
+# define NO_INLINE
 #endif
 
 static int add(int a, int b) { volatile int c = a + b; (void)c; return a + b; }
 static int sub(int a, int b) { volatile int c = a - b; (void)c; return a - b; }
 
 template <typename Fn>
-static void run_benchmark(Fn&& fn, int count) {
+NO_INLINE static void run_benchmark_free_function(Fn&& fn, int count) {
     for (int i = 0; i < count; i++) {
         (void)fn(111, 222);
     }
@@ -46,28 +49,28 @@ TEST(Benchmark, FreeFunctionTest) {
     // test std_fn1
     MEM_BARRIER();
     auto tPoint_std_begin1 = std::chrono::high_resolution_clock::now();
-    run_benchmark(std_fn1, call_count);
+    run_benchmark_free_function(std_fn1, call_count);
     MEM_BARRIER();
     auto tPoint_std_end1 = std::chrono::high_resolution_clock::now();
 
     // test std_fn2
     MEM_BARRIER();
     auto tPoint_std_begin2 = std::chrono::high_resolution_clock::now();
-    run_benchmark(std_fn2, call_count);
+    run_benchmark_free_function(std_fn2, call_count);
     MEM_BARRIER();
     auto tPoint_std_end2 = std::chrono::high_resolution_clock::now();
 
     // test ebd_fn1
     MEM_BARRIER();
     auto tPoint_ebd_begin1 = std::chrono::high_resolution_clock::now();
-    run_benchmark(ebd_fn1, call_count);
+    run_benchmark_free_function(ebd_fn1, call_count);
     MEM_BARRIER();
     auto tPoint_ebd_end1 = std::chrono::high_resolution_clock::now();
 
     // test ebd_fn2
     MEM_BARRIER();
     auto tPoint_ebd_begin2 = std::chrono::high_resolution_clock::now();
-    run_benchmark(ebd_fn2, call_count);
+    run_benchmark_free_function(ebd_fn2, call_count);
     MEM_BARRIER();
     auto tPoint_ebd_end2 = std::chrono::high_resolution_clock::now();
 
