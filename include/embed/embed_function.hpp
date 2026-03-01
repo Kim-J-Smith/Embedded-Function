@@ -913,11 +913,20 @@ inline namespace fn_traits {
     >::value
   >::type {};
 
-  // Nothrow constructible from functor to ebd::fn
-  template <typename Functor, typename Class = decay_t<Functor>>
+  // Check whether Functor can be constructed as decay_t<Functor>
+  // without throwing an exception. And `std::is_nothrow_constructible`
+  // has bug. (It will also check the destructor.)
+  // See https://cplusplus.github.io/LWG/issue2116 .
+  template <typename Functor, typename Class = decay_t<Functor>,
+    typename = void>
   struct is_nothrow_construct_from_functor
-  : public std::integral_constant<bool, 
-    std::is_nothrow_constructible<Class, Functor>::value
+  : public std::integral_constant<bool, false> {};
+
+  template <typename Functor, typename Class>
+  struct is_nothrow_construct_from_functor<
+    Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
+  : public std::integral_constant<bool,
+    noexcept(::new (0) Class(std::declval<Functor>()))
   > {};
 
   // Get invoke result with arguments package.
