@@ -926,7 +926,7 @@ inline namespace fn_traits {
   struct is_nothrow_construct_from_functor<
     Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
   : public std::integral_constant<bool,
-    noexcept(::new (0) Class(std::declval<Functor>()))
+    noexcept(::new (static_cast<void*>(0)) Class(std::declval<Functor>()))
   > {};
 
   // Get invoke result with arguments package.
