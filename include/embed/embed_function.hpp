@@ -887,23 +887,23 @@ inline namespace fn_traits {
   template <typename To, typename From>
   struct fn_can_convert_impl : public std::false_type {};
 
-  template <std::size_t Buf1, typename Cfg1, typename Sig1,
-    std::size_t Buf2, typename Cfg2, typename Sig2>
+  template <std::size_t BufTo, typename CfgTo, typename SigTo,
+    std::size_t BufFrom, typename CfgFrom, typename SigFrom>
   struct fn_can_convert_impl<
-    function<Buf1, Cfg1, Sig1>, function<Buf2, Cfg2, Sig2>
+    function<BufTo, CfgTo, SigTo>, function<BufFrom, CfgFrom, SigFrom>
   > {
-    using sig1_ret = typename unwrap_signature<Sig1>::ret;
-    using sig2_ret = typename unwrap_signature<Sig2>::ret;
-    using sig1_args = typename unwrap_signature<Sig1>::args;
-    using sig2_args = typename unwrap_signature<Sig2>::args;
-    static constexpr bool buf_ok = Buf1 >= Buf2;
+    using sig_to_ret = typename unwrap_signature<SigTo>::ret;
+    using sig_from_ret = typename unwrap_signature<SigFrom>::ret;
+    using sig_to_args = typename unwrap_signature<SigTo>::args;
+    using sig_from_args = typename unwrap_signature<SigFrom>::args;
+    static constexpr bool buf_ok = BufTo >= BufFrom;
     static constexpr bool cfg_ok = 
-      Cfg1::isCopyable <= Cfg2::isCopyable // From strict to loose.
-      && Cfg1::isView == Cfg2::isView
-      && Cfg1::isThrowing == Cfg2::isThrowing
-      && Cfg1::assertNoThrow <= Cfg2::assertNoThrow; // From strict to loose.
-    static constexpr bool sig_ret_ok = std::is_same<sig1_ret, sig2_ret>::value;
-    static constexpr bool sig_args_ok = std::is_same<sig1_args, sig2_args>::value;
+      CfgTo::isCopyable <= CfgFrom::isCopyable // Copyable to Move-only is OK.
+      && CfgTo::isView == CfgFrom::isView
+      && CfgTo::isThrowing == CfgFrom::isThrowing
+      && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
+    static constexpr bool sig_ret_ok = std::is_same<sig_to_ret, sig_from_ret>::value;
+    static constexpr bool sig_args_ok = std::is_same<sig_to_args, sig_from_args>::value;
     static constexpr bool value = buf_ok && cfg_ok && sig_ret_ok && sig_args_ok;
   };
 
