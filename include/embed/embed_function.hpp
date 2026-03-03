@@ -162,7 +162,7 @@ namespace ebd { namespace detail {
   F(const, volatile, &&, NOEXCEPT)
 
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
-// See https://en.cppreference.com/w/cpp/language/noexcept_spec
+// See https://en.cppreference.com/w/cpp/language/noexcept_spec .
 // The noexcept-specification is a part of the function type and 
 // may appear as part of any function declarator. (Since C++17)
 
@@ -713,13 +713,15 @@ inline namespace fn_traits {
     bool AssertObjectNoThrow
   >
   struct config_package {
-    // `true` if the callable object is copyable.
+    // Whether the function wrapper is copyable.
     static constexpr bool isCopyable = IsCopyable;
-    // `true` if the callable object is not managed by the wrapper.
+    // Whether the function wrapper is actually a view.
     static constexpr bool isView = IsView;
-    // `true` if the empty-calling will throw std::bad_function_call.
+    // Whether the function wrapper is throwing `std::bad_function_call`
+    // when it is called in an empty state.
     static constexpr bool isThrowing = IsThrowing;
-    // `true` if the callable object is nothrow callable.
+    // Whether the function wrapper asserts that the callable object is not 
+    // throwing exceptions when it is created, copied, moved, and called.
     static constexpr bool assertNoThrow = AssertObjectNoThrow;
   };
 
