@@ -216,6 +216,12 @@ inline namespace cxx_traits {
   template <typename T>
   using decay_t = typename std::decay<T>::type;
 
+  template <typename T>
+  using remove_const_t = typename std::remove_const<T>::type;
+
+  template <typename T>
+  using remove_volatile_t = typename std::remove_volatile<T>::type;
+
   // (undocumented) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
   class invoke_tag_normal {};
   class invoke_tag_memfn_ref_like {};
@@ -496,16 +502,26 @@ inline namespace cxx_traits {
   // to type `To`, without invoking the operator T <REF>.
   template <typename To, typename From>
   struct is_no_reference_convertible {
-    using To_no_cvref = remove_cvref_t<To>;
+    using To_ = remove_reference_t<To>;
     static constexpr bool value = std::is_convertible<From, To>::value
-      && !has_type_conversion_operator<From, To_no_cvref&>::value
-      && !has_type_conversion_operator<From, const To_no_cvref&>::value
-      && !has_type_conversion_operator<From, volatile To_no_cvref&>::value
-      && !has_type_conversion_operator<From, const volatile To_no_cvref&>::value
-      && !has_type_conversion_operator<From, To_no_cvref&&>::value
-      && !has_type_conversion_operator<From, const To_no_cvref&&>::value
-      && !has_type_conversion_operator<From, volatile To_no_cvref&&>::value
-      && !has_type_conversion_operator<From, const volatile To_no_cvref&&>::value;
+      && !has_type_conversion_operator<From, To_&>::value
+      && !has_type_conversion_operator<From, remove_const_t<To_>&>::value
+      && !has_type_conversion_operator<From, remove_volatile_t<To_>&>::value
+      && !has_type_conversion_operator<From, remove_cv_t<To_>&>::value
+      && !has_type_conversion_operator<From, To_&&>::value
+      && !has_type_conversion_operator<From, remove_const_t<To_>&&>::value
+      && !has_type_conversion_operator<From, remove_volatile_t<To_>&&>::value
+      && !has_type_conversion_operator<From, remove_cv_t<To_>&&>::value;
+  };
+
+  template <typename To, typename From>
+  struct is_no_rvalue_ref_convertible {
+    using To_ = remove_reference_t<To>;
+    static constexpr bool value = std::is_convertible<From, To>::value
+      && !has_type_conversion_operator<From, To_&&>::value
+      && !has_type_conversion_operator<From, remove_const_t<To_>&&>::value
+      && !has_type_conversion_operator<From, remove_volatile_t<To_>&&>::value
+      && !has_type_conversion_operator<From, remove_cv_t<To_>&&>::value;
   };
 
   // (undocumented) True if `To` is a reference type, a `From` value 
@@ -521,7 +537,7 @@ inline namespace cxx_traits {
 
     static constexpr bool bound_rref = std::is_rvalue_reference<To>::value
       && !std::is_reference<From_>::value 
-      && is_no_reference_convertible<To, From_>::value;
+      && is_no_rvalue_ref_convertible<To, From_>::value;
 
     static constexpr bool bound_lref = std::is_lvalue_reference<To>::value
       && !std::is_reference<From_>::value 
@@ -536,8 +552,7 @@ inline namespace cxx_traits {
   template <typename To, typename From>
   struct reference_converts_from_temporary
   : public std::integral_constant<bool, 
-#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary) && !defined(__clang__)
-    // Clang 20 still has issues with __reference_converts_from_temporary.
+#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
     __reference_converts_from_temporary(To, From)
 #else
     reference_converts_from_temporary_impl<To, From>::value
