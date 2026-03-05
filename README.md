@@ -1,19 +1,22 @@
-# embed-function
+# Embedded Function
 
-![Version - 2.0.2](https://img.shields.io/badge/Version-2.0.2-yellow?style=flat&logo=github)
-![License - MIT](https://img.shields.io/badge/License-MIT-orange?style=flat)
-![C++ - 11/14/17/20](https://img.shields.io/badge/C++-11/14/17/20-blue?style=flat&logo=c%2B%2B)
+<p align="center">
+  <img src="https://img.shields.io/badge/Version-2.0.3-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.3">
+  <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
+  <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
+</p>
 
-![gcc-C++11/14/17/20/23 - passing](https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat)
-![clang-C++11/14/17/20/23 - passing](https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat)
-![msvc-C++14/17/20/23 - passing](https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat)
-
+<p align="center">
+  <img src="https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="gcc-C++11/14/17/20/23 - passing">
+  <img src="https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="clang-C++11/14/17/20/23 - passing">
+  <img src="https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat" alt="msvc-C++14/17/20/23 - passing">
+</p>
 
 > *Embedded [std::function](http://en.cppreference.com/w/cpp/utility/functional/function) alternative: lightweight, deterministic, heap-free.*
 
 ## Overview
 
-**embed-function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
+**Embedded Function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
 
 While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, embed-function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
 
@@ -87,10 +90,10 @@ auto main() -> int {
 
 | Wrapper Type | Copyable | View (Non-owning) | Throws on Empty Call | Assert No-Throw (Ctor/Dtor) | Buffer Size | Primary Use Case |
 | :----------- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `ebd::fn`    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: 2×`sizeof(void*)`) | Copyable callable wrapper |
-| `ebd::unique_fn`    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: 2×`sizeof(void*)`) | Move-only callable wrapper |
-| `ebd::safe_fn`    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: 2×`sizeof(void*)`) | Exception-safe copyable callable wrapper |
-| `ebd::fn_view`    |  Yes  |   Yes  | No (`std::terminate()`) | No | Fixed (2×`sizeof(void*)`, template param unused) | Lightweight non-owning view of callables |
+| `ebd::fn`    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
+| `ebd::unique_fn`    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
+| `ebd::safe_fn`    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Exception-safe copyable callable wrapper |
+| `ebd::fn_view`    |  Yes  |   Yes  | No (`std::terminate()`) | No | Fixed (`sizeof(void(Class::*)())`, template param unused) | Lightweight non-owning view of callables |
 
 ### Key takeaways
 
@@ -104,7 +107,7 @@ auto main() -> int {
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_ptr` only when the callable object is of the move-only type.)
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type.)
 
 > The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard.
 

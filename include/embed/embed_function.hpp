@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.2
+ * @version     2.0.3
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -66,14 +66,6 @@
 #  define EMBED_ABI_VISIBILITY(x) __attribute__((visibility(#x)))
 # else
 #  define EMBED_ABI_VISIBILITY(x) 
-# endif
-#endif
-
-#ifndef EMBED_CXX17_NOEXCEPT
-# if EMBED_CXX_VERSION >= 201703L
-#  define EMBED_CXX17_NOEXCEPT noexcept
-# else
-#  define EMBED_CXX17_NOEXCEPT
 # endif
 #endif
 
@@ -162,7 +154,7 @@ namespace ebd { namespace detail {
   F(const, volatile, &&, NOEXCEPT)
 
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
-// See https://en.cppreference.com/w/cpp/language/noexcept_spec
+// See https://en.cppreference.com/w/cpp/language/noexcept_spec .
 // The noexcept-specification is a part of the function type and 
 // may appear as part of any function declarator. (Since C++17)
 
@@ -215,6 +207,12 @@ inline namespace cxx_traits {
 
   template <typename T>
   using decay_t = typename std::decay<T>::type;
+
+  template <typename T>
+  using remove_const_t = typename std::remove_const<T>::type;
+
+  template <typename T>
+  using remove_volatile_t = typename std::remove_volatile<T>::type;
 
   // (undocumented) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
   class invoke_tag_normal {};
@@ -496,16 +494,26 @@ inline namespace cxx_traits {
   // to type `To`, without invoking the operator T <REF>.
   template <typename To, typename From>
   struct is_no_reference_convertible {
-    using To_no_cvref = remove_cvref_t<To>;
+    using To_ = remove_reference_t<To>;
     static constexpr bool value = std::is_convertible<From, To>::value
-      && !has_type_conversion_operator<From, To_no_cvref&>::value
-      && !has_type_conversion_operator<From, const To_no_cvref&>::value
-      && !has_type_conversion_operator<From, volatile To_no_cvref&>::value
-      && !has_type_conversion_operator<From, const volatile To_no_cvref&>::value
-      && !has_type_conversion_operator<From, To_no_cvref&&>::value
-      && !has_type_conversion_operator<From, const To_no_cvref&&>::value
-      && !has_type_conversion_operator<From, volatile To_no_cvref&&>::value
-      && !has_type_conversion_operator<From, const volatile To_no_cvref&&>::value;
+      && !has_type_conversion_operator<From, To_&>::value
+      && !has_type_conversion_operator<From, remove_const_t<To_>&>::value
+      && !has_type_conversion_operator<From, remove_volatile_t<To_>&>::value
+      && !has_type_conversion_operator<From, remove_cv_t<To_>&>::value
+      && !has_type_conversion_operator<From, To_&&>::value
+      && !has_type_conversion_operator<From, remove_const_t<To_>&&>::value
+      && !has_type_conversion_operator<From, remove_volatile_t<To_>&&>::value
+      && !has_type_conversion_operator<From, remove_cv_t<To_>&&>::value;
+  };
+
+  template <typename To, typename From>
+  struct is_no_rvalue_ref_convertible {
+    using To_ = remove_reference_t<To>;
+    static constexpr bool value = std::is_convertible<From, To>::value
+      && !has_type_conversion_operator<From, To_&&>::value
+      && !has_type_conversion_operator<From, remove_const_t<To_>&&>::value
+      && !has_type_conversion_operator<From, remove_volatile_t<To_>&&>::value
+      && !has_type_conversion_operator<From, remove_cv_t<To_>&&>::value;
   };
 
   // (undocumented) True if `To` is a reference type, a `From` value 
@@ -521,7 +529,7 @@ inline namespace cxx_traits {
 
     static constexpr bool bound_rref = std::is_rvalue_reference<To>::value
       && !std::is_reference<From_>::value 
-      && is_no_reference_convertible<To, From_>::value;
+      && is_no_rvalue_ref_convertible<To, From_>::value;
 
     static constexpr bool bound_lref = std::is_lvalue_reference<To>::value
       && !std::is_reference<From_>::value 
@@ -536,8 +544,7 @@ inline namespace cxx_traits {
   template <typename To, typename From>
   struct reference_converts_from_temporary
   : public std::integral_constant<bool, 
-#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary) && !defined(__clang__)
-    // Clang 20 still has issues with __reference_converts_from_temporary.
+#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
     __reference_converts_from_temporary(To, From)
 #else
     reference_converts_from_temporary_impl<To, From>::value
@@ -713,13 +720,15 @@ inline namespace fn_traits {
     bool AssertObjectNoThrow
   >
   struct config_package {
-    // `true` if the callable object is copyable.
+    // Whether the function wrapper is copyable.
     static constexpr bool isCopyable = IsCopyable;
-    // `true` if the callable object is not managed by the wrapper.
+    // Whether the function wrapper is actually a view.
     static constexpr bool isView = IsView;
-    // `true` if the empty-calling will throw std::bad_function_call.
+    // Whether the function wrapper is throwing `std::bad_function_call`
+    // when it is called in an empty state.
     static constexpr bool isThrowing = IsThrowing;
-    // `true` if the callable object is nothrow callable.
+    // Whether the function wrapper asserts that the callable object is not 
+    // throwing exceptions when it is created, copied, moved, and called.
     static constexpr bool assertNoThrow = AssertObjectNoThrow;
   };
 
@@ -885,23 +894,23 @@ inline namespace fn_traits {
   template <typename To, typename From>
   struct fn_can_convert_impl : public std::false_type {};
 
-  template <std::size_t Buf1, typename Cfg1, typename Sig1,
-    std::size_t Buf2, typename Cfg2, typename Sig2>
+  template <std::size_t BufTo, typename CfgTo, typename SigTo,
+    std::size_t BufFrom, typename CfgFrom, typename SigFrom>
   struct fn_can_convert_impl<
-    function<Buf1, Cfg1, Sig1>, function<Buf2, Cfg2, Sig2>
+    function<BufTo, CfgTo, SigTo>, function<BufFrom, CfgFrom, SigFrom>
   > {
-    using sig1_ret = typename unwrap_signature<Sig1>::ret;
-    using sig2_ret = typename unwrap_signature<Sig2>::ret;
-    using sig1_args = typename unwrap_signature<Sig1>::args;
-    using sig2_args = typename unwrap_signature<Sig2>::args;
-    static constexpr bool buf_ok = Buf1 >= Buf2;
+    using sig_to_ret = typename unwrap_signature<SigTo>::ret;
+    using sig_from_ret = typename unwrap_signature<SigFrom>::ret;
+    using sig_to_args = typename unwrap_signature<SigTo>::args;
+    using sig_from_args = typename unwrap_signature<SigFrom>::args;
+    static constexpr bool buf_ok = BufTo >= BufFrom;
     static constexpr bool cfg_ok = 
-      Cfg1::isCopyable <= Cfg2::isCopyable // From strict to loose.
-      && Cfg1::isView == Cfg2::isView
-      && Cfg1::isThrowing == Cfg2::isThrowing
-      && Cfg1::assertNoThrow <= Cfg2::assertNoThrow; // From strict to loose.
-    static constexpr bool sig_ret_ok = std::is_same<sig1_ret, sig2_ret>::value;
-    static constexpr bool sig_args_ok = std::is_same<sig1_args, sig2_args>::value;
+      CfgTo::isCopyable <= CfgFrom::isCopyable // Copyable to Move-only is OK.
+      && CfgTo::isView == CfgFrom::isView
+      && CfgTo::isThrowing == CfgFrom::isThrowing
+      && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
+    static constexpr bool sig_ret_ok = std::is_same<sig_to_ret, sig_from_ret>::value;
+    static constexpr bool sig_args_ok = std::is_same<sig_to_args, sig_from_args>::value;
     static constexpr bool value = buf_ok && cfg_ok && sig_ret_ok && sig_args_ok;
   };
 
@@ -926,7 +935,7 @@ inline namespace fn_traits {
   struct is_nothrow_construct_from_functor<
     Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
   : public std::integral_constant<bool,
-    noexcept(::new (0) Class(std::declval<Functor>()))
+    noexcept(::new (static_cast<void*>(0)) Class(std::declval<Functor>()))
   > {};
 
   // Get invoke result with arguments package.
@@ -2006,9 +2015,9 @@ namespace command {
 /**
  * @brief A function object wrapper for copyable and callable objects.
  * 
- * @tparam `Signature` - Function signature. Seems like `Ret(Args...)`.
+ * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
  * 
- * @tparam `BufferSize` - Buffer size. Used for storing the callable object.
+ * @tparam BufferSize - Buffer size. Used for storing the callable object.
  * And the buffer size will be aligned automatically.
  * 
  * @internal `Config` - Configuration package. Used to configure the wrapper.
@@ -2033,9 +2042,9 @@ using fn = detail::function<
 /**
  * @brief A function object wrapper for movable and callable objects.
  * 
- * @tparam `Signature` - Function signature. Seems like `Ret(Args...)`.
+ * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
  * 
- * @tparam `BufferSize` - Buffer size. Used for storing the callable object.
+ * @tparam BufferSize - Buffer size. Used for storing the callable object.
  * And the buffer size will be aligned automatically.
  * 
  * @internal `Config` - Configuration package. Used to configure the wrapper.
@@ -2062,16 +2071,16 @@ using unique_fn = detail::function<
  * 
  * @throws Strong noexcept guarantee. (ASSERT-NO-THROW)
  * 
- * @tparam `Signature` - Function signature. Seems like `Ret(Args...)`.
+ * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
  * 
- * @tparam `BufferSize` - Buffer size. Used for storing the callable object.
+ * @tparam BufferSize - Buffer size. Used for storing the callable object.
  * And the buffer size will be aligned automatically.
  * 
  * @internal `Config` - Configuration package. Used to configure the wrapper.
  *  @arg IsCopyable - Here is `true`, means the callable object must be copyable.
  *  @arg IsView - Here is `false`, which means this is NOT a view.
  *  @arg IsThrowing - Here is `false`, which means the wrapper will not throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `true`, which means the callable object doesn't need
+ *  @arg AssertNoThrow - Here is `true`, which means the callable object must
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
@@ -2089,9 +2098,9 @@ using safe_fn = detail::function<
 /**
  * @brief A function object view for callable objects.
  * 
- * @tparam `Signature` - Function signature. Seems like `Ret(Args...)`.
+ * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
  * 
- * @tparam `Unused` - Unused.
+ * @tparam Unused - Unused.
  * 
  * @internal `Config` - Configuration package. Used to configure the wrapper.
  *  @arg IsCopyable - Here is `true`, but unused because this is a view.
@@ -2100,7 +2109,7 @@ using safe_fn = detail::function<
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
-template <typename Signature, std::size_t = 0 /* Unused */>
+template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view = detail::function<
   detail::default_buffer_size::view_buf, 
   detail::config_package<
@@ -2284,7 +2293,7 @@ template <
     fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = std::is_nothrow_constructible<Class, Lambda&&>::value,
+  bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value,
   // [Require] The functor must be unique callable.
   EMBED_DETAIL_REQUIRES(detail::is_unique_callable<Class>::value),
   // [Require] The signature must be valid.
@@ -2305,7 +2314,7 @@ template <
     fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = std::is_nothrow_constructible<Class, Lambda&&>::value
+  bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value
 >
 requires detail::is_unique_callable<Class>::value
   && detail::unwrap_signature<Signature>::isSignature

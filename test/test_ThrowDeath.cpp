@@ -1,3 +1,5 @@
+#define EMBED_NODISCARD
+
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 #include "test_function.hpp"
@@ -67,3 +69,20 @@ TEST(ThrowDeath, mix_throw_and_death) {
     f3.clear();
     EXPECT_DEATH(f3('D'), "");
 }
+
+#if !defined(_MSC_VER)
+// ThrowDeath[2]
+struct ThrowDeath_must_fail {
+    ThrowDeath_must_fail() = default;
+    ~ThrowDeath_must_fail() noexcept(false) {
+        EBD_THROW(std::exception{});
+    }
+    void operator()() noexcept {}
+};
+void ebd_test_fail() {
+    []{ebd::make_fn(ThrowDeath_must_fail{});}();
+}
+TEST(ThrowDeath, fail_make_fn) {
+    EBD_EXPECT_THROW(ebd_test_fail(), std::exception);
+}
+#endif

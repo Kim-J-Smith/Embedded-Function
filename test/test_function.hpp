@@ -13,11 +13,13 @@
     EXPECT_THROW(statement, expected_exception)
 # define EBD_TRY try
 # define EBD_CATCH(exception) catch(exception)
+# define EBD_THROW(x) throw x
 #else
 # define EBD_EXPECT_THROW(statement, unused) \
     EXPECT_DEATH(statement, "")
 # define EBD_TRY while(0)
 # define EBD_CATCH(exception) while(0)
+# define EBD_THROW(x) std::terminate()
 #endif
 
 inline void ebd_test_free_func_v() {}
@@ -188,3 +190,7 @@ public:
 
     int operator()(double) const volatile && { return OVL_CONST | OVL_VOLATILE | OVL_R_REF; }
 };
+
+inline int (ebd_test_member_fn::* ebd_test_return_ptr_class()) (int, int) {
+    return &ebd_test_member_fn::mem_fn_ii_add;
+} 

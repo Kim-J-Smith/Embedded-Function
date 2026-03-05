@@ -488,3 +488,11 @@ TEST(InitFunction, ReferenceWrapper) {
 
     SUCCEED();
 }
+
+// InitFunction[26]
+TEST(InitFunction, ReturnPointerToClass) {
+    auto f1 = ebd::make_fn(ebd_test_return_ptr_class);
+
+    ASSERT_EQ(f1 == nullptr, false);
+    ASSERT_EQ(f1(), &ebd_test_member_fn::mem_fn_ii_add);
+}
