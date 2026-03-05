@@ -1,19 +1,22 @@
-# embed-function
+# Embedded Function
 
-![Version - 2.0.3](https://img.shields.io/badge/Version-2.0.3-yellow?style=flat&logo=github)
-![License - MIT](https://img.shields.io/badge/License-MIT-orange?style=flat)
-![C++ - 11/14/17/20](https://img.shields.io/badge/C++-11/14/17/20-blue?style=flat&logo=c%2B%2B)
+<p align="center">
+  <img src="https://img.shields.io/badge/Version-2.0.3-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.3">
+  <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
+  <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
+</p>
 
-![gcc-C++11/14/17/20/23 - passing](https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat)
-![clang-C++11/14/17/20/23 - passing](https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat)
-![msvc-C++14/17/20/23 - passing](https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat)
-
+<p align="center">
+  <img src="https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="gcc-C++11/14/17/20/23 - passing">
+  <img src="https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="clang-C++11/14/17/20/23 - passing">
+  <img src="https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat" alt="msvc-C++14/17/20/23 - passing">
+</p>
 
 > *Embedded [std::function](http://en.cppreference.com/w/cpp/utility/functional/function) alternative: lightweight, deterministic, heap-free.*
 
 ## Overview
 
-**embed-function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
+**Embeded Function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
 
 While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, embed-function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
 
