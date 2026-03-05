@@ -2023,9 +2023,9 @@ namespace command {
 /**
  * @brief A function object wrapper for copyable and callable objects.
  * 
- * @tparam `Signature` - Function signature. Seems like `Ret(Args...)`.
+ * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
  * 
- * @tparam `BufferSize` - Buffer size. Used for storing the callable object.
+ * @tparam BufferSize - Buffer size. Used for storing the callable object.
  * And the buffer size will be aligned automatically.
  * 
  * @internal `Config` - Configuration package. Used to configure the wrapper.
@@ -2050,9 +2050,9 @@ using fn = detail::function<
 /**
  * @brief A function object wrapper for movable and callable objects.
  * 
- * @tparam `Signature` - Function signature. Seems like `Ret(Args...)`.
+ * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
  * 
- * @tparam `BufferSize` - Buffer size. Used for storing the callable object.
+ * @tparam BufferSize - Buffer size. Used for storing the callable object.
  * And the buffer size will be aligned automatically.
  * 
  * @internal `Config` - Configuration package. Used to configure the wrapper.
@@ -2079,9 +2079,9 @@ using unique_fn = detail::function<
  * 
  * @throws Strong noexcept guarantee. (ASSERT-NO-THROW)
  * 
- * @tparam `Signature` - Function signature. Seems like `Ret(Args...)`.
+ * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
  * 
- * @tparam `BufferSize` - Buffer size. Used for storing the callable object.
+ * @tparam BufferSize - Buffer size. Used for storing the callable object.
  * And the buffer size will be aligned automatically.
  * 
  * @internal `Config` - Configuration package. Used to configure the wrapper.
@@ -2106,9 +2106,9 @@ using safe_fn = detail::function<
 /**
  * @brief A function object view for callable objects.
  * 
- * @tparam `Signature` - Function signature. Seems like `Ret(Args...)`.
+ * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
  * 
- * @tparam `Unused` - Unused.
+ * @tparam Unused - Unused.
  * 
  * @internal `Config` - Configuration package. Used to configure the wrapper.
  *  @arg IsCopyable - Here is `true`, but unused because this is a view.
@@ -2117,7 +2117,7 @@ using safe_fn = detail::function<
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
-template <typename Signature, std::size_t = 0 /* Unused */>
+template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view = detail::function<
   detail::default_buffer_size::view_buf, 
   detail::config_package<
