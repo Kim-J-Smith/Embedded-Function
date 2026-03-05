@@ -16,7 +16,7 @@
 
 ## Overview
 
-**Embeded Function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
+**Embedded Function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
 
 While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, embed-function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
 
@@ -90,10 +90,10 @@ auto main() -> int {
 
 | Wrapper Type | Copyable | View (Non-owning) | Throws on Empty Call | Assert No-Throw (Ctor/Dtor) | Buffer Size | Primary Use Case |
 | :----------- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `ebd::fn`    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: 2×`sizeof(void*)`) | Copyable callable wrapper |
-| `ebd::unique_fn`    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: 2×`sizeof(void*)`) | Move-only callable wrapper |
-| `ebd::safe_fn`    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: 2×`sizeof(void*)`) | Exception-safe copyable callable wrapper |
-| `ebd::fn_view`    |  Yes  |   Yes  | No (`std::terminate()`) | No | Fixed (2×`sizeof(void*)`, template param unused) | Lightweight non-owning view of callables |
+| `ebd::fn`    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
+| `ebd::unique_fn`    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
+| `ebd::safe_fn`    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Exception-safe copyable callable wrapper |
+| `ebd::fn_view`    |  Yes  |   Yes  | No (`std::terminate()`) | No | Fixed (`sizeof(void(Class::*)())`, template param unused) | Lightweight non-owning view of callables |
 
 ### Key takeaways
 
@@ -107,7 +107,7 @@ auto main() -> int {
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_ptr` only when the callable object is of the move-only type.)
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type.)
 
 > The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard.
 
