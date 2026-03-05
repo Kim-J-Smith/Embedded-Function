@@ -69,14 +69,6 @@
 # endif
 #endif
 
-#ifndef EMBED_CXX17_NOEXCEPT
-# if EMBED_CXX_VERSION >= 201703L
-#  define EMBED_CXX17_NOEXCEPT noexcept
-# else
-#  define EMBED_CXX17_NOEXCEPT
-# endif
-#endif
-
 #ifndef EMBED_CXX14_CONSTEXPR
 # if EMBED_CXX_VERSION >= 201402L
 #  define EMBED_CXX14_CONSTEXPR constexpr
@@ -2088,7 +2080,7 @@ using unique_fn = detail::function<
  *  @arg IsCopyable - Here is `true`, means the callable object must be copyable.
  *  @arg IsView - Here is `false`, which means this is NOT a view.
  *  @arg IsThrowing - Here is `false`, which means the wrapper will not throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `true`, which means the callable object doesn't need
+ *  @arg AssertNoThrow - Here is `true`, which means the callable object must
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
