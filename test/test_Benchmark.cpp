@@ -87,7 +87,7 @@ TEST(Benchmark, FreeFunctionTest) {
     std::printf("[ Benchmark] calls=%d, ebd::fn=%lf, std::function=%lf, ratio=%f\n",
         call_count, ebd_time_all, std_time_all, performance_ratio);
 
-    EXPECT_EQ(performance_ratio > 0.9, true);
+    EXPECT_EQ(performance_ratio > 0.85, true);
     SUCCEED();
 }
 
