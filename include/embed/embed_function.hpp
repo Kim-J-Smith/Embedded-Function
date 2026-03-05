@@ -2301,7 +2301,7 @@ template <
     fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = std::is_nothrow_constructible<Class, Lambda&&>::value,
+  bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value,
   // [Require] The functor must be unique callable.
   EMBED_DETAIL_REQUIRES(detail::is_unique_callable<Class>::value),
   // [Require] The signature must be valid.
@@ -2322,7 +2322,7 @@ template <
     fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = std::is_nothrow_constructible<Class, Lambda&&>::value
+  bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value
 >
 requires detail::is_unique_callable<Class>::value
   && detail::unwrap_signature<Signature>::isSignature
