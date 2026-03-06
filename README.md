@@ -135,6 +135,37 @@ auto f = ebd::make_fn[<Signature>](Callable_Object);
 auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 ```
 
+## Back to function pointer
+
+### Brief
+
+In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented a `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` to a C-style free function pointer.
+
+If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr.
+
+### Example
+
+```cpp
+void free_function() {}
+struct Functor { void operator()() {} };
+
+ebd::fn<void()> fn_ = &free_function;
+void(*free_function_pointer)() = *fn_;
+ASSERT_EQ(free_function_pointer, &free_function);
+
+fn_ = +[]() { /* ... */ }; // lambda -> function pointer
+free_function_pointer = *fn_;
+ASSERT_NE(free_function_pointer, nullptr); // NOT equal nullptr
+
+fn_ = []() { /* ... */ };
+free_function_pointer = *fn_;
+ASSERT_EQ(free_function_pointer, nullptr);
+
+fn_ = Functor{};
+free_function_pointer = *fn_;
+ASSERT_EQ(free_function_pointer, nullptr);
+```
+
 ## Compatibility
 
 Every compiler with modern C++11 support should work.
