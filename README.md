@@ -18,7 +18,7 @@
 
 **Embedded Function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
 
-While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, embed-function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
+While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, Embedded Function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
 
 A function wrapper is declared as following:
 
@@ -137,7 +137,7 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 
 ## 🔗 Back to function pointer
 
-### Brief
+### Brief introduction
 
 In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented a `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` to a C-style free function pointer.
 
@@ -169,7 +169,7 @@ ASSERT_EQ(free_function_pointer, nullptr);
 ## ✅ Compatibility
 
 Every compiler with modern C++11 support should work.
-*embed-function* only depends on the standard library.
+*Embedded Function* only depends on the standard library.
 
 - GCC 5.1+
 - Clang 3.7+
