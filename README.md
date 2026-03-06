@@ -14,7 +14,7 @@
 
 > *Embedded [std::function](http://en.cppreference.com/w/cpp/utility/functional/function) alternative: lightweight, deterministic, heap-free.*
 
-## Overview
+## 📌 Overview
 
 **Embedded Function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
 
@@ -34,7 +34,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 
 - Note: This `Qualifier` is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself.
 
-## Quick start
+## ⚡ Quick start
 - Clone the repository or download the `header_only.zip` in the "Release".
 
 - Add include path `<repo_root>/include`.
@@ -67,7 +67,7 @@ auto main() -> int {
 }
 ```
 
-## Design goals driving the design
+## 🧠 Design goals driving the design
 
   - Should behave close to a normal function pointer. Small, efficient, no heap allocation.
 
@@ -84,7 +84,7 @@ auto main() -> int {
 
   - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_view` were designed for developers to use.
 
-## Core function wrappers
+## ✨ Core function wrappers
 
 ### Summary table
 
@@ -103,7 +103,7 @@ auto main() -> int {
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
 
-## Automatic deduction
+## 🧩 Automatic deduction
 
 ### Brief introduction
 
@@ -135,7 +135,7 @@ auto f = ebd::make_fn[<Signature>](Callable_Object);
 auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 ```
 
-## Back to function pointer
+## 🔗 Back to function pointer
 
 ### Brief
 
@@ -166,7 +166,7 @@ free_function_pointer = *fn_;
 ASSERT_EQ(free_function_pointer, nullptr);
 ```
 
-## Compatibility
+## ✅ Compatibility
 
 Every compiler with modern C++11 support should work.
 *embed-function* only depends on the standard library.
@@ -175,11 +175,11 @@ Every compiler with modern C++11 support should work.
 - Clang 3.7+
 - MSVC v19.34+ (VS17.4+)
 
-## Test
+## 🧪 Test
 
 Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
 
-## Similar implementations
+## 📚 Similar implementations
 
 - [std::function](http://en.cppreference.com/w/cpp/utility/functional/function)
 
