@@ -1710,6 +1710,49 @@ namespace command {
     clone_impl& operator=(const clone_impl&)  = delete;
   };
 
+  // Implement the unary plus operator. (Get the function pointer)
+  template <typename Signature, typename Self, bool IsView,
+    typename ArgsPackage = typename unwrap_signature<Signature>::args>
+  struct operator_plus_impl;
+
+  template <typename Signature, typename Self, typename... Args>
+  struct operator_plus_impl<Signature, Self, /*IsView=*/ false, args_package<Args...>> {
+    using function_ptr_t    = typename unwrap_signature<Signature>::pure_sig*;
+
+    // If the value stored in m_erasure is a pointer to a free function, 
+    // return that pointer. Otherwise, return `nullptr`. (IsView == false)
+    function_ptr_t operator+() const noexcept {
+      using invoker_t         = typename Self::command_t::invoker_impl_t;
+      using inplace_invoker_t = typename invoker_t::inplace;
+      
+      auto& self_q = static_cast<const Self&>(*this);
+      auto& self = const_cast<Self&>(self_q);
+      if (self.m_command.m_invoker == &inplace_invoker_t::template invoke<function_ptr_t>) {
+        return self.m_erasure.template access<function_ptr_t>();
+      }
+      return nullptr;
+    }
+  };
+
+  template <typename Signature, typename Self, typename... Args>
+  struct operator_plus_impl<Signature, Self, /*IsView=*/ true, args_package<Args...>> {
+    using function_ptr_t    = typename unwrap_signature<Signature>::pure_sig*;
+
+    // If the value stored in m_erasure is a pointer to a free function, 
+    // return that pointer. Otherwise, return `nullptr`. (IsView == true)
+    function_ptr_t operator+() const noexcept {
+      using invoker_t       = typename Self::command_t::invoker_impl_t;
+      using view_invoker_t  = typename invoker_t::view;
+
+      auto& self_q = static_cast<const Self&>(*this);
+      auto& self = const_cast<Self&>(self_q);
+      if (self.m_command.m_invoker == &view_invoker_t::template invoke<function_ptr_t>) {
+        return self.m_erasure.template access<function_ptr_t>();
+      }
+      return nullptr;
+    }
+  };
+
   template <std::size_t BufferSize, typename Config, typename Signature>
   class function
     : public operator_call_impl<
@@ -1718,6 +1761,10 @@ namespace command {
       public clone_impl<
         /* IsCopyable = */ Config::isCopyable || Config::isView,
         Config, /* Self = */ function<BufferSize, Config, Signature>
+      >,
+      public operator_plus_impl<
+        Signature, /* Self = */ function<BufferSize, Config, Signature>,
+        /* IsView = */ Config::isView
       >
   {
   private:
@@ -1730,6 +1777,9 @@ namespace command {
 
     template <bool, typename, typename>
     friend struct clone_impl;
+
+    template <typename, typename, bool, typename>
+    friend struct operator_plus_impl;
 
     /// @brief ASSERT the given template arguments are valid.
 
