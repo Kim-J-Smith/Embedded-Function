@@ -1717,8 +1717,10 @@ namespace command {
 
   template <typename Signature, typename Self, typename... Args>
   struct operator_dereference_impl<Signature, Self, /*IsView=*/ false, args_package<Args...>> {
+  private:
     using function_ptr_t    = typename unwrap_signature<Signature>::pure_sig*;
 
+  public:
     // If the value stored in m_erasure is a pointer to a free function, 
     // return that pointer. Otherwise, return `nullptr`. (IsView == false)
     function_ptr_t operator*() const noexcept {
@@ -1741,8 +1743,10 @@ namespace command {
 
   template <typename Signature, typename Self, typename... Args>
   struct operator_dereference_impl<Signature, Self, /*IsView=*/ true, args_package<Args...>> {
+  private:
     using function_ptr_t    = typename unwrap_signature<Signature>::pure_sig*;
 
+  public:
     // If the value stored in m_erasure is a pointer to a free function, 
     // return that pointer. Otherwise, return `nullptr`. (IsView == true)
     function_ptr_t operator*() const noexcept {
