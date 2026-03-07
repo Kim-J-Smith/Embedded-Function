@@ -1758,6 +1758,11 @@ namespace command {
     }
   };
 
+  /// @brief A lightweight and heap-free wrapper for callable objects.
+  /// @tparam BufferSize - Specifies the size reserved to store the object.
+  /// @tparam Config - Specifies the configuration attributes of the wrapper.
+  ///           See @def config_package for details.
+  /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
   class function
     : public operator_call_impl<
