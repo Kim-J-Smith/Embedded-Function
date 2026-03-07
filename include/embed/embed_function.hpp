@@ -2395,7 +2395,7 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 /// @brief make_fn[8]: Make function for pointer to member function. 
 /// (auto deduce signature and buffer size)
 /// @return `fn<Ret(Class, Args...) const, sizeof(Ret(Class::*)(Args...))>`
-EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE);
+EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 #undef EMBED_DETAIL_MAKE_FN_DEFINE
 
