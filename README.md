@@ -113,7 +113,7 @@ In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided
 
 ### Usage
 
-- `[`Optional`]` means optional.
+- `[]` means optional.
 - `Signature`: The signature of the callable object. (such as `void(int)`)
 - `BufferSize`: The buffer size of the callable object. (such as `2*sizeof(void*)`)
 
@@ -139,7 +139,7 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 
 ### Brief introduction
 
-In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented a `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` to a C-style free function pointer.
+In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented an `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` to a C-style free function pointer.
 
 If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr.
 
