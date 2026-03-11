@@ -24,7 +24,7 @@ TEST(TestSwap, fn_view_swap) {
     ASSERT_EQ(f2(3, 4), 3 + 4);
 }
 
-TEST(TestSwap, fn_view_swap) {
+TEST(TestSwap, safe_fn_swap) {
     auto f1 = ebd::safe_fn<int(int, int)>(ebd_test_free_func_iii_add);
     decltype(f1) f2;
 
