@@ -32,7 +32,9 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 // Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
 
-- Note: This `Qualifier` is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself.
+> The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
+
+> The *`Buffer size`* can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
 
 ## ⚡ Quick start
 - Clone the repository or download the `header_only.zip` in the "Release".
