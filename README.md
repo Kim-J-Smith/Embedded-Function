@@ -105,6 +105,16 @@ auto main() -> int {
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
 
+## 🚀 Performance optimization
+
+### Branch elimination
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` completely eliminate runtime checks for empty function states during invocation, significantly boosting performance of frequent function calls.
+
+### Smart forwarding
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
+
 ## 🧩 Automatic deduction
 
 ### Brief introduction
