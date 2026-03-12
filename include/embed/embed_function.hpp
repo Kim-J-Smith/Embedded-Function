@@ -70,7 +70,7 @@
 #endif
 
 #ifndef EMBED_CXX14_CONSTEXPR
-# if EMBED_CXX_VERSION >= 201402L
+# if ( EMBED_CXX_VERSION >= 201402L ) && ( __cpp_constexpr >= 201304L )
 #  define EMBED_CXX14_CONSTEXPR constexpr
 # else
 #  define EMBED_CXX14_CONSTEXPR
@@ -1548,7 +1548,7 @@ namespace command {
     }
 
     // Empty init.
-    void set_empty() noexcept {
+    EMBED_CXX14_CONSTEXPR void set_empty() noexcept {
       m_invoker = &invoker_impl_t::empty::invoke;
       m_manager = &manager_impl_t::empty::manage;
     }
@@ -1612,7 +1612,7 @@ namespace command {
     }
 
     // Empty init.
-    void set_empty() noexcept {
+    EMBED_CXX14_CONSTEXPR void set_empty() noexcept {
       m_invoker = &invoker_impl_t::empty::invoke;
     }
 
