@@ -708,6 +708,22 @@ inline namespace fn_traits {
   template <typename... Args>
   struct always_false { static constexpr bool value = false; };
 
+  // Is trivial for the purposes of calls.
+  // See https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters .
+  template <typename T>
+  struct is_call_trivial : public std::integral_constant<
+    bool, std::is_trivially_destructible<T>::value
+      && std::is_trivially_copy_constructible<T>::value
+      && std::is_trivially_move_constructible<T>::value
+  > {};
+
+  // std::is_trivial is deprecated in C++26. But we need it.
+  template <typename T>
+  struct is_traditional_trivial : public std::integral_constant<
+    bool, std::is_trivially_default_constructible<T>::value
+      && is_call_trivial<T>::value
+  > {};
+
   // Check self.
   template <typename A, typename B>
   using is_self = std::is_same<remove_cvref_t<A>, remove_cvref_t<B>>;
@@ -871,9 +887,7 @@ inline namespace fn_traits {
   struct is_stored_origin : public std::integral_constant<
     bool, IsStoredOrigin
   >::type {
-    static constexpr bool isTrivial = 
-      std::is_trivially_destructible<DecT>::value
-      && std::is_trivially_copyable<DecT>::value;
+    static constexpr bool isTrivial = is_traditional_trivial<DecT>::value;
     static_assert(!(IsView && IsStoredOrigin && !isTrivial),
       "Internal error: Stored origin type in view mode must be trivially"
       " copyable/destructible. Here Functor is stored originally,"
@@ -1266,7 +1280,9 @@ inline namespace fn_traits {
   // Pass-by-value is faster for scalar types because they can
   // be passed by the register rather than the stack.
   template <typename T>
-  using smart_forward_t = conditional_t<std::is_scalar<T>::value, T, T&&>;
+  using smart_forward_t = conditional_t<std::is_scalar<T>::value
+    || (sizeof(T) <= sizeof(void*) && is_call_trivial<T>::value), 
+    T, T&&>;
 
 } // end namespace fn_traits
 
@@ -1806,12 +1822,10 @@ namespace command {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
-    static_assert(std::is_trivially_default_constructible<erasure_t>::value 
-      && std::is_trivially_copyable<erasure_t>::value,
+    static_assert(is_traditional_trivial<erasure_t>::value,
       "Internal error: erasure_t should be trivial.");
 
-    static_assert(std::is_trivially_default_constructible<command_t>::value 
-      && std::is_trivially_copyable<command_t>::value,
+    static_assert(is_traditional_trivial<command_t>::value,
       "Internal error: command_t should be trivial.");
 
     // The `m_erasure` contains the type-erased object.
