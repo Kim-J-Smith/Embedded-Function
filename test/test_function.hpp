@@ -111,10 +111,17 @@ public:
 class ebd_test_operator_unambiguous {
 public:
     int m_member_var = 0;
+#if ( __cpp_explicit_this_parameter >= 202110L ) || ( EMBED_CXX_VERSION >= 202302L )
+    int operator()(this ebd_test_operator_unambiguous& self, int change) {
+        self.m_member_var += change;
+        return self.m_member_var;
+    }
+#else
     int operator()(int change) {
         m_member_var += change;
         return m_member_var; 
     }
+#endif
 };
 
 class ebd_test_operator_ambiguous { 

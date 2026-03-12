@@ -7,6 +7,10 @@
 // This is not a bug of libstdc++. It is actually related to the 
 // instantiation sequence of the template function.
 // GCC 11.3 ~ 15.2 has this bug.
+
+// https://gcc.gnu.org/cgit/gcc/commit/?id=9cb5c879e722bb63d5ff5621cd77f402cb94a316
+// https://gcc.gnu.org/cgit/gcc/commit/?id=909d18c29145edef4fdd0e1aeb07dfce11c1c9f9
+// At least part of the bug has been fixed in GCC 16.
 #if defined(EBD_TEST_TRY_BUG__GCC_106067)
 template <void(*T)(ebd::fn<void()>)>
 void caller() { T(ebd_test_free_func_v); }

@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.3
+ * @version     2.0.4
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -70,7 +70,7 @@
 #endif
 
 #ifndef EMBED_CXX14_CONSTEXPR
-# if EMBED_CXX_VERSION >= 201402L
+# if ( EMBED_CXX_VERSION >= 201402L ) && ( __cpp_constexpr >= 201304L )
 #  define EMBED_CXX14_CONSTEXPR constexpr
 # else
 #  define EMBED_CXX14_CONSTEXPR
@@ -974,7 +974,7 @@ inline namespace fn_traits {
       !is_stored_origin<DecFunctor, Config::isView>::value || is_ok;
   };
 
-  // Get aligned size.
+  // Get aligned size. Rounds up to the nearest word.
   template <std::size_t Size>
   struct get_aligned_size {
     static constexpr std::size_t min_aligned = sizeof(void*);
@@ -990,7 +990,7 @@ inline namespace fn_traits {
     // The buffer size for ebd::fn_view. Both pointer and
     // member pointer should be able to be stored into the buffer.
     static constexpr std::size_t view_buf = sizeof(void (UndefinedClass::*) ());
-#if defined(EMBED_FN_CONFIG_USE_BIG_BUFFER)
+#if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
     // The CommandTable size plus the buffer size is about 8 * sizeof(void).
     // TODO: The size of this buffer zone needs further examination.
     static constexpr std::size_t value = 6 * sizeof(void*);
@@ -1001,10 +1001,14 @@ inline namespace fn_traits {
     static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
   };
 
-  // Check the throwing is ok.
+  // Check whether throwing operations are acceptable.
   template <typename Functor, typename Object, typename Config,
     typename DecFunctor = decay_t<Functor>>
   struct assert_throwing_is_ok {
+    // The `is_ok` means the `DecFunctor` is nothrow-destructible and 
+    // nothrow-constructible from `Object`. If it is copy-constructible, 
+    // it should be nothrow-copy-constructible. And if it is move
+    // -constructible, it should be nothrow-move-constructible.
     static constexpr bool is_ok = std::is_nothrow_destructible<DecFunctor>::value
       && (std::is_nothrow_copy_constructible<DecFunctor>::value || 
         !std::is_copy_constructible<DecFunctor>::value)
@@ -1012,6 +1016,10 @@ inline namespace fn_traits {
         !std::is_move_constructible<DecFunctor>::value)
       && std::is_nothrow_constructible<DecFunctor, Object>::value;
 
+    // If `Config::isView` is true, then all restrictions are ignored.
+    // Otherwise, if the `Config::assertNoThrow` is true as well
+    // as the `is_ok` is false, then the `value` will be false to
+    // trigger the static_assert.
     static constexpr bool value = 
       Config::isView || !(Config::assertNoThrow && !is_ok);
   };
@@ -1548,7 +1556,7 @@ namespace command {
     }
 
     // Empty init.
-    void set_empty() noexcept {
+    EMBED_CXX14_CONSTEXPR void set_empty() noexcept {
       m_invoker = &invoker_impl_t::empty::invoke;
       m_manager = &manager_impl_t::empty::manage;
     }
@@ -1612,7 +1620,7 @@ namespace command {
     }
 
     // Empty init.
-    void set_empty() noexcept {
+    EMBED_CXX14_CONSTEXPR void set_empty() noexcept {
       m_invoker = &invoker_impl_t::empty::invoke;
     }
 
@@ -1710,6 +1718,38 @@ namespace command {
     clone_impl& operator=(const clone_impl&)  = delete;
   };
 
+  // Implement the 'operator*' for function.
+  template <typename Signature, typename Self, bool IsView,
+    typename ArgsPackage = typename unwrap_signature<Signature>::args>
+  struct operator_dereference_impl;
+
+  template <typename Signature, typename Self, bool IsView, typename... Args>
+  struct operator_dereference_impl<Signature, Self, IsView, args_package<Args...>> {
+  private:
+    using function_ptr_t = typename unwrap_signature<Signature>::pure_sig*;
+
+  public:
+    // If the value stored in m_erasure is a pointer to a free function, 
+    // return that pointer. Otherwise, return `nullptr`.
+    function_ptr_t operator*() const noexcept {
+      using invoker_impl_t = typename Self::command_t::invoker_impl_t;
+      using invoker_t = conditional_t<IsView, 
+        typename invoker_impl_t::view, typename invoker_impl_t::inplace>;
+
+      auto& self_q = static_cast<const Self&>(*this);
+      auto& self = const_cast<Self&>(self_q);
+      if (self.m_command.m_invoker == &invoker_t::template invoke<function_ptr_t>) {
+        return self.m_erasure.template access<function_ptr_t>();
+      }
+      return nullptr;
+    }
+  };
+
+  /// @brief A lightweight and heap-free wrapper for callable objects.
+  /// @tparam BufferSize - Specifies the size reserved to store the object.
+  /// @tparam Config - Specifies the configuration attributes of the wrapper.
+  ///           See @def config_package for details.
+  /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
   class function
     : public operator_call_impl<
@@ -1718,6 +1758,10 @@ namespace command {
       public clone_impl<
         /* IsCopyable = */ Config::isCopyable || Config::isView,
         Config, /* Self = */ function<BufferSize, Config, Signature>
+      >,
+      public operator_dereference_impl<
+        Signature, /* Self = */ function<BufferSize, Config, Signature>,
+        /* IsView = */ Config::isView
       >
   {
   private:
@@ -1730,6 +1774,9 @@ namespace command {
 
     template <bool, typename, typename>
     friend struct clone_impl;
+
+    template <typename, typename, bool, typename>
+    friend struct operator_dereference_impl;
 
     /// @brief ASSERT the given template arguments are valid.
 
@@ -1745,8 +1792,8 @@ namespace command {
 
     /// @tparam Signature
     static_assert(unwrap_signature<Signature>::isSignature, 
-      "The third argument must be valid function signature."
-      " The signature must be like 'Ret(Args...) QUALIFIER'.");
+      "The 'Signature' argument of ebd::function must be a function type,"
+      " such as void(), void(int) const or int(char*, float).");
 
     /// Check the "noexcept" is same.
     static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
@@ -2340,7 +2387,7 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 /// @brief make_fn[8]: Make function for pointer to member function. 
 /// (auto deduce signature and buffer size)
 /// @return `fn<Ret(Class, Args...) const, sizeof(Ret(Class::*)(Args...))>`
-EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE);
+EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 #undef EMBED_DETAIL_MAKE_FN_DEFINE
 
