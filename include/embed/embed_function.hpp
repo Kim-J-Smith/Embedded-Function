@@ -1715,47 +1715,22 @@ namespace command {
     typename ArgsPackage = typename unwrap_signature<Signature>::args>
   struct operator_dereference_impl;
 
-  template <typename Signature, typename Self, typename... Args>
-  struct operator_dereference_impl<Signature, Self, /*IsView=*/ false, args_package<Args...>> {
+  template <typename Signature, typename Self, bool IsView, typename... Args>
+  struct operator_dereference_impl<Signature, Self, IsView, args_package<Args...>> {
   private:
-    using function_ptr_t    = typename unwrap_signature<Signature>::pure_sig*;
+    using function_ptr_t = typename unwrap_signature<Signature>::pure_sig*;
 
   public:
     // If the value stored in m_erasure is a pointer to a free function, 
-    // return that pointer. Otherwise, return `nullptr`. (IsView == false)
+    // return that pointer. Otherwise, return `nullptr`.
     function_ptr_t operator*() const noexcept {
-      using invoker_t         = typename Self::command_t::invoker_impl_t;
-      using inplace_invoker_t = typename invoker_t::inplace;
-      using manager_t         = typename Self::command_t::manager_impl_t;
-      using inplace_manager_t = typename manager_t::inplace;
-      
-      auto& self_q = static_cast<const Self&>(*this);
-      auto& self = const_cast<Self&>(self_q);
-      if (
-        self.m_command.m_invoker == &inplace_invoker_t::template invoke<function_ptr_t>
-        && self.m_command.m_manager == &inplace_manager_t::template manage<function_ptr_t, true>
-      ) {
-        return self.m_erasure.template access<function_ptr_t>();
-      }
-      return nullptr;
-    }
-  };
-
-  template <typename Signature, typename Self, typename... Args>
-  struct operator_dereference_impl<Signature, Self, /*IsView=*/ true, args_package<Args...>> {
-  private:
-    using function_ptr_t    = typename unwrap_signature<Signature>::pure_sig*;
-
-  public:
-    // If the value stored in m_erasure is a pointer to a free function, 
-    // return that pointer. Otherwise, return `nullptr`. (IsView == true)
-    function_ptr_t operator*() const noexcept {
-      using invoker_t       = typename Self::command_t::invoker_impl_t;
-      using view_invoker_t  = typename invoker_t::view;
+      using invoker_impl_t = typename Self::command_t::invoker_impl_t;
+      using invoker_t = conditional_t<IsView, 
+        typename invoker_impl_t::view, typename invoker_impl_t::inplace>;
 
       auto& self_q = static_cast<const Self&>(*this);
       auto& self = const_cast<Self&>(self_q);
-      if (self.m_command.m_invoker == &view_invoker_t::template invoke<function_ptr_t>) {
+      if (self.m_command.m_invoker == &invoker_t::template invoke<function_ptr_t>) {
         return self.m_erasure.template access<function_ptr_t>();
       }
       return nullptr;
