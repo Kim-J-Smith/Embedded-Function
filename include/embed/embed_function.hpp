@@ -1718,7 +1718,7 @@ namespace command {
     clone_impl& operator=(const clone_impl&)  = delete;
   };
 
-  // Implement the unary dereference operator. (Get the function pointer)
+  // Implement the 'operator*' for function.
   template <typename Signature, typename Self, bool IsView,
     typename ArgsPackage = typename unwrap_signature<Signature>::args>
   struct operator_dereference_impl;
