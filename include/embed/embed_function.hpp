@@ -990,7 +990,7 @@ inline namespace fn_traits {
     // The buffer size for ebd::fn_view. Both pointer and
     // member pointer should be able to be stored into the buffer.
     static constexpr std::size_t view_buf = sizeof(void (UndefinedClass::*) ());
-#if defined(EMBED_FN_CONFIG_USE_BIG_BUFFER)
+#if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
     // The CommandTable size plus the buffer size is about 8 * sizeof(void).
     // TODO: The size of this buffer zone needs further examination.
     static constexpr std::size_t value = 6 * sizeof(void*);
@@ -1001,10 +1001,14 @@ inline namespace fn_traits {
     static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
   };
 
-  // Check the throwing is ok.
+  // Check whether throwing operations are acceptable.
   template <typename Functor, typename Object, typename Config,
     typename DecFunctor = decay_t<Functor>>
   struct assert_throwing_is_ok {
+    // The `is_ok` means the `DecFunctor` is nothrow-destructible and 
+    // nothrow-constructible from `Object`. If it is copy-constructible, 
+    // it should be nothrow-copy-constructible. And if it is move
+    // -constructible, it should be nothrow-move-constructible.
     static constexpr bool is_ok = std::is_nothrow_destructible<DecFunctor>::value
       && (std::is_nothrow_copy_constructible<DecFunctor>::value || 
         !std::is_copy_constructible<DecFunctor>::value)
@@ -1012,6 +1016,10 @@ inline namespace fn_traits {
         !std::is_move_constructible<DecFunctor>::value)
       && std::is_nothrow_constructible<DecFunctor, Object>::value;
 
+    // If `Config::isView` is true, then all restrictions are ignored.
+    // Otherwise, if the `Config::assertNoThrow` is true as well
+    // as the `is_ok` is false, then the `value` will be false to
+    // trigger the static_assert.
     static constexpr bool value = 
       Config::isView || !(Config::assertNoThrow && !is_ok);
   };
