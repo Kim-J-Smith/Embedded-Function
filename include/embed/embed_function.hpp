@@ -974,7 +974,7 @@ inline namespace fn_traits {
       !is_stored_origin<DecFunctor, Config::isView>::value || is_ok;
   };
 
-  // Get aligned size.
+  // Get aligned size. Rounds up to the nearest word.
   template <std::size_t Size>
   struct get_aligned_size {
     static constexpr std::size_t min_aligned = sizeof(void*);
@@ -1809,8 +1809,8 @@ namespace command {
 
     /// @tparam Signature
     static_assert(unwrap_signature<Signature>::isSignature, 
-      "The third argument must be valid function signature."
-      " The signature must be like 'Ret(Args...) QUALIFIER'.");
+      "The 'Signature' argument of ebd::function must be a function type,"
+      " such as void(), void(int) const or int(char*, float).");
 
     /// Check the "noexcept" is same.
     static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
