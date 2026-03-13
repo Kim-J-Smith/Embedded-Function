@@ -183,8 +183,9 @@ namespace ebd { namespace detail {
 
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES(enable_if_true) \
-  ::ebd::detail::enable_if_t<(enable_if_true), int> = 0
+#define EMBED_DETAIL_REQUIRES_IMPL(require_condition) \
+  ::ebd::detail::enable_if_t<(require_condition), int> = 0
+#define EMBED_DETAIL_REQUIRES(...)  EMBED_DETAIL_REQUIRES_IMPL((__VA_ARGS__))
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -264,14 +265,14 @@ inline namespace cxx_traits {
   { return static_cast<T&&>(obj); }
 
   template <typename T, typename Under = unwrap_once_t<T>,
-    EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
+    EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
   > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
   unwrap_forward(remove_reference_t<T>&& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
   }
 
   template <typename T, typename Under = unwrap_once_t<T>,
-    EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
+    EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
   > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
   unwrap_forward(remove_reference_t<T>& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
@@ -1897,9 +1898,9 @@ namespace command {
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      typename Enable = enable_if_t<fn_can_convert<
+      EMBED_DETAIL_REQUIRES(fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable>
+      >::value && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable)
     >
     function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
@@ -1918,9 +1919,9 @@ namespace command {
     // Use `placement new` to create new functor during construction. (Move)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      typename Enable = enable_if_t<fn_can_convert<
+      EMBED_DETAIL_REQUIRES(fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value>
+      >::value)
     >
     function(function<OtherSize, OtherCfg, OtherSig>&& other)
     noexcept((Config::assertNoThrow || Config::isView)
@@ -1935,9 +1936,9 @@ namespace command {
     /// @param functor - A callable object with parameters of type `Args...`
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
     template <typename Functor, 
-      typename Enable1 = enable_if_t<!fn_can_convert<function, Functor>::value>,
-      typename Enable2 = enable_if_t<!is_self<Functor, function>::value>>
-    function(Functor&& functor)
+      EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
+      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value)
+    > function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
       static_assert(is_callable_functor<Functor, Signature>::value,
@@ -2033,9 +2034,9 @@ namespace command {
 
     // Assign a callable object to the object.
     template <typename Functor, 
-      typename Enable1 = enable_if_t<!fn_can_convert<function, Functor>::value>,
-      typename Enable2 = enable_if_t<!is_self<Functor, function>::value>>
-    function& operator=(Functor&& fn)
+      EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
+      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value)
+    > function& operator=(Functor&& fn)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
       function(std::forward<Functor>(fn)).swap(*this);
       return *this;
@@ -2044,9 +2045,9 @@ namespace command {
     // Assign another `function` object to this object.
     // Enable if the `function` object can be converted to the current object.
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      typename Enable = enable_if_t<fn_can_convert<
+      EMBED_DETAIL_REQUIRES(fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value>
+      >::value)
     >
     function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
@@ -2475,6 +2476,7 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
 #undef EMBED_DETAIL_REQUIRES
+#undef EMBED_DETAIL_REQUIRES_IMPL
 
 #if defined(_MSC_VER)
 # pragma warning(pop)
