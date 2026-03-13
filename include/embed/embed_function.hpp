@@ -996,23 +996,23 @@ inline namespace fn_traits {
     static constexpr std::size_t value = Size == 0 ? min_aligned : aligned_size;
   };
 
-  // Undefined class.
-  class UndefinedClass;
+  // Unused empty class.
+  class UnusedEmptyClass {};
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
     // The buffer size for ebd::fn_view. Both pointer and
     // member pointer should be able to be stored into the buffer.
-    static constexpr std::size_t view_buf = sizeof(void (UndefinedClass::*) ());
+    static constexpr std::size_t view_buf = sizeof(void (UnusedEmptyClass::*) ());
 #if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
     // The CommandTable size plus the buffer size is about 8 * sizeof(void).
     // TODO: The size of this buffer zone needs further examination.
     static constexpr std::size_t value = 6 * sizeof(void*);
 #else
-    static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
+    static constexpr std::size_t value = sizeof(void (UnusedEmptyClass::*) ());
 #endif
 
-    static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
+    static constexpr std::size_t align_value = alignof(void (UnusedEmptyClass::*) ());
   };
 
   // Check whether throwing operations are acceptable.
