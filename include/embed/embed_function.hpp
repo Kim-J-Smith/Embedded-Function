@@ -1847,16 +1847,24 @@ namespace command {
     // The `m_command` is responsible for managing and invoking the `m_erasure`.
     command_t m_command;
 
-  public:
-
     // The buffer size.
     static constexpr std::size_t buffer_size = BufferSize;
+
+    // `true` if self is copyable.
+    static constexpr bool internal_is_copyable = Config::isCopyable || Config::isView;
+
+  public:
 
     // The return type.
     using result_type = typename unwrap_signature<Signature>::ret;
 
-    // `true` if self is copyable.
-    static constexpr bool is_copyable = Config::isCopyable || Config::isView;
+    /// @brief Get the buffer size.
+    EMBED_INLINE static constexpr std::size_t
+    get_buffer_size() noexcept { return buffer_size; }
+
+    /// @brief Return `true` if the function is capyable.
+    EMBED_INLINE static bool
+    is_copyable() noexcept { return internal_is_copyable; }
 
     ~function() noexcept(Config::assertNoThrow || Config::isView) {
       m_command.destroy(&m_erasure);
@@ -1873,7 +1881,7 @@ namespace command {
     }
 
     // Implemented in base class `clone_impl`.
-    // `=delete` if `is_copyable == false`.
+    // `=delete` if `internal_is_copyable == false`.
     function(const function& other) = default;
 
     // Use `placement new` to create new functor during construction,
@@ -1891,7 +1899,7 @@ namespace command {
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
       typename Enable = enable_if_t<fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value && function<OtherSize, OtherCfg, OtherSig>::is_copyable>
+      >::value && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable>
     >
     function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
@@ -2020,7 +2028,7 @@ namespace command {
     }
 
     // Implemented in base class `clone_impl`.
-    // `=delete` if `is_copyable == false`.
+    // `=delete` if `internal_is_copyable == false`.
     function& operator=(const function& other) = default;
 
     // Assign a callable object to the object.
