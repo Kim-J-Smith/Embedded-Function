@@ -188,9 +188,9 @@ namespace ebd { namespace detail {
 
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES(enable_if_true) \
-  typename EMBED_DETAIL_CONNECT(Enable_,__LINE__) = \
-  ::ebd::detail::enable_if_t<(enable_if_true)>
+#define EMBED_DETAIL_REQUIRES(enable_if_true)       \
+  ::ebd::detail::enable_if_t<(enable_if_true), int> \
+  EMBED_DETAIL_CONNECT(Enable_,__LINE__) = 0
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -2241,13 +2241,13 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 template <
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
+  // [Auto] Get the nothrow guarantee of functor.
+  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
   // [Require] Functor must be movable and non-copyable.
   EMBED_DETAIL_REQUIRES(std::is_move_constructible<Functor>::value),
   EMBED_DETAIL_REQUIRES(!std::is_copy_constructible<Functor>::value),
   // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
-  // [Auto] Get the nothrow guarantee of functor.
-  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
 >
 #else
 template <
