@@ -1859,11 +1859,11 @@ namespace command {
     using result_type = typename unwrap_signature<Signature>::ret;
 
     /// @brief Get the buffer size.
-    EMBED_INLINE static constexpr std::size_t
+    EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
     get_buffer_size() noexcept { return buffer_size; }
 
     /// @brief Return `true` if the function is capyable.
-    EMBED_INLINE static bool
+    EMBED_NODISCARD EMBED_INLINE static bool
     is_copyable() noexcept { return internal_is_copyable; }
 
     ~function() noexcept(Config::assertNoThrow || Config::isView) {
