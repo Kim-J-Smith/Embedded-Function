@@ -125,6 +125,14 @@ namespace ebd { namespace detail {
 # endif
 #endif
 
+#ifndef EMBED_VIRTUAL_INHERITANCE
+# if defined(_MSC_VER)
+#  define EMBED_VIRTUAL_INHERITANCE __virtual_inheritance
+# else
+#  define EMBED_VIRTUAL_INHERITANCE
+# endif
+#endif
+
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -996,23 +1004,26 @@ inline namespace fn_traits {
     static constexpr std::size_t value = Size == 0 ? min_aligned : aligned_size;
   };
 
-  // Unused empty class.
-  class UnusedEmptyClass {};
+  /// @brief Undefined class.
+  /// @e EMBED_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC compiler 
+  /// that this is a declaration of a virtual inheritance class, in order to obtain 
+  /// the theoretically maximum size of "pointers to member functions".
+  class EMBED_VIRTUAL_INHERITANCE UndefinedClass;
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
     // The buffer size for ebd::fn_view. Both pointer and
     // member pointer should be able to be stored into the buffer.
-    static constexpr std::size_t view_buf = sizeof(void (UnusedEmptyClass::*) ());
+    static constexpr std::size_t view_buf = sizeof(void (UndefinedClass::*) ());
 #if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
     // The CommandTable size plus the buffer size is about 8 * sizeof(void).
     // TODO: The size of this buffer zone needs further examination.
     static constexpr std::size_t value = 6 * sizeof(void*);
 #else
-    static constexpr std::size_t value = sizeof(void (UnusedEmptyClass::*) ());
+    static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
 #endif
 
-    static constexpr std::size_t align_value = alignof(void (UnusedEmptyClass::*) ());
+    static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
   };
 
   // Check whether throwing operations are acceptable.
