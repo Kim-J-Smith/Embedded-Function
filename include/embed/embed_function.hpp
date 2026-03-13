@@ -133,6 +133,14 @@ namespace ebd { namespace detail {
 # endif
 #endif
 
+#ifndef EMBED_MSVC_DECLSPEC
+# if defined(_MSC_VER)
+#  define EMBED_MSVC_DECLSPEC(...) __declspec(__VA_ARGS__)
+# else
+#  define EMBED_MSVC_DECLSPEC(...)
+# endif
+#endif
+
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -1778,7 +1786,7 @@ namespace command {
   ///           See @def config_package for details.
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  class function
+  class EMBED_MSVC_DECLSPEC(empty_bases) function
     : public operator_call_impl<
         Signature, /* Self = */ function<BufferSize, Config, Signature>
       >,
