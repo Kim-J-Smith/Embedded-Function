@@ -20,7 +20,7 @@
 
 #if defined(_MSC_VER)
 # pragma warning(push)
-# pragma warning(disable: 4514 4668 4005 4710 4371)
+# pragma warning(disable: 4514 4668)
 #endif
 
 #ifndef EMBED_CXX_VERSION
@@ -181,16 +181,10 @@ namespace ebd { namespace detail {
   EMBED_DETAIL_FN_EXPAND_IMPL(F, )
 #endif
 
-// Concatenates two tokens (identifiers) via intermediate 
-// macro to ensure proper macro expansion.
-#define EMBED_DETAIL_CONNECT(a, b) EMBED_DETAIL_CONNECT_IMPL(a, b)
-#define EMBED_DETAIL_CONNECT_IMPL(a, b) a ## b
-
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES(enable_if_true)       \
-  ::ebd::detail::enable_if_t<(enable_if_true), int> \
-  EMBED_DETAIL_CONNECT(Enable_,__LINE__) = 0
+#define EMBED_DETAIL_REQUIRES(enable_if_true) \
+  ::ebd::detail::enable_if_t<(enable_if_true), int> = 0
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -2472,8 +2466,6 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
-#undef EMBED_DETAIL_CONNECT
-#undef EMBED_DETAIL_CONNECT_IMPL
 #undef EMBED_DETAIL_REQUIRES
 
 #if defined(_MSC_VER)
