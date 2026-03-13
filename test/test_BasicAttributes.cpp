@@ -11,10 +11,10 @@ TEST(BasicAttributes, SizeAndAlign) {
     using sf_t = ebd::safe_fn<void()>;
     using fv_t = ebd::fn_view<void()>;
 
-    ASSERT_EQ(f_t::buffer_size == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(uf_t::buffer_size == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(sf_t::buffer_size == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(fv_t::buffer_size == ebd::detail::default_buffer_size::view_buf, true);
+    ASSERT_EQ(f_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
+    ASSERT_EQ(uf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
+    ASSERT_EQ(sf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
+    ASSERT_EQ(fv_t::get_buffer_size() == ebd::detail::default_buffer_size::view_buf, true);
 
     ASSERT_EQ(alignof(f_t) >= alignof(void*), true);
     ASSERT_EQ(alignof(uf_t) >= alignof(void*), true);
