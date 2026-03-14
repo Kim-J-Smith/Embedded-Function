@@ -20,6 +20,11 @@ TEST(BasicAttributes, SizeAndAlign) {
     ASSERT_EQ(alignof(uf_t) >= alignof(void*), true);
     ASSERT_EQ(alignof(sf_t) >= alignof(void*), true);
     ASSERT_EQ(alignof(fv_t) >= alignof(void*), true);
+
+    ASSERT_EQ(sizeof(f_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
+    ASSERT_EQ(sizeof(uf_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
+    ASSERT_EQ(sizeof(sf_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
+    ASSERT_EQ(sizeof(fv_t) - f_t::get_buffer_size(), sizeof(void*));
 }
 
 // BasicAttributes[1]
