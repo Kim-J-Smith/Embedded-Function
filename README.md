@@ -84,6 +84,14 @@ auto main() -> int {
 
   - Be constexpr and exception friendly. As much as possible should be declared constexpr and noexcept.
 
+  - Should be based on the analysis of [proposal 4159](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4159.pdf) and [LWG2393](https://cplusplus.github.io/LWG/issue2393), and should avoid repeating the mistakes made by `std::function`. Therefore, *Embedded Function* should:
+
+    - *NOT* implement the method `target()` and `target_type()`.
+    - Allow the application of qualifiers, such as `const`, `volatile`, `&` and `&&`, to the function signature.
+    - Ensure that the qualifier of the underlying object is consistent or more restrictive than that of the function signature.
+
+  - Learn and refer to the [optimization experience](https://reviews.llvm.org/D55045) of `std::function` in libc++.
+
   - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_view` were designed for developers to use.
 
 ## ✨ Core function wrappers
@@ -153,7 +161,7 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 
 In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented an `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` to a C-style free function pointer.
 
-If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr.
+If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr. Basically, it is equivalent to a highly restricted `target()` method.
 
 ### Example
 
@@ -190,6 +198,10 @@ Every compiler with modern C++11 support should work.
 ## 🧪 Test
 
 Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
+
+## ⏱️ Benchmark
+
+Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the tests.
 
 ## 📚 Similar implementations
 
