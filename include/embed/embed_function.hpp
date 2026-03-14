@@ -20,7 +20,7 @@
 
 #if defined(_MSC_VER)
 # pragma warning(push)
-# pragma warning(disable: 4514 4668)
+# pragma warning(disable: 4514 4668 4710 26495)
 #endif
 
 #ifndef EMBED_CXX_VERSION
@@ -1870,7 +1870,7 @@ namespace command {
     ~function() noexcept(Config::assertNoThrow || Config::isView) {
       m_command.destroy(&m_erasure);
     }
-    
+
     // Create an empty function wrapper.
     function() noexcept {
       m_command.set_empty();
