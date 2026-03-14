@@ -1881,9 +1881,16 @@ namespace command {
       m_command.set_empty();
     }
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wuninitialized"
+#endif
     // Implemented in base class `clone_impl`.
     // `=delete` if `internal_is_copyable == false`.
     function(const function& other) = default;
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
 
     // Use `placement new` to create new functor during construction,
     // which will call functor's move-constructor.
