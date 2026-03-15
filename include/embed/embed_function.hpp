@@ -225,6 +225,9 @@ inline namespace cxx_traits {
   template <typename T>
   using remove_volatile_t = typename std::remove_volatile<T>::type;
 
+  template <bool Val>
+  using bool_constant = std::integral_constant<bool, Val>;
+
   // (undocumented) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
   class invoke_tag_normal {};
   class invoke_tag_memfn_ref_like {};
@@ -554,7 +557,7 @@ inline namespace cxx_traits {
   // See https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html .
   template <typename To, typename From>
   struct reference_converts_from_temporary
-  : public std::integral_constant<bool, 
+  : public bool_constant<
 #if EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
     __reference_converts_from_temporary(To, From)
 #else
@@ -599,7 +602,7 @@ inline namespace cxx_traits {
       bool NoThrow = noexcept(testConv<Rt>(testGet())),
       typename Enable = decltype(testConv<Rt>(testGet()))
     >
-    static typename std::integral_constant<bool, NoThrow>
+    static bool_constant<NoThrow>
     test(int) noexcept { return {}; }
 
     using type = decltype(test<Ret, true>(1));
@@ -612,15 +615,15 @@ inline namespace cxx_traits {
 
   // See https://en.cppreference.com/w/cpp/types/is_invocable.html .
   template <typename Ret, typename Func, typename... Args>
-  struct is_invocable_r : public std::integral_constant<
-    bool, is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
-  >::type {};
+  struct is_invocable_r : public bool_constant<
+    is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
+  > {};
 
   template <typename Ret, typename Func, typename... Args>
-  struct is_nothrow_invocable_r : public std::integral_constant<
-    bool, call_is_nothrow<Func, Args...>::value
-     && is_invocable_impl<invoke_result<Func, Args...>, Ret>::nothrow::value
-  >::type {};
+  struct is_nothrow_invocable_r : public bool_constant<
+    call_is_nothrow<Func, Args...>::value
+    && is_invocable_impl<invoke_result<Func, Args...>, Ret>::nothrow::value
+  > {};
 
   /// @fn invoke_impl
   // (undocumented) Distribute the call of callable objects, including normal 
@@ -722,17 +725,17 @@ inline namespace fn_traits {
   // Is trivial for the purposes of calls.
   // See https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters .
   template <typename T>
-  struct is_call_trivial : public std::integral_constant<
-    bool, std::is_trivially_destructible<T>::value
+  struct is_call_trivial : public bool_constant<
+    std::is_trivially_destructible<T>::value
       && std::is_trivially_copy_constructible<T>::value
       && std::is_trivially_move_constructible<T>::value
   > {};
 
   // std::is_trivial is deprecated in C++26. But we need it.
   template <typename T>
-  struct is_traditional_trivial : public std::integral_constant<
-    bool, std::is_trivially_default_constructible<T>::value
-      && is_call_trivial<T>::value
+  struct is_traditional_trivial : public bool_constant<
+    std::is_trivially_default_constructible<T>::value
+    && is_call_trivial<T>::value
   > {};
 
   // Check self.
@@ -849,7 +852,7 @@ inline namespace fn_traits {
 
   template <std::size_t Buf, typename Cfg, typename Sig>
   struct is_ebd_fn_impl<function<Buf, Cfg, Sig>>
-  : public std::integral_constant<bool, 
+  : public bool_constant<
     unwrap_signature<Sig>::isSignature
     && is_config_package<Cfg>::value
   > {};
@@ -895,9 +898,8 @@ inline namespace fn_traits {
     bool IsStoredOrigin = !IsView || is_function_ptr<DecT>::value
       || std::is_member_pointer<DecT>::value
   >
-  struct is_stored_origin : public std::integral_constant<
-    bool, IsStoredOrigin
-  >::type {
+  struct is_stored_origin
+  : public bool_constant<IsStoredOrigin> {
     static constexpr bool isTrivial = is_traditional_trivial<DecT>::value;
     static_assert(!(IsView && IsStoredOrigin && !isTrivial),
       "Internal error: Stored origin type in view mode must be trivially"
@@ -941,8 +943,8 @@ inline namespace fn_traits {
 
   // Check ebd::detail::function are similar or not.
   template <typename To, typename From>
-  struct fn_can_convert : public std::integral_constant<
-    bool, fn_can_convert_impl<
+  struct fn_can_convert : public bool_constant<
+    fn_can_convert_impl<
       remove_reference_t<To>, remove_reference_t<From>
     >::value
   >::type {};
@@ -954,12 +956,12 @@ inline namespace fn_traits {
   template <typename Functor, typename Class = decay_t<Functor>,
     typename = void>
   struct is_nothrow_construct_from_functor
-  : public std::integral_constant<bool, false> {};
+  : public bool_constant<false> {};
 
   template <typename Functor, typename Class>
   struct is_nothrow_construct_from_functor<
     Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
-  : public std::integral_constant<bool,
+  : public bool_constant<
     noexcept(::new (static_cast<void*>(0)) Class(std::declval<Functor>()))
   > {};
 
