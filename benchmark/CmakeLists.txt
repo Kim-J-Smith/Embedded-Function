@@ -8,8 +8,7 @@ endif()
 
 # Project name.
 project(
-    "embed_function_2.0.x-GoogleTest" 
-    VERSION 2.0.5 
+    "embed_function_2.x-Benchmark"
     LANGUAGES CXX
 )
 
@@ -26,54 +25,27 @@ endif()
 
 # Include header search path
 include_directories(
-    ${CMAKE_SOURCE_DIR}/../include
-    ${CMAKE_SOURCE_DIR}/google-test/
-    ${CMAKE_SOURCE_DIR}/google-test/include
-)
-
-# Get the gtest sourece files.
-file(
-    GLOB GTEST_SOURCE_FILES 
-    "${CMAKE_SOURCE_DIR}/google-test/src/*.cc"
-)
-
-# Library of the gtest
-add_library(
-    gtest_lib STATIC
-    ${GTEST_SOURCE_FILES}
-)
-
-# Configuration of GTest file.
-set_target_properties(
-    gtest_lib
-    PROPERTIES
-    CXX_STANDARD 11
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
 # Get the test source files.
 file(
-    GLOB EMBED_FUNCTION_TEST_FILES
-    "${CMAKE_SOURCE_DIR}/test_*.cpp"
+    GLOB EMBED_FUNCTION_BENCHMARK_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/benchmark_*.cpp"
 )
 
 # Target executable file.
 add_executable(
     ${PROJECT_NAME}
-    ${EMBED_FUNCTION_TEST_FILES}
+    ${EMBED_FUNCTION_BENCHMARK_FILES}
 )
 
-# Link GTest library.
-target_link_libraries(
-    ${PROJECT_NAME}
-    PRIVATE gtest_lib
-)
-
-# Custom target to run tests and save results
+# Custom target to run benchmark
 add_custom_target(
-    test
+    benchmark
     COMMAND $<TARGET_FILE:${PROJECT_NAME}>
     DEPENDS ${PROJECT_NAME}
-    COMMENT "Running tests..."
+    COMMENT "Running benchmark..."
 )
 
 # if use MSVC, use /utf-8, use standard __cplusplus
@@ -92,10 +64,6 @@ if(MSVC)
     /wd4514
     /wd4626
     /wd5045
-  )
-  target_compile_options(
-    gtest_lib INTERFACE
-    /w
     /wd4711
   )
 elseif(CMAKE_COMPILER_IS_GNUCXX)
@@ -112,10 +80,6 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -fmax-errors=50
     -fno-exceptions
   )
-  target_compile_options(
-    gtest_lib PRIVATE
-    -O1
-  )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(
     ${PROJECT_NAME} PRIVATE
@@ -128,9 +92,5 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -fno-permissive
     -fno-exceptions
     -Os
-  )
-  target_compile_options(
-    gtest_lib PRIVATE
-    -O1
   )
 endif()

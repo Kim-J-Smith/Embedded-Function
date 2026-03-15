@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.4-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.4">
+  <img src="https://img.shields.io/badge/Version-2.0.5-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.5">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
@@ -84,6 +84,14 @@ auto main() -> int {
 
   - Be constexpr and exception friendly. As much as possible should be declared constexpr and noexcept.
 
+  - Should be based on the analysis of [proposal 4159](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4159.pdf) and [LWG2393](https://cplusplus.github.io/LWG/issue2393), and should avoid repeating the mistakes made by `std::function`. Therefore, *Embedded Function* should:
+
+    - *NOT* implement the method `target()` and `target_type()`.
+    - Allow the application of qualifiers, such as `const`, `volatile`, `&` and `&&`, to the function signature.
+    - Ensure that the qualifier of the underlying object is consistent or more restrictive than that of the function signature.
+
+  - Learn and refer to the [optimization experience](https://reviews.llvm.org/D55045) of `std::function` in libc++.
+
   - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_view` were designed for developers to use.
 
 ## ✨ Core function wrappers
@@ -104,6 +112,16 @@ auto main() -> int {
 2. **Exception Behavior**: Only `fn`/`unique_fn` throw on empty calls; `safe_fn`/`fn_view` terminate (no exceptions).
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
+
+## 🚀 Performance optimization
+
+### Branch elimination
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` completely eliminate runtime checks for empty function states during invocation, significantly boosting performance of frequent function calls.
+
+### Smart forwarding
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
 
 ## 🧩 Automatic deduction
 
@@ -143,7 +161,7 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 
 In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented an `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` to a C-style free function pointer.
 
-If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr.
+If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr. Basically, it is equivalent to a highly restricted `target()` method.
 
 ### Example
 
@@ -180,6 +198,10 @@ Every compiler with modern C++11 support should work.
 ## 🧪 Test
 
 Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
+
+## ⏱️ Benchmark
+
+Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the tests.
 
 ## 📚 Similar implementations
 

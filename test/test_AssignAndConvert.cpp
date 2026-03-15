@@ -7,7 +7,7 @@
 // AssignAndConvert[0]
 TEST(AssignAndConvert, small_to_big) {
     auto f_small = ebd::make_fn(ebd_test_free_func_iii_add);
-    const size_t s_buf = f_small.buffer_size;
+    const size_t s_buf = f_small.get_buffer_size();
     const size_t s_size = sizeof(f_small);
     const size_t b_buf = s_size - sizeof(void*);
     ASSERT_EQ(s_buf < b_buf, true);

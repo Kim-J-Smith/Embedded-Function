@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.4
+ * @version     2.0.5
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -20,7 +20,7 @@
 
 #if defined(_MSC_VER)
 # pragma warning(push)
-# pragma warning(disable: 4514 4668 4005 4710 4371)
+# pragma warning(disable: 4514 4668 4710 26495)
 #endif
 
 #ifndef EMBED_CXX_VERSION
@@ -125,6 +125,22 @@ namespace ebd { namespace detail {
 # endif
 #endif
 
+#ifndef EMBED_VIRTUAL_INHERITANCE
+# if defined(_MSC_VER)
+#  define EMBED_VIRTUAL_INHERITANCE __virtual_inheritance
+# else
+#  define EMBED_VIRTUAL_INHERITANCE
+# endif
+#endif
+
+#ifndef EMBED_MSVC_DECLSPEC
+# if defined(_MSC_VER)
+#  define EMBED_MSVC_DECLSPEC(...) __declspec(__VA_ARGS__)
+# else
+#  define EMBED_MSVC_DECLSPEC(...)
+# endif
+#endif
+
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -165,16 +181,11 @@ namespace ebd { namespace detail {
   EMBED_DETAIL_FN_EXPAND_IMPL(F, )
 #endif
 
-// Concatenates two tokens (identifiers) via intermediate 
-// macro to ensure proper macro expansion.
-#define EMBED_DETAIL_CONNECT(a, b) EMBED_DETAIL_CONNECT_IMPL(a, b)
-#define EMBED_DETAIL_CONNECT_IMPL(a, b) a ## b
-
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES(enable_if_true) \
-  typename EMBED_DETAIL_CONNECT(Enable_,__LINE__) = \
-  ::ebd::detail::enable_if_t<(enable_if_true)>
+#define EMBED_DETAIL_REQUIRES_IMPL(require_condition) \
+  ::ebd::detail::enable_if_t<(require_condition), int> = 0
+#define EMBED_DETAIL_REQUIRES(...)  EMBED_DETAIL_REQUIRES_IMPL((__VA_ARGS__))
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -213,6 +224,9 @@ inline namespace cxx_traits {
 
   template <typename T>
   using remove_volatile_t = typename std::remove_volatile<T>::type;
+
+  template <bool Val>
+  using bool_constant = std::integral_constant<bool, Val>;
 
   // (undocumented) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
   class invoke_tag_normal {};
@@ -254,14 +268,14 @@ inline namespace cxx_traits {
   { return static_cast<T&&>(obj); }
 
   template <typename T, typename Under = unwrap_once_t<T>,
-    EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
+    EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
   > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
   unwrap_forward(remove_reference_t<T>&& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
   }
 
   template <typename T, typename Under = unwrap_once_t<T>,
-    EMBED_DETAIL_REQUIRES((!std::is_same<T, Under>::value))
+    EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
   > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
   unwrap_forward(remove_reference_t<T>& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
@@ -543,7 +557,7 @@ inline namespace cxx_traits {
   // See https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html .
   template <typename To, typename From>
   struct reference_converts_from_temporary
-  : public std::integral_constant<bool, 
+  : public bool_constant<
 #if EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
     __reference_converts_from_temporary(To, From)
 #else
@@ -588,7 +602,7 @@ inline namespace cxx_traits {
       bool NoThrow = noexcept(testConv<Rt>(testGet())),
       typename Enable = decltype(testConv<Rt>(testGet()))
     >
-    static typename std::integral_constant<bool, NoThrow>
+    static bool_constant<NoThrow>
     test(int) noexcept { return {}; }
 
     using type = decltype(test<Ret, true>(1));
@@ -601,15 +615,15 @@ inline namespace cxx_traits {
 
   // See https://en.cppreference.com/w/cpp/types/is_invocable.html .
   template <typename Ret, typename Func, typename... Args>
-  struct is_invocable_r : public std::integral_constant<
-    bool, is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
-  >::type {};
+  struct is_invocable_r : public bool_constant<
+    is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
+  > {};
 
   template <typename Ret, typename Func, typename... Args>
-  struct is_nothrow_invocable_r : public std::integral_constant<
-    bool, call_is_nothrow<Func, Args...>::value
-     && is_invocable_impl<invoke_result<Func, Args...>, Ret>::nothrow::value
-  >::type {};
+  struct is_nothrow_invocable_r : public bool_constant<
+    call_is_nothrow<Func, Args...>::value
+    && is_invocable_impl<invoke_result<Func, Args...>, Ret>::nothrow::value
+  > {};
 
   /// @fn invoke_impl
   // (undocumented) Distribute the call of callable objects, including normal 
@@ -707,6 +721,22 @@ inline namespace fn_traits {
   // The value is always false.
   template <typename... Args>
   struct always_false { static constexpr bool value = false; };
+
+  // Is trivial for the purposes of calls.
+  // See https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters .
+  template <typename T>
+  struct is_call_trivial : public bool_constant<
+    std::is_trivially_destructible<T>::value
+      && std::is_trivially_copy_constructible<T>::value
+      && std::is_trivially_move_constructible<T>::value
+  > {};
+
+  // std::is_trivial is deprecated in C++26. But we need it.
+  template <typename T>
+  struct is_traditional_trivial : public bool_constant<
+    std::is_trivially_default_constructible<T>::value
+    && is_call_trivial<T>::value
+  > {};
 
   // Check self.
   template <typename A, typename B>
@@ -822,7 +852,7 @@ inline namespace fn_traits {
 
   template <std::size_t Buf, typename Cfg, typename Sig>
   struct is_ebd_fn_impl<function<Buf, Cfg, Sig>>
-  : public std::integral_constant<bool, 
+  : public bool_constant<
     unwrap_signature<Sig>::isSignature
     && is_config_package<Cfg>::value
   > {};
@@ -868,12 +898,9 @@ inline namespace fn_traits {
     bool IsStoredOrigin = !IsView || is_function_ptr<DecT>::value
       || std::is_member_pointer<DecT>::value
   >
-  struct is_stored_origin : public std::integral_constant<
-    bool, IsStoredOrigin
-  >::type {
-    static constexpr bool isTrivial = 
-      std::is_trivially_destructible<DecT>::value
-      && std::is_trivially_copyable<DecT>::value;
+  struct is_stored_origin
+  : public bool_constant<IsStoredOrigin> {
+    static constexpr bool isTrivial = is_traditional_trivial<DecT>::value;
     static_assert(!(IsView && IsStoredOrigin && !isTrivial),
       "Internal error: Stored origin type in view mode must be trivially"
       " copyable/destructible. Here Functor is stored originally,"
@@ -916,8 +943,8 @@ inline namespace fn_traits {
 
   // Check ebd::detail::function are similar or not.
   template <typename To, typename From>
-  struct fn_can_convert : public std::integral_constant<
-    bool, fn_can_convert_impl<
+  struct fn_can_convert : public bool_constant<
+    fn_can_convert_impl<
       remove_reference_t<To>, remove_reference_t<From>
     >::value
   >::type {};
@@ -929,12 +956,12 @@ inline namespace fn_traits {
   template <typename Functor, typename Class = decay_t<Functor>,
     typename = void>
   struct is_nothrow_construct_from_functor
-  : public std::integral_constant<bool, false> {};
+  : public bool_constant<false> {};
 
   template <typename Functor, typename Class>
   struct is_nothrow_construct_from_functor<
     Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
-  : public std::integral_constant<bool,
+  : public bool_constant<
     noexcept(::new (static_cast<void*>(0)) Class(std::declval<Functor>()))
   > {};
 
@@ -982,8 +1009,11 @@ inline namespace fn_traits {
     static constexpr std::size_t value = Size == 0 ? min_aligned : aligned_size;
   };
 
-  // Undefined class.
-  class UndefinedClass;
+  /// @brief Undefined class.
+  /// @e EMBED_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC compiler 
+  /// that this is a declaration of a virtual inheritance class, in order to obtain 
+  /// the theoretically maximum size of "pointers to member functions".
+  class EMBED_VIRTUAL_INHERITANCE UndefinedClass;
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
@@ -1266,7 +1296,9 @@ inline namespace fn_traits {
   // Pass-by-value is faster for scalar types because they can
   // be passed by the register rather than the stack.
   template <typename T>
-  using smart_forward_t = conditional_t<std::is_scalar<T>::value, T, T&&>;
+  using smart_forward_t = conditional_t<std::is_scalar<T>::value
+    || (sizeof(T) <= sizeof(void*) && is_call_trivial<T>::value), 
+    T, T&&>;
 
 } // end namespace fn_traits
 
@@ -1751,7 +1783,7 @@ namespace command {
   ///           See @def config_package for details.
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  class function
+  class EMBED_MSVC_DECLSPEC(empty_bases) function
     : public operator_call_impl<
         Signature, /* Self = */ function<BufferSize, Config, Signature>
       >,
@@ -1806,12 +1838,10 @@ namespace command {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
-    static_assert(std::is_trivially_default_constructible<erasure_t>::value 
-      && std::is_trivially_copyable<erasure_t>::value,
+    static_assert(is_traditional_trivial<erasure_t>::value,
       "Internal error: erasure_t should be trivial.");
 
-    static_assert(std::is_trivially_default_constructible<command_t>::value 
-      && std::is_trivially_copyable<command_t>::value,
+    static_assert(is_traditional_trivial<command_t>::value,
       "Internal error: command_t should be trivial.");
 
     // The `m_erasure` contains the type-erased object.
@@ -1820,21 +1850,29 @@ namespace command {
     // The `m_command` is responsible for managing and invoking the `m_erasure`.
     command_t m_command;
 
-  public:
-
     // The buffer size.
     static constexpr std::size_t buffer_size = BufferSize;
+
+    // `true` if self is copyable.
+    static constexpr bool internal_is_copyable = Config::isCopyable || Config::isView;
+
+  public:
 
     // The return type.
     using result_type = typename unwrap_signature<Signature>::ret;
 
-    // `true` if self is copyable.
-    static constexpr bool is_copyable = Config::isCopyable || Config::isView;
+    /// @brief Get the buffer size.
+    EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
+    get_buffer_size() noexcept { return buffer_size; }
+
+    /// @brief Return `true` if the function is capyable.
+    EMBED_NODISCARD EMBED_INLINE static bool
+    is_copyable() noexcept { return internal_is_copyable; }
 
     ~function() noexcept(Config::assertNoThrow || Config::isView) {
       m_command.destroy(&m_erasure);
     }
-    
+
     // Create an empty function wrapper.
     function() noexcept {
       m_command.set_empty();
@@ -1845,9 +1883,16 @@ namespace command {
       m_command.set_empty();
     }
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wuninitialized"
+#endif
     // Implemented in base class `clone_impl`.
-    // `=delete` if `is_copyable == false`.
+    // `=delete` if `internal_is_copyable == false`.
     function(const function& other) = default;
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
 
     // Use `placement new` to create new functor during construction,
     // which will call functor's move-constructor.
@@ -1862,9 +1907,9 @@ namespace command {
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      typename Enable = enable_if_t<fn_can_convert<
+      EMBED_DETAIL_REQUIRES(fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value && function<OtherSize, OtherCfg, OtherSig>::is_copyable>
+      >::value && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable)
     >
     function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
@@ -1883,9 +1928,9 @@ namespace command {
     // Use `placement new` to create new functor during construction. (Move)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      typename Enable = enable_if_t<fn_can_convert<
+      EMBED_DETAIL_REQUIRES(fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value>
+      >::value)
     >
     function(function<OtherSize, OtherCfg, OtherSig>&& other)
     noexcept((Config::assertNoThrow || Config::isView)
@@ -1900,9 +1945,9 @@ namespace command {
     /// @param functor - A callable object with parameters of type `Args...`
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
     template <typename Functor, 
-      typename Enable1 = enable_if_t<!fn_can_convert<function, Functor>::value>,
-      typename Enable2 = enable_if_t<!is_self<Functor, function>::value>>
-    function(Functor&& functor)
+      EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
+      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value)
+    > function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
       static_assert(is_callable_functor<Functor, Signature>::value,
@@ -1993,14 +2038,14 @@ namespace command {
     }
 
     // Implemented in base class `clone_impl`.
-    // `=delete` if `is_copyable == false`.
+    // `=delete` if `internal_is_copyable == false`.
     function& operator=(const function& other) = default;
 
     // Assign a callable object to the object.
     template <typename Functor, 
-      typename Enable1 = enable_if_t<!fn_can_convert<function, Functor>::value>,
-      typename Enable2 = enable_if_t<!is_self<Functor, function>::value>>
-    function& operator=(Functor&& fn)
+      EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
+      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value)
+    > function& operator=(Functor&& fn)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
       function(std::forward<Functor>(fn)).swap(*this);
       return *this;
@@ -2009,9 +2054,9 @@ namespace command {
     // Assign another `function` object to this object.
     // Enable if the `function` object can be converted to the current object.
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      typename Enable = enable_if_t<fn_can_convert<
+      EMBED_DETAIL_REQUIRES(fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value>
+      >::value)
     >
     function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
@@ -2208,13 +2253,13 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 template <
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
+  // [Auto] Get the nothrow guarantee of functor.
+  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
   // [Require] Functor must be movable and non-copyable.
   EMBED_DETAIL_REQUIRES(std::is_move_constructible<Functor>::value),
   EMBED_DETAIL_REQUIRES(!std::is_copy_constructible<Functor>::value),
   // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
-  // [Auto] Get the nothrow guarantee of functor.
-  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
 >
 #else
 template <
@@ -2439,9 +2484,8 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
-#undef EMBED_DETAIL_CONNECT
-#undef EMBED_DETAIL_CONNECT_IMPL
 #undef EMBED_DETAIL_REQUIRES
+#undef EMBED_DETAIL_REQUIRES_IMPL
 
 #if defined(_MSC_VER)
 # pragma warning(pop)
