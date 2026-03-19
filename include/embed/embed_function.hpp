@@ -1057,6 +1057,11 @@ inline namespace fn_traits {
   // Utility struct to check if a callable object is not empty.
   struct check_not_empty {
 
+    template <typename Sig>
+    static bool check(const ::std::function<Sig>& f) noexcept {
+      return static_cast<bool>(f);
+    }
+
     template <std::size_t Buf, typename Cfg, typename Sig>
     static bool check(const function<Buf, Cfg, Sig>& f) noexcept {
       return static_cast<bool>(f);
