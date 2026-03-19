@@ -1023,7 +1023,9 @@ inline namespace fn_traits {
 #if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
     // The CommandTable size plus the buffer size is about 8 * sizeof(void).
     // TODO: The size of this buffer zone needs further examination.
-    static constexpr std::size_t value = 6 * sizeof(void*);
+    static constexpr std::size_t value_c1 = 6 * sizeof(void*);
+    static constexpr std::size_t value_c2 = sizeof(::std::function<void()>);
+    static constexpr std::size_t value = value_c1 > value_c2 ? value_c1 : value_c2;
 #else
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
 #endif
