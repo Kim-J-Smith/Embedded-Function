@@ -203,6 +203,68 @@ Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST
 
 Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the tests.
 
+> *std*: `std::function`, *ebd*: `ebd::fn`, *fu2*: [`fu2::function`](https://github.com/Naios/function2)
+
+*( MSVC C++14 Release )*
+
+```md
+## FreeFunction.ScalarParameters:
+
+ Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+--------------------------|--------:|----------:|--------:|-------:|----------:
+ free_scalar_std *        |   10000 |     0.030 |       3 |      - |332225913.6
+ free_scalar_ebd          |   10000 |     0.028 |       2 |  0.930 |357142857.1
+ free_scalar_fu2          |   10000 |     0.052 |       5 |  1.731 |191938579.7
+ free_scalar_std *        |  100000 |     0.301 |       3 |      - |332667997.3
+ free_scalar_ebd          |  100000 |     0.265 |       2 |  0.881 |377643504.5
+ free_scalar_fu2          |  100000 |     0.523 |       5 |  1.742 |191021967.5
+ free_scalar_std *        | 1000000 |     3.006 |       3 |      - |332712270.4
+ free_scalar_ebd          | 1000000 |     2.708 |       2 |  0.901 |369317132.6
+ free_scalar_fu2          | 1000000 |     5.264 |       5 |  1.751 |189958778.9
+
+## FreeFunction.TrivialParameters:
+
+ Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+--------------------------|--------:|----------:|--------:|-------:|----------:
+ free_trivial_std *       |   10000 |     0.032 |       3 |      - |311526479.8
+ free_trivial_ebd         |   10000 |     0.024 |       2 |  0.754 |413223140.5
+ free_trivial_fu2         |   10000 |     0.052 |       5 |  1.626 |191570881.2
+ free_trivial_std *       |  100000 |     0.322 |       3 |      - |310366232.2
+ free_trivial_ebd         |  100000 |     0.240 |       2 |  0.746 |415800415.8
+ free_trivial_fu2         |  100000 |     0.510 |       5 |  1.583 |196001568.0
+ free_trivial_std *       | 1000000 |     3.222 |       3 |      - |310375865.2
+ free_trivial_ebd         | 1000000 |     2.508 |       2 |  0.778 |398692289.3
+ free_trivial_fu2         | 1000000 |     5.792 |       5 |  1.798 |172660876.8
+
+## FreeFunction.CopyHardParameters:
+
+ Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+--------------------------|--------:|----------:|--------:|-------:|----------:
+ free_copyhard_std *      |   10000 |     0.197 |      19 |      - | 50684237.2
+ free_copyhard_ebd        |   10000 |     0.198 |      19 |  1.004 | 50505050.5
+ free_copyhard_fu2        |   10000 |     0.303 |      30 |  1.537 | 32981530.3
+ free_copyhard_std *      |  100000 |     1.976 |      19 |      - | 50604726.5
+ free_copyhard_ebd        |  100000 |     1.982 |      19 |  1.003 | 50456632.5
+ free_copyhard_fu2        |  100000 |     3.044 |      30 |  1.541 | 32849352.9
+ free_copyhard_std *      | 1000000 |    19.898 |      19 |      - | 50256307.2
+ free_copyhard_ebd        | 1000000 |    20.052 |      20 |  1.008 | 49870088.4
+ free_copyhard_fu2        | 1000000 |    31.358 |      31 |  1.576 | 31889890.6
+
+## FreeFunction.CallTrivialParameters:
+
+ Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+--------------------------|--------:|----------:|--------:|-------:|----------:
+ free_calltrivial_std *   |   10000 |     0.032 |       3 |      - |311526479.8
+ free_calltrivial_ebd     |   10000 |     0.024 |       2 |  0.751 |414937759.3
+ free_calltrivial_fu2     |   10000 |     0.056 |       5 |  1.757 |177304964.5
+ free_calltrivial_std *   |  100000 |     0.320 |       3 |      - |312597686.8
+ free_calltrivial_ebd     |  100000 |     0.257 |       2 |  0.802 |389711613.4
+ free_calltrivial_fu2     |  100000 |     0.584 |       5 |  1.827 |171115674.2
+ free_calltrivial_std *   | 1000000 |     3.223 |       3 |      - |310269934.8
+ free_calltrivial_ebd     | 1000000 |     2.407 |       2 |  0.747 |415506710.4
+ free_calltrivial_fu2     | 1000000 |     5.934 |       5 |  1.841 |168517551.1
+```
+
 ## 📚 Similar implementations
 
 - [std::function](http://en.cppreference.com/w/cpp/utility/functional/function)
