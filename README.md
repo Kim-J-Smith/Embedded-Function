@@ -84,7 +84,7 @@ auto main() -> int {
 
   - Be constexpr and exception friendly. As much as possible should be declared constexpr and noexcept.
 
-  - Should be based on the analysis of [proposal 4159](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4159.pdf) and [LWG2393](https://cplusplus.github.io/LWG/issue2393), and should avoid repeating the mistakes made by `std::function`. Therefore, *Embedded Function* should:
+  - Should be based on the analysis of [N4159](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4159.pdf), [P2548](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2548r6.pdf) and [LWG2393](https://cplusplus.github.io/LWG/issue2393), and should avoid repeating the mistakes made by `std::function`. Therefore, *Embedded Function* should:
 
     - *NOT* implement the method `target()` and `target_type()`.
     - Allow the application of qualifiers, such as `const`, `volatile`, `&` and `&&`, to the function signature.
