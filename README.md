@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.5-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.5">
+  <img src="https://img.shields.io/badge/Version-2.0.6-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.6">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
@@ -84,13 +84,13 @@ auto main() -> int {
 
   - Be constexpr and exception friendly. As much as possible should be declared constexpr and noexcept.
 
-  - Should be based on the analysis of [proposal 4159](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4159.pdf) and [LWG2393](https://cplusplus.github.io/LWG/issue2393), and should avoid repeating the mistakes made by `std::function`. Therefore, *Embedded Function* should:
+  - Should be based on the analysis of [N4159](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4159.pdf), [P2548](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2548r6.pdf) and [LWG2393](https://cplusplus.github.io/LWG/issue2393), and should avoid repeating the mistakes made by `std::function`. Therefore, *Embedded Function* should:
 
     - *NOT* implement the method `target()` and `target_type()`.
     - Allow the application of qualifiers, such as `const`, `volatile`, `&` and `&&`, to the function signature.
     - Ensure that the qualifier of the underlying object is consistent or more restrictive than that of the function signature.
 
-  - Learn and refer to the [optimization experience](https://reviews.llvm.org/D55045) of `std::function` in libc++.
+  - Learn and refer to the optimization experience of `std::function` in [libstdc++](https://gcc.gnu.org/cgit/gcc/commit/?id=d38d26be33aba5d4c12429478375a47c474124d2), [libc++](https://reviews.llvm.org/D55045) and [Microsoft C++ Standard Library](https://github.com/microsoft/STL/issues/969).
 
   - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_view` were designed for developers to use.
 
@@ -202,6 +202,68 @@ Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST
 ## ⏱️ Benchmark
 
 Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the tests.
+
+> *std*: `std::function`, *ebd*: `ebd::fn`, *fu2*: [`fu2::function`](https://github.com/Naios/function2)
+
+*( MSVC C++14 Release )*
+
+```md
+## FreeFunction.ScalarParameters:
+
+ Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+--------------------------|--------:|----------:|--------:|-------:|----------:
+ free_scalar_std *        |   10000 |     0.030 |       3 |      - |332225913.6
+ free_scalar_ebd          |   10000 |     0.028 |       2 |  0.930 |357142857.1
+ free_scalar_fu2          |   10000 |     0.052 |       5 |  1.731 |191938579.7
+ free_scalar_std *        |  100000 |     0.301 |       3 |      - |332667997.3
+ free_scalar_ebd          |  100000 |     0.265 |       2 |  0.881 |377643504.5
+ free_scalar_fu2          |  100000 |     0.523 |       5 |  1.742 |191021967.5
+ free_scalar_std *        | 1000000 |     3.006 |       3 |      - |332712270.4
+ free_scalar_ebd          | 1000000 |     2.708 |       2 |  0.901 |369317132.6
+ free_scalar_fu2          | 1000000 |     5.264 |       5 |  1.751 |189958778.9
+
+## FreeFunction.TrivialParameters:
+
+ Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+--------------------------|--------:|----------:|--------:|-------:|----------:
+ free_trivial_std *       |   10000 |     0.032 |       3 |      - |311526479.8
+ free_trivial_ebd         |   10000 |     0.024 |       2 |  0.754 |413223140.5
+ free_trivial_fu2         |   10000 |     0.052 |       5 |  1.626 |191570881.2
+ free_trivial_std *       |  100000 |     0.322 |       3 |      - |310366232.2
+ free_trivial_ebd         |  100000 |     0.240 |       2 |  0.746 |415800415.8
+ free_trivial_fu2         |  100000 |     0.510 |       5 |  1.583 |196001568.0
+ free_trivial_std *       | 1000000 |     3.222 |       3 |      - |310375865.2
+ free_trivial_ebd         | 1000000 |     2.508 |       2 |  0.778 |398692289.3
+ free_trivial_fu2         | 1000000 |     5.792 |       5 |  1.798 |172660876.8
+
+## FreeFunction.CopyHardParameters:
+
+ Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+--------------------------|--------:|----------:|--------:|-------:|----------:
+ free_copyhard_std *      |   10000 |     0.197 |      19 |      - | 50684237.2
+ free_copyhard_ebd        |   10000 |     0.198 |      19 |  1.004 | 50505050.5
+ free_copyhard_fu2        |   10000 |     0.303 |      30 |  1.537 | 32981530.3
+ free_copyhard_std *      |  100000 |     1.976 |      19 |      - | 50604726.5
+ free_copyhard_ebd        |  100000 |     1.982 |      19 |  1.003 | 50456632.5
+ free_copyhard_fu2        |  100000 |     3.044 |      30 |  1.541 | 32849352.9
+ free_copyhard_std *      | 1000000 |    19.898 |      19 |      - | 50256307.2
+ free_copyhard_ebd        | 1000000 |    20.052 |      20 |  1.008 | 49870088.4
+ free_copyhard_fu2        | 1000000 |    31.358 |      31 |  1.576 | 31889890.6
+
+## FreeFunction.CallTrivialParameters:
+
+ Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+--------------------------|--------:|----------:|--------:|-------:|----------:
+ free_calltrivial_std *   |   10000 |     0.032 |       3 |      - |311526479.8
+ free_calltrivial_ebd     |   10000 |     0.024 |       2 |  0.751 |414937759.3
+ free_calltrivial_fu2     |   10000 |     0.056 |       5 |  1.757 |177304964.5
+ free_calltrivial_std *   |  100000 |     0.320 |       3 |      - |312597686.8
+ free_calltrivial_ebd     |  100000 |     0.257 |       2 |  0.802 |389711613.4
+ free_calltrivial_fu2     |  100000 |     0.584 |       5 |  1.827 |171115674.2
+ free_calltrivial_std *   | 1000000 |     3.223 |       3 |      - |310269934.8
+ free_calltrivial_ebd     | 1000000 |     2.407 |       2 |  0.747 |415506710.4
+ free_calltrivial_fu2     | 1000000 |     5.934 |       5 |  1.841 |168517551.1
+```
 
 ## 📚 Similar implementations
 

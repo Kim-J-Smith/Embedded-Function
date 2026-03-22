@@ -1,8 +1,2 @@
-void benchmark__free_function();
-void benchmark__lambda();
-
-int main() {
-    benchmark__free_function();
-    benchmark__lambda();
-}
-
+#define PICOBENCH_IMPLEMENT_WITH_MAIN
+#include "picobench/picobench.hpp"

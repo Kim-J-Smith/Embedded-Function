@@ -57,14 +57,7 @@ if(MSVC)
     /Zc:preprocessor
     /sdl
     /permissive-
-    /W4
-    /Wall
-    /wd4710
-    /wd4127
-    /wd4514
-    /wd4626
-    /wd5045
-    /wd4711
+    /w
   )
 elseif(CMAKE_COMPILER_IS_GNUCXX)
   target_compile_options(
@@ -88,6 +81,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wpedantic
     -Wconversion
     -Wold-style-cast
+    -Wno-sign-conversion
     -pedantic
     -fno-permissive
     -fno-exceptions

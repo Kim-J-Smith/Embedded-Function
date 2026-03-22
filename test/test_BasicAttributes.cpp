@@ -22,9 +22,9 @@ TEST(BasicAttributes, SizeAndAlign) {
     ASSERT_EQ(alignof(fv_t) >= alignof(void*), true);
 
     ASSERT_EQ(sizeof(f_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
-    ASSERT_EQ(sizeof(uf_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
-    ASSERT_EQ(sizeof(sf_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
-    ASSERT_EQ(sizeof(fv_t) - f_t::get_buffer_size(), sizeof(void*));
+    ASSERT_EQ(sizeof(uf_t) - uf_t::get_buffer_size(), 2 * sizeof(void*));
+    ASSERT_EQ(sizeof(sf_t) - sf_t::get_buffer_size(), 2 * sizeof(void*));
+    ASSERT_EQ(sizeof(fv_t) - fv_t::get_buffer_size(), sizeof(void*));
 }
 
 // BasicAttributes[1]
