@@ -90,7 +90,7 @@ auto main() -> int {
     - Allow the application of qualifiers, such as `const`, `volatile`, `&` and `&&`, to the function signature.
     - Ensure that the qualifier of the underlying object is consistent or more restrictive than that of the function signature.
 
-  - Learn and refer to the [optimization experience](https://reviews.llvm.org/D55045) of `std::function` in libc++.
+  - Learn and refer to the optimization experience of `std::function` in [libstdc++](https://gcc.gnu.org/cgit/gcc/commit/?id=d38d26be33aba5d4c12429478375a47c474124d2), [libc++](https://reviews.llvm.org/D55045) and [Microsoft C++ Standard Library](https://github.com/microsoft/STL/issues/969).
 
   - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_view` were designed for developers to use.
 
