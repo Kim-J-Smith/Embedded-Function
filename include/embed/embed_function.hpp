@@ -864,13 +864,13 @@ inline namespace fn_traits {
   // Throw std::bad_function_call or just call std::terminate().
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<!IsThrowing>
-  throw_or_abort() noexcept {
+  throw_or_terminate() noexcept {
     std::terminate();
   }
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
-  throw_or_abort() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
+  throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
 #if ( EMBED_CXX_ENABLE_EXCEPTION == true )
     throw std::bad_function_call{};
 #else
@@ -1392,7 +1392,7 @@ namespace invocation {
     /* Using when M_erasure is empty. */                                          \
     struct empty {                                                                \
       static Ret invoke(erasure_base_t*, smart_forward_t<Args>...) {              \
-        throw_or_abort<Config::isThrowing>();                                     \
+        throw_or_terminate<Config::isThrowing>();                                 \
         EMBED_UNREACHABLE();                                                      \
       }                                                                           \
     };                                                                            \
