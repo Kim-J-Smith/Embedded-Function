@@ -2262,8 +2262,9 @@ template <
   typename Functor,   // [Auto] Functor type.
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
-  // [Require] Functor must be movable and non-copyable.
+  // [Require] Functor must be movable.
   EMBED_DETAIL_REQUIRES(std::is_move_constructible<Functor>::value),
+  // [Require] Functor must be non-copyable.
   EMBED_DETAIL_REQUIRES(!std::is_copy_constructible<Functor>::value),
   // [Require] First template argument must be signature.
   EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
