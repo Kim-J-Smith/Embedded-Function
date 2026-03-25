@@ -1793,8 +1793,10 @@ namespace command {
     // Copy assignment.
     clone_impl& operator=(const clone_impl& other)
     noexcept(Config::assertNoThrow || Config::isView) {
-        Self tmp(static_cast<const Self&>(other));
-        tmp.swap(static_cast<Self&>(*this));
+      auto& other_fn = static_cast<const Self&>(other);
+      if (!other_fn.is_empty() && this != std::addressof(other_fn)) {
+        Self(other_fn).swap(static_cast<Self&>(*this));
+      }
       return *this;
     }
   };
@@ -2089,7 +2091,7 @@ namespace command {
     function& operator=(function&& other)
     noexcept(Config::assertNoThrow || Config::isView) {
       clear();
-      if (!other.is_empty()) {
+      if (!other.is_empty() && this != std::addressof(other)) {
         other.m_command.move(&m_erasure, &other.m_erasure);
         std::memcpy(&m_command, &other.m_command, sizeof(command_t));
         other.m_command.destroy(&other.m_erasure);
