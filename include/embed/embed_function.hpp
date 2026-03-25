@@ -1307,6 +1307,32 @@ inline namespace fn_traits {
     || (sizeof(T) <= sizeof(void*) && is_call_trivial<T>::value), 
     T, T&&>;
 
+  // Asserts for functor.
+  template <std::size_t BufferSize, typename Config, typename Signature,
+            typename Functor, typename Object, typename ErasureT>
+  struct asserts_for_function : public std::true_type {
+    static_assert(is_callable_functor<Functor, Signature>::value,
+      "The functor is NOT callable with given arguments.");
+
+    static_assert(align_size_is_ok<Functor, Config, BufferSize, ErasureT>::value,
+      "The size of Functor is too large, and the BufferSize is too small."
+      " Try use greater 'BufferSize' as the template argument");
+
+    static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
+      "The 'Functor' may throw exceptions during construction and destruction,"
+      " which does not match the 'Config::assertNoThrow = true' setting.");
+
+    static_assert(copyable_is_ok<Functor, Config>::value, 
+      "Functor cannot match the Config::isCopyable setting.");
+
+    static_assert(!move_constructor_is_deleted<Functor>::value,
+      "The move constructor of Functor shouldn't be deleted.");
+
+    static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
+      "The qualifier 'const', '&' or '&&' of operator() of Functor"
+      " cannot match that of Signature.");
+  };
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -1957,27 +1983,11 @@ namespace command {
     > function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
-      static_assert(is_callable_functor<Functor, Signature>::value,
-        "The functor is NOT callable with given arguments.");
+      static_assert(
+        asserts_for_function<
+          BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
+        "Internal error: asserts_for_function<...>::value should be always true.");
 
-      static_assert(align_size_is_ok<Functor, Config, BufferSize, erasure_t>::value,
-        "The size of Functor is too large, and the BufferSize is too small."
-        " Try use greater 'BufferSize' as the template argument");
-
-      static_assert(assert_throwing_is_ok<Functor, Functor&&, Config>::value,
-        "The 'Functor' may throw exceptions during construction and destruction,"
-        " which does not match the 'Config::assertNoThrow = true' setting.");
-
-      static_assert(copyable_is_ok<Functor, Config>::value, 
-        "Functor cannot match the Config::isCopyable setting.");
-
-      static_assert(!move_constructor_is_deleted<Functor>::value,
-        "The move constructor of Functor shouldn't be deleted.");
-
-      static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
-        "The qualifier 'const', '&' or '&&' of operator() of Functor"
-        " cannot match that of Signature.");
-      
       if (check_not_empty::check(functor)) {
         m_command.template init<>(
           &m_erasure, std::forward<Functor>(functor), 
