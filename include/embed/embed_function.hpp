@@ -1506,6 +1506,19 @@ namespace management {
       )) Functor(std::forward<Object>(obj));
     }
 
+#if EMBED_CXX_VERSION >= 201703L
+
+    // In-place create target object. (Cooperate with std::in_place_type)
+    template <typename Functor, typename... CArgs>
+    static void emplace_create(erasure_base_t* target, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
+      ::new (const_cast<void*>(
+        static_cast<erasure_t*>(target)->access()
+      )) Functor(std::forward<CArgs>(args)...);
+    }
+
+#endif
+
     // Destroy a type-erased object.
     template <typename Functor>
     static void destroy(erasure_base_t* victim)
@@ -1646,6 +1659,20 @@ namespace command {
         " the Functor must be stored originally.");
       EMBED_UNREACHABLE();
     }
+
+#if EMBED_CXX_VERSION >= 201703L
+
+    // In-place initialize the target with specified arguments.
+    template <typename Functor, typename DecFunctor = decay_t<Functor>, typename... CArgs>
+    void emplace_init(erasure_base_t* target, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<DecFunctor, CArgs&&...>::value) {
+      m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
+      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
+      manager_impl_t::template emplace_create<DecFunctor>(
+        target, std::forward<CArgs>(args)...);
+    }
+
+#endif
   };
 
   // Command Table for view mode.
@@ -1996,6 +2023,23 @@ namespace command {
         m_command.set_empty();
       }
     }
+
+#if EMBED_CXX_VERSION >= 201703L
+
+    /// @brief In-place constructs the Functor within the internal storage with specified arguments.
+    template <typename Functor, typename... CArgs>
+    explicit function(std::in_place_type_t<Functor>, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
+
+      static_assert(
+        asserts_for_function<
+          BufferSize, Config, Signature, Functor, Functor, erasure_t>::value,
+        "Internal error: asserts_for_function<...>::value should be always true.");
+
+      m_command.template emplace_init<Functor>(&m_erasure, std::forward<CArgs>(args)...);
+    }
+
+#endif
 
     // Return `true` if the object is empty.
     EMBED_CXX14_CONSTEXPR bool is_empty() const noexcept {
