@@ -87,6 +87,16 @@
 # endif
 #endif
 
+#ifndef EMBED_RESTRICT
+# if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+#  define EMBED_RESTRICT __restrict__
+# elif defined(_MSC_VER)
+#  define EMBED_RESTRICT __restrict
+# else
+#  define EMBED_RESTRICT
+# endif
+#endif
+
 #ifndef EMBED_NODISCARD
 # if EMBED_CXX_VERSION >= 201703L
 #  define EMBED_NODISCARD [[nodiscard]]
@@ -1530,7 +1540,7 @@ namespace management {
     // Clone type-erased object from `src` to `dst`.
     /// @attention `clone` will never change @a src.
     template <typename Functor>
-    static void clone(erasure_base_t* dst, erasure_base_t* src)
+    static void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
       const auto& src_obj = *get_pointer<Functor>(src);
       create<Functor>(dst, src_obj);
@@ -1538,7 +1548,7 @@ namespace management {
 
     // Move type-erased object from `src` to `dst`.
     template <typename Functor>
-    static void move(erasure_base_t* dst, erasure_base_t* src)
+    static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_move_constructible<Functor>::value) {
       auto& src_obj = *get_pointer<Functor>(src);
       create<Functor>(dst, std::move(src_obj));
@@ -1555,8 +1565,11 @@ namespace management {
     struct inplace {
       // Using when the Functor is copyable.
       template <typename Functor, bool IsCopyable>
-      static enable_if_t<IsCopyable>
-      manage(OperatorCode op, erasure_base_t* dst, erasure_base_t* src) {
+      static enable_if_t<IsCopyable> /* copyable */ manage(
+        OperatorCode op, 
+        erasure_base_t* EMBED_RESTRICT dst, 
+        erasure_base_t* EMBED_RESTRICT src
+      ) {
         switch (op) {
         case OperatorCode::clone:
           clone<Functor>(dst, src);
@@ -1573,8 +1586,11 @@ namespace management {
 
       // Using when the Functor is move only.
       template <typename Functor, bool IsCopyable>
-      static enable_if_t<!IsCopyable> // move only
-      manage(OperatorCode op, erasure_base_t* dst, erasure_base_t* src) {
+      static enable_if_t<!IsCopyable> /* move-only */ manage(
+        OperatorCode op, 
+        erasure_base_t* EMBED_RESTRICT dst, 
+        erasure_base_t* EMBED_RESTRICT src
+      ) {
         switch (op) {
         case OperatorCode::clone:
           EMBED_UNREACHABLE(); // move only
@@ -1618,12 +1634,12 @@ namespace command {
       return m_invoker(erased, std::forward<Args>(args)...);
     }
 
-    void clone(erasure_base_t* dst, erasure_base_t* src) const
+    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
       m_manager(management::OperatorCode::clone, dst, src);
     }
 
-    void move(erasure_base_t* dst, erasure_base_t* src) const
+    void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
       m_manager(management::OperatorCode::move, dst, src);
     }
@@ -1693,7 +1709,8 @@ namespace command {
       return m_invoker(erased, std::forward<Args>(args)...);
     }
 
-    void clone(erasure_base_t* dst, erasure_base_t* src) const noexcept {
+    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    const noexcept {
       auto* destination = static_cast<erasure_t*>(dst);
       auto* source = static_cast<erasure_t*>(src);
       std::memcpy(
@@ -1703,7 +1720,8 @@ namespace command {
       );
     }
 
-    void move(erasure_base_t* dst, erasure_base_t* src) const noexcept {
+    void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    const noexcept {
       clone(dst, src); // Trivial move is same as copy.
     }
 
