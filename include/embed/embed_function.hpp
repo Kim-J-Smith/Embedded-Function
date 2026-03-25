@@ -2062,6 +2062,10 @@ namespace command {
     // Swap the contents of two function objects.
     void swap(function& fn)
     noexcept(Config::assertNoThrow || Config::isView) {
+
+      // Avoid self swap.
+      if (this == std::addressof(fn)) { return; }
+
       erasure_t tmp_nil{};
       if (!is_empty()) {
         m_command.move(&tmp_nil, &m_erasure);
