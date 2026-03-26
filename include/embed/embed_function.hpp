@@ -858,14 +858,15 @@ inline namespace fn_traits {
 
   // Implement the "is_ebd_fn" trait.
   template <typename T>
-  struct is_ebd_fn_impl : public std::false_type {};
+  struct is_ebd_fn_impl : public std::false_type
+  { using signature = void; };
 
   template <std::size_t Buf, typename Cfg, typename Sig>
   struct is_ebd_fn_impl<function<Buf, Cfg, Sig>>
   : public bool_constant<
     unwrap_signature<Sig>::isSignature
     && is_config_package<Cfg>::value
-  > {};
+  > { using signature = Sig; };
 
   // Check whether the type is `ebd::detail::function` or not.
   template <typename T>
@@ -2576,10 +2577,15 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 /// @brief make_fn[11]: In-place make function.
 /// @return `decltype(make_fn(std::declval<Functor>()))`
 template <typename Functor, typename... CArgs>
-EMBED_NODISCARD inline decltype(make_fn(std::declval<Functor>()))
-make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
+EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
-  using Fn = decltype(make_fn(std::declval<Functor>()));
+  using signature = typename detail::is_ebd_fn<
+    decltype(make_fn(std::declval<Functor>()))>::signature;
+
+  using Fn = detail::conditional_t<
+    std::is_copy_constructible<Functor>::value,
+    ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
+
   return detail::make_function_impl<
     Fn, std::is_nothrow_constructible<Functor, CArgs&&...>::value
   >(std::in_place_type<Functor>, std::forward<CArgs>(args)...);
