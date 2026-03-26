@@ -496,3 +496,21 @@ TEST(InitFunction, ReturnPointerToClass) {
     ASSERT_EQ(f1 == nullptr, false);
     ASSERT_EQ(f1(), &ebd_test_member_fn::mem_fn_ii_add);
 }
+
+// InitFunction[27]
+#if EMBED_CXX_VERSION >= 201703L
+
+TEST(InitFunction, make_fn_InPlaceBuildCpp17) {
+    auto f1 = ebd::make_fn(std::in_place_type<void(*)()>, nullptr);
+    ASSERT_EQ(f1.is_empty(), false);
+
+    using moc = ebd_test_move_only_callable;
+    ebd::unique_fn<int(char)&&> f2(std::in_place_type<moc>);
+
+    auto f3 = ebd::make_fn(std::in_place_type<ebd::fn<int()>>, []{return 1;});
+
+    ASSERT_EQ(f3(), 1);
+    ASSERT_EQ(std::move(f2)('A'), OVL_CHAR);
+}
+
+#endif
