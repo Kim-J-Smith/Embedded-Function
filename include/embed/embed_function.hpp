@@ -2057,6 +2057,9 @@ namespace command {
     explicit function(std::in_place_type_t<Functor>, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<decay_t<Functor>, CArgs&&...>::value) {
 
+      static_assert(!Config::isView, 
+        "In-place building is not valid in view mode.");
+
       static_assert(
         asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor, erasure_t>::value,
