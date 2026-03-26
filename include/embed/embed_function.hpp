@@ -2049,7 +2049,7 @@ namespace command {
     /// @brief In-place constructs the Functor within the internal storage with specified arguments.
     template <typename Functor, typename... CArgs>
     explicit function(std::in_place_type_t<Functor>, CArgs&&... args)
-    noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
+    noexcept(std::is_nothrow_constructible<decay_t<Functor>, CArgs&&...>::value) {
 
       static_assert(
         asserts_for_function<
