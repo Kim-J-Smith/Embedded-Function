@@ -88,9 +88,9 @@
 #endif
 
 #ifndef EMBED_RESTRICT
-# if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+# if defined(__GNUC__) || defined(__clang__)
 #  define EMBED_RESTRICT __restrict__
-# elif defined(_MSC_VER)
+# elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #  define EMBED_RESTRICT __restrict
 # else
 #  define EMBED_RESTRICT
@@ -2180,11 +2180,11 @@ namespace command {
   }
 
   // Make a function.
-  template <typename Fn, bool NoThrow, typename Functor>
-  inline Fn make_function_impl(Functor&& functor) noexcept(NoThrow) {
+  template <typename Fn, bool NoThrow, typename... CArgs>
+  inline Fn make_function_impl(CArgs&&... args) noexcept(NoThrow) {
     static_assert(is_ebd_fn<Fn>::value,
       "Fn must be the alias of `ebd::detail::function`.");
-    return Fn{std::forward<Functor>(functor)};
+    return Fn{std::forward<CArgs>(args)...};
   }
 
 } // end namespace detail
@@ -2565,6 +2565,22 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
     /* NoThrow = */ true
   >(ptr_memobj);
 }
+
+#if EMBED_CXX_VERSION >= 201703L
+
+/// @brief make_fn[11]: In-place make function.
+/// @return `decltype(make_fn(std::declval<Functor>()))`
+template <typename Functor, typename... CArgs>
+EMBED_NODISCARD inline decltype(make_fn(std::declval<Functor>()))
+make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
+noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
+  using Fn = decltype(make_fn(std::declval<Functor>()));
+  return detail::make_function_impl<
+    Fn, std::is_nothrow_constructible<Functor, CArgs&&...>::value
+  >(std::in_place_type<Functor>, std::forward<CArgs>(args)...);
+}
+
+#endif
 
 } // end namespace ebd
 
