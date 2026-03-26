@@ -1312,10 +1312,15 @@ inline namespace fn_traits {
   // Used to choose either perfect forwarding or pass-by-value.
   // Pass-by-value is faster for scalar types because they can
   // be passed by the register rather than the stack.
+#if !defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
   template <typename T>
   using smart_forward_t = conditional_t<std::is_scalar<T>::value
     || (sizeof(T) <= sizeof(void*) && is_call_trivial<T>::value), 
     T, T&&>;
+#else
+  template <typename T>
+  using smart_forward_t = T&&;
+#endif
 
   // Asserts for functor.
   template <std::size_t BufferSize, typename Config, typename Signature,
