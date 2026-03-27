@@ -113,6 +113,8 @@ auto main() -> int {
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
 
+4. **Triviality**: In Clang, `fn_view` is trivially copy-constructible, trivially move-constructible, trivially copy-assignable, trivially move-assignable, and trivially destructible. After Clang 21.1.0, expressions `std::is_trivially_relocatable_v<ebd::fn_view<...>>`, `__builtin_is_cpp_trivially_relocatable(ebd::fn_view<void()>)` and `__is_trivially_relocatable(ebd::fn_view<...>)` are *`true`*.
+
 ## 🚀 Performance optimization
 
 ### Branch elimination
