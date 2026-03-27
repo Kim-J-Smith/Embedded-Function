@@ -197,6 +197,19 @@ namespace ebd { namespace detail {
   ::ebd::detail::enable_if_t<(require_condition), int> = 0
 #define EMBED_DETAIL_REQUIRES(...)  EMBED_DETAIL_REQUIRES_IMPL((__VA_ARGS__))
 
+/// @brief Make ebd::fn_view trivially relocatable if `enable_if` is supported.
+/// @note @todo The behaviour of attribute `enable_if` may be unstable and experimental,
+/// See https://clang.llvm.org/docs/AttributeReference.html#enable-if .
+#if defined(__clang__) && defined(__has_attribute) && __has_attribute(enable_if)
+# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, ...) \
+  _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"") \
+  function_decl __attribute__((enable_if(!Config::isView, "Inplace mode"))) __VA_ARGS__ \
+  function_decl __attribute__((enable_if(Config::isView, "View mode"))) = default;      \
+  _Pragma("clang diagnostic pop")
+#else
+# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, ...) function_decl __VA_ARGS__
+#endif
+
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
 
@@ -1804,25 +1817,29 @@ namespace command {
 
     // Use `placement new` to create new functor during construction,
     // which will call functor's copy-constructor.
-    clone_impl(const clone_impl& that)
-    noexcept(Config::assertNoThrow || Config::isView) {
-      auto* self = static_cast<Self*>(this);
-      auto& other = static_cast<const Self&>(that);
-      using erasure_t = typename Self::erasure_t;
-      using command_t = typename Self::command_t;
-      other.m_command.clone(&self->m_erasure, const_cast<erasure_t*>(&other.m_erasure));
-      std::memcpy(&self->m_command, &other.m_command, sizeof(command_t));
-    }
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      clone_impl(const clone_impl& that)
+      noexcept(Config::assertNoThrow || Config::isView), {
+        auto* self = static_cast<Self*>(this);
+        auto& other = static_cast<const Self&>(that);
+        using erasure_t = typename Self::erasure_t;
+        using command_t = typename Self::command_t;
+        other.m_command.clone(&self->m_erasure, const_cast<erasure_t*>(&other.m_erasure));
+        std::memcpy(&self->m_command, &other.m_command, sizeof(command_t));
+      }
+    )
 
     // Copy assignment.
-    clone_impl& operator=(const clone_impl& other)
-    noexcept(Config::assertNoThrow || Config::isView) {
-      auto& other_fn = static_cast<const Self&>(other);
-      if (!other_fn.is_empty() && this != std::addressof(other_fn)) {
-        Self(other_fn).swap(static_cast<Self&>(*this));
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      clone_impl& operator=(const clone_impl& other)
+      noexcept(Config::assertNoThrow || Config::isView), {
+        auto& other_fn = static_cast<const Self&>(other);
+        if (!other_fn.is_empty() && this != std::addressof(other_fn)) {
+          Self(other_fn).swap(static_cast<Self&>(*this));
+        }
+        return *this;
       }
-      return *this;
-    }
+    )
   };
 
   template <typename Config, typename Self>
@@ -1955,9 +1972,11 @@ namespace command {
     EMBED_NODISCARD EMBED_INLINE static bool
     is_copyable() noexcept { return internal_is_copyable; }
 
-    ~function() noexcept(Config::assertNoThrow || Config::isView) {
-      m_command.destroy(&m_erasure);
-    }
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      ~function() noexcept(Config::assertNoThrow || Config::isView), {
+        m_command.destroy(&m_erasure);
+      }
+    )
 
     // Create an empty function wrapper.
     function() noexcept {
@@ -1982,13 +2001,15 @@ namespace command {
 
     // Use `placement new` to create new functor during construction,
     // which will call functor's move-constructor.
-    function(function&& other)
-    noexcept(Config::assertNoThrow || Config::isView) {
-      other.m_command.move(&m_erasure, &other.m_erasure);
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-      other.m_command.destroy(&other.m_erasure);
-      other.m_command.set_empty();
-    }
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      function(function&& other)
+      noexcept(Config::assertNoThrow || Config::isView), {
+        other.m_command.move(&m_erasure, &other.m_erasure);
+        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+        other.m_command.destroy(&other.m_erasure);
+        other.m_command.set_empty();
+      }
+    )
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -2119,17 +2140,19 @@ namespace command {
     }
 
     // Move assignment.
-    function& operator=(function&& other)
-    noexcept(Config::assertNoThrow || Config::isView) {
-      clear();
-      if (!other.is_empty() && this != std::addressof(other)) {
-        other.m_command.move(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-        other.m_command.destroy(&other.m_erasure);
-        other.m_command.set_empty();
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      function& operator=(function&& other)
+      noexcept(Config::assertNoThrow || Config::isView), {
+        clear();
+        if (!other.is_empty() && this != std::addressof(other)) {
+          other.m_command.move(&m_erasure, &other.m_erasure);
+          std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+          other.m_command.destroy(&other.m_erasure);
+          other.m_command.set_empty();
+        }
+        return *this;
       }
-      return *this;
-    }
+    )
 
     // Implemented in base class `clone_impl`.
     // `=delete` if `internal_is_copyable == false`.
@@ -2602,6 +2625,7 @@ noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
 #undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_REQUIRES_IMPL
+#undef EMBED_DETAIL_VIEW_MODE_DEFAULT
 
 #if defined(_MSC_VER)
 # pragma warning(pop)
