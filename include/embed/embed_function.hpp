@@ -732,20 +732,38 @@ inline namespace fn_traits {
   template <typename... Args>
   struct always_false { static constexpr bool value = false; };
 
+  // Is trivially destruct, copy and move.
+  template <typename T>
+  struct is_call_trivial_impl : public bool_constant<
+    std::is_trivially_destructible<T>::value
+      && std::is_trivially_copy_constructible<T>::value
+      && std::is_trivially_move_constructible<T>::value
+  > {};
+
   // Is trivial for the purposes of calls.
   // See https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters .
   template <typename T>
   struct is_call_trivial : public bool_constant<
-    std::is_trivially_destructible<T>::value
-      && std::is_trivially_copy_constructible<T>::value
-      && std::is_trivially_move_constructible<T>::value
+#if ( EMBED_CXX_VERSION >= 202400L ) && ( __cpp_trivial_relocatability >= 202502L )
+    std::is_trivially_relocatable_v<T>
+#elif EMBED_HAS_BUILTIN(__builtin_is_trivially_relocatable)
+    __builtin_is_trivially_relocatable(T) // GCC style builtin function
+#elif EMBED_HAS_BUILTIN(__builtin_is_cpp_trivially_relocatable)
+    __builtin_is_cpp_trivially_relocatable(T) // Clang style builtin function
+#elif EMBED_HAS_BUILTIN(__is_trivially_relocatable)
+    /// @deprecated `__is_trivially_relocatable` is deprecated in Clang, See 
+    /// https://lists.llvm.org/pipermail/all-commits/Week-of-Mon-20250505/220210.html .
+    __is_trivially_relocatable(T)
+#else
+    is_call_trivial_impl<T>::value
+#endif
   > {};
 
   // std::is_trivial is deprecated in C++26. But we need it.
   template <typename T>
   struct is_traditional_trivial : public bool_constant<
     std::is_trivially_default_constructible<T>::value
-    && is_call_trivial<T>::value
+    && is_call_trivial_impl<T>::value
   > {};
 
   // Check self.
