@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.6
+ * @version     2.0.7
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -87,6 +87,16 @@
 # endif
 #endif
 
+#ifndef EMBED_RESTRICT
+# if defined(__GNUC__) || defined(__clang__)
+#  define EMBED_RESTRICT __restrict__
+# elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#  define EMBED_RESTRICT __restrict
+# else
+#  define EMBED_RESTRICT
+# endif
+#endif
+
 #ifndef EMBED_NODISCARD
 # if EMBED_CXX_VERSION >= 201703L
 #  define EMBED_NODISCARD [[nodiscard]]
@@ -149,6 +159,7 @@ namespace ebd { namespace detail {
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
+# include <initializer_list>
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
@@ -186,6 +197,19 @@ namespace ebd { namespace detail {
 #define EMBED_DETAIL_REQUIRES_IMPL(require_condition) \
   ::ebd::detail::enable_if_t<(require_condition), int> = 0
 #define EMBED_DETAIL_REQUIRES(...)  EMBED_DETAIL_REQUIRES_IMPL((__VA_ARGS__))
+
+/// @brief Make ebd::fn_view trivially relocatable if `enable_if` is supported.
+/// @note @todo The behaviour of attribute `enable_if` may be unstable and experimental,
+/// See https://clang.llvm.org/docs/AttributeReference.html#enable-if .
+#if defined(__clang__) && defined(__has_attribute) && __has_attribute(enable_if)
+# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, ...) \
+  _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"") \
+  function_decl __attribute__((enable_if(!Config::isView, "Inplace mode"))) __VA_ARGS__ \
+  function_decl __attribute__((enable_if(Config::isView, "View mode"))) = default;      \
+  _Pragma("clang diagnostic pop")
+#else
+# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, ...) function_decl __VA_ARGS__
+#endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -722,7 +746,7 @@ inline namespace fn_traits {
   template <typename... Args>
   struct always_false { static constexpr bool value = false; };
 
-  // Is trivial for the purposes of calls.
+  // Is trivial for the purposes of calls. (trivially destruct, copy and move)
   // See https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters .
   template <typename T>
   struct is_call_trivial : public bool_constant<
@@ -848,14 +872,15 @@ inline namespace fn_traits {
 
   // Implement the "is_ebd_fn" trait.
   template <typename T>
-  struct is_ebd_fn_impl : public std::false_type {};
+  struct is_ebd_fn_impl : public std::false_type
+  { using signature = void; };
 
   template <std::size_t Buf, typename Cfg, typename Sig>
   struct is_ebd_fn_impl<function<Buf, Cfg, Sig>>
   : public bool_constant<
     unwrap_signature<Sig>::isSignature
     && is_config_package<Cfg>::value
-  > {};
+  > { using signature = Sig; };
 
   // Check whether the type is `ebd::detail::function` or not.
   template <typename T>
@@ -864,13 +889,13 @@ inline namespace fn_traits {
   // Throw std::bad_function_call or just call std::terminate().
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<!IsThrowing>
-  throw_or_abort() noexcept {
+  throw_or_terminate() noexcept {
     std::terminate();
   }
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
-  throw_or_abort() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
+  throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
 #if ( EMBED_CXX_ENABLE_EXCEPTION == true )
     throw std::bad_function_call{};
 #else
@@ -1302,10 +1327,52 @@ inline namespace fn_traits {
   // Used to choose either perfect forwarding or pass-by-value.
   // Pass-by-value is faster for scalar types because they can
   // be passed by the register rather than the stack.
+#if !defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
   template <typename T>
   using smart_forward_t = conditional_t<std::is_scalar<T>::value
     || (sizeof(T) <= sizeof(void*) && is_call_trivial<T>::value), 
     T, T&&>;
+#else
+  template <typename T>
+  using smart_forward_t = T&&;
+#endif
+
+  // Asserts for functor.
+  template <std::size_t BufferSize, typename Config, typename Signature,
+            typename Functor, typename Object, typename ErasureT>
+  struct asserts_for_function : public std::true_type {
+    static_assert(is_callable_functor<Functor, Signature>::value,
+      "The functor is NOT callable with given arguments.");
+
+    static_assert(align_size_is_ok<Functor, Config, BufferSize, ErasureT>::value,
+      "The size of Functor is too large, and the BufferSize is too small."
+      " Try use greater 'BufferSize' as the template argument");
+
+    static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
+      "The 'Functor' may throw exceptions during construction and destruction,"
+      " which does not match the 'Config::assertNoThrow = true' setting.");
+
+    static_assert(copyable_is_ok<Functor, Config>::value, 
+      "Functor cannot match the Config::isCopyable setting.");
+
+    static_assert(!move_constructor_is_deleted<Functor>::value,
+      "The move constructor of Functor shouldn't be deleted.");
+
+    static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
+      "The qualifier 'const', '&' or '&&' of operator() of Functor"
+      " cannot match that of Signature.");
+  };
+
+  // Is type std::in_place_type_t<T>.
+  template <typename>
+  struct is_in_place_type : public std::false_type {};
+
+#if EMBED_CXX_VERSION >= 201703L
+
+  template <typename T>
+  struct is_in_place_type<std::in_place_type_t<T>> : public std::true_type {};
+
+#endif
 
 } // end namespace fn_traits
 
@@ -1392,7 +1459,7 @@ namespace invocation {
     /* Using when M_erasure is empty. */                                          \
     struct empty {                                                                \
       static Ret invoke(erasure_base_t*, smart_forward_t<Args>...) {              \
-        throw_or_abort<Config::isThrowing>();                                     \
+        throw_or_terminate<Config::isThrowing>();                                 \
         EMBED_UNREACHABLE();                                                      \
       }                                                                           \
     };                                                                            \
@@ -1480,6 +1547,19 @@ namespace management {
       )) Functor(std::forward<Object>(obj));
     }
 
+#if EMBED_CXX_VERSION >= 201703L
+
+    // In-place create target object. (Cooperate with std::in_place_type)
+    template <typename Functor, typename... CArgs>
+    static void emplace_create(erasure_base_t* target, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
+      ::new (const_cast<void*>(
+        static_cast<erasure_t*>(target)->access()
+      )) Functor(std::forward<CArgs>(args)...);
+    }
+
+#endif
+
     // Destroy a type-erased object.
     template <typename Functor>
     static void destroy(erasure_base_t* victim)
@@ -1491,7 +1571,7 @@ namespace management {
     // Clone type-erased object from `src` to `dst`.
     /// @attention `clone` will never change @a src.
     template <typename Functor>
-    static void clone(erasure_base_t* dst, erasure_base_t* src)
+    static void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
       const auto& src_obj = *get_pointer<Functor>(src);
       create<Functor>(dst, src_obj);
@@ -1499,7 +1579,7 @@ namespace management {
 
     // Move type-erased object from `src` to `dst`.
     template <typename Functor>
-    static void move(erasure_base_t* dst, erasure_base_t* src)
+    static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_move_constructible<Functor>::value) {
       auto& src_obj = *get_pointer<Functor>(src);
       create<Functor>(dst, std::move(src_obj));
@@ -1516,8 +1596,11 @@ namespace management {
     struct inplace {
       // Using when the Functor is copyable.
       template <typename Functor, bool IsCopyable>
-      static enable_if_t<IsCopyable>
-      manage(OperatorCode op, erasure_base_t* dst, erasure_base_t* src) {
+      static enable_if_t<IsCopyable> /* copyable */ manage(
+        OperatorCode op, 
+        erasure_base_t* EMBED_RESTRICT dst, 
+        erasure_base_t* EMBED_RESTRICT src
+      ) {
         switch (op) {
         case OperatorCode::clone:
           clone<Functor>(dst, src);
@@ -1534,8 +1617,11 @@ namespace management {
 
       // Using when the Functor is move only.
       template <typename Functor, bool IsCopyable>
-      static enable_if_t<!IsCopyable> // move only
-      manage(OperatorCode op, erasure_base_t* dst, erasure_base_t* src) {
+      static enable_if_t<!IsCopyable> /* move-only */ manage(
+        OperatorCode op, 
+        erasure_base_t* EMBED_RESTRICT dst, 
+        erasure_base_t* EMBED_RESTRICT src
+      ) {
         switch (op) {
         case OperatorCode::clone:
           EMBED_UNREACHABLE(); // move only
@@ -1579,12 +1665,12 @@ namespace command {
       return m_invoker(erased, std::forward<Args>(args)...);
     }
 
-    void clone(erasure_base_t* dst, erasure_base_t* src) const
+    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
       m_manager(management::OperatorCode::clone, dst, src);
     }
 
-    void move(erasure_base_t* dst, erasure_base_t* src) const
+    void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
       m_manager(management::OperatorCode::move, dst, src);
     }
@@ -1620,6 +1706,20 @@ namespace command {
         " the Functor must be stored originally.");
       EMBED_UNREACHABLE();
     }
+
+#if EMBED_CXX_VERSION >= 201703L
+
+    // In-place initialize the target with specified arguments.
+    template <typename Functor, typename DecFunctor = decay_t<Functor>, typename... CArgs>
+    void emplace_init(erasure_base_t* target, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<DecFunctor, CArgs&&...>::value) {
+      m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
+      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
+      manager_impl_t::template emplace_create<DecFunctor>(
+        target, std::forward<CArgs>(args)...);
+    }
+
+#endif
   };
 
   // Command Table for view mode.
@@ -1640,7 +1740,8 @@ namespace command {
       return m_invoker(erased, std::forward<Args>(args)...);
     }
 
-    void clone(erasure_base_t* dst, erasure_base_t* src) const noexcept {
+    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    const noexcept {
       auto* destination = static_cast<erasure_t*>(dst);
       auto* source = static_cast<erasure_t*>(src);
       std::memcpy(
@@ -1650,7 +1751,8 @@ namespace command {
       );
     }
 
-    void move(erasure_base_t* dst, erasure_base_t* src) const noexcept {
+    void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    const noexcept {
       clone(dst, src); // Trivial move is same as copy.
     }
 
@@ -1727,23 +1829,29 @@ namespace command {
 
     // Use `placement new` to create new functor during construction,
     // which will call functor's copy-constructor.
-    clone_impl(const clone_impl& that)
-    noexcept(Config::assertNoThrow || Config::isView) {
-      auto* self = static_cast<Self*>(this);
-      auto& other = static_cast<const Self&>(that);
-      using erasure_t = typename Self::erasure_t;
-      using command_t = typename Self::command_t;
-      other.m_command.clone(&self->m_erasure, const_cast<erasure_t*>(&other.m_erasure));
-      std::memcpy(&self->m_command, &other.m_command, sizeof(command_t));
-    }
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      clone_impl(const clone_impl& that)
+      noexcept(Config::assertNoThrow || Config::isView), {
+        auto* self = static_cast<Self*>(this);
+        auto& other = static_cast<const Self&>(that);
+        using erasure_t = typename Self::erasure_t;
+        using command_t = typename Self::command_t;
+        other.m_command.clone(&self->m_erasure, const_cast<erasure_t*>(&other.m_erasure));
+        std::memcpy(&self->m_command, &other.m_command, sizeof(command_t));
+      }
+    )
 
     // Copy assignment.
-    clone_impl& operator=(const clone_impl& other)
-    noexcept(Config::assertNoThrow || Config::isView) {
-        Self tmp(static_cast<const Self&>(other));
-        tmp.swap(static_cast<Self&>(*this));
-      return *this;
-    }
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      clone_impl& operator=(const clone_impl& other)
+      noexcept(Config::assertNoThrow || Config::isView), {
+        auto& other_fn = static_cast<const Self&>(other);
+        if (!other_fn.is_empty() && this != std::addressof(other_fn)) {
+          Self(other_fn).swap(static_cast<Self&>(*this));
+        }
+        return *this;
+      }
+    )
   };
 
   template <typename Config, typename Self>
@@ -1876,9 +1984,11 @@ namespace command {
     EMBED_NODISCARD EMBED_INLINE static bool
     is_copyable() noexcept { return internal_is_copyable; }
 
-    ~function() noexcept(Config::assertNoThrow || Config::isView) {
-      m_command.destroy(&m_erasure);
-    }
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      ~function() noexcept(Config::assertNoThrow || Config::isView), {
+        m_command.destroy(&m_erasure);
+      }
+    )
 
     // Create an empty function wrapper.
     function() noexcept {
@@ -1903,13 +2013,15 @@ namespace command {
 
     // Use `placement new` to create new functor during construction,
     // which will call functor's move-constructor.
-    function(function&& other)
-    noexcept(Config::assertNoThrow || Config::isView) {
-      other.m_command.move(&m_erasure, &other.m_erasure);
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-      other.m_command.destroy(&other.m_erasure);
-      other.m_command.set_empty();
-    }
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      function(function&& other)
+      noexcept(Config::assertNoThrow || Config::isView), {
+        other.m_command.move(&m_erasure, &other.m_erasure);
+        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+        other.m_command.destroy(&other.m_erasure);
+        other.m_command.set_empty();
+      }
+    )
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -1953,31 +2065,16 @@ namespace command {
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
     template <typename Functor, 
       EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
-      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value)
+      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value),
+      EMBED_DETAIL_REQUIRES(!is_in_place_type<decay_t<Functor>>::value)
     > function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
-      static_assert(is_callable_functor<Functor, Signature>::value,
-        "The functor is NOT callable with given arguments.");
+      static_assert(
+        asserts_for_function<
+          BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
+        "Internal error: asserts_for_function<...>::value should be always true.");
 
-      static_assert(align_size_is_ok<Functor, Config, BufferSize, erasure_t>::value,
-        "The size of Functor is too large, and the BufferSize is too small."
-        " Try use greater 'BufferSize' as the template argument");
-
-      static_assert(assert_throwing_is_ok<Functor, Functor&&, Config>::value,
-        "The 'Functor' may throw exceptions during construction and destruction,"
-        " which does not match the 'Config::assertNoThrow = true' setting.");
-
-      static_assert(copyable_is_ok<Functor, Config>::value, 
-        "Functor cannot match the Config::isCopyable setting.");
-
-      static_assert(!move_constructor_is_deleted<Functor>::value,
-        "The move constructor of Functor shouldn't be deleted.");
-
-      static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
-        "The qualifier 'const', '&' or '&&' of operator() of Functor"
-        " cannot match that of Signature.");
-      
       if (check_not_empty::check(functor)) {
         m_command.template init<>(
           &m_erasure, std::forward<Functor>(functor), 
@@ -1986,6 +2083,47 @@ namespace command {
         m_command.set_empty();
       }
     }
+
+#if EMBED_CXX_VERSION >= 201703L
+
+    /// @brief In-place constructs the Fn within the internal storage with specified arguments.
+    /// @param args - The arguments for constructing the Fn.
+    template <typename Fn, typename... CArgs,
+      EMBED_DETAIL_REQUIRES(always_false<Fn>::value || !Config::isView),
+      EMBED_DETAIL_REQUIRES(std::is_constructible<Fn, CArgs...>::value),
+      EMBED_DETAIL_REQUIRES(is_callable_functor<Fn, Signature>::value)
+    > explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
+
+      static_assert(std::is_same<Fn, decay_t<Fn>>::value,
+        "decay_t<Fn> should be the same type as Fn.");
+      static_assert(asserts_for_function<
+          BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
+        "Internal error: asserts_for_function<...>::value should be always true.");
+
+      m_command.template emplace_init<Fn>(&m_erasure, std::forward<CArgs>(args)...);
+    }
+
+    /// @brief In-place constructs the Fn within the internal storage with init_list and specified arguments.
+    /// @param il - The initializer_list for constructing the Fn.
+    /// @param args - The arguments for constructing the Fn.
+    template <typename Fn, typename U, typename... CArgs,
+      EMBED_DETAIL_REQUIRES(always_false<Fn>::value || !Config::isView),
+      EMBED_DETAIL_REQUIRES(std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value),
+      EMBED_DETAIL_REQUIRES(is_callable_functor<Fn, Signature>::value)
+    > explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
+
+      static_assert(std::is_same<Fn, decay_t<Fn>>::value,
+        "decay_t<Fn> should be the same type as Fn.");
+      static_assert(asserts_for_function<
+          BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
+        "Internal error: asserts_for_function<...>::value should be always true.");
+
+      m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
+    }
+
+#endif
 
     // Return `true` if the object is empty.
     EMBED_CXX14_CONSTEXPR bool is_empty() const noexcept {
@@ -2006,6 +2144,10 @@ namespace command {
     // Swap the contents of two function objects.
     void swap(function& fn)
     noexcept(Config::assertNoThrow || Config::isView) {
+
+      // Avoid self swap.
+      if (this == std::addressof(fn)) { return; }
+
       erasure_t tmp_nil{};
       if (!is_empty()) {
         m_command.move(&tmp_nil, &m_erasure);
@@ -2032,17 +2174,19 @@ namespace command {
     }
 
     // Move assignment.
-    function& operator=(function&& other)
-    noexcept(Config::assertNoThrow || Config::isView) {
-      clear();
-      if (!other.is_empty()) {
-        other.m_command.move(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-        other.m_command.destroy(&other.m_erasure);
-        other.m_command.set_empty();
+    EMBED_DETAIL_VIEW_MODE_DEFAULT(
+      function& operator=(function&& other)
+      noexcept(Config::assertNoThrow || Config::isView), {
+        clear();
+        if (!other.is_empty() && this != std::addressof(other)) {
+          other.m_command.move(&m_erasure, &other.m_erasure);
+          std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+          other.m_command.destroy(&other.m_erasure);
+          other.m_command.set_empty();
+        }
+        return *this;
       }
-      return *this;
-    }
+    )
 
     // Implemented in base class `clone_impl`.
     // `=delete` if `internal_is_copyable == false`.
@@ -2102,11 +2246,11 @@ namespace command {
   }
 
   // Make a function.
-  template <typename Fn, bool NoThrow, typename Functor>
-  inline Fn make_function_impl(Functor&& functor) noexcept(NoThrow) {
+  template <typename Fn, bool NoThrow, typename... CArgs>
+  inline Fn make_function_impl(CArgs&&... args) noexcept(NoThrow) {
     static_assert(is_ebd_fn<Fn>::value,
       "Fn must be the alias of `ebd::detail::function`.");
-    return Fn{std::forward<Functor>(functor)};
+    return Fn{std::forward<CArgs>(args)...};
   }
 
 } // end namespace detail
@@ -2262,8 +2406,9 @@ template <
   typename Functor,   // [Auto] Functor type.
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
-  // [Require] Functor must be movable and non-copyable.
+  // [Require] Functor must be movable.
   EMBED_DETAIL_REQUIRES(std::is_move_constructible<Functor>::value),
+  // [Require] Functor must be non-copyable.
   EMBED_DETAIL_REQUIRES(!std::is_copy_constructible<Functor>::value),
   // [Require] First template argument must be signature.
   EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
@@ -2487,12 +2632,52 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
   >(ptr_memobj);
 }
 
+#if EMBED_CXX_VERSION >= 201703L
+
+/// @brief make_fn[11]: In-place make function.
+/// @return `decltype(make_fn(std::declval<Functor>()))`
+template <typename Functor, typename... CArgs>
+EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
+noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
+  using signature = typename detail::is_ebd_fn<
+    decltype(make_fn(std::declval<Functor>()))>::signature;
+
+  using Fn = detail::conditional_t<
+    std::is_copy_constructible<Functor>::value,
+    ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
+
+  return detail::make_function_impl<
+    Fn, std::is_nothrow_constructible<Functor, CArgs...>::value
+  >(std::in_place_type<Functor>, std::forward<CArgs>(args)...);
+}
+
+/// @brief make_fn[11]: In-place make function. (std::initializer_list)
+/// @return `decltype(make_fn(std::declval<Functor>()))`
+template <typename Functor, typename U, typename... CArgs>
+EMBED_NODISCARD inline auto
+make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
+noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value) {
+  using signature = typename detail::is_ebd_fn<
+    decltype(make_fn(std::declval<Functor>()))>::signature;
+
+  using Fn = detail::conditional_t<
+    std::is_copy_constructible<Functor>::value,
+    ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
+
+  return detail::make_function_impl<
+    Fn, std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value
+  >(std::in_place_type<Functor>, il, std::forward<CArgs>(args)...);
+}
+
+#endif
+
 } // end namespace ebd
 
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
 #undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_REQUIRES_IMPL
+#undef EMBED_DETAIL_VIEW_MODE_DEFAULT
 
 #if defined(_MSC_VER)
 # pragma warning(pop)

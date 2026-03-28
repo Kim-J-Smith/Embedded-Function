@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.6-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.6">
+  <img src="https://img.shields.io/badge/Version-2.0.7-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.7">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
@@ -113,6 +113,8 @@ auto main() -> int {
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
 
+4. **Triviality**: In Clang, `fn_view` is trivially copy-constructible, trivially move-constructible, trivially copy-assignable, trivially move-assignable, and trivially destructible. After Clang 21.1.0, expressions `std::is_trivially_relocatable_v<ebd::fn_view<...>>`, `__builtin_is_cpp_trivially_relocatable(ebd::fn_view<void()>)` and `__is_trivially_relocatable(ebd::fn_view<...>)` are *`true`*.
+
 ## 🚀 Performance optimization
 
 ### Branch elimination
@@ -153,6 +155,12 @@ auto f = ebd::make_fn[<Signature>](Callable_Object);
 ```cpp
 // Create ebd::fn or ebd::unique_fn from ambiguous callable object with specified signature, such as overload free function, overload member function, etc.
 auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
+```
+
+```cpp
+// In place build functor within buffer. Functor should be unambiguously callable (non-overload).
+auto f = ebd::make_fn(std::in_place_type<Functor>, CArgs...); // Since C++17
+auto f = ebd::make_fn(std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...); // Since C++17
 ```
 
 ## 🔗 Back to function pointer
