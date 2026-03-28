@@ -75,7 +75,7 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     ASSERT_EQ(std::is_nothrow_destructible<fv_t>::value == true, true);
 }
 
-#if defined(__clang__) && defined(__has_attribute) && __has_attribute(enable_if)
+#if defined(__clang__) && __clang__ >= 15 && defined(__has_attribute) && __has_attribute(enable_if)
 
 // BasicAttributes[2]
 TEST(BasicAttributes, TrivialityViewMode) {
