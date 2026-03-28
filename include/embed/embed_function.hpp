@@ -202,13 +202,14 @@ namespace ebd { namespace detail {
 /// @note @todo The behaviour of attribute `enable_if` may be unstable and experimental,
 /// See https://clang.llvm.org/docs/AttributeReference.html#enable-if .
 #if defined(__clang__) && defined(__has_attribute) && __has_attribute(enable_if)
-# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, ...) \
-  _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"") \
-  function_decl __attribute__((enable_if(!Config::isView, "Inplace mode"))) __VA_ARGS__ \
-  function_decl __attribute__((enable_if(Config::isView, "View mode"))) = default;      \
+# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
+  _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"")         \
+  function_decl noexc_q __attribute__((enable_if(!Config::isView, "Inplace mode"))) __VA_ARGS__ \
+  function_decl __attribute__((enable_if(Config::isView, "View mode"))) = default;              \
   _Pragma("clang diagnostic pop")
 #else
-# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, ...) function_decl __VA_ARGS__
+# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
+  function_decl noexc_q __VA_ARGS__
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -896,7 +897,7 @@ inline namespace fn_traits {
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
-#if ( EMBED_CXX_ENABLE_EXCEPTION == true )
+#if EMBED_CXX_ENABLE_EXCEPTION != 0
     throw std::bad_function_call{};
 #else
     std::terminate();
@@ -1830,7 +1831,7 @@ namespace command {
     // Use `placement new` to create new functor during construction,
     // which will call functor's copy-constructor.
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      clone_impl(const clone_impl& that)
+      clone_impl(const clone_impl& that),
       noexcept(Config::assertNoThrow || Config::isView), {
         auto* self = static_cast<Self*>(this);
         auto& other = static_cast<const Self&>(that);
@@ -1843,7 +1844,7 @@ namespace command {
 
     // Copy assignment.
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      clone_impl& operator=(const clone_impl& other)
+      clone_impl& operator=(const clone_impl& other),
       noexcept(Config::assertNoThrow || Config::isView), {
         auto& other_fn = static_cast<const Self&>(other);
         if (!other_fn.is_empty() && this != std::addressof(other_fn)) {
@@ -1985,7 +1986,7 @@ namespace command {
     is_copyable() noexcept { return internal_is_copyable; }
 
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      ~function() noexcept(Config::assertNoThrow || Config::isView), {
+      ~function(), noexcept(Config::assertNoThrow || Config::isView), {
         m_command.destroy(&m_erasure);
       }
     )
@@ -2014,7 +2015,7 @@ namespace command {
     // Use `placement new` to create new functor during construction,
     // which will call functor's move-constructor.
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      function(function&& other)
+      function(function&& other),
       noexcept(Config::assertNoThrow || Config::isView), {
         other.m_command.move(&m_erasure, &other.m_erasure);
         std::memcpy(&m_command, &other.m_command, sizeof(command_t));
@@ -2175,7 +2176,7 @@ namespace command {
 
     // Move assignment.
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      function& operator=(function&& other)
+      function& operator=(function&& other),
       noexcept(Config::assertNoThrow || Config::isView), {
         clear();
         if (!other.is_empty() && this != std::addressof(other)) {
