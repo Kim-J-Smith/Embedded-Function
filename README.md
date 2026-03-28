@@ -157,6 +157,12 @@ auto f = ebd::make_fn[<Signature>](Callable_Object);
 auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 ```
 
+```cpp
+// In place build functor within buffer. Functor should be unambiguously callable (non-overload).
+auto f = ebd::make_fn(std::in_place_type<Functor>, CArgs...); // Since C++17
+auto f = ebd::make_fn(std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...); // Since C++17
+```
+
 ## 🔗 Back to function pointer
 
 ### Brief introduction
