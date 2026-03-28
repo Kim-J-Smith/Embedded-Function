@@ -159,6 +159,7 @@ namespace ebd { namespace detail {
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
+# include <initializer_list>
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
@@ -1362,6 +1363,17 @@ inline namespace fn_traits {
       " cannot match that of Signature.");
   };
 
+  // Is type std::in_place_type_t<T>.
+  template <typename>
+  struct is_in_place_type : public std::false_type {};
+
+#if EMBED_CXX_VERSION >= 201703L
+
+  template <typename T>
+  struct is_in_place_type<std::in_place_type_t<T>> : public std::true_type {};
+
+#endif
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -2053,7 +2065,8 @@ namespace command {
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
     template <typename Functor, 
       EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
-      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value)
+      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value),
+      EMBED_DETAIL_REQUIRES(!is_in_place_type<decay_t<Functor>>::value)
     > function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
@@ -2073,20 +2086,41 @@ namespace command {
 
 #if EMBED_CXX_VERSION >= 201703L
 
-    /// @brief In-place constructs the Functor within the internal storage with specified arguments.
-    template <typename Functor, typename... CArgs>
-    explicit function(std::in_place_type_t<Functor>, CArgs&&... args)
-    noexcept(std::is_nothrow_constructible<decay_t<Functor>, CArgs&&...>::value) {
+    /// @brief In-place constructs the Fn within the internal storage with specified arguments.
+    /// @param args - The arguments for constructing the Fn.
+    template <typename Fn, typename... CArgs,
+      EMBED_DETAIL_REQUIRES(always_false<Fn>::value || !Config::isView),
+      EMBED_DETAIL_REQUIRES(std::is_constructible<Fn, CArgs...>::value),
+      EMBED_DETAIL_REQUIRES(is_callable_functor<Fn, Signature>::value)
+    > explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
 
-      static_assert(!Config::isView, 
-        "In-place building is not valid in view mode.");
-
-      static_assert(
-        asserts_for_function<
-          BufferSize, Config, Signature, Functor, Functor, erasure_t>::value,
+      static_assert(std::is_same<Fn, decay_t<Fn>>::value,
+        "decay_t<Fn> should be the same type as Fn.");
+      static_assert(asserts_for_function<
+          BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
         "Internal error: asserts_for_function<...>::value should be always true.");
 
-      m_command.template emplace_init<Functor>(&m_erasure, std::forward<CArgs>(args)...);
+      m_command.template emplace_init<Fn>(&m_erasure, std::forward<CArgs>(args)...);
+    }
+
+    /// @brief In-place constructs the Fn within the internal storage with init_list and specified arguments.
+    /// @param il - The initializer_list for constructing the Fn.
+    /// @param args - The arguments for constructing the Fn.
+    template <typename Fn, typename U, typename... CArgs,
+      EMBED_DETAIL_REQUIRES(always_false<Fn>::value || !Config::isView),
+      EMBED_DETAIL_REQUIRES(std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value),
+      EMBED_DETAIL_REQUIRES(is_callable_functor<Fn, Signature>::value)
+    > explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
+
+      static_assert(std::is_same<Fn, decay_t<Fn>>::value,
+        "decay_t<Fn> should be the same type as Fn.");
+      static_assert(asserts_for_function<
+          BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
+        "Internal error: asserts_for_function<...>::value should be always true.");
+
+      m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
     }
 
 #endif
@@ -2604,7 +2638,7 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 /// @return `decltype(make_fn(std::declval<Functor>()))`
 template <typename Functor, typename... CArgs>
 EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
-noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
+noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
   using signature = typename detail::is_ebd_fn<
     decltype(make_fn(std::declval<Functor>()))>::signature;
 
@@ -2613,8 +2647,26 @@ noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
     ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
 
   return detail::make_function_impl<
-    Fn, std::is_nothrow_constructible<Functor, CArgs&&...>::value
+    Fn, std::is_nothrow_constructible<Functor, CArgs...>::value
   >(std::in_place_type<Functor>, std::forward<CArgs>(args)...);
+}
+
+/// @brief make_fn[11]: In-place make function. (std::initializer_list)
+/// @return `decltype(make_fn(std::declval<Functor>()))`
+template <typename Functor, typename U, typename... CArgs>
+EMBED_NODISCARD inline auto
+make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
+noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value) {
+  using signature = typename detail::is_ebd_fn<
+    decltype(make_fn(std::declval<Functor>()))>::signature;
+
+  using Fn = detail::conditional_t<
+    std::is_copy_constructible<Functor>::value,
+    ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
+
+  return detail::make_function_impl<
+    Fn, std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value
+  >(std::in_place_type<Functor>, il, std::forward<CArgs>(args)...);
 }
 
 #endif
