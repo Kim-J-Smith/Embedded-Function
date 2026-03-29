@@ -2142,26 +2142,35 @@ namespace command {
       m_command.set_empty();
     }
 
-    // Swap the contents of two function objects.
-    void swap(function& fn)
-    noexcept(Config::assertNoThrow || Config::isView) {
-
+    // Swap the contents of two function objects. (Inplace mode)
+    template <typename Unused = void, 
+      EMBED_DETAIL_REQUIRES(always_false<Unused>::value || !Config::isView)
+    > void swap(function& fn) noexcept(Config::assertNoThrow) {
       // Avoid self swap.
       if (this == std::addressof(fn)) { return; }
 
-      erasure_t tmp_nil{};
-      if (!is_empty()) {
-        m_command.move(&tmp_nil, &m_erasure);
-        m_command.destroy(&m_erasure);
-      }
-      if (static_cast<bool>(fn)) {
-        fn.m_command.move(&m_erasure, &fn.m_erasure);
-        fn.m_command.destroy(&fn.m_erasure);
-      }
-      if (!is_empty()) {
-        m_command.move(&fn.m_erasure, &tmp_nil);
-        m_command.destroy(&tmp_nil);
-      }
+      erasure_t tmp_nil{}; // Empty temporary var
+
+      // Move source from `m_erasure` to `tmp_nil`.
+      m_command.move(&tmp_nil, &m_erasure);
+      m_command.destroy(&m_erasure);
+
+      // Move source from `fn.m_erasure` to `m_erasure`.
+      fn.m_command.move(&m_erasure, &fn.m_erasure);
+      fn.m_command.destroy(&fn.m_erasure);
+
+      // Move source from `tmp_nil` to `fn.m_erasure`.
+      m_command.move(&fn.m_erasure, &tmp_nil);
+      m_command.destroy(&tmp_nil);
+
+      std::swap(m_command, fn.m_command);
+    }
+
+    // Swap the contents of two function objects. (View mode)
+    template <typename Unused = void, 
+      EMBED_DETAIL_REQUIRES(always_false<Unused>::value || Config::isView)
+    > void swap(function& fn) noexcept {
+      std::swap(m_erasure, fn.m_erasure);
       std::swap(m_command, fn.m_command);
     }
 
