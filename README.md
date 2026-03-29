@@ -50,7 +50,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 
 struct Example {
     static void static_mem_fn(int) {};
-    void mem_fn(int) {};
+    void mem_fn(int) const {};
     void operator()(int) {};
 };
 
