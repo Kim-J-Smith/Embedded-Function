@@ -131,7 +131,8 @@ auto main() -> int {
 
 In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type.)
 
-> The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard.
+> __NOTE__: 
+> The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
 
 ### Usage
 
@@ -211,9 +212,9 @@ Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST
 
 Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the tests.
 
-> *std*: `std::function`, *ebd*: `ebd::fn`, *fu2*: [`fu2::function`](https://github.com/Naios/function2)
+> *( Compiler: `MSVC` Standard: `C++14` Config: `Release` Tool: [picobench](https://github.com/iboB/picobench) )* 
 
-*( MSVC C++14 Release )*
+> **std**: `std::function`, **ebd**: `ebd::fn`, **fu2**: [`fu2::function`](https://github.com/Naios/function2)
 
 ```md
 ## FreeFunction.ScalarParameters:
