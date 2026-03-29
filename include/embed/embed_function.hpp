@@ -242,6 +242,37 @@ namespace ebd { namespace detail {
   function_decl noexc_q __VA_ARGS__
 #endif
 
+#if !defined(EMBED_FN_CONFIG_EXPORT_FOR_MODULE)
+/**
+ * @brief Simplify the export for module in C++20.
+ * When a .cppm or .ixx file include this header, it just need to define
+ * this macro as keyword `export`, then `ebd::fn`, `ebd::unique_fn`, 
+ * `ebd::safe_fn`, `ebd::fn_view`, and all ebd::make_fn() will be exported.
+ * 
+ * EXAMPLE: export module `ebd.fn`
+ * 
+ * ```cpp
+ * module;
+ * 
+ * // Include standard header to avoid redefinition.
+ * # include <cstddef>
+ * # include <cstring>
+ * # include <new>
+ * # include <utility>
+ * # include <functional>
+ * # include <exception>
+ * # include <type_traits>
+ * # include <initializer_list>
+ * 
+ * export module ebd.fn;
+ * 
+ * # define EMBED_FN_CONFIG_EXPORT_FOR_MODULE export
+ * # include "embed/embed_function.hpp"
+ * ```
+ */
+# define EMBED_FN_CONFIG_EXPORT_FOR_MODULE
+#endif
+
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
 
@@ -2333,6 +2364,7 @@ namespace command {
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2360,6 +2392,7 @@ using fn = detail::function<
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using unique_fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2389,6 +2422,7 @@ using unique_fn = detail::function<
  *  @arg AssertNoThrow - Here is `true`, which means the callable object must
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using safe_fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2415,6 +2449,7 @@ using safe_fn = detail::function<
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view = detail::function<
   detail::default_buffer_size::view_buf, 
@@ -2430,6 +2465,7 @@ using fn_view = detail::function<
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
 /// @return `fn<Signature, sizeof(Functor)>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2463,6 +2499,7 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[1]: Make function with specified signature for move-only functor.
 /// @return `unique_fn<Signature, sizeof(Functor)>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2496,6 +2533,7 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[2]: Make an empty function with specified signature and buffer size.
 /// @return `fn<Signature, BufferSize>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2519,6 +2557,7 @@ make_fn(std::nullptr_t = nullptr) noexcept {
 
 /// @brief make_fn[3]: Make function for function pointer. (auto deduce signature and buffer size)
 /// @return `fn<Ret(Args...) const, sizeof(Ret(*)(Args...))>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Ret, typename... Args>
 EMBED_NODISCARD inline fn<Ret(Args...) const, sizeof(Ret(*)(Args...))>
 make_fn(Ret (*func_ptr) (Args...)) noexcept {
@@ -2530,6 +2569,7 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2559,6 +2599,7 @@ make_fn(FunctionPtr func_ptr) noexcept {
 
 /// @brief make_fn[5]: Create a function from another function. (Copy)
 /// @return `detail::function<Buf, Cfg, Sig>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <std::size_t Buf, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
 make_fn(const detail::function<Buf, Cfg, Sig>& fn)
@@ -2571,6 +2612,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 
 /// @brief make_fn[6]: Create a function from another function. (Move)
 /// @return `detail::function<Buf, Cfg, Sig>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <std::size_t Buf, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
 make_fn(detail::function<Buf, Cfg, Sig>&& fn)
@@ -2585,6 +2627,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
 /// @note Auto deduce signature and buffer size.
 /// @return `fn<Signature, BufferSize>` or `unique_fn<Signature, BufferSize>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
@@ -2631,6 +2674,7 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 }
 
 #define EMBED_DETAIL_MAKE_FN_DEFINE(C, V, REF, NOEXCEPT)                        \
+  EMBED_FN_CONFIG_EXPORT_FOR_MODULE                                             \
   template <typename Class, typename Ret, typename... Args>                     \
   EMBED_NODISCARD inline auto                                                   \
   make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept             \
@@ -2653,6 +2697,7 @@ EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 /// @brief make_fn[9]: Make function for member function pointer with specified signature.
 /// @return `fn<Signature, sizeof(MemFuncPtr)>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2686,6 +2731,7 @@ make_fn(MemFuncPtr memfunc_ptr) noexcept {
 
 /// @brief make_fn[10]: Make function for pointer to member object.
 /// @return `fn<T(Class&) const, sizeof(ptr_memobj)>` 
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Class, typename T>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 -> fn<T(Class&) const, sizeof(ptr_memobj)> {
@@ -2699,6 +2745,7 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 
 /// @brief make_fn[11]: In-place make function.
 /// @return `decltype(make_fn(std::declval<Functor>()))`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Functor, typename... CArgs>
 EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
@@ -2716,6 +2763,7 @@ noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
 
 /// @brief make_fn[11]: In-place make function. (std::initializer_list)
 /// @return `decltype(make_fn(std::declval<Functor>()))`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto
 make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
