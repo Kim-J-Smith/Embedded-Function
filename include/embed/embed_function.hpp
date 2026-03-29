@@ -49,6 +49,14 @@
 # endif
 #endif
 
+#ifndef EMBED_HAS_ATTRIBUTE
+# if defined(__has_attribute)
+#  define EMBED_HAS_ATTRIBUTE(x) __has_attribute(x)
+# else
+#  define EMBED_HAS_ATTRIBUTE(x) 0
+# endif
+#endif
+
 #ifndef EMBED_CXX_ENABLE_EXCEPTION
 # if defined(__cpp_exceptions)
 #  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions != 0)
@@ -201,7 +209,7 @@ namespace ebd { namespace detail {
 /// @brief Make ebd::fn_view trivially relocatable if `enable_if` is supported.
 /// @note @todo The behaviour of attribute `enable_if` may be unstable and experimental,
 /// See https://clang.llvm.org/docs/AttributeReference.html#enable-if .
-#if defined(__clang__) && defined(__has_attribute) && __has_attribute(enable_if)
+#if defined(__clang__) && EMBED_HAS_ATTRIBUTE(enable_if)
 # define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
   _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"")         \
   function_decl noexc_q __attribute__((enable_if(!Config::isView, "Inplace mode"))) __VA_ARGS__ \
@@ -2687,6 +2695,23 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 #undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_REQUIRES_IMPL
 #undef EMBED_DETAIL_VIEW_MODE_DEFAULT
+#if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
+// #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
+// EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
+# undef EMBED_ALIAS
+# undef EMBED_HAS_BUILTIN
+# undef EMBED_HAS_ATTRIBUTE
+# undef EMBED_ABI_VISIBILITY
+# undef EMBED_CXX14_CONSTEXPR
+# undef EMBED_INLINE
+# undef EMBED_RESTRICT
+# undef EMBED_NODISCARD
+# undef EMBED_LAUNDER
+# undef EMBED_UNREACHABLE
+# undef EMBED_VIRTUAL_INHERITANCE
+# undef EMBED_MSVC_DECLSPEC
+# undef EMBED_FN_CONFIG_UNDEF_MACROS
+#endif
 
 #if defined(_MSC_VER)
 # pragma warning(pop)
