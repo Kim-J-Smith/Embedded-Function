@@ -57,6 +57,14 @@
 # endif
 #endif
 
+#ifndef EMBED_HAS_CXX_ATTRIBUTE
+# if defined(__has_cpp_attribute)
+#  define EMBED_HAS_CXX_ATTRIBUTE(x) __has_cpp_attribute(x)
+# else
+#  define EMBED_HAS_CXX_ATTRIBUTE(x) 0
+# endif
+#endif
+
 #ifndef EMBED_CXX_ENABLE_EXCEPTION
 # if defined(__cpp_exceptions)
 #  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions != 0)
@@ -106,12 +114,26 @@
 #endif
 
 #ifndef EMBED_NODISCARD
-# if EMBED_CXX_VERSION >= 201703L
+# if ( EMBED_CXX_VERSION >= 201703L ) && EMBED_HAS_CXX_ATTRIBUTE(nodiscard)
 #  define EMBED_NODISCARD [[nodiscard]]
 # elif defined(__GNUC__) || defined(__clang__)
 #  define EMBED_NODISCARD __attribute__((warn_unused_result))
 # else
 #  define EMBED_NODISCARD
+# endif
+#endif
+
+#ifndef EMBED_FALLTHROUGH
+# if ( EMBED_CXX_VERSION >= 201703L ) && EMBED_HAS_CXX_ATTRIBUTE(fallthrough)
+#  define EMBED_FALLTHROUGH() [[fallthrough]]
+# elif EMBED_HAS_CXX_ATTRIBUTE(gnu::fallthrough)
+#  define EMBED_FALLTHROUGH() [[gnu::fallthrough]]
+# elif EMBED_HAS_CXX_ATTRIBUTE(clang::fallthrough)
+#  define EMBED_FALLTHROUGH() [[clang::fallthrough]]
+# elif (defined(__GNUC__) || defined(__clang__)) && EMBED_HAS_ATTRIBUTE(fallthrough)
+#  define EMBED_FALLTHROUGH() __attribute__((fallthrough))
+# else
+#  define EMBED_FALLTHROUGH() (static_cast<void>(0))
 # endif
 #endif
 
@@ -1603,9 +1625,10 @@ namespace management {
 
     // Using when Config::isView == false.
     struct inplace {
-      // Using when the Functor is copyable.
+      // Using when the Functor is copyable and not trivial.
       template <typename Functor, bool IsCopyable>
-      static enable_if_t<IsCopyable> /* copyable */ manage(
+      static enable_if_t<IsCopyable && !is_traditional_trivial<Functor>::value>
+      /* copyable */ manage(
         OperatorCode op, 
         erasure_base_t* EMBED_RESTRICT dst, 
         erasure_base_t* EMBED_RESTRICT src
@@ -1624,9 +1647,10 @@ namespace management {
         }
       }
 
-      // Using when the Functor is move only.
+      // Using when the Functor is move only and not trivial.
       template <typename Functor, bool IsCopyable>
-      static enable_if_t<!IsCopyable> /* move-only */ manage(
+      static enable_if_t<!IsCopyable && !is_traditional_trivial<Functor>::value>
+      /* move-only */ manage(
         OperatorCode op, 
         erasure_base_t* EMBED_RESTRICT dst, 
         erasure_base_t* EMBED_RESTRICT src
@@ -1644,6 +1668,28 @@ namespace management {
         default: EMBED_UNREACHABLE(); break;
         }
       }
+
+      // Used when the Functor is trivial.
+      template <typename Functor, bool IsCopyable>
+      static enable_if_t<is_traditional_trivial<Functor>::value> manage(
+        OperatorCode op, 
+        erasure_base_t* EMBED_RESTRICT dst, 
+        erasure_base_t* EMBED_RESTRICT src
+      ) {
+        switch (op) {
+        case OperatorCode::clone: EMBED_FALLTHROUGH(); /* fallthrough */
+        case OperatorCode::move:
+          std::memcpy(
+            const_cast<void*>(static_cast<erasure_t*>(dst)->access()),
+            const_cast<const void*>(static_cast<erasure_t*>(src)->access()),
+            sizeof(erasure_t)
+          );
+          break;
+        case OperatorCode::destroy: /* Do nothing */ break;
+        default: EMBED_UNREACHABLE(); break;
+        }
+      }
+
     }; // end inplace
   };
 
@@ -2701,11 +2747,13 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 # undef EMBED_ALIAS
 # undef EMBED_HAS_BUILTIN
 # undef EMBED_HAS_ATTRIBUTE
+# undef EMBED_HAS_CXX_ATTRIBUTE
 # undef EMBED_ABI_VISIBILITY
 # undef EMBED_CXX14_CONSTEXPR
 # undef EMBED_INLINE
 # undef EMBED_RESTRICT
 # undef EMBED_NODISCARD
+# undef EMBED_FALLTHROUGH
 # undef EMBED_LAUNDER
 # undef EMBED_UNREACHABLE
 # undef EMBED_VIRTUAL_INHERITANCE
