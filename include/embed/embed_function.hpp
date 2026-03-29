@@ -1774,8 +1774,8 @@ namespace command {
     // Enable if Functor is stored origin.
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     void init(erasure_base_t* target, Functor&& obj, std::true_type) noexcept {
-      static_assert(!std::is_rvalue_reference<Functor&&>::value,
-        "function in view mode cannot be initialized with rvalue reference.");
+      // Since the `is_stored_origin<Functor>` is true, then it must be function
+      // pointer or pointer to member, which have nothing about ownership.
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
     }
@@ -2071,8 +2071,7 @@ namespace command {
     > function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
-      static_assert(
-        asserts_for_function<
+      static_assert(asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
         "Internal error: asserts_for_function<...>::value should be always true.");
 

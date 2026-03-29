@@ -532,3 +532,10 @@ TEST(InitFunction, make_fn_InPlaceBuildCpp17) {
 }
 
 #endif
+
+// InitFunction[28]
+TEST(InitFunction, fn_view_static_member_function) {
+    ebd::fn_view<int(int, int) const> f1 = &ebd_test_member_fn::static_mem_fn_ii_add;
+    ASSERT_EQ(f1 != nullptr, true);
+    ASSERT_EQ(f1(3, 9), 3 + 9);
+}
