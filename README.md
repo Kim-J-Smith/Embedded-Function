@@ -20,9 +20,21 @@
 
 While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, Embedded Function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
 
-A function wrapper is declared as following:
+Here, **4** function wrappers are provided as follows:
 
 ```cpp
+namespace ebd {
+  // Wrapper for copyable callable objects.
+  template <class Signature, size_t BufferSize> fn;
+  // Wrapper for movable, especially move-only callable objects.
+  template <class Signature, size_t BufferSize> unique_fn;
+  // Wrapper for copyable callable objects which assert no-throw in Ctor and Dtor.
+  template <class Signature, size_t BufferSize> safe_fn;
+  // View (aka reference) for callable objects.
+  template <class Signature, size_t Unused> fn_view;
+}
+
+/// A function wrapper is declared as following:
 ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 //       ^     ^     ^     ^     ^        ^
 //       |     |     |     |     |        |
@@ -34,7 +46,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 
 > The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
 
-> The *`Buffer size`* can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
+> The *`Buffer size`* is the size used to store the callable object, which can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
 
 ## ⚡ Quick start
 - Clone the repository or download the `header_only.zip` in the "Release".
@@ -193,6 +205,46 @@ ASSERT_EQ(free_function_pointer, nullptr);
 fn_ = Functor{};
 free_function_pointer = *fn_;
 ASSERT_EQ(free_function_pointer, nullptr);
+```
+
+## 📦 C++20 Module Support
+
+### Brief introduction
+
+**Embedded Function** provides support for C++20 modules. You can wrap the library into a module by defining the `EMBED_FN_CONFIG_EXPORT_FOR_MODULE` macro as `export`. (`fn`, `unique_fn`, `safe_fn`, `fn_view` and `make_fn()` will be exported)
+
+### Usage
+
+To create a module named `ebd.function`, create a module interface file (e.g., `ebd_function.cppm` or `ebd_function.ixx`):
+
+```cpp
+module;
+
+// Include standard headers in the global module fragment to avoid redefinition
+#include <cstddef>
+#include <cstring>
+#include <new>
+#include <utility>
+#include <functional>
+#include <exception>
+#include <type_traits>
+#include <initializer_list>
+
+export module ebd.function;
+
+#define EMBED_FN_CONFIG_EXPORT_FOR_MODULE export
+#include "embed/embed_function.hpp"
+```
+
+Then you can use it in other files:
+
+```cpp
+import ebd.function;
+
+auto main() -> int {
+    auto fn = ebd::make_fn([]() { /* ... */ });
+    fn();
+}
 ```
 
 ## ✅ Compatibility
