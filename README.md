@@ -34,8 +34,8 @@ namespace ebd {
   template <class Signature, size_t Unused> fn_view;
 }
 
-/// A function wrapper is declared as following:
-ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
+/// The definition of method of a function wrapper is as follows:
+ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 //       ^     ^     ^     ^     ^        ^
 //       |     |     |     |     |        |
 // Return type |     |     |     |        |
@@ -137,6 +137,8 @@ auto main() -> int {
 
 `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
 
+> Click [here](./docs/perf/x86_64_msvc_asm_analysis.md) to see more details.
+
 ## 🧩 Automatic deduction
 
 ### Brief introduction
@@ -220,7 +222,7 @@ To create a module named `ebd.function`, create a module interface file (e.g., `
 ```cpp
 module;
 
-// Include standard headers in the global module fragment to avoid redefinition
+// Include standard headers in the global module fragment to avoid redefinition.
 #include <cstddef>
 #include <cstring>
 #include <new>
@@ -242,8 +244,13 @@ Then you can use it in other files:
 import ebd.function;
 
 auto main() -> int {
-    auto fn = ebd::make_fn([]() { /* ... */ });
-    fn();
+    ebd::fn<void()> fn1 = []() { /* ... */ };
+    ebd::unique_fn<void()> fn2 = []() { /* ... */ };
+    ebd::safe_fn<void()> fn3 = []() { /* ... */ };
+    ebd::fn_view<void()> fn4 = fn2;
+    auto fn5 = ebd::make_fn([]() { /* ... */ });
+
+    fn1(); fn2(); fn3(); fn4(); fn5();
 }
 ```
 
