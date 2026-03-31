@@ -20,7 +20,7 @@
 
 While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, Embedded Function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
 
-Here, **4** function wrappers are provided as follows:
+In only **one** [header file](./include/embed/embed_function.hpp), **4** function wrappers are provided as follows:
 
 ```cpp
 namespace ebd {
