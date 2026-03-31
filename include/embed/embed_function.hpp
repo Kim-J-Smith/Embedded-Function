@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.7
+ * @version     2.0.8
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -46,6 +46,22 @@
 #  define EMBED_HAS_BUILTIN(x) __has_builtin(x)
 # else
 #  define EMBED_HAS_BUILTIN(x) 0
+# endif
+#endif
+
+#ifndef EMBED_HAS_ATTRIBUTE
+# if defined(__has_attribute)
+#  define EMBED_HAS_ATTRIBUTE(x) __has_attribute(x)
+# else
+#  define EMBED_HAS_ATTRIBUTE(x) 0
+# endif
+#endif
+
+#ifndef EMBED_HAS_CXX_ATTRIBUTE
+# if defined(__has_cpp_attribute)
+#  define EMBED_HAS_CXX_ATTRIBUTE(x) __has_cpp_attribute(x)
+# else
+#  define EMBED_HAS_CXX_ATTRIBUTE(x) 0
 # endif
 #endif
 
@@ -98,12 +114,26 @@
 #endif
 
 #ifndef EMBED_NODISCARD
-# if EMBED_CXX_VERSION >= 201703L
+# if ( EMBED_CXX_VERSION >= 201703L ) && EMBED_HAS_CXX_ATTRIBUTE(nodiscard)
 #  define EMBED_NODISCARD [[nodiscard]]
 # elif defined(__GNUC__) || defined(__clang__)
 #  define EMBED_NODISCARD __attribute__((warn_unused_result))
 # else
 #  define EMBED_NODISCARD
+# endif
+#endif
+
+#ifndef EMBED_FALLTHROUGH
+# if ( EMBED_CXX_VERSION >= 201703L ) && EMBED_HAS_CXX_ATTRIBUTE(fallthrough)
+#  define EMBED_FALLTHROUGH() [[fallthrough]]
+# elif EMBED_HAS_CXX_ATTRIBUTE(gnu::fallthrough)
+#  define EMBED_FALLTHROUGH() [[gnu::fallthrough]]
+# elif EMBED_HAS_CXX_ATTRIBUTE(clang::fallthrough)
+#  define EMBED_FALLTHROUGH() [[clang::fallthrough]]
+# elif (defined(__GNUC__) || defined(__clang__)) && EMBED_HAS_ATTRIBUTE(fallthrough)
+#  define EMBED_FALLTHROUGH() __attribute__((fallthrough))
+# else
+#  define EMBED_FALLTHROUGH() (static_cast<void>(0))
 # endif
 #endif
 
@@ -201,14 +231,46 @@ namespace ebd { namespace detail {
 /// @brief Make ebd::fn_view trivially relocatable if `enable_if` is supported.
 /// @note @todo The behaviour of attribute `enable_if` may be unstable and experimental,
 /// See https://clang.llvm.org/docs/AttributeReference.html#enable-if .
-#if defined(__clang__) && defined(__has_attribute) && __has_attribute(enable_if)
-# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, ...) \
-  _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"") \
-  function_decl __attribute__((enable_if(!Config::isView, "Inplace mode"))) __VA_ARGS__ \
-  function_decl __attribute__((enable_if(Config::isView, "View mode"))) = default;      \
+#if defined(__clang__) && EMBED_HAS_ATTRIBUTE(enable_if)
+# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
+  _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"")         \
+  function_decl noexc_q __attribute__((enable_if(!Config::isView, "Inplace mode"))) __VA_ARGS__ \
+  function_decl __attribute__((enable_if(Config::isView, "View mode"))) = default;              \
   _Pragma("clang diagnostic pop")
 #else
-# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, ...) function_decl __VA_ARGS__
+# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
+  function_decl noexc_q __VA_ARGS__
+#endif
+
+#if !defined(EMBED_FN_CONFIG_EXPORT_FOR_MODULE)
+/**
+ * @brief Simplify the export for module in C++20.
+ * When a .cppm or .ixx file include this header, it just need to define
+ * this macro as keyword `export`, then `ebd::fn`, `ebd::unique_fn`, 
+ * `ebd::safe_fn`, `ebd::fn_view`, and all ebd::make_fn() will be exported.
+ * 
+ * EXAMPLE: export module `ebd.fn`
+ * 
+ * ```cpp
+ * module;
+ * 
+ * // Include standard header to avoid redefinition.
+ * # include <cstddef>
+ * # include <cstring>
+ * # include <new>
+ * # include <utility>
+ * # include <functional>
+ * # include <exception>
+ * # include <type_traits>
+ * # include <initializer_list>
+ * 
+ * export module ebd.fn;
+ * 
+ * # define EMBED_FN_CONFIG_EXPORT_FOR_MODULE export
+ * # include "embed/embed_function.hpp"
+ * ```
+ */
+# define EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -896,7 +958,7 @@ inline namespace fn_traits {
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
-#if ( EMBED_CXX_ENABLE_EXCEPTION == true )
+#if EMBED_CXX_ENABLE_EXCEPTION != 0
     throw std::bad_function_call{};
 #else
     std::terminate();
@@ -1594,9 +1656,10 @@ namespace management {
 
     // Using when Config::isView == false.
     struct inplace {
-      // Using when the Functor is copyable.
+      // Using when the Functor is copyable and not trivial.
       template <typename Functor, bool IsCopyable>
-      static enable_if_t<IsCopyable> /* copyable */ manage(
+      static enable_if_t<IsCopyable && !is_traditional_trivial<Functor>::value>
+      /* copyable */ manage(
         OperatorCode op, 
         erasure_base_t* EMBED_RESTRICT dst, 
         erasure_base_t* EMBED_RESTRICT src
@@ -1615,9 +1678,10 @@ namespace management {
         }
       }
 
-      // Using when the Functor is move only.
+      // Using when the Functor is move only and not trivial.
       template <typename Functor, bool IsCopyable>
-      static enable_if_t<!IsCopyable> /* move-only */ manage(
+      static enable_if_t<!IsCopyable && !is_traditional_trivial<Functor>::value>
+      /* move-only */ manage(
         OperatorCode op, 
         erasure_base_t* EMBED_RESTRICT dst, 
         erasure_base_t* EMBED_RESTRICT src
@@ -1635,6 +1699,28 @@ namespace management {
         default: EMBED_UNREACHABLE(); break;
         }
       }
+
+      // Used when the Functor is trivial.
+      template <typename Functor, bool IsCopyable>
+      static enable_if_t<is_traditional_trivial<Functor>::value> manage(
+        OperatorCode op, 
+        erasure_base_t* EMBED_RESTRICT dst, 
+        erasure_base_t* EMBED_RESTRICT src
+      ) {
+        switch (op) {
+        case OperatorCode::clone: EMBED_FALLTHROUGH(); /* fallthrough */
+        case OperatorCode::move:
+          std::memcpy(
+            const_cast<void*>(static_cast<erasure_t*>(dst)->access()),
+            const_cast<const void*>(static_cast<erasure_t*>(src)->access()),
+            sizeof(erasure_t)
+          );
+          break;
+        case OperatorCode::destroy: /* Do nothing */ break;
+        default: EMBED_UNREACHABLE(); break;
+        }
+      }
+
     }; // end inplace
   };
 
@@ -1773,8 +1859,8 @@ namespace command {
     // Enable if Functor is stored origin.
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     void init(erasure_base_t* target, Functor&& obj, std::true_type) noexcept {
-      static_assert(!std::is_rvalue_reference<Functor&&>::value,
-        "function in view mode cannot be initialized with rvalue reference.");
+      // Since the `is_stored_origin<Functor>` is true, then it must be function
+      // pointer or pointer to member, which have nothing about ownership.
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
     }
@@ -1830,7 +1916,7 @@ namespace command {
     // Use `placement new` to create new functor during construction,
     // which will call functor's copy-constructor.
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      clone_impl(const clone_impl& that)
+      clone_impl(const clone_impl& that),
       noexcept(Config::assertNoThrow || Config::isView), {
         auto* self = static_cast<Self*>(this);
         auto& other = static_cast<const Self&>(that);
@@ -1843,7 +1929,7 @@ namespace command {
 
     // Copy assignment.
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      clone_impl& operator=(const clone_impl& other)
+      clone_impl& operator=(const clone_impl& other),
       noexcept(Config::assertNoThrow || Config::isView), {
         auto& other_fn = static_cast<const Self&>(other);
         if (!other_fn.is_empty() && this != std::addressof(other_fn)) {
@@ -1985,7 +2071,7 @@ namespace command {
     is_copyable() noexcept { return internal_is_copyable; }
 
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      ~function() noexcept(Config::assertNoThrow || Config::isView), {
+      ~function(), noexcept(Config::assertNoThrow || Config::isView), {
         m_command.destroy(&m_erasure);
       }
     )
@@ -2014,7 +2100,7 @@ namespace command {
     // Use `placement new` to create new functor during construction,
     // which will call functor's move-constructor.
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      function(function&& other)
+      function(function&& other),
       noexcept(Config::assertNoThrow || Config::isView), {
         other.m_command.move(&m_erasure, &other.m_erasure);
         std::memcpy(&m_command, &other.m_command, sizeof(command_t));
@@ -2070,8 +2156,7 @@ namespace command {
     > function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
-      static_assert(
-        asserts_for_function<
+      static_assert(asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
         "Internal error: asserts_for_function<...>::value should be always true.");
 
@@ -2141,26 +2226,35 @@ namespace command {
       m_command.set_empty();
     }
 
-    // Swap the contents of two function objects.
-    void swap(function& fn)
-    noexcept(Config::assertNoThrow || Config::isView) {
-
+    // Swap the contents of two function objects. (Inplace mode)
+    template <typename Unused = void, 
+      EMBED_DETAIL_REQUIRES(always_false<Unused>::value || !Config::isView)
+    > void swap(function& fn) noexcept(Config::assertNoThrow) {
       // Avoid self swap.
       if (this == std::addressof(fn)) { return; }
 
-      erasure_t tmp_nil{};
-      if (!is_empty()) {
-        m_command.move(&tmp_nil, &m_erasure);
-        m_command.destroy(&m_erasure);
-      }
-      if (static_cast<bool>(fn)) {
-        fn.m_command.move(&m_erasure, &fn.m_erasure);
-        fn.m_command.destroy(&fn.m_erasure);
-      }
-      if (!is_empty()) {
-        m_command.move(&fn.m_erasure, &tmp_nil);
-        m_command.destroy(&tmp_nil);
-      }
+      erasure_t tmp_nil{}; // Empty temporary var
+
+      // Move source from `m_erasure` to `tmp_nil`.
+      m_command.move(&tmp_nil, &m_erasure);
+      m_command.destroy(&m_erasure);
+
+      // Move source from `fn.m_erasure` to `m_erasure`.
+      fn.m_command.move(&m_erasure, &fn.m_erasure);
+      fn.m_command.destroy(&fn.m_erasure);
+
+      // Move source from `tmp_nil` to `fn.m_erasure`.
+      m_command.move(&fn.m_erasure, &tmp_nil);
+      m_command.destroy(&tmp_nil);
+
+      std::swap(m_command, fn.m_command);
+    }
+
+    // Swap the contents of two function objects. (View mode)
+    template <typename Unused = void, 
+      EMBED_DETAIL_REQUIRES(always_false<Unused>::value || Config::isView)
+    > void swap(function& fn) noexcept {
+      std::swap(m_erasure, fn.m_erasure);
       std::swap(m_command, fn.m_command);
     }
 
@@ -2175,7 +2269,7 @@ namespace command {
 
     // Move assignment.
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      function& operator=(function&& other)
+      function& operator=(function&& other),
       noexcept(Config::assertNoThrow || Config::isView), {
         clear();
         if (!other.is_empty() && this != std::addressof(other)) {
@@ -2270,6 +2364,7 @@ namespace command {
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2297,6 +2392,7 @@ using fn = detail::function<
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using unique_fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2326,6 +2422,7 @@ using unique_fn = detail::function<
  *  @arg AssertNoThrow - Here is `true`, which means the callable object must
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using safe_fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2352,6 +2449,7 @@ using safe_fn = detail::function<
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view = detail::function<
   detail::default_buffer_size::view_buf, 
@@ -2367,6 +2465,7 @@ using fn_view = detail::function<
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
 /// @return `fn<Signature, sizeof(Functor)>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2400,6 +2499,7 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[1]: Make function with specified signature for move-only functor.
 /// @return `unique_fn<Signature, sizeof(Functor)>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2433,6 +2533,7 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[2]: Make an empty function with specified signature and buffer size.
 /// @return `fn<Signature, BufferSize>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2456,6 +2557,7 @@ make_fn(std::nullptr_t = nullptr) noexcept {
 
 /// @brief make_fn[3]: Make function for function pointer. (auto deduce signature and buffer size)
 /// @return `fn<Ret(Args...) const, sizeof(Ret(*)(Args...))>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Ret, typename... Args>
 EMBED_NODISCARD inline fn<Ret(Args...) const, sizeof(Ret(*)(Args...))>
 make_fn(Ret (*func_ptr) (Args...)) noexcept {
@@ -2467,6 +2569,7 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2496,6 +2599,7 @@ make_fn(FunctionPtr func_ptr) noexcept {
 
 /// @brief make_fn[5]: Create a function from another function. (Copy)
 /// @return `detail::function<Buf, Cfg, Sig>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <std::size_t Buf, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
 make_fn(const detail::function<Buf, Cfg, Sig>& fn)
@@ -2508,6 +2612,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 
 /// @brief make_fn[6]: Create a function from another function. (Move)
 /// @return `detail::function<Buf, Cfg, Sig>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <std::size_t Buf, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
 make_fn(detail::function<Buf, Cfg, Sig>&& fn)
@@ -2522,6 +2627,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
 /// @note Auto deduce signature and buffer size.
 /// @return `fn<Signature, BufferSize>` or `unique_fn<Signature, BufferSize>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
@@ -2568,6 +2674,7 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 }
 
 #define EMBED_DETAIL_MAKE_FN_DEFINE(C, V, REF, NOEXCEPT)                        \
+  EMBED_FN_CONFIG_EXPORT_FOR_MODULE                                             \
   template <typename Class, typename Ret, typename... Args>                     \
   EMBED_NODISCARD inline auto                                                   \
   make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept             \
@@ -2590,6 +2697,7 @@ EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 /// @brief make_fn[9]: Make function for member function pointer with specified signature.
 /// @return `fn<Signature, sizeof(MemFuncPtr)>`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2623,6 +2731,7 @@ make_fn(MemFuncPtr memfunc_ptr) noexcept {
 
 /// @brief make_fn[10]: Make function for pointer to member object.
 /// @return `fn<T(Class&) const, sizeof(ptr_memobj)>` 
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Class, typename T>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 -> fn<T(Class&) const, sizeof(ptr_memobj)> {
@@ -2636,6 +2745,7 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 
 /// @brief make_fn[11]: In-place make function.
 /// @return `decltype(make_fn(std::declval<Functor>()))`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Functor, typename... CArgs>
 EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
@@ -2653,6 +2763,7 @@ noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
 
 /// @brief make_fn[11]: In-place make function. (std::initializer_list)
 /// @return `decltype(make_fn(std::declval<Functor>()))`
+EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto
 make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
@@ -2678,6 +2789,25 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 #undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_REQUIRES_IMPL
 #undef EMBED_DETAIL_VIEW_MODE_DEFAULT
+#if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
+// #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
+// EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
+# undef EMBED_ALIAS
+# undef EMBED_HAS_BUILTIN
+# undef EMBED_HAS_ATTRIBUTE
+# undef EMBED_HAS_CXX_ATTRIBUTE
+# undef EMBED_ABI_VISIBILITY
+# undef EMBED_CXX14_CONSTEXPR
+# undef EMBED_INLINE
+# undef EMBED_RESTRICT
+# undef EMBED_NODISCARD
+# undef EMBED_FALLTHROUGH
+# undef EMBED_LAUNDER
+# undef EMBED_UNREACHABLE
+# undef EMBED_VIRTUAL_INHERITANCE
+# undef EMBED_MSVC_DECLSPEC
+# undef EMBED_FN_CONFIG_UNDEF_MACROS
+#endif
 
 #if defined(_MSC_VER)
 # pragma warning(pop)

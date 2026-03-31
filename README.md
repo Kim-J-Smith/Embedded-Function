@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.7-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.7">
+  <img src="https://img.shields.io/badge/Version-2.0.8-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.8">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
@@ -20,10 +20,22 @@
 
 While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, Embedded Function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
 
-A function wrapper is declared as following:
+In only **one** [header file](./include/embed/embed_function.hpp), **4** function wrappers are provided as follows:
 
 ```cpp
-ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
+namespace ebd {
+  // Wrapper for copyable callable objects.
+  template <class Signature, size_t BufferSize> fn;
+  // Wrapper for movable, especially move-only callable objects.
+  template <class Signature, size_t BufferSize> unique_fn;
+  // Wrapper for copyable callable objects which assert no-throw in Ctor and Dtor.
+  template <class Signature, size_t BufferSize> safe_fn;
+  // View (aka reference) for callable objects.
+  template <class Signature, size_t Unused> fn_view;
+}
+
+/// The definition of method of a function wrapper is as follows:
+ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 //       ^     ^     ^     ^     ^        ^
 //       |     |     |     |     |        |
 // Return type |     |     |     |        |
@@ -34,7 +46,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 
 > The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
 
-> The *`Buffer size`* can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
+> The *`Buffer size`* is the size used to store the callable object, which can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
 
 ## ⚡ Quick start
 - Clone the repository or download the `header_only.zip` in the "Release".
@@ -50,7 +62,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)>
 
 struct Example {
     static void static_mem_fn(int) {};
-    void mem_fn(int) {};
+    void mem_fn(int) const {};
     void operator()(int) {};
 };
 
@@ -125,13 +137,16 @@ auto main() -> int {
 
 `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
 
+> Click [here](./docs/perf/x86_64_msvc_asm_analysis.md) to see more details.
+
 ## 🧩 Automatic deduction
 
 ### Brief introduction
 
 In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type.)
 
-> The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard.
+> __NOTE__: 
+> The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
 
 ### Usage
 
@@ -194,6 +209,51 @@ free_function_pointer = *fn_;
 ASSERT_EQ(free_function_pointer, nullptr);
 ```
 
+## 📦 C++20 Module Support
+
+### Brief introduction
+
+**Embedded Function** provides support for C++20 modules. You can wrap the library into a module by defining the `EMBED_FN_CONFIG_EXPORT_FOR_MODULE` macro as `export`. (`fn`, `unique_fn`, `safe_fn`, `fn_view` and `make_fn()` will be exported)
+
+### Usage
+
+To create a module named `ebd.function`, create a module interface file (e.g., `ebd_function.cppm` or `ebd_function.ixx`):
+
+```cpp
+module;
+
+// Include standard headers in the global module fragment to avoid redefinition.
+#include <cstddef>
+#include <cstring>
+#include <new>
+#include <utility>
+#include <functional>
+#include <exception>
+#include <type_traits>
+#include <initializer_list>
+
+export module ebd.function;
+
+#define EMBED_FN_CONFIG_EXPORT_FOR_MODULE export
+#include "embed/embed_function.hpp"
+```
+
+Then you can use it in other files:
+
+```cpp
+import ebd.function;
+
+auto main() -> int {
+    ebd::fn<void()> fn1 = []() { /* ... */ };
+    ebd::unique_fn<void()> fn2 = []() { /* ... */ };
+    ebd::safe_fn<void()> fn3 = []() { /* ... */ };
+    ebd::fn_view<void()> fn4 = fn2;
+    auto fn5 = ebd::make_fn([]() { /* ... */ });
+
+    fn1(); fn2(); fn3(); fn4(); fn5();
+}
+```
+
 ## ✅ Compatibility
 
 Every compiler with modern C++11 support should work.
@@ -211,9 +271,9 @@ Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST
 
 Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the tests.
 
-> *std*: `std::function`, *ebd*: `ebd::fn`, *fu2*: [`fu2::function`](https://github.com/Naios/function2)
+> *( Compiler: `MSVC` Standard: `C++14` Config: `Release` Tool: [picobench](https://github.com/iboB/picobench) )* 
 
-*( MSVC C++14 Release )*
+> **std**: `std::function`, **ebd**: `ebd::fn`, **fu2**: [`fu2::function`](https://github.com/Naios/function2)
 
 ```md
 ## FreeFunction.ScalarParameters:
