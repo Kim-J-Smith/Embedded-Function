@@ -33,20 +33,7 @@ namespace ebd {
   // View (aka reference) for callable objects.
   template <class Signature, size_t Unused> fn_view;
 }
-
-/// The definition of method of a function wrapper is as follows:
-ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
-//       ^     ^     ^     ^     ^        ^
-//       |     |     |     |     |        |
-// Return type |     |     |     |        |
-// Parameters ~|~~~~~|~~~~~|     |        |
-// Qualifier ~~~~~~~~~~~~~~~~~~~~|        |
-// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
-
-> The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
-
-> The *`Buffer size`* is the size used to store the callable object, which can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
 
 ## ⚡ Quick start
 - Clone the repository or download the `header_only.zip` in the "Release".
@@ -80,6 +67,23 @@ auto main() -> int {
     fn_(789);
 }
 ```
+
+## 🔧 Wrapper definition syntax
+
+```cpp
+/// The definition of method of a function wrapper is as follows:
+ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
+//       ^     ^     ^     ^     ^        ^
+//       |     |     |     |     |        |
+// Return type |     |     |     |        |
+// Parameters ~|~~~~~|~~~~~|     |        |
+// Qualifier ~~~~~~~~~~~~~~~~~~~~|        |
+// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+```
+
+> The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
+
+> The *`Buffer size`* is the size used to store the callable object, which can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
 
 ## 🧠 Design goals driving the design
 
