@@ -217,7 +217,7 @@ ASSERT_EQ(free_function_pointer, nullptr);
 
 ### Brief introduction
 
-**Embedded Function** provides support for C++20 modules. You can wrap the library into a module by defining the `EMBED_FN_CONFIG_EXPORT_FOR_MODULE` macro as `export`. (`fn`, `unique_fn`, `safe_fn`, `fn_view` and `make_fn()` will be exported)
+**Embedded Function** provides support for C++20 modules. You can wrap the library into a module according to the guide below.
 
 ### Usage
 
@@ -225,21 +225,16 @@ To create a module named `ebd.function`, create a module interface file (e.g., `
 
 ```cpp
 module;
-
-// Include standard headers in the global module fragment to avoid redefinition.
-#include <cstddef>
-#include <cstring>
-#include <new>
-#include <utility>
-#include <functional>
-#include <exception>
-#include <type_traits>
-#include <initializer_list>
-
+#include "embed/embed_function.hpp"
 export module ebd.function;
 
-#define EMBED_FN_CONFIG_EXPORT_FOR_MODULE export
-#include "embed/embed_function.hpp"
+export namespace ebd {
+  using ::ebd::fn;
+  using ::ebd::unique_fn;
+  using ::ebd::safe_fn;
+  using ::ebd::fn_view;
+  using ::ebd::make_fn; // NOLINT(misc-unused-using-decls)
+}
 ```
 
 Then you can use it in other files:
