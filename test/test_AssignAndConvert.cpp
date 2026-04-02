@@ -70,3 +70,12 @@ TEST(AssignAndConvert, SafeFnAssign) {
     f1 = f2;
     ASSERT_EQ(f1(1), 10);
 }
+
+// AssignAndConvert[4]
+TEST(AssignAndConvert, ConstToNonConst) {
+    ebd::fn<void()> f_non_const;
+    ebd::fn<void() const> f_const;
+
+    f_non_const = f_const; // OK
+    // f_const = f_non_const; // Error
+}

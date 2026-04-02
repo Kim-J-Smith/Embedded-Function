@@ -982,19 +982,41 @@ inline namespace fn_traits {
   struct fn_can_convert_impl<
     function<BufTo, CfgTo, SigTo>, function<BufFrom, CfgFrom, SigFrom>
   > {
-    using sig_to_ret = typename unwrap_signature<SigTo>::ret;
-    using sig_from_ret = typename unwrap_signature<SigFrom>::ret;
-    using sig_to_args = typename unwrap_signature<SigTo>::args;
-    using sig_from_args = typename unwrap_signature<SigFrom>::args;
+    // Get the unwrap trait.
+    using unwrap_to = unwrap_signature<SigTo>;
+    using unwrap_from = unwrap_signature<SigFrom>;
+
+    // Get the return type and arguments package.
+    using sig_to_ret = typename unwrap_to::ret;
+    using sig_from_ret = typename unwrap_from::ret;
+    using sig_to_args = typename unwrap_to::args;
+    using sig_from_args = typename unwrap_from::args;
+
+    // Check the arguments of `From` and `To` are same.
+    static constexpr bool sig_ret_ok = std::is_same<sig_to_ret, sig_from_ret>::value;
+    static constexpr bool sig_args_ok = std::is_same<sig_to_args, sig_from_args>::value;
+
+    // Check the buffer size of `To` is bigger `From` or equals.
     static constexpr bool buf_ok = BufTo >= BufFrom;
+
+    // Check the Configuration.
     static constexpr bool cfg_ok = 
       CfgTo::isCopyable <= CfgFrom::isCopyable // Copyable to Move-only is OK.
       && CfgTo::isView == CfgFrom::isView
       && CfgTo::isThrowing == CfgFrom::isThrowing
       && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
-    static constexpr bool sig_ret_ok = std::is_same<sig_to_ret, sig_from_ret>::value;
-    static constexpr bool sig_args_ok = std::is_same<sig_to_args, sig_from_args>::value;
-    static constexpr bool value = buf_ok && cfg_ok && sig_ret_ok && sig_args_ok;
+
+    /// TODO: Finalize the details of the conversion of the qualifiers
+    // Check the qualifiers.
+    static constexpr bool qualifier_ok = 
+      !(unwrap_to::hasConst && !unwrap_from::hasConst)
+      && (unwrap_to::hasVolatile == unwrap_from::hasVolatile)
+      && (unwrap_to::hasRRef == unwrap_from::hasRRef)
+      && (unwrap_to::hasLRef == unwrap_from::hasLRef)
+      && (unwrap_to::isNoexcept == unwrap_from::isNoexcept);
+
+    static constexpr bool value = 
+      buf_ok && cfg_ok && sig_ret_ok && sig_args_ok && qualifier_ok;
   };
 
   // Check ebd::detail::function are similar or not.
