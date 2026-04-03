@@ -165,14 +165,6 @@ namespace ebd { namespace detail {
 # endif
 #endif
 
-#ifndef EMBED_VIRTUAL_INHERITANCE
-# if defined(_MSC_VER)
-#  define EMBED_VIRTUAL_INHERITANCE __virtual_inheritance
-# else
-#  define EMBED_VIRTUAL_INHERITANCE
-# endif
-#endif
-
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -238,6 +230,12 @@ namespace ebd { namespace detail {
 # define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
 #else
 # define EMBED_DETAIL_FORCE_EBO
+#endif
+
+#if defined(_MSC_VER)
+# define EMBED_DETAIL_VIRTUAL_INHERITANCE __virtual_inheritance
+#else
+# define EMBED_DETAIL_VIRTUAL_INHERITANCE
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -1086,10 +1084,10 @@ inline namespace fn_traits {
   };
 
   /// @brief Undefined class.
-  /// @e EMBED_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC compiler 
-  /// that this is a declaration of a virtual inheritance class, in order to obtain 
-  /// the theoretically maximum size of "pointers to member functions".
-  class EMBED_VIRTUAL_INHERITANCE UndefinedClass;
+  /// @e EMBED_DETAIL_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC
+  /// compiler that this is a declaration of a virtual inheritance class, in order
+  /// to obtain the theoretically maximum size of "pointers to member functions".
+  class EMBED_DETAIL_VIRTUAL_INHERITANCE UndefinedClass;
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
@@ -2796,6 +2794,7 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 #undef EMBED_DETAIL_REQUIRES_IMPL
 #undef EMBED_DETAIL_VIEW_MODE_DEFAULT
 #undef EMBED_DETAIL_FORCE_EBO
+#undef EMBED_DETAIL_VIRTUAL_INHERITANCE
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
@@ -2811,7 +2810,6 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 # undef EMBED_FALLTHROUGH
 # undef EMBED_LAUNDER
 # undef EMBED_UNREACHABLE
-# undef EMBED_VIRTUAL_INHERITANCE
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
 #endif
 
