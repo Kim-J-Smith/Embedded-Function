@@ -2756,6 +2756,40 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 
 #endif
 
+/// @brief make_fn[12]: Make function with specified wrapper.
+/// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_view`.
+/// @return `Fn<Signature, sizeof(functor)>`
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
+template <
+  template <class, std::size_t> class Fn,
+  typename Functor,
+  typename Deduction = decltype(make_fn(std::declval<Functor>())),
+  typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
+  std::size_t BufferSize = sizeof(Functor),
+  typename FnWrapper = Fn<Signature, BufferSize>,
+  bool NoThrow = noexcept(FnWrapper(std::declval<Functor>())),
+  EMBED_DETAIL_REQUIRES(detail::is_ebd_fn<FnWrapper>::value),
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
+>
+#else
+template <
+  template <class, std::size_t> class Fn,
+  typename Functor,
+  typename Deduction = decltype(make_fn(std::declval<Functor>())),
+  typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
+  std::size_t BufferSize = sizeof(Functor),
+  typename FnWrapper = Fn<Signature, BufferSize>,
+  bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))
+>
+requires detail::is_ebd_fn<FnWrapper>::value
+  && detail::unwrap_signature<Signature>::isSignature
+#endif
+EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
+  return detail::make_function_impl<
+    /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
+  >(std::forward<Functor>(functor));
+}
+
 } // end namespace ebd
 
 #undef EMBED_DETAIL_FN_EXPAND
