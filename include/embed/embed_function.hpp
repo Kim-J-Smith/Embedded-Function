@@ -3,11 +3,11 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.8
+ * @version     2.0.9
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
- *              (https://github.com/Kim-J-Smith/embed-function)
+ *              (https://github.com/Kim-J-Smith/Embedded-Function)
  * 
  * @attention   This source is released under the MIT license
  *              (http://opensource.org/licenses/MIT)
@@ -165,22 +165,6 @@ namespace ebd { namespace detail {
 # endif
 #endif
 
-#ifndef EMBED_VIRTUAL_INHERITANCE
-# if defined(_MSC_VER)
-#  define EMBED_VIRTUAL_INHERITANCE __virtual_inheritance
-# else
-#  define EMBED_VIRTUAL_INHERITANCE
-# endif
-#endif
-
-#ifndef EMBED_MSVC_DECLSPEC
-# if defined(_MSC_VER)
-#  define EMBED_MSVC_DECLSPEC(...) __declspec(__VA_ARGS__)
-# else
-#  define EMBED_MSVC_DECLSPEC(...)
-# endif
-#endif
-
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -231,6 +215,10 @@ namespace ebd { namespace detail {
 /// @brief Make ebd::fn_view trivially relocatable if `enable_if` is supported.
 /// @note @todo The behaviour of attribute `enable_if` may be unstable and experimental,
 /// See https://clang.llvm.org/docs/AttributeReference.html#enable-if .
+///
+/// TODO: @deprecated The behavior of Clang's enable_if attribute is uncertain and 
+/// it is not platform-independent. It should be removed. This will be replaced in 
+/// the Embedded Function 2.1 version.
 #if defined(__clang__) && EMBED_HAS_ATTRIBUTE(enable_if)
 # define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
   _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"")         \
@@ -242,35 +230,16 @@ namespace ebd { namespace detail {
   function_decl noexc_q __VA_ARGS__
 #endif
 
-#if !defined(EMBED_FN_CONFIG_EXPORT_FOR_MODULE)
-/**
- * @brief Simplify the export for module in C++20.
- * When a .cppm or .ixx file include this header, it just need to define
- * this macro as keyword `export`, then `ebd::fn`, `ebd::unique_fn`, 
- * `ebd::safe_fn`, `ebd::fn_view`, and all ebd::make_fn() will be exported.
- * 
- * EXAMPLE: export module `ebd.fn`
- * 
- * ```cpp
- * module;
- * 
- * // Include standard header to avoid redefinition.
- * # include <cstddef>
- * # include <cstring>
- * # include <new>
- * # include <utility>
- * # include <functional>
- * # include <exception>
- * # include <type_traits>
- * # include <initializer_list>
- * 
- * export module ebd.fn;
- * 
- * # define EMBED_FN_CONFIG_EXPORT_FOR_MODULE export
- * # include "embed/embed_function.hpp"
- * ```
- */
-# define EMBED_FN_CONFIG_EXPORT_FOR_MODULE
+#if defined(_MSC_VER)
+# define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
+#else
+# define EMBED_DETAIL_FORCE_EBO
+#endif
+
+#if defined(_MSC_VER)
+# define EMBED_DETAIL_VIRTUAL_INHERITANCE __virtual_inheritance
+#else
+# define EMBED_DETAIL_VIRTUAL_INHERITANCE
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -1013,19 +982,41 @@ inline namespace fn_traits {
   struct fn_can_convert_impl<
     function<BufTo, CfgTo, SigTo>, function<BufFrom, CfgFrom, SigFrom>
   > {
-    using sig_to_ret = typename unwrap_signature<SigTo>::ret;
-    using sig_from_ret = typename unwrap_signature<SigFrom>::ret;
-    using sig_to_args = typename unwrap_signature<SigTo>::args;
-    using sig_from_args = typename unwrap_signature<SigFrom>::args;
+    // Get the unwrap trait.
+    using unwrap_to = unwrap_signature<SigTo>;
+    using unwrap_from = unwrap_signature<SigFrom>;
+
+    // Get the return type and arguments package.
+    using sig_to_ret = typename unwrap_to::ret;
+    using sig_from_ret = typename unwrap_from::ret;
+    using sig_to_args = typename unwrap_to::args;
+    using sig_from_args = typename unwrap_from::args;
+
+    // Check the arguments of `From` and `To` are same.
+    static constexpr bool sig_ret_ok = std::is_same<sig_to_ret, sig_from_ret>::value;
+    static constexpr bool sig_args_ok = std::is_same<sig_to_args, sig_from_args>::value;
+
+    // Check the buffer size of `To` is bigger `From` or equals.
     static constexpr bool buf_ok = BufTo >= BufFrom;
+
+    // Check the Configuration.
     static constexpr bool cfg_ok = 
       CfgTo::isCopyable <= CfgFrom::isCopyable // Copyable to Move-only is OK.
       && CfgTo::isView == CfgFrom::isView
       && CfgTo::isThrowing == CfgFrom::isThrowing
       && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
-    static constexpr bool sig_ret_ok = std::is_same<sig_to_ret, sig_from_ret>::value;
-    static constexpr bool sig_args_ok = std::is_same<sig_to_args, sig_from_args>::value;
-    static constexpr bool value = buf_ok && cfg_ok && sig_ret_ok && sig_args_ok;
+
+    /// TODO: Finalize the details of the conversion of the qualifiers
+    // Check the qualifiers.
+    static constexpr bool qualifier_ok = 
+      !(unwrap_to::hasConst && !unwrap_from::hasConst)
+      && (unwrap_to::hasVolatile == unwrap_from::hasVolatile)
+      && (unwrap_to::hasRRef == unwrap_from::hasRRef)
+      && (unwrap_to::hasLRef == unwrap_from::hasLRef)
+      && (unwrap_to::isNoexcept == unwrap_from::isNoexcept);
+
+    static constexpr bool value = 
+      buf_ok && cfg_ok && sig_ret_ok && sig_args_ok && qualifier_ok;
   };
 
   // Check ebd::detail::function are similar or not.
@@ -1097,10 +1088,10 @@ inline namespace fn_traits {
   };
 
   /// @brief Undefined class.
-  /// @e EMBED_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC compiler 
-  /// that this is a declaration of a virtual inheritance class, in order to obtain 
-  /// the theoretically maximum size of "pointers to member functions".
-  class EMBED_VIRTUAL_INHERITANCE UndefinedClass;
+  /// @e EMBED_DETAIL_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC
+  /// compiler that this is a declaration of a virtual inheritance class, in order
+  /// to obtain the theoretically maximum size of "pointers to member functions".
+  class EMBED_DETAIL_VIRTUAL_INHERITANCE UndefinedClass;
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
@@ -1984,7 +1975,7 @@ namespace command {
   ///           See @def config_package for details.
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  class EMBED_MSVC_DECLSPEC(empty_bases) function
+  class EMBED_DETAIL_FORCE_EBO function
     : public operator_call_impl<
         Signature, /* Self = */ function<BufferSize, Config, Signature>
       >,
@@ -2067,7 +2058,7 @@ namespace command {
     get_buffer_size() noexcept { return buffer_size; }
 
     /// @brief Return `true` if the function is capyable.
-    EMBED_NODISCARD EMBED_INLINE static bool
+    EMBED_NODISCARD EMBED_INLINE static constexpr bool
     is_copyable() noexcept { return internal_is_copyable; }
 
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
@@ -2364,7 +2355,6 @@ namespace command {
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2392,7 +2382,6 @@ using fn = detail::function<
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using unique_fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2422,7 +2411,6 @@ using unique_fn = detail::function<
  *  @arg AssertNoThrow - Here is `true`, which means the callable object must
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using safe_fn = detail::function<
   detail::get_aligned_size<BufferSize>::value, 
@@ -2449,7 +2437,6 @@ using safe_fn = detail::function<
  *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
  *       to make sure it doesn't throw exceptions when constructing and destructing.
  */
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view = detail::function<
   detail::default_buffer_size::view_buf, 
@@ -2465,7 +2452,6 @@ using fn_view = detail::function<
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
 /// @return `fn<Signature, sizeof(Functor)>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2499,7 +2485,6 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[1]: Make function with specified signature for move-only functor.
 /// @return `unique_fn<Signature, sizeof(Functor)>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2533,7 +2518,6 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[2]: Make an empty function with specified signature and buffer size.
 /// @return `fn<Signature, BufferSize>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2557,7 +2541,6 @@ make_fn(std::nullptr_t = nullptr) noexcept {
 
 /// @brief make_fn[3]: Make function for function pointer. (auto deduce signature and buffer size)
 /// @return `fn<Ret(Args...) const, sizeof(Ret(*)(Args...))>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Ret, typename... Args>
 EMBED_NODISCARD inline fn<Ret(Args...) const, sizeof(Ret(*)(Args...))>
 make_fn(Ret (*func_ptr) (Args...)) noexcept {
@@ -2569,7 +2552,6 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2599,7 +2581,6 @@ make_fn(FunctionPtr func_ptr) noexcept {
 
 /// @brief make_fn[5]: Create a function from another function. (Copy)
 /// @return `detail::function<Buf, Cfg, Sig>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <std::size_t Buf, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
 make_fn(const detail::function<Buf, Cfg, Sig>& fn)
@@ -2612,7 +2593,6 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 
 /// @brief make_fn[6]: Create a function from another function. (Move)
 /// @return `detail::function<Buf, Cfg, Sig>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <std::size_t Buf, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
 make_fn(detail::function<Buf, Cfg, Sig>&& fn)
@@ -2627,7 +2607,6 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
 /// @note Auto deduce signature and buffer size.
 /// @return `fn<Signature, BufferSize>` or `unique_fn<Signature, BufferSize>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
@@ -2674,7 +2653,6 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 }
 
 #define EMBED_DETAIL_MAKE_FN_DEFINE(C, V, REF, NOEXCEPT)                        \
-  EMBED_FN_CONFIG_EXPORT_FOR_MODULE                                             \
   template <typename Class, typename Ret, typename... Args>                     \
   EMBED_NODISCARD inline auto                                                   \
   make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept             \
@@ -2697,7 +2675,6 @@ EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 /// @brief make_fn[9]: Make function for member function pointer with specified signature.
 /// @return `fn<Signature, sizeof(MemFuncPtr)>`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
 template <
   typename Signature, // [User specify] function signature.
@@ -2731,7 +2708,6 @@ make_fn(MemFuncPtr memfunc_ptr) noexcept {
 
 /// @brief make_fn[10]: Make function for pointer to member object.
 /// @return `fn<T(Class&) const, sizeof(ptr_memobj)>` 
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Class, typename T>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 -> fn<T(Class&) const, sizeof(ptr_memobj)> {
@@ -2745,7 +2721,6 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 
 /// @brief make_fn[11]: In-place make function.
 /// @return `decltype(make_fn(std::declval<Functor>()))`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Functor, typename... CArgs>
 EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
@@ -2763,7 +2738,6 @@ noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
 
 /// @brief make_fn[11]: In-place make function. (std::initializer_list)
 /// @return `decltype(make_fn(std::declval<Functor>()))`
-EMBED_FN_CONFIG_EXPORT_FOR_MODULE
 template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto
 make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
@@ -2782,6 +2756,40 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 
 #endif
 
+/// @brief make_fn[12]: Make function with specified wrapper.
+/// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_view`.
+/// @return `Fn<Signature, sizeof(functor)>`
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
+template <
+  template <class, std::size_t> class Fn,
+  typename Functor,
+  typename Deduction = decltype(make_fn(std::declval<Functor>())),
+  typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
+  std::size_t BufferSize = sizeof(Functor),
+  typename FnWrapper = Fn<Signature, BufferSize>,
+  bool NoThrow = noexcept(FnWrapper(std::declval<Functor>())),
+  EMBED_DETAIL_REQUIRES(detail::is_ebd_fn<FnWrapper>::value),
+  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
+>
+#else
+template <
+  template <class, std::size_t> class Fn,
+  typename Functor,
+  typename Deduction = decltype(make_fn(std::declval<Functor>())),
+  typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
+  std::size_t BufferSize = sizeof(Functor),
+  typename FnWrapper = Fn<Signature, BufferSize>,
+  bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))
+>
+requires detail::is_ebd_fn<FnWrapper>::value
+  && detail::unwrap_signature<Signature>::isSignature
+#endif
+EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
+  return detail::make_function_impl<
+    /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
+  >(std::forward<Functor>(functor));
+}
+
 } // end namespace ebd
 
 #undef EMBED_DETAIL_FN_EXPAND
@@ -2789,6 +2797,8 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 #undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_REQUIRES_IMPL
 #undef EMBED_DETAIL_VIEW_MODE_DEFAULT
+#undef EMBED_DETAIL_FORCE_EBO
+#undef EMBED_DETAIL_VIRTUAL_INHERITANCE
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
@@ -2804,8 +2814,6 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 # undef EMBED_FALLTHROUGH
 # undef EMBED_LAUNDER
 # undef EMBED_UNREACHABLE
-# undef EMBED_VIRTUAL_INHERITANCE
-# undef EMBED_MSVC_DECLSPEC
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
 #endif
 

@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.8-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.8">
+  <img src="https://img.shields.io/badge/Version-2.0.9-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.9">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
@@ -33,20 +33,7 @@ namespace ebd {
   // View (aka reference) for callable objects.
   template <class Signature, size_t Unused> fn_view;
 }
-
-/// The definition of method of a function wrapper is as follows:
-ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
-//       ^     ^     ^     ^     ^        ^
-//       |     |     |     |     |        |
-// Return type |     |     |     |        |
-// Parameters ~|~~~~~|~~~~~|     |        |
-// Qualifier ~~~~~~~~~~~~~~~~~~~~|        |
-// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
-
-> The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
-
-> The *`Buffer size`* is the size used to store the callable object, which can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
 
 ## ⚡ Quick start
 - Clone the repository or download the `header_only.zip` in the "Release".
@@ -80,6 +67,23 @@ auto main() -> int {
     fn_(789);
 }
 ```
+
+## 🔧 Wrapper definition syntax
+
+```cpp
+/// The definition of method of a function wrapper is as follows:
+ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
+//       ^     ^     ^     ^     ^        ^
+//       |     |     |     |     |        |
+// Return type |     |     |     |        |
+// Parameters ~|~~~~~|~~~~~|     |        |
+// Qualifier ~~~~~~~~~~~~~~~~~~~~|        |
+// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+```
+
+> The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
+
+> The *`Buffer size`* is the size used to store the callable object, which can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
 
 ## 🧠 Design goals driving the design
 
@@ -125,7 +129,7 @@ auto main() -> int {
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
 
-4. **Triviality**: In Clang, `fn_view` is trivially copy-constructible, trivially move-constructible, trivially copy-assignable, trivially move-assignable, and trivially destructible. After Clang 21.1.0, expressions `std::is_trivially_relocatable_v<ebd::fn_view<...>>`, `__builtin_is_cpp_trivially_relocatable(ebd::fn_view<void()>)` and `__is_trivially_relocatable(ebd::fn_view<...>)` are *`true`*.
+4. **Triviality**: In Clang, after version *15.0.0*, `fn_view` is trivially copy-constructible, trivially move-constructible, trivially copy-assignable, trivially move-assignable, and trivially destructible. After Clang *21.1.0*, expressions `std::is_trivially_relocatable_v<ebd::fn_view<...>>`, `__builtin_is_cpp_trivially_relocatable(ebd::fn_view<...>)` and `__is_trivially_relocatable(ebd::fn_view<...>)` are *`true`*.
 
 ## 🚀 Performance optimization
 
@@ -173,6 +177,15 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 ```
 
 ```cpp
+// Create specified function wrapper and automatically deduce the template arguments.
+// The Callable_Object should be unambiguously callable (non-overload).
+auto f = ebd::make_fn<ebd::fn>(Callable_Object);
+auto f = ebd::make_fn<ebd::unique_fn>(Callable_Object);
+auto f = ebd::make_fn<ebd::safe_fn>(Callable_Object);
+auto f = ebd::make_fn<ebd::fn_view>(Callable_Object);
+```
+
+```cpp
 // In place build functor within buffer. Functor should be unambiguously callable (non-overload).
 auto f = ebd::make_fn(std::in_place_type<Functor>, CArgs...); // Since C++17
 auto f = ebd::make_fn(std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...); // Since C++17
@@ -213,7 +226,7 @@ ASSERT_EQ(free_function_pointer, nullptr);
 
 ### Brief introduction
 
-**Embedded Function** provides support for C++20 modules. You can wrap the library into a module by defining the `EMBED_FN_CONFIG_EXPORT_FOR_MODULE` macro as `export`. (`fn`, `unique_fn`, `safe_fn`, `fn_view` and `make_fn()` will be exported)
+**Embedded Function** provides support for C++20 modules. You can wrap the library into a module according to the guide below.
 
 ### Usage
 
@@ -221,21 +234,16 @@ To create a module named `ebd.function`, create a module interface file (e.g., `
 
 ```cpp
 module;
-
-// Include standard headers in the global module fragment to avoid redefinition.
-#include <cstddef>
-#include <cstring>
-#include <new>
-#include <utility>
-#include <functional>
-#include <exception>
-#include <type_traits>
-#include <initializer_list>
-
+#include "embed/embed_function.hpp"
 export module ebd.function;
 
-#define EMBED_FN_CONFIG_EXPORT_FOR_MODULE export
-#include "embed/embed_function.hpp"
+export namespace ebd {
+  using ::ebd::fn;
+  using ::ebd::unique_fn;
+  using ::ebd::safe_fn;
+  using ::ebd::fn_view;
+  using ::ebd::make_fn; // NOLINT(misc-unused-using-decls)
+}
 ```
 
 Then you can use it in other files:
