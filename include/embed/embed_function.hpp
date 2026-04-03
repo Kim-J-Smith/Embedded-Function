@@ -173,14 +173,6 @@ namespace ebd { namespace detail {
 # endif
 #endif
 
-#ifndef EMBED_MSVC_DECLSPEC
-# if defined(_MSC_VER)
-#  define EMBED_MSVC_DECLSPEC(...) __declspec(__VA_ARGS__)
-# else
-#  define EMBED_MSVC_DECLSPEC(...)
-# endif
-#endif
-
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -240,6 +232,12 @@ namespace ebd { namespace detail {
 #else
 # define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
   function_decl noexc_q __VA_ARGS__
+#endif
+
+#if defined(_MSC_VER)
+# define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
+#else
+# define EMBED_DETAIL_FORCE_EBO
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -1975,7 +1973,7 @@ namespace command {
   ///           See @def config_package for details.
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  class EMBED_MSVC_DECLSPEC(empty_bases) function
+  class EMBED_DETAIL_FORCE_EBO function
     : public operator_call_impl<
         Signature, /* Self = */ function<BufferSize, Config, Signature>
       >,
@@ -2797,6 +2795,7 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 #undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_REQUIRES_IMPL
 #undef EMBED_DETAIL_VIEW_MODE_DEFAULT
+#undef EMBED_DETAIL_FORCE_EBO
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
@@ -2813,7 +2812,6 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 # undef EMBED_LAUNDER
 # undef EMBED_UNREACHABLE
 # undef EMBED_VIRTUAL_INHERITANCE
-# undef EMBED_MSVC_DECLSPEC
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
 #endif
 
