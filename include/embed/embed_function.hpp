@@ -7,7 +7,7 @@
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
- *              (https://github.com/Kim-J-Smith/embed-function)
+ *              (https://github.com/Kim-J-Smith/Embedded-Function)
  * 
  * @attention   This source is released under the MIT license
  *              (http://opensource.org/licenses/MIT)
@@ -215,6 +215,10 @@ namespace ebd { namespace detail {
 /// @brief Make ebd::fn_view trivially relocatable if `enable_if` is supported.
 /// @note @todo The behaviour of attribute `enable_if` may be unstable and experimental,
 /// See https://clang.llvm.org/docs/AttributeReference.html#enable-if .
+///
+/// TODO: @deprecated The behavior of Clang's enable_if attribute is uncertain and 
+/// it is not platform-independent. It should be removed. This will be replaced in 
+/// the Embedded Function 2.1 version.
 #if defined(__clang__) && EMBED_HAS_ATTRIBUTE(enable_if)
 # define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
   _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"")         \
