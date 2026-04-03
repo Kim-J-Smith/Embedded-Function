@@ -2058,7 +2058,7 @@ namespace command {
     get_buffer_size() noexcept { return buffer_size; }
 
     /// @brief Return `true` if the function is capyable.
-    EMBED_NODISCARD EMBED_INLINE static bool
+    EMBED_NODISCARD EMBED_INLINE static constexpr bool
     is_copyable() noexcept { return internal_is_copyable; }
 
     EMBED_DETAIL_VIEW_MODE_DEFAULT(
