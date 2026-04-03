@@ -129,7 +129,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
 
-4. **Triviality**: In Clang, `fn_view` is trivially copy-constructible, trivially move-constructible, trivially copy-assignable, trivially move-assignable, and trivially destructible. After Clang 21.1.0, expressions `std::is_trivially_relocatable_v<ebd::fn_view<...>>`, `__builtin_is_cpp_trivially_relocatable(ebd::fn_view<void()>)` and `__is_trivially_relocatable(ebd::fn_view<...>)` are *`true`*.
+4. **Triviality**: In Clang, after version *15.0.0*, `fn_view` is trivially copy-constructible, trivially move-constructible, trivially copy-assignable, trivially move-assignable, and trivially destructible. After Clang *21.1.0*, expressions `std::is_trivially_relocatable_v<ebd::fn_view<...>>`, `__builtin_is_cpp_trivially_relocatable(ebd::fn_view<...>)` and `__is_trivially_relocatable(ebd::fn_view<...>)` are *`true`*.
 
 ## 🚀 Performance optimization
 
@@ -174,6 +174,15 @@ auto f = ebd::make_fn[<Signature>](Callable_Object);
 ```cpp
 // Create ebd::fn or ebd::unique_fn from ambiguous callable object with specified signature, such as overload free function, overload member function, etc.
 auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
+```
+
+```cpp
+// Create specified function wrapper and automatically deduce the template arguments.
+// The Callable_Object should be unambiguously callable (non-overload).
+auto f = ebd::make_fn<ebd::fn>(Callable_Object);
+auto f = ebd::make_fn<ebd::unique_fn>(Callable_Object);
+auto f = ebd::make_fn<ebd::safe_fn>(Callable_Object);
+auto f = ebd::make_fn<ebd::fn_view>(Callable_Object);
 ```
 
 ```cpp
