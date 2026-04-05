@@ -1,0 +1,39 @@
+name: "Benchmark"
+
+on:
+  push:
+    branches: [ main, version-* ]
+  pull_request:
+    branches: [ main, version-* ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  # Ubuntu check
+  benchmark-on-ubuntu:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Install cmake and compilers
+      - name: Install compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+          sudo apt-get install -y g++-14
+
+      # Config CMake for compilers
+      - name: Config CMake
+        working-directory: benchmark
+        run: |
+          cmake -B build -S . \
+            -DCMAKE_CXX_STANDARD=14 \
+            -DCMAKE_C_COMPILER=gcc-14 \
+            -DCMAKE_CXX_COMPILER=g++-14
+
+      # Run tests
+      - name: Run tests with C++
+        working-directory: benchmark
+        run: cmake --build build --config Release --target benchmark
