@@ -1,0 +1,49 @@
+name: "Test"
+
+on:
+  push:
+    branches: [ main, version-* ]
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  # Ubuntu check
+  test-on-ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cpp_standards: [11, 14, 17, 20, 23]
+        compiler: [
+          { name: "GCC-13", cc: "gcc-13", cxx: "g++-13", pkg: "g++-13" },
+          { name: "GCC-14", cc: "gcc-14", cxx: "g++-14", pkg: "g++-14" },
+          { name: "Clang-18", cc: "clang-18", cxx: "clang++-18", pkg: "clang-18" },
+          { name: "Clang-19", cc: "clang-19", cxx: "clang++-19", pkg: "clang-19" },
+        ]
+      fail-fast: false
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Install cmake and compilers
+      - name: Install compilers
+        run: |
+          sudo apt update
+          sudo apt install -y cmake ninja-build
+          sudo apt install -y ${{ matrix.compiler.pkg }}
+
+      # Config CMake for compilers
+      - name: Config with C++${{ matrix.cpp_standards }}
+        working-directory: test
+        run: |
+          cmake -B build -S . \
+            -DCMAKE_CXX_STANDARD=${{ matrix.cpp_standards }} \
+            -DCMAKE_C_COMPILER=${{ matrix.compiler.cc }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.compiler.cxx }}
+
+      # Run tests
+      - name: Run tests with C++${{ matrix.cpp_standards }}
+        working-directory: test
+        run: cmake --build build --config Debug --target test
