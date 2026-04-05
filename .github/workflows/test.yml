@@ -77,7 +77,6 @@ jobs:
           cmake -B build -S . \
             -G "Visual Studio 17 2022" \
             -A ${{ matrix.arch }} \
-            -T ${{ matrix.toolset }} \
             -DCMAKE_CXX_STANDARD=${{ matrix.cpp_standards }}
 
       - name: Build and test
