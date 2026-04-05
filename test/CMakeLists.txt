@@ -93,6 +93,10 @@ if(MSVC)
     /wd4626
     /wd5045
   )
+  target_link_options(
+    ${PROJECT_NAME} PRIVATE
+    /OPT:NOICF
+  )
   target_compile_options(
     gtest_lib INTERFACE
     /w
