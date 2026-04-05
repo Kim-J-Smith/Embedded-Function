@@ -55,7 +55,7 @@ jobs:
       matrix:
         cpp_standards: [14, 17, 20, 23]
         arch: [x64]
-        toolset: [v143]
+        toolset: [14.39]
       fail-fast: false
     steps:
       - name: Checkout code
