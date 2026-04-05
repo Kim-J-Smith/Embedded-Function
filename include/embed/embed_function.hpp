@@ -1955,13 +1955,15 @@ namespace command {
   public:
     // If the value stored in m_erasure is a pointer to a free function, 
     // return that pointer. Otherwise, return `nullptr`.
+    /// @attention If the addresses of different functions may be the same 
+    /// (which is not in accordance with the C++ standard), then this function
+    /// has undefined behavior. For MSVC in release mode, `/OPT:NOICF` is needed.
     function_ptr_t operator*() const noexcept {
       using invoker_impl_t = typename Self::command_t::invoker_impl_t;
       using invoker_t = conditional_t<IsView, 
         typename invoker_impl_t::view, typename invoker_impl_t::inplace>;
 
-      auto& self_q = static_cast<const Self&>(*this);
-      auto& self = const_cast<Self&>(self_q);
+      auto& self = static_cast<const Self&>(*this);
       if (self.m_command.m_invoker == &invoker_t::template invoke<function_ptr_t>) {
         return self.m_erasure.template access<function_ptr_t>();
       }
