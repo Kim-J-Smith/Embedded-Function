@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, version-* ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, version-* ]
     types: [ opened, synchronize, reopened ]
 
 jobs:
@@ -30,9 +30,9 @@ jobs:
       # Install cmake and compilers
       - name: Install compilers
         run: |
-          sudo apt update
-          sudo apt install -y cmake ninja-build
-          sudo apt install -y ${{ matrix.compiler.pkg }}
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+          sudo apt-get install -y ${{ matrix.compiler.pkg }}
 
       # Config CMake for compilers
       - name: Config with C++${{ matrix.cpp_standards }}
@@ -45,5 +45,41 @@ jobs:
 
       # Run tests
       - name: Run tests with C++${{ matrix.cpp_standards }}
+        working-directory: test
+        run: cmake --build build --config Debug --target test
+
+  # Windows check
+  test-on-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        cpp_standards: [14, 17, 20, 23]
+        arch: [x64]
+        toolset: [v143]
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+          toolset: ${{ matrix.toolset }}
+
+      - name: Install CMake
+        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+
+      - name: Config with C++${{ matrix.cpp_standards }}
+        working-directory: test
+        shell: bash
+        run: |
+          cmake -B build -S . \
+            -G "Visual Studio 17 2022" \
+            -A ${{ matrix.arch }} \
+            -T ${{ matrix.toolset }} \
+            -DCMAKE_CXX_STANDARD=${{ matrix.cpp_standards }}
+
+      - name: Build and test
         working-directory: test
         run: cmake --build build --config Debug --target test
