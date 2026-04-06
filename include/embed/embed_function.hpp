@@ -549,74 +549,16 @@ inline namespace cxx_traits {
   using call_is_nothrow = call_is_nothrow_impl<
     typename invoke_result<Func, Args...>::tag, Func, Args...>;
 
-  // (undocumented) Extract type information from 'operator T()'.
-  template <typename Class, typename T, typename = void>
-  struct has_type_conversion_operator
-  : public std::false_type {};
-
-  template <typename Class, typename T>
-  struct has_type_conversion_operator<Class, T,
-    void_t<decltype(&Class::operator T)>>
-  : public std::true_type {};
-
-  // (undocumented) Check whether type `From` can be converted 
-  // to type `To`, without invoking the operator T <REF>.
-  template <typename To, typename From>
-  struct is_no_reference_convertible {
-    using To_ = remove_reference_t<To>;
-    static constexpr bool value = std::is_convertible<From, To>::value
-      && !has_type_conversion_operator<From, To_&>::value
-      && !has_type_conversion_operator<From, remove_const_t<To_>&>::value
-      && !has_type_conversion_operator<From, remove_volatile_t<To_>&>::value
-      && !has_type_conversion_operator<From, remove_cv_t<To_>&>::value
-      && !has_type_conversion_operator<From, To_&&>::value
-      && !has_type_conversion_operator<From, remove_const_t<To_>&&>::value
-      && !has_type_conversion_operator<From, remove_volatile_t<To_>&&>::value
-      && !has_type_conversion_operator<From, remove_cv_t<To_>&&>::value;
-  };
-
-  template <typename To, typename From>
-  struct is_no_rvalue_ref_convertible {
-    using To_ = remove_reference_t<To>;
-    static constexpr bool value = std::is_convertible<From, To>::value
-      && !has_type_conversion_operator<From, To_&&>::value
-      && !has_type_conversion_operator<From, remove_const_t<To_>&&>::value
-      && !has_type_conversion_operator<From, remove_volatile_t<To_>&&>::value
-      && !has_type_conversion_operator<From, remove_cv_t<To_>&&>::value;
-  };
-
-  // (undocumented) True if `To` is a reference type, a `From` value 
-  // can be bound to `To` in copy-initialization, and a temporary 
-  // object would be bound to the reference, false otherwise.
-  template <typename To, typename From>
-  struct reference_converts_from_temporary_impl {
-    using From_ = conditional_t<
-      std::is_scalar<From>::value || std::is_void<From>::value,
-      remove_cv_t<From>, From>;
-
-    using NoRefTo = remove_reference_t<To>;
-
-    static constexpr bool bound_rref = std::is_rvalue_reference<To>::value
-      && !std::is_reference<From_>::value 
-      && is_no_rvalue_ref_convertible<To, From_>::value;
-
-    static constexpr bool bound_lref = std::is_lvalue_reference<To>::value
-      && !std::is_reference<From_>::value 
-      && std::is_const<NoRefTo>::value
-      && !std::is_volatile<NoRefTo>::value
-      && is_no_reference_convertible<To, From_>::value;
-
-    static constexpr bool value = bound_rref || bound_lref;
-  };
-
   // See https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html .
   template <typename To, typename From>
   struct reference_converts_from_temporary
   : public bool_constant<
-#if EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
+#if __cpp_lib_reference_from_temporary >= 202202L
+    std::reference_converts_from_temporary_v<To, From>
+#elif EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
     __reference_converts_from_temporary(To, From)
 #else
-    reference_converts_from_temporary_impl<To, From>::value
+    false // After research, there is no better fall-back scheme.
 #endif
   > {};
 
