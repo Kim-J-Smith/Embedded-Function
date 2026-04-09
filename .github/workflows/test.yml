@@ -46,7 +46,7 @@ jobs:
       # Run tests
       - name: Run tests with C++${{ matrix.cpp_standards }}
         working-directory: test
-        run: cmake --build build --config Debug --target test
+        run: cmake --build build --config Debug --target test -j100
 
   # Windows check
   test-on-windows:
