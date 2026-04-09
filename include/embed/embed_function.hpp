@@ -2393,6 +2393,67 @@ using fn_view = detail::function<
   Signature
 >;
 
+/**
+ * @brief A basic function wrapper that users can customize.
+ * 
+ * This alias provides the most flexible way to instantiate a function wrapper
+ * by directly specifying all configuration parameters. It is intended for
+ * advanced use cases where none of the predefined aliases (`fn`, `unique_fn`,
+ * `safe_fn`, `fn_view`) satisfy the required combination of copyability,
+ * view semantics, exception behavior, and no‑throw assertions.
+ * 
+ * @tparam Signature              Function signature, e.g., `void(int, char)`.
+ * @tparam BufferSize             Size of the internal storage (in bytes).
+ *                                The value will be automatically aligned.
+ * @tparam IsCopyable             If `true`, the stored callable object must be
+ *                                copy‑constructible; otherwise, move‑only is
+ *                                sufficient (copyable is still accepted but
+ *                                only move operations will be used).
+ * @tparam IsView                 If `true`, the wrapper acts as a non‑owning
+ *                                view (no copy/move/destroy of the target).
+ *                                The stored object is either stored directly
+ *                                (if trivially copyable) or by pointer.
+ * @tparam IsThrowing             If `true`, calling an empty wrapper throws
+ *                                `std::bad_function_call` (if exceptions are
+ *                                enabled); otherwise, `std::terminate` is called.
+ * @tparam AssertObjectNoThrow    If `true`, the wrapper requires that the
+ *                                callable object's construction, destruction,
+ *                                copy, and move operations are `noexcept`.
+ *                                Violations trigger a `static_assert`.
+ * 
+ * @note   This template is marked as **unstable and experimental** in v2.0.x.
+ *         The exact set of template parameters and their semantics may change
+ *         in future versions. Prefer using the predefined aliases unless you
+ *         need a combination not covered by them.
+ * 
+ * EXAMPLE: a move-only, non‑throwing wrapper with a custom buffer size:
+ * ```cpp
+ * using unique_safe_fn = ebd::basic_fn<void(int), 32,
+ *                                      false, // IsCopyable
+ *                                      false, // IsView
+ *                                      false, // IsThrowing
+ *                                      true>; // AssertObjectNoThrow
+ * ```
+ */
+template <
+  typename Signature,
+  std::size_t BufferSize,
+  bool IsCopyable,
+  bool IsView,
+  bool IsThrowing,
+  bool AssertObjectNoThrow
+>
+using basic_fn = detail::function<
+  detail::get_aligned_size<BufferSize>::value, 
+  detail::config_package<
+    /* IsCopyable = */          IsCopyable, 
+    /* IsView = */              IsView, 
+    /* IsThrowing = */          IsThrowing, 
+    /* AssertObjectNoThrow = */ AssertObjectNoThrow
+  >, 
+  Signature
+>;
+
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
 /// @return `fn<Signature, sizeof(Functor)>`
