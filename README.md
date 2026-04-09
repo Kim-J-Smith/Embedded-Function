@@ -224,7 +224,7 @@ free_function_pointer = *fn_;
 ASSERT_EQ(free_function_pointer, nullptr);
 ```
 
-## 📦 C++20 Module Support
+## 📦 C++20 Module support
 
 ### Brief introduction
 
@@ -342,6 +342,8 @@ Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO
  free_calltrivial_ebd     | 1000000 |     2.407 |       2 |  0.747 |415506710.4
  free_calltrivial_fu2     | 1000000 |     5.934 |       5 |  1.841 |168517551.1
 ```
+
+> See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results.
 
 ## 📚 Similar implementations
 
