@@ -1,4 +1,5 @@
 #include "benchmark.hpp"
+#include <string>
 
 BENCHMARK_UNIT(FreeFunction.ScalarParameters);
 
@@ -268,3 +269,78 @@ static void free_calltrivial_fu2(picobench::state& s) {
 BENCHMARK_BASELINE(free_calltrivial_std);
 BENCHMARK_NOTBASE(free_calltrivial_ebd);
 BENCHMARK_NOTBASE(free_calltrivial_fu2);
+
+
+BENCHMARK_UNIT(FreeFunction.CallWithStdStringAsParameters);
+
+static void pass_call_std_string_args_1(
+    std::string, 
+    std::string,
+    std::string,
+    std::string
+) { volatile int unused = 1; (void)unused; }
+
+static void pass_call_std_string_args_2(
+    std::string, 
+    std::string,
+    std::string,
+    std::string
+) { volatile int unused = 2; (void)unused; }
+
+static void free_callstd_string_std(picobench::state& s) {
+    std::function<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string1_std = pass_call_std_string_args_1;
+    std::function<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string2_std = pass_call_std_string_args_2;
+
+    std::string std_string_{};
+
+    for (auto _ : s) {
+        fn_std_string1_std(std_string_, std_string_, std_string_, std_string_);
+        fn_std_string2_std(std_string_, std_string_, std_string_, std_string_);
+    }
+}
+
+static void free_callstd_string_ebd(picobench::state& s) {
+    ebd::fn<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string1_ebd = pass_call_std_string_args_1;
+    ebd::fn<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string2_ebd = pass_call_std_string_args_2;
+
+    std::string std_string_{};
+
+    for (auto _ : s) {
+        fn_std_string1_ebd(std_string_, std_string_, std_string_, std_string_);
+        fn_std_string2_ebd(std_string_, std_string_, std_string_, std_string_);
+    }
+}
+
+static void free_callstd_string_fu2(picobench::state& s) {
+    fu2::function<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string1_fu2 = pass_call_std_string_args_1;
+    fu2::function<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string2_fu2 = pass_call_std_string_args_2;
+
+    std::string std_string_{};
+
+    for (auto _ : s) {
+        fn_std_string1_fu2(std_string_, std_string_, std_string_, std_string_);
+        fn_std_string2_fu2(std_string_, std_string_, std_string_, std_string_);
+    }
+}
+
+BENCHMARK_BASELINE(free_callstd_string_std);
+BENCHMARK_NOTBASE(free_callstd_string_ebd);
+BENCHMARK_NOTBASE(free_callstd_string_fu2);
