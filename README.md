@@ -1,15 +1,17 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.9-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.9">
+  <img src="https://img.shields.io/badge/Version-2.0.10-yellow?style=for-the-badge&logo=github" alt="Version - 2.0.10">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="gcc-C++11/14/17/20/23 - passing">
-  <img src="https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="clang-C++11/14/17/20/23 - passing">
-  <img src="https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat" alt="msvc-C++14/17/20/23 - passing">
+  <a href="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml">
+    <img src="https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="gcc-C++11/14/17/20/23 - passing">
+    <img src="https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="clang-C++11/14/17/20/23 - passing">
+    <img src="https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat" alt="msvc-C++14/17/20/23 - passing">
+  </a>
 </p>
 
 > *Embedded [std::function](http://en.cppreference.com/w/cpp/utility/functional/function) alternative: lightweight, deterministic, heap-free.*
@@ -222,7 +224,7 @@ free_function_pointer = *fn_;
 ASSERT_EQ(free_function_pointer, nullptr);
 ```
 
-## 📦 C++20 Module Support
+## 📦 C++20 Module support
 
 ### Brief introduction
 
@@ -340,6 +342,8 @@ Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO
  free_calltrivial_ebd     | 1000000 |     2.407 |       2 |  0.747 |415506710.4
  free_calltrivial_fu2     | 1000000 |     5.934 |       5 |  1.841 |168517551.1
 ```
+
+> See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results.
 
 ## 📚 Similar implementations
 

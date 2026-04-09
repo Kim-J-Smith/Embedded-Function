@@ -9,7 +9,7 @@ endif()
 # Project name.
 project(
     "embed_function_2.0.x-GoogleTest" 
-    VERSION 2.0.9 
+    VERSION 2.0.10 
     LANGUAGES CXX
 )
 
@@ -92,6 +92,10 @@ if(MSVC)
     /wd4514
     /wd4626
     /wd5045
+  )
+  target_link_options(
+    ${PROJECT_NAME} PRIVATE
+    /OPT:NOICF
   )
   target_compile_options(
     gtest_lib INTERFACE
