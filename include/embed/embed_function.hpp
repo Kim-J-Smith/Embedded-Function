@@ -1350,7 +1350,7 @@ inline namespace fn_traits {
     static_assert(copyable_is_ok<Functor, Config>::value, 
       "Functor cannot match the Config::isCopyable setting.");
 
-    static_assert(!move_constructor_is_deleted<Functor>::value,
+    static_assert(!move_constructor_is_deleted<Functor>::value || Config::isView,
       "The move constructor of Functor shouldn't be deleted.");
 
     static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,

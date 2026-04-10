@@ -201,3 +201,13 @@ public:
 inline int (ebd_test_member_fn::* ebd_test_return_ptr_class()) (int, int) {
     return &ebd_test_member_fn::mem_fn_ii_add;
 } 
+
+class ebd_test_non_move_non_copyable {
+public:
+    ebd_test_non_move_non_copyable() = default;
+    ~ebd_test_non_move_non_copyable() = default;
+    ebd_test_non_move_non_copyable(const ebd_test_non_move_non_copyable&) = delete;
+    ebd_test_non_move_non_copyable(ebd_test_non_move_non_copyable&&) = delete;
+
+    int operator()(char) { return OVL_CHAR; }
+};
