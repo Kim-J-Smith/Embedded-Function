@@ -110,6 +110,8 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
   - Learn and refer to the optimization experience of `std::function` in [libstdc++](https://gcc.gnu.org/cgit/gcc/commit/?id=d38d26be33aba5d4c12429478375a47c474124d2), [libc++](https://reviews.llvm.org/D55045) and [Microsoft C++ Standard Library](https://github.com/microsoft/STL/issues/969).
 
+  - Provide a view or reference to the callable object, referring to the [`std::function_ref` P0792](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html).
+
   - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_view` were designed for developers to use.
 
 ## ✨ Core function wrappers
@@ -143,7 +145,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
 
-> Click [here](./docs/perf/x86_64_msvc_asm_analysis.md) to see more details.
+> Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 
 ## 🧩 Automatic deduction
 
@@ -344,6 +346,14 @@ Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO
 ```
 
 > See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results.
+
+## 🧭 Future learning & evolution reference
+
+- [`llvm::function_ref`](https://reviews.llvm.org/D106784?id=361604).
+
+- [C++26-`std::function_ref`-P0792](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html).
+
+- [C++26-`std::copyable_function`-P2548](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2548r6.pdf).
 
 ## 📚 Similar implementations
 
