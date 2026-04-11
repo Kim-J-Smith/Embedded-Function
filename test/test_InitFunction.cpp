@@ -556,3 +556,11 @@ TEST(InitFunction, make_fn_SpecifiedWrapper) {
     ASSERT_EQ(f4 != nullptr, true);
     ASSERT_EQ(f4(3, 9), 3 + 9);
 }
+
+// InitFunction[30]
+TEST(InitFunction, fn_view_NonMoveNonCopy_Functor) {
+    ebd_test_non_move_non_copyable obj;
+    ebd::fn_view<int(char)> f1 = obj;
+    ASSERT_EQ(f1 != nullptr, true);
+    ASSERT_EQ(f1('A'), OVL_CHAR);
+}
