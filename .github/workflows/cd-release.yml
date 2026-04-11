@@ -1,0 +1,62 @@
+name: "Release"
+
+on:
+  pull_request:
+    types: [ closed ]
+    branches: [ main ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # Check merge
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'version-')
+    permissions:
+      contents: write
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 1
+
+      # Make header_only.zip
+      - name: Make header_only.zip
+        run: |
+          mkdir -p release_packages
+          zip -9 release_packages/header_only.zip -r include/
+          tar -cvf release_packages/header_only.tar.gz -I 'gzip -9' include/
+
+      # Get version number
+      - name: Get version number
+        id: get-version-num
+        run: |
+          VERSION=${GITHUB_HEAD_REF#version-}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION"
+
+      # Create docs/release/release_notes.md if it doesn't exist.
+      - name: Create release_notes.md if it doesn't exist
+        run: |
+          if [ ! -f docs/release/release_notes.md ]; then
+            mkdir -p docs/release
+            echo "" > docs/release/release_notes.md
+          fi
+
+      # Create release
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get-version-num.outputs.version }}
+          name: Embedded Function v${{ steps.get-version-num.outputs.version }}
+          body_path: docs/release/release_notes.md
+          files: |
+            release_packages/header_only.zip
+            release_packages/header_only.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
