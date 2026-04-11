@@ -1482,6 +1482,7 @@ namespace invocation {
       invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
         auto* erased = static_cast<erasure_t*>(base);                             \
         auto& fn = erased->template access<Functor>();                            \
+        /** @todo @deprecated '&' '&&' shouldn't be sopported in view mode */     \
         using Fn = conditional_t<is_rvalue_ref,                                   \
           remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
@@ -1493,6 +1494,7 @@ namespace invocation {
       invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
         auto* erased = static_cast<erasure_t*>(base);                             \
         auto& fn = *(erased->template access<Functor*>());                        \
+        /** @todo @deprecated '&' '&&' shouldn't be sopported in view mode */     \
         using Fn = conditional_t<is_rvalue_ref,                                   \
           remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
@@ -1817,23 +1819,38 @@ namespace command {
 namespace crtp_mixins {
 
   // Implement the 'operator()' for function.
-  template <typename Signature, typename Self>
+  template <bool IsView, bool IsThrowing, typename Signature, typename Self>
   struct operator_call_impl; // Undefined
 
 #define EMBED_DETAIL_OPERATOR_CALL_IMPL_DEFINE(C, V, REF, NOEXCEPT)         \
-  template <typename Ret, typename Self, typename... Args>                  \
-  struct operator_call_impl<Ret(Args...) C V REF NOEXCEPT, Self> {          \
+  template <bool IsView, bool IsThrowing,                                   \
+            typename Ret, typename Self, typename... Args>                  \
+  struct operator_call_impl<                                                \
+    IsView, IsThrowing, Ret(Args...) C V REF NOEXCEPT, Self> {              \
   public:                                                                   \
-    operator_call_impl()                                      = default;    \
-    ~operator_call_impl()                                     = default;    \
-    operator_call_impl(const operator_call_impl&)             = default;    \
-    operator_call_impl(operator_call_impl&&)                  = default;    \
-    operator_call_impl& operator=(const operator_call_impl&)  = default;    \
-    operator_call_impl& operator=(operator_call_impl&&)       = default;    \
+    EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
     Ret operator()(Args... args) C V REF NOEXCEPT {                         \
       auto* self_q = static_cast<Self C V*>(this);                          \
       auto* erased = &(self_q->m_erasure);                                  \
+      using command_t = const typename Self::command_t;                     \
+      auto& cmd = const_cast<command_t&>(self_q->m_command);                \
+      return cmd.invoke(erased, std::forward<Args>(args)...);               \
+    }                                                                       \
+  };                                                                        \
+                                                                            \
+  /* Specialized for `ebd::fn_view`, to make its operator() behavior */     \
+  /* consistent with `std::function_ref`. */                                \
+  template <typename Ret, typename Self, typename... Args>                  \
+  struct operator_call_impl</* IsView = */ true, /* IsThrowing = */ false,  \
+    Ret(Args...) C V REF NOEXCEPT, Self> {                                  \
+  public:                                                                   \
+    EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
+                                                                            \
+    Ret operator()(Args... args) const NOEXCEPT {                           \
+      using erasure_t = typename Self::erasure_t;                           \
+      auto* self_q = static_cast<Self const V*>(this);                      \
+      auto* erased = const_cast<erasure_t*>(&(self_q->m_erasure));          \
       using command_t = const typename Self::command_t;                     \
       auto& cmd = const_cast<command_t&>(self_q->m_command);                \
       return cmd.invoke(erased, std::forward<Args>(args)...);               \
@@ -2022,6 +2039,7 @@ namespace crtp_mixins {
         /* Buf = */ BufferSize, /* Cfg = */ Config, /* Sig = */ Signature
       >,
       public crtp_mixins::operator_call_impl<
+        /* IsView = */ Config::isView, /* IsThrowing = */ Config::isThrowing,
         Signature, /* Self = */ function<BufferSize, Config, Signature>
       >,
       public crtp_mixins::operator_dereference_impl<
@@ -2038,7 +2056,7 @@ namespace crtp_mixins {
     template<std::size_t, typename, typename>
     friend class function;
 
-    template <typename, typename>
+    template <bool, bool, typename, typename>
     friend struct crtp_mixins::operator_call_impl;
 
     template <typename, typename>
