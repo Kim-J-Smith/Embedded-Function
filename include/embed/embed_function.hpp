@@ -2880,7 +2880,7 @@ template <
   typename Functor,
   typename Deduction = decltype(make_fn(std::declval<Functor>())),
   typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
-  std::size_t BufferSize = sizeof(Functor),
+  std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
   typename FnWrapper = Fn<Signature, BufferSize>,
   bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))
 >
