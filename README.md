@@ -133,7 +133,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
 
-4. **Triviality**: `fn_view` is trivially relocatable (same as `std::function_ref`).
+4. **Triviality**: `fn_view` is trivially copyable (same as `std::function_ref`).
 
 ## 🚀 Performance optimization
 
