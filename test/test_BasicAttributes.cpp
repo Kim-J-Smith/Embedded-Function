@@ -83,5 +83,6 @@ TEST(BasicAttributes, TrivialityViewMode) {
     ASSERT_EQ(std::is_trivially_move_assignable<view_t>::value == true, true);
     ASSERT_EQ(std::is_trivially_copy_constructible<view_t>::value == true, true);
     ASSERT_EQ(std::is_trivially_copy_assignable<view_t>::value == true, true);
+    ASSERT_EQ(std::is_trivially_copyable<view_t>::value == true, true);
 }
 
