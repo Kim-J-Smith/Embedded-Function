@@ -28,6 +28,7 @@ jobs:
         run: |
           mkdir -p release_packages
           zip -9 release_packages/header_only.zip -r include/
+          tar -cvf release_packages/header_only.tar.gz -I 'gzip -9' include/
 
       # Get version number
       - name: Get version number
@@ -52,7 +53,9 @@ jobs:
           tag_name: v${{ steps.get-version-num.outputs.version }}
           name: Embedded Function v${{ steps.get-version-num.outputs.version }}
           body_path: docs/release/release_notes.md
-          files: release_packages/header_only.zip
+          files: |
+            release_packages/header_only.zip
+            release_packages/header_only.tar.gz
           draft: false
           prerelease: false
         env:
