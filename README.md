@@ -133,7 +133,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
 
-4. **Triviality**: In Clang, after version *15.0.0*, `fn_view` is trivially copy-constructible, trivially move-constructible, trivially copy-assignable, trivially move-assignable, and trivially destructible. After Clang *21.1.0*, expressions `std::is_trivially_relocatable_v<ebd::fn_view<...>>`, `__builtin_is_cpp_trivially_relocatable(ebd::fn_view<...>)` and `__is_trivially_relocatable(ebd::fn_view<...>)` are *`true`*.
+4. **Triviality**: `fn_view` is trivially relocatable (same as `std::function_ref`).
 
 ## 🚀 Performance optimization
 
