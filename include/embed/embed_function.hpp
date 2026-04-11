@@ -212,24 +212,6 @@ namespace ebd { namespace detail {
   ::ebd::detail::enable_if_t<(require_condition), int> = 0
 #define EMBED_DETAIL_REQUIRES(...)  EMBED_DETAIL_REQUIRES_IMPL((__VA_ARGS__))
 
-/// @brief Make ebd::fn_view trivially relocatable if `enable_if` is supported.
-/// @note @todo The behaviour of attribute `enable_if` may be unstable and experimental,
-/// See https://clang.llvm.org/docs/AttributeReference.html#enable-if .
-///
-/// TODO: @deprecated The behavior of Clang's enable_if attribute is uncertain and 
-/// it is not platform-independent. It should be removed. This will be replaced in 
-/// the Embedded Function 2.1 version.
-#if defined(__clang__) && EMBED_HAS_ATTRIBUTE(enable_if)
-# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
-  _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wgcc-compat\"")         \
-  function_decl noexc_q __attribute__((enable_if(!Config::isView, "Inplace mode"))) __VA_ARGS__ \
-  function_decl __attribute__((enable_if(Config::isView, "View mode"))) = default;              \
-  _Pragma("clang diagnostic pop")
-#else
-# define EMBED_DETAIL_VIEW_MODE_DEFAULT(function_decl, noexc_q, ...) \
-  function_decl noexc_q __VA_ARGS__
-#endif
-
 #if defined(_MSC_VER)
 # define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
 #else
@@ -241,6 +223,27 @@ namespace ebd { namespace detail {
 #else
 # define EMBED_DETAIL_VIRTUAL_INHERITANCE
 #endif
+
+// Generate the default/delete move constructors and move assignment for specified class.
+#define EMBED_DETAIL_MOVE_FUNCTION(class_name, default_or_delete) \
+  class_name(class_name&&)            = default_or_delete;\
+  class_name& operator=(class_name&&) = default_or_delete;
+
+// Generate the default/delete copy constructors and copy assignment for specified class.
+#define EMBED_DETAIL_COPY_FUNCTION(class_name, default_or_delete) \
+  class_name(const class_name&)             = default_or_delete;\
+  class_name& operator=(const class_name&)  = default_or_delete;
+
+// Generate default destructor and empty default constructor.
+#define EMBED_DETAIL_DTOR_ECTOR_DEFAULT(class_name) \
+  ~class_name() = default; \
+  class_name()  = default;
+
+// Generate all default functions (Ctor, Dtor, and assignment) for specified class.
+#define EMBED_DETAIL_ALL_DEFAULT(class_name)      \
+  EMBED_DETAIL_DTOR_ECTOR_DEFAULT(class_name)     \
+  EMBED_DETAIL_COPY_FUNCTION(class_name, default) \
+  EMBED_DETAIL_MOVE_FUNCTION(class_name, default)
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -1810,6 +1813,9 @@ namespace command {
 
 } // end namespace command
 
+// Move the function's implementation to the base class to simplify the code.
+namespace crtp_mixins {
+
   // Implement the 'operator()' for function.
   template <typename Signature, typename Self>
   struct operator_call_impl; // Undefined
@@ -1838,51 +1844,117 @@ namespace command {
 
 #undef EMBED_DETAIL_OPERATOR_CALL_IMPL_DEFINE
 
-  // Implement the copy constructor and copy assignment for function.
-  template <bool IsCopyable /* = true */, typename Config, typename Self>
-  struct clone_impl {
-    clone_impl()                        = default;
-    ~clone_impl()                       = default;
-    clone_impl(clone_impl&&)            = default;
-    clone_impl& operator=(clone_impl&&) = default;
-
-    // Use `placement new` to create new functor during construction,
-    // which will call functor's copy-constructor.
-    EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      clone_impl(const clone_impl& that),
-      noexcept(Config::assertNoThrow || Config::isView), {
-        auto* self = static_cast<Self*>(this);
-        auto& other = static_cast<const Self&>(that);
-        using erasure_t = typename Self::erasure_t;
-        using command_t = typename Self::command_t;
-        other.m_command.clone(&self->m_erasure, const_cast<erasure_t*>(&other.m_erasure));
-        std::memcpy(&self->m_command, &other.m_command, sizeof(command_t));
-      }
-    )
-
-    // Copy assignment.
-    EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      clone_impl& operator=(const clone_impl& other),
-      noexcept(Config::assertNoThrow || Config::isView), {
-        auto& other_fn = static_cast<const Self&>(other);
-        if (!other_fn.is_empty() && this != std::addressof(other_fn)) {
-          Self(other_fn).swap(static_cast<Self&>(*this));
-        }
-        return *this;
-      }
-    )
-  };
-
+  // Implement the destructor.
   template <typename Config, typename Self>
-  struct clone_impl</* IsCopyable = */ false, Config, Self> {
-    clone_impl()                        = default;
-    ~clone_impl()                       = default;
-    clone_impl(clone_impl&&)            = default;
-    clone_impl& operator=(clone_impl&&) = default;
+  struct destructor_impl {
+    EMBED_DETAIL_COPY_FUNCTION(destructor_impl, default)
+    EMBED_DETAIL_MOVE_FUNCTION(destructor_impl, default)
+    destructor_impl() = default;
 
-    clone_impl(const clone_impl&)             = delete;
-    clone_impl& operator=(const clone_impl&)  = delete;
+    ~destructor_impl() noexcept(Config::assertNoThrow) {
+      using erasure_t = typename Self::erasure_t;
+      auto& self = static_cast<const Self&>(*this);
+      self.m_command.destroy(&const_cast<erasure_t&>(self.m_erasure));
+    }
   };
+
+  // Implement the move constructor and move assignment.
+  template <typename Config, typename Self>
+  struct move_impl {
+    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(move_impl);
+    EMBED_DETAIL_COPY_FUNCTION(move_impl, default);
+
+    move_impl(move_impl&& other_raw) noexcept(Config::assertNoThrow) {
+      // Get the real `self` and `other`.
+      auto& self = static_cast<Self&>(*this);
+      auto&& other = static_cast<Self&&>(other_raw);
+      using command_t = typename Self::command_t;
+
+      // Move from `other` to `self`.
+      other.m_command.move(&self.m_erasure, &other.m_erasure);
+      std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+      other.m_command.destroy(&other.m_erasure);
+      other.m_command.set_empty();
+    }
+
+    move_impl& operator=(move_impl&& other_raw) noexcept(Config::assertNoThrow) {
+      // Get the real `self` and `other`.
+      auto& self = static_cast<Self&>(*this);
+      auto&& other = static_cast<Self&&>(other_raw);
+      using command_t = typename Self::command_t;
+
+      // Clear and move from `other` to `self`.
+      self.clear();
+      if (!other.is_empty() && this != std::addressof(other)) {
+        other.m_command.move(&self.m_erasure, &other.m_erasure);
+        std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+        other.m_command.destroy(&other.m_erasure);
+        other.m_command.set_empty();
+      }
+      return *this;
+    }
+  };
+
+  // Implement the copy constructor and copy assignment.
+  template <typename Config, typename Self>
+  struct copy_impl {
+    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(copy_impl);
+    EMBED_DETAIL_MOVE_FUNCTION(copy_impl, default);
+
+    copy_impl(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
+      // Get the real `self` and `other`.
+      auto& self = static_cast<Self&>(*this);
+      auto& other = static_cast<const Self&>(other_raw);
+      using erasure_t = typename Self::erasure_t;
+      using command_t = typename Self::command_t;
+
+      // Copy from `other` to `self`.
+      other.m_command.clone(&self.m_erasure, const_cast<erasure_t*>(&other.m_erasure));
+      std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+    }
+
+    copy_impl& operator=(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
+      auto& other = static_cast<const Self&>(other_raw);
+      if (!other.is_empty() && this != std::addressof(other)) {
+        Self(other).swap(static_cast<Self&>(*this));
+      }
+      return *this;
+    }
+  };
+
+  template <bool IsView, bool IsCopyable, typename Config, typename Self>
+  struct EMBED_DETAIL_FORCE_EBO clone_move_destructor_impl; // Undefined
+
+  // When `IsView` is true, the function should be trivially relocatable.
+  template <bool IsCopyable, typename Config, typename Self>
+  struct clone_move_destructor_impl<
+    /* IsView = */ true, IsCopyable, Config, Self
+  > { EMBED_DETAIL_ALL_DEFAULT(clone_move_destructor_impl) };
+
+  // Implement clone constructor, move constructor, destructor, clone assignment,
+  // and move assignment when `IsView` is false and `IsCopyable` is false.
+  template <typename Config, typename Self>
+  struct clone_move_destructor_impl<
+    /* IsView = */ false, /* IsCopyable = */ false, Config, Self
+  >
+    : public destructor_impl<Config, Self>,
+      public move_impl<Config, Self>
+  {
+    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(clone_move_destructor_impl)
+    EMBED_DETAIL_MOVE_FUNCTION(clone_move_destructor_impl, default)
+    EMBED_DETAIL_COPY_FUNCTION(clone_move_destructor_impl, delete)
+  };
+
+  // Implement clone constructor, move constructor, destructor, clone assignment,
+  // and move assignment when `IsView` is false and `IsCopyable` is true.
+  template <typename Config, typename Self>
+  struct clone_move_destructor_impl<
+    /* IsView = */ false, /* IsCopyable = */ true, Config, Self
+  >
+    : public destructor_impl<Config, Self>,
+      public move_impl<Config, Self>,
+      public copy_impl<Config, Self>
+  { EMBED_DETAIL_ALL_DEFAULT(clone_move_destructor_impl) };
 
   // Implement the 'operator*' for function.
   template <typename Signature, typename Self, bool IsView,
@@ -1913,6 +1985,32 @@ namespace command {
     }
   };
 
+  // Implement the member variables. Transplant the member variables
+  // to the base class to achieve greater flexibility.
+  /// @attention This class must be placed first in the inheritance list; otherwise, there
+  /// will be an out-of-order error when it comes to move constructors and move assignments.
+  template <std::size_t BufferSize, typename Config, typename Signature>
+  struct member_variable_impl {
+    EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
+  protected:
+    using erasure_t = erasure_type::Erasure<BufferSize>;
+
+    using command_t = command::CommandTable<
+      Config::isView, BufferSize, Config, Signature,
+      typename unwrap_signature<Signature>::args>;
+
+    static_assert(is_traditional_trivial<erasure_t>::value,
+      "Internal error: erasure_t should be trivial.");
+
+    static_assert(is_traditional_trivial<command_t>::value,
+      "Internal error: command_t should be trivial.");
+
+    erasure_t m_erasure;
+    command_t m_command;
+  };
+
+} // end namespace crtp_mixins
+
   /// @brief A lightweight and heap-free wrapper for callable objects.
   /// @tparam BufferSize - Specifies the size reserved to store the object.
   /// @tparam Config - Specifies the configuration attributes of the wrapper.
@@ -1920,16 +2018,19 @@ namespace command {
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function
-    : public operator_call_impl<
+    : public crtp_mixins::member_variable_impl<
+        /* Buf = */ BufferSize, /* Cfg = */ Config, /* Sig = */ Signature
+      >,
+      public crtp_mixins::operator_call_impl<
         Signature, /* Self = */ function<BufferSize, Config, Signature>
       >,
-      public clone_impl<
-        /* IsCopyable = */ Config::isCopyable || Config::isView,
-        Config, /* Self = */ function<BufferSize, Config, Signature>
-      >,
-      public operator_dereference_impl<
+      public crtp_mixins::operator_dereference_impl<
         Signature, /* Self = */ function<BufferSize, Config, Signature>,
         /* IsView = */ Config::isView
+      >,
+      public crtp_mixins::clone_move_destructor_impl<
+        /* IsView = */ Config::isView, /* IsCopyable = */ Config::isCopyable,
+        Config, /* Self = */ function<BufferSize, Config, Signature>
       >
   {
   private:
@@ -1938,13 +2039,19 @@ namespace command {
     friend class function;
 
     template <typename, typename>
-    friend struct operator_call_impl;
+    friend struct crtp_mixins::operator_call_impl;
 
-    template <bool, typename, typename>
-    friend struct clone_impl;
+    template <typename, typename>
+    friend struct crtp_mixins::copy_impl;
+
+    template <typename, typename>
+    friend struct crtp_mixins::move_impl;
+
+    template <typename, typename>
+    friend struct crtp_mixins::destructor_impl;
 
     template <typename, typename, bool, typename>
-    friend struct operator_dereference_impl;
+    friend struct crtp_mixins::operator_dereference_impl;
 
     /// @brief ASSERT the given template arguments are valid.
 
@@ -1968,23 +2075,18 @@ namespace command {
       "This 'noexcept' qualifier is in conflict with the 'IsThrowing'"
       " configuration option. (Use 'ebd::safe_fn' or 'ebd::fn_view')");
 
-    using erasure_t = erasure_type::Erasure<BufferSize>;
+    using MemberVariableBase = crtp_mixins::member_variable_impl<
+      BufferSize, Config, Signature>;
 
-    using command_t = command::CommandTable<
-      Config::isView, BufferSize, Config, Signature,
-      typename unwrap_signature<Signature>::args>;
+    using erasure_t = typename MemberVariableBase::erasure_t;
 
-    static_assert(is_traditional_trivial<erasure_t>::value,
-      "Internal error: erasure_t should be trivial.");
-
-    static_assert(is_traditional_trivial<command_t>::value,
-      "Internal error: command_t should be trivial.");
+    using command_t = typename MemberVariableBase::command_t;
 
     // The `m_erasure` contains the type-erased object.
-    erasure_t m_erasure;
+    using MemberVariableBase::m_erasure;
 
     // The `m_command` is responsible for managing and invoking the `m_erasure`.
-    command_t m_command;
+    using MemberVariableBase::m_command;
 
     // The buffer size.
     static constexpr std::size_t buffer_size = BufferSize;
@@ -2005,11 +2107,31 @@ namespace command {
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
     is_copyable() noexcept { return internal_is_copyable; }
 
-    EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      ~function(), noexcept(Config::assertNoThrow || Config::isView), {
-        m_command.destroy(&m_erasure);
-      }
-    )
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wuninitialized"
+#endif
+    /// @brief All following methods that end with `= default` are implemented in 
+    /// the base class @e `crtp_mixins::clone_move_destructor_impl`.
+
+    // The destructor of the function wrapper, is trivial if `Config::isView == true`.
+    ~function()                                   = default;
+    // The copy constructor of the function wrapper, `=delete` if `(Config::isView || 
+    // Config::isCopyable) == true`, and is trivial if `Config::isView == true`.
+    function(const function& other)               = default;
+    // The move constructor of the function wrapper, is trivial if 
+    // `(Config::isView || Config::isCopyable) == true`.
+    function(function&& other)                    = default;
+    // The copy assignment of the function wrapper, `=delete` if `(Config::isView || 
+    // Config::isCopyable) == true`, and is trivial if `Config::isView == true`.
+    function& operator=(const function& other)    = default;
+    // The move assignment of the function wrapper, is trivial if 
+    // `(Config::isView || Config::isCopyable) == true`.
+    function& operator=(function&& other)         = default;
+
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
 
     // Create an empty function wrapper.
     function() noexcept {
@@ -2020,29 +2142,6 @@ namespace command {
     function(std::nullptr_t) noexcept {
       m_command.set_empty();
     }
-
-#if defined(__GNUC__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wuninitialized"
-#endif
-    // Implemented in base class `clone_impl`.
-    // `=delete` if `internal_is_copyable == false`.
-    function(const function& other) = default;
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
-
-    // Use `placement new` to create new functor during construction,
-    // which will call functor's move-constructor.
-    EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      function(function&& other),
-      noexcept(Config::assertNoThrow || Config::isView), {
-        other.m_command.move(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-        other.m_command.destroy(&other.m_erasure);
-        other.m_command.set_empty();
-      }
-    )
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -2201,25 +2300,6 @@ namespace command {
       if (!is_empty()) { clear(); }
       return *this;
     }
-
-    // Move assignment.
-    EMBED_DETAIL_VIEW_MODE_DEFAULT(
-      function& operator=(function&& other),
-      noexcept(Config::assertNoThrow || Config::isView), {
-        clear();
-        if (!other.is_empty() && this != std::addressof(other)) {
-          other.m_command.move(&m_erasure, &other.m_erasure);
-          std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-          other.m_command.destroy(&other.m_erasure);
-          other.m_command.set_empty();
-        }
-        return *this;
-      }
-    )
-
-    // Implemented in base class `clone_impl`.
-    // `=delete` if `internal_is_copyable == false`.
-    function& operator=(const function& other) = default;
 
     // Assign a callable object to the object.
     template <typename Functor, 
@@ -2801,9 +2881,12 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
 #undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_REQUIRES_IMPL
-#undef EMBED_DETAIL_VIEW_MODE_DEFAULT
 #undef EMBED_DETAIL_FORCE_EBO
 #undef EMBED_DETAIL_VIRTUAL_INHERITANCE
+#undef EMBED_DETAIL_MOVE_FUNCTION
+#undef EMBED_DETAIL_COPY_FUNCTION
+#undef EMBED_DETAIL_DTOR_ECTOR_DEFAULT
+#undef EMBED_DETAIL_ALL_DEFAULT
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.

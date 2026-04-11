@@ -75,8 +75,6 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     ASSERT_EQ(std::is_nothrow_destructible<fv_t>::value == true, true);
 }
 
-#if defined(__clang__) && __clang_major__ >= 15 && defined(__has_attribute) && __has_attribute(enable_if)
-
 // BasicAttributes[2]
 TEST(BasicAttributes, TrivialityViewMode) {
     using view_t = ebd::fn_view<void()>;
@@ -86,6 +84,4 @@ TEST(BasicAttributes, TrivialityViewMode) {
     ASSERT_EQ(std::is_trivially_copy_constructible<view_t>::value == true, true);
     ASSERT_EQ(std::is_trivially_copy_assignable<view_t>::value == true, true);
 }
-
-#endif
 
