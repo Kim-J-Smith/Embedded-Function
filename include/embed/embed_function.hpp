@@ -154,7 +154,9 @@ namespace ebd { namespace detail {
 # endif
 
 #ifndef EMBED_UNREACHABLE
-# if defined(_MSC_VER)
+# if __cpp_lib_unreachable >= 202202L
+#  define EMBED_UNREACHABLE() std::unreachable()
+# elif defined(_MSC_VER)
 #  define EMBED_UNREACHABLE() __assume(false)
 # elif defined(__GNUC__) && (__GNUC__ >= 5)
 #  define EMBED_UNREACHABLE() __builtin_unreachable()
@@ -810,6 +812,7 @@ inline namespace fn_traits {
   // Typename parameter package. Easy to find index of element.
   template <typename... Args>
   struct args_package {
+    // The `get` is reserved for further use.
     template <std::size_t Index>
     using get = typename get_args_helper<
       Index, args_package_impl<Args...>>::type::type;
