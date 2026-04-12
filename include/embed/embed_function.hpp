@@ -191,6 +191,18 @@ namespace ebd { namespace detail {
 # endif
 #endif
 
+#ifndef EMBED_DEPRECATED
+# if EMBED_HAS_CXX_ATTRIBUTE(deprecated)
+#  define EMBED_DEPRECATED(message) [[deprecated(message)]]
+# elif EMBED_HAS_ATTRIBUTE(deprecated)
+#  define EMBED_DEPRECATED(message) __attribute__((deprecated(message)))
+# elif defined(_MSC_VER)
+#  define EMBED_DEPRECATED(message) __declspec(deprecated(msg))
+# else
+#  define EMBED_DEPRECATED(message)
+# endif
+#endif
+
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -1828,7 +1840,12 @@ namespace command {
       // Do nothing here
     }
 
-    // Empty init.
+    /// @brief Empty init the `m_invoker` in view mode.
+    /// @deprecated As `std::function_ref` has removed empty state, function wrapper
+    /// that is in the view mode is not recommended to have null values.
+    /// See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html#R1 .
+    EMBED_DEPRECATED("The function wrapper in the view mode is not recommended to"
+      " have null values, such as empty initialization, assigning nullptr, etc.")
     EMBED_CXX14_CONSTEXPR void set_empty() noexcept {
       m_invoker = &invoker_impl_t::empty::invoke;
     }
@@ -2895,6 +2912,7 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 # undef EMBED_LAUNDER
 # undef EMBED_UNREACHABLE
 # undef EMBED_FAIL_MESSAGE
+# undef EMBED_DEPRECATED
 
 # undef EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
 # undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
