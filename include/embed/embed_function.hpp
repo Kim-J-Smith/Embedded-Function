@@ -15,6 +15,18 @@
 
 // Just like function pointers, it is quick and efficient.
 
+/// @b EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
+/// If this macro is defined, bigger default buffer size will be used.
+
+/// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
+/// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
+
+/// @b EMBED_FN_CONFIG_UNDEF_MACROS
+/// If this macro is defined, EMBED_* macros will be undefined at the end of this file.
+
+/// @b EMBED_FN_HOOK_TRACE_EMPTY_CALL(message)
+/// If this macro is defined, it will be called in function `throw_or_terminate()` in debug mode.
+
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 
@@ -167,6 +179,18 @@ namespace ebd { namespace detail {
 # endif
 #endif
 
+#ifndef EMBED_FAIL_MESSAGE
+# if !defined(EMBED_FN_HOOK_TRACE_EMPTY_CALL)
+#  define EMBED_FN_HOOK_TRACE_EMPTY_CALL(message)
+# endif
+# if defined(__OPTIMIZE__) || defined(NDEBUG)
+#  define EMBED_FAIL_MESSAGE(message)
+# else
+#  define EMBED_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_TRACE_EMPTY_CALL(\
+  __FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); } while(0)
+# endif
+#endif
+
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -258,6 +282,9 @@ namespace ebd { namespace detail {
 # define EMBED_DETAIL_TEMPLATE_BEGIN(...) template <__VA_ARGS__>
 # define EMBED_DETAIL_REQUIRES_END(...) requires(__VA_ARGS__)
 #endif
+
+#define EMBED_DETAIL_TEXT(text) EMBED_DETAIL_TEXT_IMPL(text)
+#define EMBED_DETAIL_TEXT_IMPL(text) #text
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -881,12 +908,14 @@ inline namespace fn_traits {
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<!IsThrowing>
   throw_or_terminate() noexcept {
+    EMBED_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
     std::terminate();
   }
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
+    EMBED_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
 #if EMBED_CXX_ENABLE_EXCEPTION != 0
     throw std::bad_function_call{};
 #else
@@ -2848,6 +2877,8 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 #undef EMBED_DETAIL_ALL_DEFAULT
 #undef EMBED_DETAIL_TEMPLATE_BEGIN
 #undef EMBED_DETAIL_REQUIRES_END
+#undef EMBED_DETAIL_TEXT
+#undef EMBED_DETAIL_TEXT_IMPL
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
@@ -2863,7 +2894,12 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 # undef EMBED_FALLTHROUGH
 # undef EMBED_LAUNDER
 # undef EMBED_UNREACHABLE
+# undef EMBED_FAIL_MESSAGE
+
+# undef EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
+# undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
+# undef EMBED_FN_HOOK_TRACE_EMPTY_CALL
 #endif
 
 #if defined(_MSC_VER)
