@@ -2538,7 +2538,8 @@ using fn_view = detail::function<
  * 
  * EXAMPLE: a move-only, non‑throwing wrapper with a custom buffer size:
  * ```cpp
- * using unique_safe_fn = ebd::basic_fn<void(int), 32,
+ * template <typename Signature, std::size_t BufferSize>
+ * using unique_safe_fn = ebd::basic_fn<Signature, BufferSize,
  *                                      false, // IsCopyable
  *                                      false, // IsView
  *                                      false, // IsThrowing
