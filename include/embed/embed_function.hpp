@@ -2001,38 +2001,38 @@ namespace crtp_mixins {
   };
 
   template <bool IsView, bool IsCopyable, typename Config, typename Self>
-  struct EMBED_DETAIL_FORCE_EBO clone_move_destructor_impl; // Undefined
+  struct EMBED_DETAIL_FORCE_EBO lifetime_operations_impl; // Undefined
 
   // When `IsView` is true, the function should be trivially relocatable.
   template <bool IsCopyable, typename Config, typename Self>
-  struct clone_move_destructor_impl<
+  struct lifetime_operations_impl<
     /* IsView = */ true, IsCopyable, Config, Self
-  > { EMBED_DETAIL_ALL_DEFAULT(clone_move_destructor_impl) };
+  > { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
 
   // Implement clone constructor, move constructor, destructor, clone assignment,
   // and move assignment when `IsView` is false and `IsCopyable` is false.
   template <typename Config, typename Self>
-  struct clone_move_destructor_impl<
+  struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ false, Config, Self
   >
     : public destructor_impl<Config, Self>,
       public move_impl<Config, Self>
   {
-    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(clone_move_destructor_impl)
-    EMBED_DETAIL_MOVE_FUNCTION(clone_move_destructor_impl, default)
-    EMBED_DETAIL_COPY_FUNCTION(clone_move_destructor_impl, delete)
+    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(lifetime_operations_impl)
+    EMBED_DETAIL_MOVE_FUNCTION(lifetime_operations_impl, default)
+    EMBED_DETAIL_COPY_FUNCTION(lifetime_operations_impl, delete)
   };
 
   // Implement clone constructor, move constructor, destructor, clone assignment,
   // and move assignment when `IsView` is false and `IsCopyable` is true.
   template <typename Config, typename Self>
-  struct clone_move_destructor_impl<
+  struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ true, Config, Self
   >
     : public destructor_impl<Config, Self>,
       public move_impl<Config, Self>,
       public copy_impl<Config, Self>
-  { EMBED_DETAIL_ALL_DEFAULT(clone_move_destructor_impl) };
+  { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
 
   // Implement the 'operator*' for function.
   template <typename Signature, typename Self, bool IsView,
@@ -2107,7 +2107,7 @@ namespace crtp_mixins {
         Signature, /* Self = */ function<BufferSize, Config, Signature>,
         /* IsView = */ Config::isView
       >,
-      public crtp_mixins::clone_move_destructor_impl<
+      public crtp_mixins::lifetime_operations_impl<
         /* IsView = */ Config::isView, /* IsCopyable = */ Config::isCopyable,
         Config, /* Self = */ function<BufferSize, Config, Signature>
       >
@@ -2191,7 +2191,7 @@ namespace crtp_mixins {
 # pragma GCC diagnostic ignored "-Wuninitialized"
 #endif
     /// @brief All following methods that end with `= default` are implemented in 
-    /// the base class @e `crtp_mixins::clone_move_destructor_impl`.
+    /// the base class @e `crtp_mixins::lifetime_operations_impl`.
 
     // The destructor of the function wrapper, is trivial if `Config::isView == true`.
     ~function()                                   = default;
