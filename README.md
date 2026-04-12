@@ -47,12 +47,13 @@ namespace ebd {
 - Use the `ebd::fn` template class.
 
 ```cpp
+#include <iostream>
 #include "embed/embed_function.hpp"
 
 struct Example {
-    static void static_mem_fn(int) {};
-    void mem_fn(int) const {};
-    void operator()(int) {};
+    static void static_mem_fn(int n) { std::cout << "Calling with number: " << n << "\n"; }
+    void mem_fn(int n) const { std::cout << "Calling with number: " << n << "\n"; }
+    void operator()(int n) { std::cout << "Calling with number: " << n << "\n"; }
 };
 
 auto main() -> int {
@@ -60,13 +61,13 @@ auto main() -> int {
     ebd::fn<void(int)> fn_;
 
     fn_ = &Example::static_mem_fn;
-    fn_(123);
+    fn_(123); // Prints "Calling with number: 123"
 
     fn_ = [e](int arg) { e.mem_fn(arg); };
-    fn_(456);
+    fn_(456); // Prints "Calling with number: 456"
 
     fn_ = e;
-    fn_(789);
+    fn_(789); // Prints "Calling with number: 789"
 }
 ```
 
