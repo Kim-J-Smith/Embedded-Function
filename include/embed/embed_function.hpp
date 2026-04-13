@@ -2081,7 +2081,7 @@ namespace crtp_mixins {
   ///           See @def config_package for details.
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  class EMBED_DETAIL_FORCE_EBO function
+  class EMBED_DETAIL_FORCE_EBO function final
     : public crtp_mixins::member_variable_impl<
         /* Buf = */ BufferSize, /* Cfg = */ Config, /* Sig = */ Signature
       >,
