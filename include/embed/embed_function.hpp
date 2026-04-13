@@ -2866,6 +2866,23 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
   >(std::forward<Functor>(functor));
 }
 
+// When all other make_fn() fail to match the input parameters, 
+// this function will be called as the fall back to avoid the 
+// awful template error flood.
+template <int = 0, typename Unused = void>
+EMBED_INLINE void make_fn(...) noexcept {
+  static_assert(detail::always_false<Unused>::value,
+    "[Embedded Function]: The make_fn() cannot automatically deduce an"
+    " appropriate function wrapper based on your input parameters."
+    " This might be because the parameters you passed are ambiguous,"
+    " such as overloaded free functions, member functions, objects"
+    " that overload multiple operator() functions, nullptr, or just"
+    " non-parameters. If so, you can use 'make_fn<Signature>()' to"
+    " specify the signature of target callable object to disambiguate."
+    " The 'Signature' is like 'void()', 'float(int,int)'."
+  );
+}
+
 } // end namespace ebd
 
 #undef EMBED_DETAIL_FN_EXPAND
