@@ -43,14 +43,6 @@
 # endif
 #endif
 
-#ifndef EMBED_ALIAS
-# if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
-#  define EMBED_ALIAS __attribute__((may_alias))
-# else
-#  define EMBED_ALIAS
-# endif
-#endif
-
 #ifndef EMBED_HAS_BUILTIN
 # if defined(__has_builtin) && defined(__is_identifier)
 #  define EMBED_HAS_BUILTIN(x) (__has_builtin(x) || !__is_identifier(x))
@@ -148,22 +140,6 @@
 #  define EMBED_FALLTHROUGH() (static_cast<void>(0))
 # endif
 #endif
-
-# ifndef EMBED_LAUNDER
-#  if ( EMBED_CXX_VERSION >= 201703L )
-#   define EMBED_LAUNDER(x) ( ::std::launder(x) )
-#  elif EMBED_HAS_BUILTIN(__builtin_launder)
-namespace ebd { namespace detail {
-  template <typename T>
-  EMBED_NODISCARD EMBED_INLINE constexpr T* launder(T* ptr) noexcept {
-    return __builtin_launder(ptr);
-  }
-}} // end namespace ebd::detail
-#   define EMBED_LAUNDER(x) ( ::ebd::detail::launder(x) )
-#  else
-#   define EMBED_LAUNDER(x) (x)
-#  endif
-# endif
 
 #ifndef EMBED_UNREACHABLE
 # if __cpp_lib_unreachable >= 202202L
@@ -285,6 +261,24 @@ namespace ebd { namespace detail {
 
 #define EMBED_DETAIL_TEXT(text) EMBED_DETAIL_TEXT_IMPL(text)
 #define EMBED_DETAIL_TEXT_IMPL(text) #text
+
+#if __cpp_lib_launder >= 201606L
+# define EMBED_DETAIL_LAUNDER(x) ( ::std::launder(x) )
+#elif EMBED_HAS_BUILTIN(__builtin_launder)
+namespace ebd { namespace detail {
+  template <typename T> EMBED_NODISCARD EMBED_INLINE constexpr
+  T* launder(T* ptr) noexcept { return __builtin_launder(ptr); }
+}} // end namespace ebd::detail
+# define EMBED_DETAIL_LAUNDER(x) ( ::ebd::detail::launder(x) )
+#else
+# define EMBED_DETAIL_LAUNDER(x) ( x )
+#endif
+
+#if EMBED_HAS_ATTRIBUTE(may_alias)
+# define EMBED_DETAIL_ALIAS __attribute__((may_alias))
+#else
+# define EMBED_DETAIL_ALIAS
+#endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -1433,8 +1427,10 @@ namespace erasure_type {
   };
 
   template <std::size_t Size>
-  union EMBED_ALIAS ErasureCore {
-    char        pod[sizeof(ErasureCoreImpl<Size>)];
+  union EMBED_DETAIL_ALIAS ErasureCore {
+    // An array of `unsigned char` can be used to hold other objects.
+    // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html .
+    unsigned char pod[sizeof(ErasureCoreImpl<Size>)];
     ErasureCoreImpl<Size> unused; // alignas(unused)
   };
 
@@ -1448,7 +1444,7 @@ namespace erasure_type {
   // (rather than the content) is also in accordance with the C++ standard.
   // See https://eel.is/c++draft/basic.life#7 .
   template <std::size_t Size>
-  struct EMBED_ALIAS Erasure : public ErasureBase {
+  struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
     alignas(default_buffer_size::align_value)
     ErasureCore<Size> m_core;
 
@@ -1462,19 +1458,19 @@ namespace erasure_type {
 
     template <typename T>
     T& access() noexcept
-    { return *EMBED_LAUNDER(static_cast<T*>(access())); }
+    { return *EMBED_DETAIL_LAUNDER(static_cast<T*>(access())); }
 
     template <typename T>
     const T& access() const noexcept
-    { return *EMBED_LAUNDER(static_cast<const T*>(access())); }
+    { return *EMBED_DETAIL_LAUNDER(static_cast<const T*>(access())); }
 
     template <typename T>
     volatile T& access() volatile noexcept
-    { return *EMBED_LAUNDER(static_cast<volatile T*>(access())); }
+    { return *EMBED_DETAIL_LAUNDER(static_cast<volatile T*>(access())); }
 
     template <typename T>
     const volatile T& access() const volatile noexcept
-    { return *EMBED_LAUNDER(static_cast<const volatile T*>(access())); }
+    { return *EMBED_DETAIL_LAUNDER(static_cast<const volatile T*>(access())); }
   };
 
 } // end namespace erasure_type
@@ -2899,10 +2895,11 @@ EMBED_INLINE void make_fn(...) noexcept {
 #undef EMBED_DETAIL_REQUIRES_END
 #undef EMBED_DETAIL_TEXT
 #undef EMBED_DETAIL_TEXT_IMPL
+#undef EMBED_DETAIL_LAUNDER
+#undef EMBED_DETAIL_ALIAS
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
-# undef EMBED_ALIAS
 # undef EMBED_HAS_BUILTIN
 # undef EMBED_HAS_ATTRIBUTE
 # undef EMBED_HAS_CXX_ATTRIBUTE
@@ -2912,7 +2909,6 @@ EMBED_INLINE void make_fn(...) noexcept {
 # undef EMBED_RESTRICT
 # undef EMBED_NODISCARD
 # undef EMBED_FALLTHROUGH
-# undef EMBED_LAUNDER
 # undef EMBED_UNREACHABLE
 # undef EMBED_FAIL_MESSAGE
 
