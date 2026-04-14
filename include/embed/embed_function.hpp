@@ -754,7 +754,7 @@ inline namespace cxx_traits {
 
   // Forward declaration.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  class function;
+  class EMBED_DETAIL_FORCE_EBO function;
 
 /// @brief Here are some self-defined traits.
 inline namespace fn_traits {
