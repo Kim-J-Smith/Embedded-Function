@@ -98,7 +98,7 @@
 #endif
 
 #ifndef EMBED_INLINE
-# if defined(__GNUC__) || defined(__clang__) || defined(__TASKING__)
+# if EMBED_HAS_ATTRIBUTE(always_inline)
 #  define EMBED_INLINE inline __attribute__((always_inline))
 # elif defined(_MSC_VER) || defined(__IAR_SYSTEMS_ICC__)
 #  define EMBED_INLINE __forceinline
@@ -118,9 +118,9 @@
 #endif
 
 #ifndef EMBED_NODISCARD
-# if ( EMBED_CXX_VERSION >= 201703L ) && EMBED_HAS_CXX_ATTRIBUTE(nodiscard)
+# if EMBED_HAS_CXX_ATTRIBUTE(nodiscard)
 #  define EMBED_NODISCARD [[nodiscard]]
-# elif defined(__GNUC__) || defined(__clang__)
+# elif EMBED_HAS_ATTRIBUTE(warn_unused_result)
 #  define EMBED_NODISCARD __attribute__((warn_unused_result))
 # else
 #  define EMBED_NODISCARD
@@ -134,7 +134,7 @@
 #  define EMBED_FALLTHROUGH() [[gnu::fallthrough]]
 # elif EMBED_HAS_CXX_ATTRIBUTE(clang::fallthrough)
 #  define EMBED_FALLTHROUGH() [[clang::fallthrough]]
-# elif (defined(__GNUC__) || defined(__clang__)) && EMBED_HAS_ATTRIBUTE(fallthrough)
+# elif EMBED_HAS_ATTRIBUTE(fallthrough)
 #  define EMBED_FALLTHROUGH() __attribute__((fallthrough))
 # else
 #  define EMBED_FALLTHROUGH() (static_cast<void>(0))
@@ -152,18 +152,6 @@
 #  define EMBED_UNREACHABLE() __builtin_unreachable()
 # else
 #  define EMBED_UNREACHABLE() 
-# endif
-#endif
-
-#ifndef EMBED_FAIL_MESSAGE
-# if !defined(EMBED_FN_HOOK_TRACE_EMPTY_CALL)
-#  define EMBED_FN_HOOK_TRACE_EMPTY_CALL(message)
-# endif
-# if defined(__OPTIMIZE__) || defined(NDEBUG)
-#  define EMBED_FAIL_MESSAGE(message)
-# else
-#  define EMBED_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_TRACE_EMPTY_CALL(\
-  __FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); } while(0)
 # endif
 #endif
 
@@ -278,6 +266,17 @@ namespace ebd { namespace detail {
 # define EMBED_DETAIL_ALIAS __attribute__((may_alias))
 #else
 # define EMBED_DETAIL_ALIAS
+#endif
+
+#ifndef EMBED_FN_HOOK_TRACE_EMPTY_CALL
+# define EMBED_FN_HOOK_TRACE_EMPTY_CALL(message)
+#endif
+
+#if defined(__OPTIMIZE__) || defined(NDEBUG)
+# define EMBED_DETAIL_FAIL_MESSAGE(message)
+#else
+# define EMBED_DETAIL_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_TRACE_EMPTY_CALL(\
+  __FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); } while(0)
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -902,14 +901,14 @@ inline namespace fn_traits {
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<!IsThrowing>
   throw_or_terminate() noexcept {
-    EMBED_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
+    EMBED_DETAIL_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
     std::terminate();
   }
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
-    EMBED_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
+    EMBED_DETAIL_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
 #if EMBED_CXX_ENABLE_EXCEPTION != 0
     throw std::bad_function_call{};
 #else
@@ -2897,6 +2896,7 @@ EMBED_INLINE void make_fn(...) noexcept {
 #undef EMBED_DETAIL_TEXT_IMPL
 #undef EMBED_DETAIL_LAUNDER
 #undef EMBED_DETAIL_ALIAS
+#undef EMBED_DETAIL_FAIL_MESSAGE
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
@@ -2910,7 +2910,6 @@ EMBED_INLINE void make_fn(...) noexcept {
 # undef EMBED_NODISCARD
 # undef EMBED_FALLTHROUGH
 # undef EMBED_UNREACHABLE
-# undef EMBED_FAIL_MESSAGE
 
 # undef EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
 # undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
