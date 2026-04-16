@@ -90,7 +90,7 @@
 #endif
 
 #ifndef EMBED_CXX14_CONSTEXPR
-# if ( EMBED_CXX_VERSION >= 201402L ) && ( __cpp_constexpr >= 201304L )
+# if (EMBED_CXX_VERSION >= 201402L && __cpp_constexpr >= 201304L)
 #  define EMBED_CXX14_CONSTEXPR constexpr
 # else
 #  define EMBED_CXX14_CONSTEXPR
@@ -118,7 +118,7 @@
 #endif
 
 #ifndef EMBED_NODISCARD
-# if EMBED_HAS_CXX_ATTRIBUTE(nodiscard)
+# if (EMBED_CXX_VERSION >= 201703L && EMBED_HAS_CXX_ATTRIBUTE(nodiscard))
 #  define EMBED_NODISCARD [[nodiscard]]
 # elif EMBED_HAS_ATTRIBUTE(warn_unused_result)
 #  define EMBED_NODISCARD __attribute__((warn_unused_result))
@@ -128,7 +128,7 @@
 #endif
 
 #ifndef EMBED_FALLTHROUGH
-# if ( EMBED_CXX_VERSION >= 201703L ) && EMBED_HAS_CXX_ATTRIBUTE(fallthrough)
+# if (EMBED_CXX_VERSION >= 201703L && EMBED_HAS_CXX_ATTRIBUTE(fallthrough))
 #  define EMBED_FALLTHROUGH() [[fallthrough]]
 # elif EMBED_HAS_CXX_ATTRIBUTE(gnu::fallthrough)
 #  define EMBED_FALLTHROUGH() [[gnu::fallthrough]]
@@ -141,25 +141,11 @@
 # endif
 #endif
 
-#ifndef EMBED_UNREACHABLE
-# if __cpp_lib_unreachable >= 202202L
-#  define EMBED_UNREACHABLE() std::unreachable()
-# elif defined(_MSC_VER)
-#  define EMBED_UNREACHABLE() __assume(false)
-# elif defined(__GNUC__) && (__GNUC__ >= 5)
-#  define EMBED_UNREACHABLE() __builtin_unreachable()
-# elif EMBED_HAS_BUILTIN(__builtin_unreachable)
-#  define EMBED_UNREACHABLE() __builtin_unreachable()
-# else
-#  define EMBED_UNREACHABLE() 
-# endif
-#endif
-
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
 # include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
-# include <utility>     // std::move, std::forward, std::addressof
+# include <utility>     // std::move, std::forward, std::addressof, std::unreachable(C++23)
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
@@ -277,6 +263,18 @@ namespace ebd { namespace detail {
 #else
 # define EMBED_DETAIL_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_TRACE_EMPTY_CALL(\
   __FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); } while(0)
+#endif
+
+#if __cpp_lib_unreachable >= 202202L
+# define EMBED_DETAIL_UNREACHABLE() std::unreachable()
+#elif EMBED_HAS_BUILTIN(__builtin_unreachable)
+# define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
+#elif defined(__GNUC__) && (__GNUC__ >= 5)
+# define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
+#elif defined(_MSC_VER)
+# define EMBED_DETAIL_UNREACHABLE() __assume(false)
+#else
+# define EMBED_DETAIL_UNREACHABLE()
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -1497,7 +1495,7 @@ namespace invocation {
     struct empty {                                                                \
       static Ret invoke(erasure_base_t*, smart_forward_t<Args>...) {              \
         throw_or_terminate<Config::isThrowing>();                                 \
-        EMBED_UNREACHABLE();                                                      \
+        EMBED_DETAIL_UNREACHABLE();                                               \
       }                                                                           \
     };                                                                            \
                                                                                   \
@@ -1651,7 +1649,7 @@ namespace management {
         case OperatorCode::destroy:
           destroy<Functor>(dst);
           break;
-        default: EMBED_UNREACHABLE(); break;
+        default: EMBED_DETAIL_UNREACHABLE(); break;
         }
       }
 
@@ -1665,7 +1663,7 @@ namespace management {
       ) {
         switch (op) {
         case OperatorCode::clone:
-          EMBED_UNREACHABLE(); // move only
+          EMBED_DETAIL_UNREACHABLE(); // move only
           break;
         case OperatorCode::move:
           move<Functor>(dst, src);
@@ -1673,7 +1671,7 @@ namespace management {
         case OperatorCode::destroy:
           destroy<Functor>(dst);
           break;
-        default: EMBED_UNREACHABLE(); break;
+        default: EMBED_DETAIL_UNREACHABLE(); break;
         }
       }
 
@@ -1694,7 +1692,7 @@ namespace management {
           );
           break;
         case OperatorCode::destroy: /* Do nothing */ break;
-        default: EMBED_UNREACHABLE(); break;
+        default: EMBED_DETAIL_UNREACHABLE(); break;
         }
       }
 
@@ -1767,7 +1765,7 @@ namespace command {
       static_assert(always_false<Functor>::value,
         "Internal error: When `Config::isView` is false"
         " the Functor must be stored originally.");
-      EMBED_UNREACHABLE();
+      EMBED_DETAIL_UNREACHABLE();
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -2897,6 +2895,7 @@ EMBED_INLINE void make_fn(...) noexcept {
 #undef EMBED_DETAIL_LAUNDER
 #undef EMBED_DETAIL_ALIAS
 #undef EMBED_DETAIL_FAIL_MESSAGE
+#undef EMBED_DETAIL_UNREACHABLE
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
@@ -2909,7 +2908,6 @@ EMBED_INLINE void make_fn(...) noexcept {
 # undef EMBED_RESTRICT
 # undef EMBED_NODISCARD
 # undef EMBED_FALLTHROUGH
-# undef EMBED_UNREACHABLE
 
 # undef EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
 # undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
