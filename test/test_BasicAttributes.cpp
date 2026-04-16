@@ -86,3 +86,9 @@ TEST(BasicAttributes, TrivialityViewMode) {
     ASSERT_EQ(std::is_trivially_copyable<view_t>::value == true, true);
 }
 
+static int test_const(const ebd::fn_view<int(int, int)> f) { return f(3, 4); }
+
+// BasicAttributes[3]
+TEST(BasicAttributes, AlwaysConstFnView) {
+    ASSERT_EQ(test_const(ebd_test_free_func_iii_add), 3 + 4);
+}

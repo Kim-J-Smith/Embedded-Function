@@ -547,6 +547,8 @@ TEST(InitFunction, make_fn_SpecifiedWrapper) {
     auto f3 = ebd::make_fn<ebd::safe_fn>(&ebd_test_member_fn::static_mem_fn_ii_add);
     auto f4 = ebd::make_fn<ebd::fn_view>(&ebd_test_member_fn::static_mem_fn_ii_add);
 
+    auto f5 = ebd::make_fn<ebd::fn_view>(ebd_test_free_func_iii_add);
+
     ASSERT_EQ(f1 != nullptr, true);
     ASSERT_EQ(f1(3, 9), 3 + 9);
     ASSERT_EQ(f2 != nullptr, true);
@@ -555,6 +557,8 @@ TEST(InitFunction, make_fn_SpecifiedWrapper) {
     ASSERT_EQ(f3(3, 9), 3 + 9);
     ASSERT_EQ(f4 != nullptr, true);
     ASSERT_EQ(f4(3, 9), 3 + 9);
+
+    ASSERT_EQ(f5(23, 45), 23 + 45);
 }
 
 // InitFunction[30]

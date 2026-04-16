@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.11
+ * @version     2.0.12
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -14,6 +14,18 @@
  */
 
 // Just like function pointers, it is quick and efficient.
+
+/// @b EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
+/// If this macro is defined, bigger default buffer size will be used.
+
+/// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
+/// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
+
+/// @b EMBED_FN_CONFIG_UNDEF_MACROS
+/// If this macro is defined, EMBED_* macros will be undefined at the end of this file.
+
+/// @b EMBED_FN_HOOK_TRACE_EMPTY_CALL(message)
+/// If this macro is defined, it will be called in function `throw_or_terminate()` in debug mode.
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
@@ -28,14 +40,6 @@
 #  define EMBED_CXX_VERSION _MSVC_LANG
 # else
 #  define EMBED_CXX_VERSION __cplusplus
-# endif
-#endif
-
-#ifndef EMBED_ALIAS
-# if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
-#  define EMBED_ALIAS __attribute__((may_alias))
-# else
-#  define EMBED_ALIAS
 # endif
 #endif
 
@@ -86,7 +90,7 @@
 #endif
 
 #ifndef EMBED_CXX14_CONSTEXPR
-# if ( EMBED_CXX_VERSION >= 201402L ) && ( __cpp_constexpr >= 201304L )
+# if (EMBED_CXX_VERSION >= 201402L && __cpp_constexpr >= 201304L)
 #  define EMBED_CXX14_CONSTEXPR constexpr
 # else
 #  define EMBED_CXX14_CONSTEXPR
@@ -94,7 +98,7 @@
 #endif
 
 #ifndef EMBED_INLINE
-# if defined(__GNUC__) || defined(__clang__) || defined(__TASKING__)
+# if EMBED_HAS_ATTRIBUTE(always_inline)
 #  define EMBED_INLINE inline __attribute__((always_inline))
 # elif defined(_MSC_VER) || defined(__IAR_SYSTEMS_ICC__)
 #  define EMBED_INLINE __forceinline
@@ -114,9 +118,9 @@
 #endif
 
 #ifndef EMBED_NODISCARD
-# if ( EMBED_CXX_VERSION >= 201703L ) && EMBED_HAS_CXX_ATTRIBUTE(nodiscard)
+# if (EMBED_CXX_VERSION >= 201703L && EMBED_HAS_CXX_ATTRIBUTE(nodiscard))
 #  define EMBED_NODISCARD [[nodiscard]]
-# elif defined(__GNUC__) || defined(__clang__)
+# elif EMBED_HAS_ATTRIBUTE(warn_unused_result)
 #  define EMBED_NODISCARD __attribute__((warn_unused_result))
 # else
 #  define EMBED_NODISCARD
@@ -124,44 +128,16 @@
 #endif
 
 #ifndef EMBED_FALLTHROUGH
-# if ( EMBED_CXX_VERSION >= 201703L ) && EMBED_HAS_CXX_ATTRIBUTE(fallthrough)
+# if (EMBED_CXX_VERSION >= 201703L && EMBED_HAS_CXX_ATTRIBUTE(fallthrough))
 #  define EMBED_FALLTHROUGH() [[fallthrough]]
 # elif EMBED_HAS_CXX_ATTRIBUTE(gnu::fallthrough)
 #  define EMBED_FALLTHROUGH() [[gnu::fallthrough]]
 # elif EMBED_HAS_CXX_ATTRIBUTE(clang::fallthrough)
 #  define EMBED_FALLTHROUGH() [[clang::fallthrough]]
-# elif (defined(__GNUC__) || defined(__clang__)) && EMBED_HAS_ATTRIBUTE(fallthrough)
+# elif EMBED_HAS_ATTRIBUTE(fallthrough)
 #  define EMBED_FALLTHROUGH() __attribute__((fallthrough))
 # else
 #  define EMBED_FALLTHROUGH() (static_cast<void>(0))
-# endif
-#endif
-
-# ifndef EMBED_LAUNDER
-#  if ( EMBED_CXX_VERSION >= 201703L )
-#   define EMBED_LAUNDER(x) ( ::std::launder(x) )
-#  elif EMBED_HAS_BUILTIN(__builtin_launder)
-namespace ebd { namespace detail {
-  template <typename T>
-  EMBED_NODISCARD EMBED_INLINE constexpr T* launder(T* ptr) noexcept {
-    return __builtin_launder(ptr);
-  }
-}} // end namespace ebd::detail
-#   define EMBED_LAUNDER(x) ( ::ebd::detail::launder(x) )
-#  else
-#   define EMBED_LAUNDER(x) (x)
-#  endif
-# endif
-
-#ifndef EMBED_UNREACHABLE
-# if defined(_MSC_VER)
-#  define EMBED_UNREACHABLE() __assume(false)
-# elif defined(__GNUC__) && (__GNUC__ >= 5)
-#  define EMBED_UNREACHABLE() __builtin_unreachable()
-# elif EMBED_HAS_BUILTIN(__builtin_unreachable)
-#  define EMBED_UNREACHABLE() __builtin_unreachable()
-# else
-#  define EMBED_UNREACHABLE() 
 # endif
 #endif
 
@@ -169,7 +145,7 @@ namespace ebd { namespace detail {
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
 # include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
-# include <utility>     // std::move, std::forward, std::addressof
+# include <utility>     // std::move, std::forward, std::addressof, std::unreachable(C++23)
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
@@ -244,6 +220,62 @@ namespace ebd { namespace detail {
   EMBED_DETAIL_DTOR_ECTOR_DEFAULT(class_name)     \
   EMBED_DETAIL_COPY_FUNCTION(class_name, default) \
   EMBED_DETAIL_MOVE_FUNCTION(class_name, default)
+
+/// @brief Unify the two SFINAE writing methods of "enable_if" and "requires",
+/// eliminating the need to maintain two sets of code.
+/// @attention @b EMBED_DETAIL_TEMPLATE_BEGIN and @b EMBED_DETAIL_REQUIRES_END
+/// MUST be used simultaneously and cannot be used separately.
+#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
+# define EMBED_DETAIL_TEMPLATE_BEGIN(...) template <__VA_ARGS__,
+# define EMBED_DETAIL_REQUIRES_END(...) EMBED_DETAIL_REQUIRES(__VA_ARGS__)>
+#else
+# define EMBED_DETAIL_TEMPLATE_BEGIN(...) template <__VA_ARGS__>
+# define EMBED_DETAIL_REQUIRES_END(...) requires(__VA_ARGS__)
+#endif
+
+#define EMBED_DETAIL_TEXT(text) EMBED_DETAIL_TEXT_IMPL(text)
+#define EMBED_DETAIL_TEXT_IMPL(text) #text
+
+#if __cpp_lib_launder >= 201606L
+# define EMBED_DETAIL_LAUNDER(x) ( ::std::launder(x) )
+#elif EMBED_HAS_BUILTIN(__builtin_launder)
+namespace ebd { namespace detail {
+  template <typename T> EMBED_NODISCARD EMBED_INLINE constexpr
+  T* launder(T* ptr) noexcept { return __builtin_launder(ptr); }
+}} // end namespace ebd::detail
+# define EMBED_DETAIL_LAUNDER(x) ( ::ebd::detail::launder(x) )
+#else
+# define EMBED_DETAIL_LAUNDER(x) ( x )
+#endif
+
+#if EMBED_HAS_ATTRIBUTE(may_alias)
+# define EMBED_DETAIL_ALIAS __attribute__((may_alias))
+#else
+# define EMBED_DETAIL_ALIAS
+#endif
+
+#ifndef EMBED_FN_HOOK_TRACE_EMPTY_CALL
+# define EMBED_FN_HOOK_TRACE_EMPTY_CALL(message)
+#endif
+
+#if defined(__OPTIMIZE__) || defined(NDEBUG)
+# define EMBED_DETAIL_FAIL_MESSAGE(message)
+#else
+# define EMBED_DETAIL_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_TRACE_EMPTY_CALL(\
+  __FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); } while(0)
+#endif
+
+#if __cpp_lib_unreachable >= 202202L
+# define EMBED_DETAIL_UNREACHABLE() std::unreachable()
+#elif EMBED_HAS_BUILTIN(__builtin_unreachable)
+# define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
+#elif defined(__GNUC__) && (__GNUC__ >= 5)
+# define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
+#elif defined(_MSC_VER)
+# define EMBED_DETAIL_UNREACHABLE() __assume(false)
+#else
+# define EMBED_DETAIL_UNREACHABLE()
+#endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -713,7 +745,7 @@ inline namespace cxx_traits {
 
   // Forward declaration.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  class function;
+  class EMBED_DETAIL_FORCE_EBO function;
 
 /// @brief Here are some self-defined traits.
 inline namespace fn_traits {
@@ -798,6 +830,7 @@ inline namespace fn_traits {
   // Typename parameter package. Easy to find index of element.
   template <typename... Args>
   struct args_package {
+    // The `get` is reserved for further use.
     template <std::size_t Index>
     using get = typename get_args_helper<
       Index, args_package_impl<Args...>>::type::type;
@@ -866,12 +899,14 @@ inline namespace fn_traits {
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<!IsThrowing>
   throw_or_terminate() noexcept {
+    EMBED_DETAIL_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
     std::terminate();
   }
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
+    EMBED_DETAIL_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
 #if EMBED_CXX_ENABLE_EXCEPTION != 0
     throw std::bad_function_call{};
 #else
@@ -1389,8 +1424,10 @@ namespace erasure_type {
   };
 
   template <std::size_t Size>
-  union EMBED_ALIAS ErasureCore {
-    char        pod[sizeof(ErasureCoreImpl<Size>)];
+  union EMBED_DETAIL_ALIAS ErasureCore {
+    // An array of `unsigned char` can be used to hold other objects.
+    // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html .
+    unsigned char pod[sizeof(ErasureCoreImpl<Size>)];
     ErasureCoreImpl<Size> unused; // alignas(unused)
   };
 
@@ -1404,7 +1441,7 @@ namespace erasure_type {
   // (rather than the content) is also in accordance with the C++ standard.
   // See https://eel.is/c++draft/basic.life#7 .
   template <std::size_t Size>
-  struct EMBED_ALIAS Erasure : public ErasureBase {
+  struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
     alignas(default_buffer_size::align_value)
     ErasureCore<Size> m_core;
 
@@ -1418,19 +1455,19 @@ namespace erasure_type {
 
     template <typename T>
     T& access() noexcept
-    { return *EMBED_LAUNDER(static_cast<T*>(access())); }
+    { return *EMBED_DETAIL_LAUNDER(static_cast<T*>(access())); }
 
     template <typename T>
     const T& access() const noexcept
-    { return *EMBED_LAUNDER(static_cast<const T*>(access())); }
+    { return *EMBED_DETAIL_LAUNDER(static_cast<const T*>(access())); }
 
     template <typename T>
     volatile T& access() volatile noexcept
-    { return *EMBED_LAUNDER(static_cast<volatile T*>(access())); }
+    { return *EMBED_DETAIL_LAUNDER(static_cast<volatile T*>(access())); }
 
     template <typename T>
     const volatile T& access() const volatile noexcept
-    { return *EMBED_LAUNDER(static_cast<const volatile T*>(access())); }
+    { return *EMBED_DETAIL_LAUNDER(static_cast<const volatile T*>(access())); }
   };
 
 } // end namespace erasure_type
@@ -1458,7 +1495,7 @@ namespace invocation {
     struct empty {                                                                \
       static Ret invoke(erasure_base_t*, smart_forward_t<Args>...) {              \
         throw_or_terminate<Config::isThrowing>();                                 \
-        EMBED_UNREACHABLE();                                                      \
+        EMBED_DETAIL_UNREACHABLE();                                               \
       }                                                                           \
     };                                                                            \
                                                                                   \
@@ -1482,7 +1519,7 @@ namespace invocation {
       invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
         auto* erased = static_cast<erasure_t*>(base);                             \
         auto& fn = erased->template access<Functor>();                            \
-        /** @todo @deprecated '&' '&&' shouldn't be sopported in view mode */     \
+        /** @todo @deprecated '&' '&&' shouldn't be supported in view mode */     \
         using Fn = conditional_t<is_rvalue_ref,                                   \
           remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
@@ -1494,7 +1531,7 @@ namespace invocation {
       invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
         auto* erased = static_cast<erasure_t*>(base);                             \
         auto& fn = *(erased->template access<Functor*>());                        \
-        /** @todo @deprecated '&' '&&' shouldn't be sopported in view mode */     \
+        /** @todo @deprecated '&' '&&' shouldn't be supported in view mode */     \
         using Fn = conditional_t<is_rvalue_ref,                                   \
           remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
@@ -1612,7 +1649,7 @@ namespace management {
         case OperatorCode::destroy:
           destroy<Functor>(dst);
           break;
-        default: EMBED_UNREACHABLE(); break;
+        default: EMBED_DETAIL_UNREACHABLE(); break;
         }
       }
 
@@ -1626,7 +1663,7 @@ namespace management {
       ) {
         switch (op) {
         case OperatorCode::clone:
-          EMBED_UNREACHABLE(); // move only
+          EMBED_DETAIL_UNREACHABLE(); // move only
           break;
         case OperatorCode::move:
           move<Functor>(dst, src);
@@ -1634,7 +1671,7 @@ namespace management {
         case OperatorCode::destroy:
           destroy<Functor>(dst);
           break;
-        default: EMBED_UNREACHABLE(); break;
+        default: EMBED_DETAIL_UNREACHABLE(); break;
         }
       }
 
@@ -1655,7 +1692,7 @@ namespace management {
           );
           break;
         case OperatorCode::destroy: /* Do nothing */ break;
-        default: EMBED_UNREACHABLE(); break;
+        default: EMBED_DETAIL_UNREACHABLE(); break;
         }
       }
 
@@ -1728,7 +1765,7 @@ namespace command {
       static_assert(always_false<Functor>::value,
         "Internal error: When `Config::isView` is false"
         " the Functor must be stored originally.");
-      EMBED_UNREACHABLE();
+      EMBED_DETAIL_UNREACHABLE();
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -1784,7 +1821,10 @@ namespace command {
       // Do nothing here
     }
 
-    // Empty init.
+    /// @brief Empty init the `m_invoker` in view mode.
+    /// @deprecated As `std::function_ref` has removed empty state, function wrapper
+    /// that is in the view mode is not recommended to have null values.
+    /// See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html#R1 .
     EMBED_CXX14_CONSTEXPR void set_empty() noexcept {
       m_invoker = &invoker_impl_t::empty::invoke;
     }
@@ -1940,38 +1980,38 @@ namespace crtp_mixins {
   };
 
   template <bool IsView, bool IsCopyable, typename Config, typename Self>
-  struct EMBED_DETAIL_FORCE_EBO clone_move_destructor_impl; // Undefined
+  struct EMBED_DETAIL_FORCE_EBO lifetime_operations_impl; // Undefined
 
   // When `IsView` is true, the function should be trivially relocatable.
   template <bool IsCopyable, typename Config, typename Self>
-  struct clone_move_destructor_impl<
+  struct lifetime_operations_impl<
     /* IsView = */ true, IsCopyable, Config, Self
-  > { EMBED_DETAIL_ALL_DEFAULT(clone_move_destructor_impl) };
+  > { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
 
   // Implement clone constructor, move constructor, destructor, clone assignment,
   // and move assignment when `IsView` is false and `IsCopyable` is false.
   template <typename Config, typename Self>
-  struct clone_move_destructor_impl<
+  struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ false, Config, Self
   >
     : public destructor_impl<Config, Self>,
       public move_impl<Config, Self>
   {
-    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(clone_move_destructor_impl)
-    EMBED_DETAIL_MOVE_FUNCTION(clone_move_destructor_impl, default)
-    EMBED_DETAIL_COPY_FUNCTION(clone_move_destructor_impl, delete)
+    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(lifetime_operations_impl)
+    EMBED_DETAIL_MOVE_FUNCTION(lifetime_operations_impl, default)
+    EMBED_DETAIL_COPY_FUNCTION(lifetime_operations_impl, delete)
   };
 
   // Implement clone constructor, move constructor, destructor, clone assignment,
   // and move assignment when `IsView` is false and `IsCopyable` is true.
   template <typename Config, typename Self>
-  struct clone_move_destructor_impl<
+  struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ true, Config, Self
   >
     : public destructor_impl<Config, Self>,
       public move_impl<Config, Self>,
       public copy_impl<Config, Self>
-  { EMBED_DETAIL_ALL_DEFAULT(clone_move_destructor_impl) };
+  { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
 
   // Implement the 'operator*' for function.
   template <typename Signature, typename Self, bool IsView,
@@ -2034,7 +2074,7 @@ namespace crtp_mixins {
   ///           See @def config_package for details.
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  class EMBED_DETAIL_FORCE_EBO function
+  class EMBED_DETAIL_FORCE_EBO function final
     : public crtp_mixins::member_variable_impl<
         /* Buf = */ BufferSize, /* Cfg = */ Config, /* Sig = */ Signature
       >,
@@ -2046,7 +2086,7 @@ namespace crtp_mixins {
         Signature, /* Self = */ function<BufferSize, Config, Signature>,
         /* IsView = */ Config::isView
       >,
-      public crtp_mixins::clone_move_destructor_impl<
+      public crtp_mixins::lifetime_operations_impl<
         /* IsView = */ Config::isView, /* IsCopyable = */ Config::isCopyable,
         Config, /* Self = */ function<BufferSize, Config, Signature>
       >
@@ -2130,7 +2170,7 @@ namespace crtp_mixins {
 # pragma GCC diagnostic ignored "-Wuninitialized"
 #endif
     /// @brief All following methods that end with `= default` are implemented in 
-    /// the base class @e `crtp_mixins::clone_move_destructor_impl`.
+    /// the base class @e `crtp_mixins::lifetime_operations_impl`.
 
     // The destructor of the function wrapper, is trivial if `Config::isView == true`.
     ~function()                                   = default;
@@ -2526,7 +2566,8 @@ using fn_view = detail::function<
  * 
  * EXAMPLE: a move-only, non‑throwing wrapper with a custom buffer size:
  * ```cpp
- * using unique_safe_fn = ebd::basic_fn<void(int), 32,
+ * template <typename Signature, std::size_t BufferSize>
+ * using unique_safe_fn = ebd::basic_fn<Signature, BufferSize,
  *                                      false, // IsCopyable
  *                                      false, // IsView
  *                                      false, // IsThrowing
@@ -2555,30 +2596,20 @@ using basic_fn = detail::function<
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
 /// @return `fn<Signature, sizeof(Functor)>`
-#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
-template <
-  typename Signature, // [User specify] function signature.
-  typename Functor,   // [Auto] Functor type.
-  // [Auto] Get the nothrow guarantee of functor.
-  bool NoThrow = std::is_nothrow_copy_constructible<Functor>::value,
-  // [Require] Functor must be copyable.
-  EMBED_DETAIL_REQUIRES(std::is_copy_constructible<Functor>::value),
-  // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
-  // [Require] Functor cannot be the function pointer or pointer to member function.
-  EMBED_DETAIL_REQUIRES(std::is_class<detail::remove_cvref_t<Functor>>::value)
->
-#else
-template <
+EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_copy_constructible<Functor>::value
->
-requires std::is_copy_constructible<Functor>::value
+)
+EMBED_DETAIL_REQUIRES_END(
+  // [Require] Functor must be copyable.
+  std::is_copy_constructible<Functor>::value
+  // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
+  // [Require] Functor cannot be the function pointer or pointer to member function.
   && std::is_class<detail::remove_cvref_t<Functor>>::value
-#endif
+)
 EMBED_NODISCARD inline fn<Signature, sizeof(Functor)>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
@@ -2588,30 +2619,20 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[1]: Make function with specified signature for move-only functor.
 /// @return `unique_fn<Signature, sizeof(Functor)>`
-#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
-template <
-  typename Signature, // [User specify] function signature.
-  typename Functor,   // [Auto] Functor type.
-  // [Auto] Get the nothrow guarantee of functor.
-  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
-  // [Require] Functor must be movable.
-  EMBED_DETAIL_REQUIRES(std::is_move_constructible<Functor>::value),
-  // [Require] Functor must be non-copyable.
-  EMBED_DETAIL_REQUIRES(!std::is_copy_constructible<Functor>::value),
-  // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
->
-#else
-template <
+EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_move_constructible<Functor>::value
->
-requires std::is_move_constructible<Functor>::value
-  && (!std::is_copy_constructible<Functor>::value)
+)
+EMBED_DETAIL_REQUIRES_END(
+  // [Require] Functor must be movable.
+  std::is_move_constructible<Functor>::value
+  // [Require] Functor must be non-copyable.
+  && !std::is_copy_constructible<Functor>::value
+  // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
-#endif
+)
 EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor)>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
@@ -2621,20 +2642,14 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[2]: Make an empty function with specified signature and buffer size.
 /// @return `fn<Signature, BufferSize>`
-#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
-template <
-  typename Signature, // [User specify] function signature.
-  std::size_t BufferSize = detail::default_buffer_size::value,
-  // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
->
-#else
-template <
+EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   std::size_t BufferSize = detail::default_buffer_size::value
->
-requires detail::unwrap_signature<Signature>::isSignature
-#endif
+)
+EMBED_DETAIL_REQUIRES_END(
+  // [Require] First template argument must be signature.
+  detail::unwrap_signature<Signature>::isSignature
+)
 EMBED_NODISCARD inline fn<Signature, BufferSize>
 make_fn(std::nullptr_t = nullptr) noexcept {
   return detail::make_function_impl<
@@ -2655,25 +2670,17 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
-#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
-template <
-  typename Signature, // [User specify] function signature.
-  // [Auto] The type of the function pointer.
-  typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*,
-  // [Require] First template argument must be signature.
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
-  // [Require] The `FunctionPtr` must be the function pointer.
-  EMBED_DETAIL_REQUIRES(detail::is_function_ptr<FunctionPtr>::value)
->
-#else
-template <
+EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   // [Auto] The type of the function pointer.
   typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*
->
-requires detail::unwrap_signature<Signature>::isSignature
+)
+EMBED_DETAIL_REQUIRES_END(
+  // [Require] First template argument must be signature.
+  detail::unwrap_signature<Signature>::isSignature
+  // [Require] The `FunctionPtr` must be the function pointer.
   && detail::is_function_ptr<FunctionPtr>::value
-#endif
+)
 EMBED_NODISCARD inline fn<Signature, sizeof(FunctionPtr)>
 make_fn(FunctionPtr func_ptr) noexcept {
   return detail::make_function_impl<
@@ -2710,29 +2717,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
 /// @note Auto deduce signature and buffer size.
 /// @return `fn<Signature, BufferSize>` or `unique_fn<Signature, BufferSize>`
-#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
-template <
-  typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
-  // [Auto] The basic type of the functor.
-  typename Class = detail::remove_cvref_t<Lambda>,
-  // [Auto] The buffersize of functor.
-  std::size_t BufferSize = sizeof(Class),
-  // [Auto] The signature of functor.
-  typename Signature = detail::get_unique_signature_t<Class>,
-  // [Auto] The function type. (fn or unique_fn)
-  typename Fn = detail::conditional_t<
-    std::is_copy_constructible<Class>::value, 
-    fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
-  >,
-  // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value,
-  // [Require] The functor must be unique callable.
-  EMBED_DETAIL_REQUIRES(detail::is_unique_callable<Class>::value),
-  // [Require] The signature must be valid.
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
->
-#else
-template <
+EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
   // [Auto] The basic type of the functor.
   typename Class = detail::remove_cvref_t<Lambda>,
@@ -2747,10 +2732,13 @@ template <
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
   bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value
->
-requires detail::is_unique_callable<Class>::value
+)
+EMBED_DETAIL_REQUIRES_END(
+  // [Require] The functor must be unique callable.
+  detail::is_unique_callable<Class>::value
+  // [Require] The signature must be valid.
   && detail::unwrap_signature<Signature>::isSignature
-#endif
+)
 EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
   return detail::make_function_impl<Fn, NoThrow>(std::forward<Lambda>(fn));
 }
@@ -2778,29 +2766,19 @@ EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 /// @brief make_fn[9]: Make function for member function pointer with specified signature.
 /// @return `fn<Signature, sizeof(MemFuncPtr)>`
-#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
-template <
-  typename Signature, // [User specify] function signature.
-  // [Auto] Deduce the type of member function pointer.
-  typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
-  // [Auto] Deduce the size of member function pointer.
-  std::size_t BufferSize = sizeof(MemFuncPtr),
-  // [Require] Signature must be valid.
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature),
-  // [Require] Member function pointer must be valid.
-  EMBED_DETAIL_REQUIRES(std::is_member_function_pointer<MemFuncPtr>::value)
->
-#else
-template <
+EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   // [Auto] Deduce the type of member function pointer.
   typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
   // [Auto] Deduce the size of member function pointer.
   std::size_t BufferSize = sizeof(MemFuncPtr)
->
-requires detail::unwrap_signature<Signature>::isSignature
+)
+EMBED_DETAIL_REQUIRES_END(
+  // [Require] Signature must be valid.
+  detail::unwrap_signature<Signature>::isSignature
+  // [Require] Member function pointer must be valid.
   && std::is_member_function_pointer<MemFuncPtr>::value
-#endif
+)
 EMBED_NODISCARD inline fn<Signature, BufferSize>
 make_fn(MemFuncPtr memfunc_ptr) noexcept {
   return detail::make_function_impl<
@@ -2862,35 +2840,40 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 /// @brief make_fn[12]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_view`.
 /// @return `Fn<Signature, sizeof(functor)>`
-#if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
-template <
+EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
   typename Functor,
   typename Deduction = decltype(make_fn(std::declval<Functor>())),
   typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
-  std::size_t BufferSize = sizeof(Functor),
-  typename FnWrapper = Fn<Signature, BufferSize>,
-  bool NoThrow = noexcept(FnWrapper(std::declval<Functor>())),
-  EMBED_DETAIL_REQUIRES(detail::is_ebd_fn<FnWrapper>::value),
-  EMBED_DETAIL_REQUIRES(detail::unwrap_signature<Signature>::isSignature)
->
-#else
-template <
-  template <class, std::size_t> class Fn,
-  typename Functor,
-  typename Deduction = decltype(make_fn(std::declval<Functor>())),
-  typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
-  std::size_t BufferSize = sizeof(Functor),
+  std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
   typename FnWrapper = Fn<Signature, BufferSize>,
   bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))
->
-requires detail::is_ebd_fn<FnWrapper>::value
+)
+EMBED_DETAIL_REQUIRES_END(
+  detail::is_ebd_fn<FnWrapper>::value
   && detail::unwrap_signature<Signature>::isSignature
-#endif
+)
 EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
     /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
   >(std::forward<Functor>(functor));
+}
+
+// When all other make_fn() fail to match the input parameters, 
+// this function will be called as the fall back to avoid the 
+// awful template error flood.
+template <int = 0, typename Unused = void>
+EMBED_INLINE void make_fn(...) noexcept {
+  static_assert(detail::always_false<Unused>::value,
+    "[Embedded Function]: The make_fn() cannot automatically deduce an"
+    " appropriate function wrapper based on your input parameters."
+    " This might be because the parameters you passed are ambiguous,"
+    " such as overloaded free functions, member functions, objects"
+    " that overload multiple operator() functions, nullptr, or just"
+    " non-parameters. If so, you can use 'make_fn<Signature>()' to"
+    " specify the signature of target callable object to disambiguate."
+    " The 'Signature' is like 'void()', 'float(int,int)'."
+  );
 }
 
 } // end namespace ebd
@@ -2905,10 +2888,17 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 #undef EMBED_DETAIL_COPY_FUNCTION
 #undef EMBED_DETAIL_DTOR_ECTOR_DEFAULT
 #undef EMBED_DETAIL_ALL_DEFAULT
+#undef EMBED_DETAIL_TEMPLATE_BEGIN
+#undef EMBED_DETAIL_REQUIRES_END
+#undef EMBED_DETAIL_TEXT
+#undef EMBED_DETAIL_TEXT_IMPL
+#undef EMBED_DETAIL_LAUNDER
+#undef EMBED_DETAIL_ALIAS
+#undef EMBED_DETAIL_FAIL_MESSAGE
+#undef EMBED_DETAIL_UNREACHABLE
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
-# undef EMBED_ALIAS
 # undef EMBED_HAS_BUILTIN
 # undef EMBED_HAS_ATTRIBUTE
 # undef EMBED_HAS_CXX_ATTRIBUTE
@@ -2918,9 +2908,11 @@ EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 # undef EMBED_RESTRICT
 # undef EMBED_NODISCARD
 # undef EMBED_FALLTHROUGH
-# undef EMBED_LAUNDER
-# undef EMBED_UNREACHABLE
+
+# undef EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
+# undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
+# undef EMBED_FN_HOOK_TRACE_EMPTY_CALL
 #endif
 
 #if defined(_MSC_VER)
