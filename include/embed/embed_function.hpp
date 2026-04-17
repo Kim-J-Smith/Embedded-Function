@@ -767,7 +767,7 @@ inline namespace fn_traits {
   template <typename T>
   struct is_traditional_trivial : public bool_constant<
     std::is_trivially_default_constructible<T>::value
-    && is_call_trivial<T>::value
+    && std::is_trivially_copyable<T>::value
   > {};
 
   // Check self.
