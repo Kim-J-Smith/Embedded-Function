@@ -1123,22 +1123,22 @@ inline namespace fn_traits {
     }
 
     template <std::size_t Buf, typename Cfg, typename Sig>
-    static bool check(const function<Buf, Cfg, Sig>& f) noexcept {
+    static EMBED_CXX14_CONSTEXPR bool check(const function<Buf, Cfg, Sig>& f) noexcept {
       return static_cast<bool>(f);
     }
 
     template <typename T>
-    static bool check(T* f) noexcept {
+    static constexpr bool check(T* f) noexcept {
       return f != nullptr;
     }
 
     template <typename Class, typename T>
-    static bool check(T Class::* f) noexcept {
+    static constexpr bool check(T Class::* f) noexcept {
       return f != nullptr;
     }
 
     template <typename T>
-    static bool check(const T&) noexcept {
+    static constexpr bool check(const T&) noexcept {
       return true;
     }
   };
