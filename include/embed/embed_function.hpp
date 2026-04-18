@@ -1579,9 +1579,8 @@ namespace management {
     template <typename Functor, typename Object>
     static void create(erasure_base_t* target, Object&& obj)
     noexcept(std::is_nothrow_constructible<Functor, Object&&>::value) {
-      ::new (const_cast<void*>(
-        static_cast<erasure_t*>(target)->access()
-      )) Functor(std::forward<Object>(obj));
+      ::new (const_cast<void*>(static_cast<erasure_t*>(target)->access()))
+          Functor(std::forward<Object>(obj));
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -1590,9 +1589,8 @@ namespace management {
     template <typename Functor, typename... CArgs>
     static void emplace_create(erasure_base_t* target, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
-      ::new (const_cast<void*>(
-        static_cast<erasure_t*>(target)->access()
-      )) Functor(std::forward<CArgs>(args)...);
+      ::new (const_cast<void*>(static_cast<erasure_t*>(target)->access()))
+          Functor(std::forward<CArgs>(args)...);
     }
 
 #endif
