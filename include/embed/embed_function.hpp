@@ -149,6 +149,7 @@
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
+# include <tuple>       // std::tuple
 # include <initializer_list>
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
@@ -802,40 +803,9 @@ inline namespace fn_traits {
   struct is_config_package<config_package<ConfigArgs...>>
   : public std::true_type {};
 
-  // Typename parameter package.
+  // Uses `std::tuple` as the package of arguments.
   template <typename... Args>
-  struct args_package_impl {
-    static constexpr std::size_t argsNum = 0;
-    using type = args_package_impl<>;
-    using next_type = args_package_impl<>;
-  };
-
-  template <typename T, typename... Args>
-  struct args_package_impl<T, Args...> {
-    static constexpr std::size_t argsNum = sizeof...(Args) + 1;
-    using type = T;
-    using next_type = args_package_impl<Args...>;
-  };
-
-  // Implement the "get" trait of args_package.
-  template <std::size_t Index, typename Package>
-  struct get_args_helper {
-    using type = typename 
-      get_args_helper<Index-1, typename Package::next_type>::type;
-  };
-
-  template <typename Package>
-  struct get_args_helper<0, Package> { using type = Package; };
-
-  // Typename parameter package. Easy to find index of element.
-  template <typename... Args>
-  struct args_package {
-    // The `get` is reserved for further use.
-    template <std::size_t Index>
-    using get = typename get_args_helper<
-      Index, args_package_impl<Args...>>::type::type;
-    static constexpr std::size_t size = args_package_impl<Args...>::argsNum;
-  };
+  using args_package = std::tuple<Args...>;
 
   // Unwrap the function signature.
   template <typename T>
@@ -1579,9 +1549,8 @@ namespace management {
     template <typename Functor, typename Object>
     static void create(erasure_base_t* target, Object&& obj)
     noexcept(std::is_nothrow_constructible<Functor, Object&&>::value) {
-      ::new (const_cast<void*>(
-        static_cast<erasure_t*>(target)->access()
-      )) Functor(std::forward<Object>(obj));
+      ::new (const_cast<void*>(static_cast<erasure_t*>(target)->access()))
+          Functor(std::forward<Object>(obj));
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -1590,9 +1559,8 @@ namespace management {
     template <typename Functor, typename... CArgs>
     static void emplace_create(erasure_base_t* target, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
-      ::new (const_cast<void*>(
-        static_cast<erasure_t*>(target)->access()
-      )) Functor(std::forward<CArgs>(args)...);
+      ::new (const_cast<void*>(static_cast<erasure_t*>(target)->access()))
+          Functor(std::forward<CArgs>(args)...);
     }
 
 #endif
