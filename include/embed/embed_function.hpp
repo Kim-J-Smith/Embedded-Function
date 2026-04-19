@@ -2024,11 +2024,13 @@ namespace crtp_mixins {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
+#if !(defined(__OPTIMIZE__) || defined(NDEBUG))
     static_assert(is_traditional_trivial<erasure_t>::value,
       "Internal error: erasure_t should be trivial.");
 
     static_assert(is_traditional_trivial<command_t>::value,
       "Internal error: command_t should be trivial.");
+#endif
 
     erasure_t m_erasure;
     command_t m_command;
