@@ -132,12 +132,10 @@
 #  define EMBED_FALLTHROUGH() [[fallthrough]]
 # elif EMBED_HAS_CXX_ATTRIBUTE(gnu::fallthrough)
 #  define EMBED_FALLTHROUGH() [[gnu::fallthrough]]
-# elif EMBED_HAS_CXX_ATTRIBUTE(clang::fallthrough)
-#  define EMBED_FALLTHROUGH() [[clang::fallthrough]]
 # elif EMBED_HAS_ATTRIBUTE(fallthrough)
 #  define EMBED_FALLTHROUGH() __attribute__((fallthrough))
 # else
-#  define EMBED_FALLTHROUGH() (static_cast<void>(0))
+#  define EMBED_FALLTHROUGH()
 # endif
 #endif
 
