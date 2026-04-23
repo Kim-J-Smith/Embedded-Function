@@ -10,6 +10,7 @@ on:
 jobs:
   # Ubuntu check
   benchmark-on-ubuntu:
+    if: github.repository_owner == 'Kim-J-Smith'
     runs-on: ubuntu-latest
 
     steps:
