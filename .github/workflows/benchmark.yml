@@ -37,4 +37,12 @@ jobs:
       # Run tests
       - name: Run tests with C++
         working-directory: benchmark
-        run: cmake --build build --config Release --target benchmark -j100
+        run: cmake --build build --config Release --target benchmark -j$(nproc)
+
+      # Output the report
+      - name: Save the benchmark result
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-time-bench-results
+          path: benchmark/build/runtime-report.md
+          retention-days: 60
