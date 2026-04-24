@@ -19,8 +19,8 @@ install(
     EXPORT embedded_functionTargets
 )
 install(
-    DIRECTORY include/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES include/embed/embed_function.hpp
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/embed
 )
 
 # Generate embedded_functionTargets.cmake
