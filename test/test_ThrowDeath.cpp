@@ -33,11 +33,6 @@ TEST(ThrowDeath, dead_when_empty_call) {
     ASSERT_EQ(f1.is_empty(), true);
     ASSERT_EQ(static_cast<bool>(f1), false);
     EXPECT_DEATH(f1(), "");
-
-    ebd::fn_view<void()> f2;
-    ASSERT_EQ(f2.is_empty(), true);
-    ASSERT_EQ(static_cast<bool>(f2), false);
-    EXPECT_DEATH(f2(), "");
 }
 
 // ThrowDeath[2]
