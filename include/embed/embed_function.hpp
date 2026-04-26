@@ -147,6 +147,18 @@
 # endif
 #endif
 
+#ifndef EMBED_DEPRECATED
+# if (EMBED_CXX_VERSION >= 201402L && EMBED_HAS_CXX_ATTRIBUTE(deprecated))
+#  define EMBED_DEPRECATED(msg) [[deprecated(msg)]]
+# elif EMBED_HAS_CXX_ATTRIBUTE(gnu::deprecated)
+#  define EMBED_DEPRECATED(msg) [[gnu::deprecated(msg)]]
+# elif EMBED_HAS_ATTRIBUTE(deprecated)
+#  define EMBED_DEPRECATED(msg) __attribute__((deprecated(msg)))
+# else
+#  define EMBED_DEPRECATED(msg)
+# endif
+#endif
+
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
@@ -2473,7 +2485,8 @@ namespace crtp_mixins {
     // Assign a callable object to the object.
     template <typename Functor, 
       EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
-      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value)
+      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value),
+      EMBED_DETAIL_REQUIRES(always_false<Functor>::value || !Config::isView)
     > function& operator=(Functor&& fn)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
       function(std::forward<Functor>(fn)).swap(*this);
@@ -2485,7 +2498,8 @@ namespace crtp_mixins {
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
       EMBED_DETAIL_REQUIRES(fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value)
+      >::value),
+      EMBED_DETAIL_REQUIRES(always_false<OtherCfg>::value || !Config::isView)
     >
     function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
