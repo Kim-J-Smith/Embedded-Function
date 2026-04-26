@@ -1454,7 +1454,7 @@ namespace erasure_type {
     // An array of `unsigned char` can be used to hold other objects.
     // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html .
     unsigned char pod[sizeof(ErasureCoreImpl<Size>)];
-    ErasureCoreImpl<Size> ref_use; // alignas(ref_use)
+    ErasureCoreImpl<Size> ref_storage; // alignas(ref_storage)
   };
 
   // Passing the `ErasureBase*` as a parameter can avoid the 
@@ -1612,7 +1612,7 @@ namespace management {
     ref_create(erasure_base_t* target, Object* obj) noexcept {
       using pure_erasure_t = remove_cv_t<erasure_t>;
       const_cast<pure_erasure_t*>(static_cast<erasure_t*>(target))
-          ->m_core.ref_use.fill_ptr = static_cast<void*>(
+          ->m_core.ref_storage.fill_ptr = static_cast<void*>(
           const_cast<remove_cv_t<Object>*>(obj));
     }
 
