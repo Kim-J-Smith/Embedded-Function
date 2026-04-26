@@ -10,6 +10,7 @@ on:
 jobs:
   # Ubuntu check
   test-on-ubuntu:
+    if: github.repository_owner == 'Kim-J-Smith'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -50,6 +51,7 @@ jobs:
 
   # Windows check
   test-on-windows:
+    if: github.repository_owner == 'Kim-J-Smith'
     runs-on: windows-latest
     strategy:
       matrix:

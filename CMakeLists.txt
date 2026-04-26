@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(embedded_function VERSION 2.0.12 LANGUAGES CXX)
+project(embedded_function VERSION 2.0.13 LANGUAGES CXX)
 add_library(embedded_function INTERFACE)
 add_library(embedded_function::functions ALIAS embedded_function)
 set_target_properties(embedded_function PROPERTIES EXPORT_NAME functions)
@@ -19,8 +19,8 @@ install(
     EXPORT embedded_functionTargets
 )
 install(
-    DIRECTORY include/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES include/embed/embed_function.hpp
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/embed
 )
 
 # Generate embedded_functionTargets.cmake

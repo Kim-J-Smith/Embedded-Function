@@ -31,7 +31,7 @@ include_directories(
 # Get the test source files.
 file(
     GLOB EMBED_FUNCTION_BENCHMARK_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/benchmark_*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/benchmark_*.cpp"
 )
 
 # Target executable file.
@@ -43,9 +43,11 @@ add_executable(
 # Custom target to run benchmark
 add_custom_target(
     benchmark
-    COMMAND $<TARGET_FILE:${PROJECT_NAME}>
+    COMMAND $<TARGET_FILE:${PROJECT_NAME}> --out-fmt=txt 
+      --output=${CMAKE_CURRENT_SOURCE_DIR}/build/runtime-report.md
     DEPENDS ${PROJECT_NAME}
     COMMENT "Running benchmark..."
+    COMMENT "The result is in ${CMAKE_CURRENT_SOURCE_DIR}/build/runtime-report.md"
 )
 
 # if use MSVC, use /utf-8, use standard __cplusplus

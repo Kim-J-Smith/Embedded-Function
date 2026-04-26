@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.0.12
+ * @version     2.0.13
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -132,12 +132,10 @@
 #  define EMBED_FALLTHROUGH() [[fallthrough]]
 # elif EMBED_HAS_CXX_ATTRIBUTE(gnu::fallthrough)
 #  define EMBED_FALLTHROUGH() [[gnu::fallthrough]]
-# elif EMBED_HAS_CXX_ATTRIBUTE(clang::fallthrough)
-#  define EMBED_FALLTHROUGH() [[clang::fallthrough]]
 # elif EMBED_HAS_ATTRIBUTE(fallthrough)
 #  define EMBED_FALLTHROUGH() __attribute__((fallthrough))
 # else
-#  define EMBED_FALLTHROUGH() (static_cast<void>(0))
+#  define EMBED_FALLTHROUGH()
 # endif
 #endif
 
@@ -149,6 +147,7 @@
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
+# include <tuple>       // std::tuple
 # include <initializer_list>
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
@@ -767,7 +766,7 @@ inline namespace fn_traits {
   template <typename T>
   struct is_traditional_trivial : public bool_constant<
     std::is_trivially_default_constructible<T>::value
-    && is_call_trivial<T>::value
+    && std::is_trivially_copyable<T>::value
   > {};
 
   // Check self.
@@ -802,40 +801,9 @@ inline namespace fn_traits {
   struct is_config_package<config_package<ConfigArgs...>>
   : public std::true_type {};
 
-  // Typename parameter package.
+  // Uses `std::tuple` as the package of arguments.
   template <typename... Args>
-  struct args_package_impl {
-    static constexpr std::size_t argsNum = 0;
-    using type = args_package_impl<>;
-    using next_type = args_package_impl<>;
-  };
-
-  template <typename T, typename... Args>
-  struct args_package_impl<T, Args...> {
-    static constexpr std::size_t argsNum = sizeof...(Args) + 1;
-    using type = T;
-    using next_type = args_package_impl<Args...>;
-  };
-
-  // Implement the "get" trait of args_package.
-  template <std::size_t Index, typename Package>
-  struct get_args_helper {
-    using type = typename 
-      get_args_helper<Index-1, typename Package::next_type>::type;
-  };
-
-  template <typename Package>
-  struct get_args_helper<0, Package> { using type = Package; };
-
-  // Typename parameter package. Easy to find index of element.
-  template <typename... Args>
-  struct args_package {
-    // The `get` is reserved for further use.
-    template <std::size_t Index>
-    using get = typename get_args_helper<
-      Index, args_package_impl<Args...>>::type::type;
-    static constexpr std::size_t size = args_package_impl<Args...>::argsNum;
-  };
+  using args_package = std::tuple<Args...>;
 
   // Unwrap the function signature.
   template <typename T>
@@ -1123,22 +1091,22 @@ inline namespace fn_traits {
     }
 
     template <std::size_t Buf, typename Cfg, typename Sig>
-    static bool check(const function<Buf, Cfg, Sig>& f) noexcept {
+    static EMBED_CXX14_CONSTEXPR bool check(const function<Buf, Cfg, Sig>& f) noexcept {
       return static_cast<bool>(f);
     }
 
     template <typename T>
-    static bool check(T* f) noexcept {
+    static constexpr bool check(T* f) noexcept {
       return f != nullptr;
     }
 
     template <typename Class, typename T>
-    static bool check(T Class::* f) noexcept {
+    static constexpr bool check(T Class::* f) noexcept {
       return f != nullptr;
     }
 
     template <typename T>
-    static bool check(const T&) noexcept {
+    static constexpr bool check(const T&) noexcept {
       return true;
     }
   };
@@ -1579,9 +1547,8 @@ namespace management {
     template <typename Functor, typename Object>
     static void create(erasure_base_t* target, Object&& obj)
     noexcept(std::is_nothrow_constructible<Functor, Object&&>::value) {
-      ::new (const_cast<void*>(
-        static_cast<erasure_t*>(target)->access()
-      )) Functor(std::forward<Object>(obj));
+      ::new (const_cast<void*>(static_cast<erasure_t*>(target)->access()))
+          Functor(std::forward<Object>(obj));
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -1590,9 +1557,8 @@ namespace management {
     template <typename Functor, typename... CArgs>
     static void emplace_create(erasure_base_t* target, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
-      ::new (const_cast<void*>(
-        static_cast<erasure_t*>(target)->access()
-      )) Functor(std::forward<CArgs>(args)...);
+      ::new (const_cast<void*>(static_cast<erasure_t*>(target)->access()))
+          Functor(std::forward<CArgs>(args)...);
     }
 
 #endif
@@ -2056,11 +2022,13 @@ namespace crtp_mixins {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
+#if !(defined(__OPTIMIZE__) || defined(NDEBUG))
     static_assert(is_traditional_trivial<erasure_t>::value,
       "Internal error: erasure_t should be trivial.");
 
     static_assert(is_traditional_trivial<command_t>::value,
       "Internal error: command_t should be trivial.");
+#endif
 
     erasure_t m_erasure;
     command_t m_command;
