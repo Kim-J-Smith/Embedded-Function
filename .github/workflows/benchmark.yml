@@ -23,7 +23,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build
-          sudo apt-get install -y g++-14
+          sudo apt-get install -y g++-14 clang
+          sudo apt-get install python3
 
       # Config CMake for compilers
       - name: Config CMake
@@ -37,12 +38,18 @@ jobs:
       # Run tests
       - name: Run tests with C++
         working-directory: benchmark
-        run: cmake --build build --config Release --target benchmark -j$(nproc)
+        run: |
+          cmake --build build --config Release --target benchmark -j$(nproc)
+          cd ./compiletime
+          chmod a+x ./run_benchmark.sh
+          ./run_benchmark.sh
 
       # Output the report
       - name: Save the benchmark result
         uses: actions/upload-artifact@v4
         with:
           name: compile-time-bench-results
-          path: benchmark/build/runtime-report.md
+          path: |
+            benchmark/build/runtime-report.md
+            benchmark/compiletime/benchmark_report.md
           retention-days: 60
