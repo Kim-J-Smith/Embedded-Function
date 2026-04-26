@@ -2662,6 +2662,7 @@ using fn_ref = detail::function<
   Signature
 >;
 
+/// @deprecated Use `fn_ref` instead.
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
 
