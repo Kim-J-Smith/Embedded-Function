@@ -2169,6 +2169,8 @@ namespace crtp_mixins {
     EMBED_CXX14_CONSTEXPR explicit operator bool()    = delete;
     void clear()                                      = delete;
     core_components_impl& operator=(std::nullptr_t)   = delete;
+    template <class T>
+    core_components_impl& operator=(T)                = delete;
 
     // Swap the contents of two function objects. (View mode)
     void swap(core_components_impl& fn_raw) noexcept {
