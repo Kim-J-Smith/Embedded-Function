@@ -1612,8 +1612,7 @@ namespace management {
     ref_create(erasure_base_t* target, Object* obj) noexcept {
       using pure_erasure_t = remove_cv_t<erasure_t>;
       const_cast<pure_erasure_t*>(static_cast<erasure_t*>(target))
-          ->m_core.ref_storage.fill_ptr = static_cast<void*>(
-          const_cast<remove_cv_t<Object>*>(obj));
+          ->m_core.ref_storage.fill_ptr = const_cast<remove_cv_t<Object>*>(obj);
     }
 
 #if EMBED_CXX_VERSION >= 201703L
