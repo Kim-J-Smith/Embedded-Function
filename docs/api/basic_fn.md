@@ -79,4 +79,4 @@ view(42);
 - [`ebd::fn`](./fn.md) - For copyable callables
 - [`ebd::unique_fn`](./unique_fn.md) - For move-only callables
 - [`ebd::safe_fn`](./safe_fn.md) - For exception-safe callables
-- [`ebd::fn_view`](./fn_view.md) - For non-owning views of callables
+- [`ebd::fn_ref`](./fn_ref.md) - For non-owning views of callables

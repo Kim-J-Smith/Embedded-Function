@@ -171,7 +171,7 @@ Returns `true` if the function wrapper is not empty, `false` otherwise.
 #### clear
 
 ```cpp
-void clear() noexcept(Config::assertNoThrow || Config::isView);
+void clear() noexcept(Config::assertNoThrow);
 ```
 
 Clears the function wrapper, destroying the wrapped callable object if necessary.
