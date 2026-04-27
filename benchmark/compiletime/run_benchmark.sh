@@ -116,8 +116,7 @@ fi
     echo ""
     echo "**Ratio (compile / baseline)**: ${ratio}"
     echo ""
-    echo "> The baseline represents the cost of a single `make_integer_sequence` instantiation (size 128)."
-    echo "> The compile benchmark creates 200 function objects (20 calls × 10 instantiations each), measuring overall template metaprogramming overhead."
+    echo "> The baseline represents the cost of some `make_integer_sequence` instantiations."
 } > "${REPORT_FILE}"
 
 echo ""
