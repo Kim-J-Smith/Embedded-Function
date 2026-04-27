@@ -27,13 +27,13 @@ In only **one** [header file](./include/embed/embed_function.hpp), **4** functio
 ```cpp
 namespace ebd {
   // Wrapper for copyable callable objects.
-  template <class Signature, size_t BufferSize> fn;
+  template <class Signature, size_t BufferSize = DefaultSize> fn;
   // Wrapper for movable, especially move-only callable objects.
-  template <class Signature, size_t BufferSize> unique_fn;
+  template <class Signature, size_t BufferSize = DefaultSize> unique_fn;
   // Wrapper for copyable callable objects which assert no-throw in Ctor and Dtor.
-  template <class Signature, size_t BufferSize> safe_fn;
+  template <class Signature, size_t BufferSize = DefaultSize> safe_fn;
   // View (aka reference) for callable objects.
-  template <class Signature, size_t Unused> fn_view;
+  template <class Signature, size_t Unused = 0> fn_ref;
 }
 ```
 
@@ -113,7 +113,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
   - Provide a view or reference to the callable object, referring to the [`std::function_ref` P0792](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html).
 
-  - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_view` were designed for developers to use.
+  - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_ref` were designed for developers to use.
 
 ## ✨ Core function wrappers
 
@@ -121,30 +121,30 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 | Wrapper Type | Copyable | View (Non-owning) | Throws on Empty Call | Assert No-Throw (Ctor/Dtor) | Buffer Size | Primary Use Case |
 | :----------- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `ebd::fn`    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
-| `ebd::unique_fn`    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
-| `ebd::safe_fn`    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Exception-safe copyable callable wrapper |
-| `ebd::fn_view`    |  Yes  |   Yes  | No (`std::terminate()`) | No | Fixed (`sizeof(void(Class::*)())`, template param unused) | Lightweight non-owning view of callables |
+| [`ebd::fn`](./docs/api/fn.md)    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
+| [`ebd::unique_fn`](./docs/api/unique_fn.md)    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
+| [`ebd::safe_fn`](./docs/api/safe_fn.md)    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Exception-safe copyable callable wrapper |
+| [`ebd::fn_ref`](./docs/api/fn_ref.md)    |  Yes  |   Yes  | No (`std::terminate()`) | No | Fixed | Lightweight non-owning  reference(view) of callables |
 
 ### Key takeaways
 
-1. **Ownership & Copy**: `fn`/`safe_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_view` is non-owning (view).
+1. **Ownership & Copy**: `fn`/`safe_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_ref` is non-owning (view).
 
-2. **Exception Behavior**: Only `fn`/`unique_fn` throw on empty calls; `safe_fn`/`fn_view` terminate (no exceptions).
+2. **Exception Behavior**: Only `fn`/`unique_fn` throw on empty calls; `safe_fn`/`fn_ref` terminate (no exceptions).
 
-3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_view` uses a fixed buffer (unused template param).
+3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_ref` uses a fixed buffer (unused template param).
 
-4. **Triviality**: `fn_view` is trivially copyable (same as `std::function_ref`).
+4. **Triviality**: `fn_ref` is trivially copyable (same as `std::function_ref`).
 
 ## 🚀 Performance optimization
 
 ### Branch elimination
 
-`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` completely eliminate runtime checks for empty function states during invocation, significantly boosting performance of frequent function calls.
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` completely eliminate runtime checks for empty function states during invocation, significantly boosting performance of frequent function calls.
 
 ### Smart forwarding
 
-`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
 
 > Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 
@@ -187,7 +187,7 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 auto f = ebd::make_fn<ebd::fn>(Callable_Object);
 auto f = ebd::make_fn<ebd::unique_fn>(Callable_Object);
 auto f = ebd::make_fn<ebd::safe_fn>(Callable_Object);
-auto f = ebd::make_fn<ebd::fn_view>(Callable_Object);
+auto f = ebd::make_fn<ebd::fn_ref>(Callable_Object);
 ```
 
 ```cpp
@@ -200,7 +200,7 @@ auto f = ebd::make_fn(std::in_place_type<Functor>, {/*std::initializer_list*/}, 
 
 ### Brief introduction
 
-In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented an `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_view` to a C-style free function pointer.
+In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented an `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` to a C-style free function pointer.
 
 If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr. Basically, it is equivalent to a highly restricted `target()` method.
 
@@ -246,7 +246,7 @@ export namespace ebd {
   using ::ebd::fn;
   using ::ebd::unique_fn;
   using ::ebd::safe_fn;
-  using ::ebd::fn_view;
+  using ::ebd::fn_ref;
   using ::ebd::make_fn; // NOLINT(misc-unused-using-decls)
 }
 ```
@@ -260,7 +260,7 @@ auto main() -> int {
     ebd::fn<void()> fn1 = []() { /* ... */ };
     ebd::unique_fn<void()> fn2 = []() { /* ... */ };
     ebd::safe_fn<void()> fn3 = []() { /* ... */ };
-    ebd::fn_view<void()> fn4 = fn2;
+    ebd::fn_ref<void()> fn4 = fn2;
     auto fn5 = ebd::make_fn([]() { /* ... */ });
 
     fn1(); fn2(); fn3(); fn4(); fn5();
