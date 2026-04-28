@@ -589,3 +589,60 @@ TEST(InitFunction, fn_ref_constexprInit) {
 
 }
 
+// InitFunction[33]
+TEST(InitFunction, fn_ref_assign_delete) {
+
+#if __cpp_noexcept_function_type >= 201510L
+
+    /// NOTE: The following test is reference to libc++.
+
+    static_assert(std::is_assignable_v<ebd::fn_ref<void()>, ebd::fn_ref<void()>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void()>, ebd::fn_ref<void() const>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void()>, ebd::fn_ref<void() noexcept>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void()>, ebd::fn_ref<void() const noexcept>>);
+
+    static_assert(std::is_assignable_v<ebd::fn_ref<void()>, void (*)()>);
+    static_assert(!std::is_assignable_v<ebd::fn_ref<void()>, void (*)(int)>);
+
+    // static_assert(std::is_assignable_v<ebd::fn_ref<void()>, std::constant_wrapper<[] {}>>);
+    // static_assert(!std::is_assignable_v<ebd::fn_ref<void()>, std::constant_wrapper<[](int) {}>>);
+
+    // const noexcept(false)
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() const>, ebd::fn_ref<void()>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() const>, ebd::fn_ref<void() const>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() const>, ebd::fn_ref<void() noexcept>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() const>, ebd::fn_ref<void() const noexcept>>);
+
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() const>, void (*)()>);
+    static_assert(!std::is_assignable_v<ebd::fn_ref<void() const>, void (*)(int)>);
+
+    // static_assert(std::is_assignable_v<ebd::fn_ref<void() const>, std::constant_wrapper<[] { return 42; }>>);
+    // static_assert(!std::is_assignable_v<ebd::fn_ref<void() const>, std::constant_wrapper<[](int) { return 42; }>>);
+
+    // non-const noexcept(true)
+    static_assert(!std::is_assignable_v<ebd::fn_ref<void() noexcept>, ebd::fn_ref<void()>>);
+    static_assert(!std::is_assignable_v<ebd::fn_ref<void() noexcept>, ebd::fn_ref<void() const>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() noexcept>, ebd::fn_ref<void() noexcept>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() noexcept>, ebd::fn_ref<void() const noexcept>>);
+
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() noexcept>, void (*)() noexcept>);
+    static_assert(!std::is_assignable_v<ebd::fn_ref<void() noexcept>, void (*)(int) noexcept>);
+
+    // static_assert(std::is_assignable_v<ebd::fn_ref<void() noexcept>, std::constant_wrapper<[] noexcept {} >>);
+    // static_assert(!std::is_assignable_v<ebd::fn_ref<void() noexcept>, std::constant_wrapper<[](int) noexcept {}>>);
+
+    // const noexcept(true)
+    static_assert(!std::is_assignable_v<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void()>>);
+    static_assert(!std::is_assignable_v<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void() const>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void() noexcept>>);
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void() const noexcept>>);
+
+    static_assert(std::is_assignable_v<ebd::fn_ref<void() const noexcept>, void (*)() noexcept>);
+    static_assert(!std::is_assignable_v<ebd::fn_ref<void() const noexcept>, void (*)(int) noexcept>);
+
+    // static_assert(std::is_assignable_v<ebd::fn_ref<void() const noexcept>, std::constant_wrapper<[] noexcept {}>>);
+    // static_assert(
+    //     !std::is_assignable_v<ebd::fn_ref<void() const noexcept>, std::constant_wrapper<[](int) noexcept {}>>);
+#endif
+
+}

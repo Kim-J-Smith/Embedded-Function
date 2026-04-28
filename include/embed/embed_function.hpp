@@ -985,14 +985,28 @@ inline namespace fn_traits {
       && CfgTo::isThrowing == CfgFrom::isThrowing
       && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
 
+    // In view mode, the requires is special.
+    // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html .
+    static constexpr bool noexcept_qualifier_ok = 
+      (unwrap_to::isNoexcept == unwrap_from::isNoexcept)
+      || (
+        CfgTo::isView == true 
+        && CfgFrom::isView == true 
+        && unwrap_to::isNoexcept < unwrap_from::isNoexcept
+      );
+
+    static constexpr bool const_qualifier_ok = 
+      !(unwrap_to::hasConst && !unwrap_from::hasConst)
+      || (CfgTo::isView == true && CfgFrom::isView == true);
+
     /// TODO: Finalize the details of the conversion of the qualifiers
     // Check the qualifiers.
     static constexpr bool qualifier_ok = 
-      !(unwrap_to::hasConst && !unwrap_from::hasConst)
+      const_qualifier_ok
       && (unwrap_to::hasVolatile == unwrap_from::hasVolatile)
       && (unwrap_to::hasRRef == unwrap_from::hasRRef)
       && (unwrap_to::hasLRef == unwrap_from::hasLRef)
-      && (unwrap_to::isNoexcept == unwrap_from::isNoexcept);
+      && noexcept_qualifier_ok;
 
     static constexpr bool value = 
       buf_ok && cfg_ok && sig_ret_ok && sig_args_ok && qualifier_ok;
@@ -2169,7 +2183,10 @@ namespace crtp_mixins {
     EMBED_CXX14_CONSTEXPR explicit operator bool()    = delete;
     void clear()                                      = delete;
     core_components_impl& operator=(std::nullptr_t)   = delete;
-    template <class T>
+    template <class T, 
+      EMBED_DETAIL_REQUIRES(!fn_can_convert<Self, T>::value),
+      EMBED_DETAIL_REQUIRES(!std::is_pointer<T>::value)
+    >
     core_components_impl& operator=(T)                = delete;
 
     // Swap the contents of two function objects. (View mode)
@@ -2496,8 +2513,7 @@ namespace crtp_mixins {
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
       EMBED_DETAIL_REQUIRES(fn_can_convert<
         function, function<OtherSize, OtherCfg, OtherSig>
-      >::value),
-      EMBED_DETAIL_REQUIRES(always_false<OtherCfg>::value || !Config::isView)
+      >::value)
     >
     function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
