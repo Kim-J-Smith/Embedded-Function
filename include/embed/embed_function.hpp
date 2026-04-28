@@ -1066,7 +1066,7 @@ inline namespace fn_traits {
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
-    // The buffer size for ebd::fn_view. Stop supporting pointer-to-members
+    // The buffer size for ebd::fn_ref. Stop supporting pointer-to-members
     static constexpr std::size_t ref_buf = sizeof(void (*) ());
     static constexpr std::size_t view_buf = ref_buf;
 #if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
@@ -1890,7 +1890,7 @@ namespace crtp_mixins {
     }                                                                       \
   };                                                                        \
                                                                             \
-  /* Specialized for `ebd::fn_view`, to make its operator() behavior */     \
+  /* Specialized for `ebd::fn_ref`, to make its operator() behavior */      \
   /* consistent with `std::function_ref`. */                                \
   template <typename Ret, typename Self, typename... Args>                  \
   struct operator_call_impl</* IsView = */ true, /* IsThrowing = */ false,  \
@@ -2246,7 +2246,7 @@ namespace crtp_mixins {
     /// Check the "noexcept" is same.
     static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
       "This 'noexcept' qualifier is in conflict with the 'IsThrowing'"
-      " configuration option. (Use 'ebd::safe_fn' or 'ebd::fn_view')");
+      " configuration option. (Use 'ebd::safe_fn' or 'ebd::fn_ref')");
 
     using MemberVariableBase = crtp_mixins::member_variable_impl<
       BufferSize, Config, Signature>;
@@ -2660,34 +2660,38 @@ using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
  * This alias provides the most flexible way to instantiate a function wrapper
  * by directly specifying all configuration parameters. It is intended for
  * advanced use cases where none of the predefined aliases (`fn`, `unique_fn`,
- * `safe_fn`, `fn_view`) satisfy the required combination of copyability,
+ * `safe_fn`, `fn_ref`) satisfy the required combination of copyability,
  * view semantics, exception behavior, and no‑throw assertions.
  * 
  * @tparam Signature              Function signature, e.g., `void(int, char)`.
+ * 
  * @tparam BufferSize             Size of the internal storage (in bytes).
  *                                The value will be automatically aligned.
+ * 
  * @tparam IsCopyable             If `true`, the stored callable object must be
  *                                copy‑constructible; otherwise, move‑only is
  *                                sufficient (copyable is still accepted but
  *                                only move operations will be used).
+ * 
  * @tparam IsView                 If `true`, the wrapper acts as a non‑owning
  *                                view (no copy/move/destroy of the target).
  *                                The stored object is either stored directly
- *                                (if trivially copyable) or by pointer.
+ *                                (if is function pointer) or by pointer.
+ *                                *Empty state has been removed in view mode.*
+ * 
  * @tparam IsThrowing             If `true`, calling an empty wrapper throws
  *                                `std::bad_function_call` (if exceptions are
  *                                enabled); otherwise, `std::terminate` is called.
+ * 
  * @tparam AssertObjectNoThrow    If `true`, the wrapper requires that the
  *                                callable object's construction, destruction,
  *                                copy, and move operations are `noexcept`.
  *                                Violations trigger a `static_assert`.
  * 
- * @note   This template is marked as **unstable and experimental** in v2.0.x.
- *         The exact set of template parameters and their semantics may change
- *         in future versions. Prefer using the predefined aliases unless you
- *         need a combination not covered by them.
+ * @note                          Prefer using the predefined aliases unless you
+ *                                need a combination not covered by them.
  * 
- * EXAMPLE: a move-only, non‑throwing wrapper with a custom buffer size:
+ * @example                       A move-only, non‑throwing wrapper:
  * ```cpp
  * template <typename Signature, std::size_t BufferSize>
  * using unique_safe_fn = ebd::basic_fn<Signature, BufferSize,
@@ -2961,7 +2965,7 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 #endif
 
 /// @brief make_fn[12]: Make function with specified wrapper.
-/// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_view`.
+/// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, sizeof(functor)>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
