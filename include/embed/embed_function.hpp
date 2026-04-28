@@ -923,7 +923,7 @@ inline namespace fn_traits {
   // Check to store origin type or not (store the pointer).
   template <typename T, bool IsView, 
     typename DecT = decay_t<T>,
-    bool IsStoredOrigin = !IsView || is_function_ptr<DecT>::value
+    bool IsStoredOrigin = IsView ? is_function_ptr<DecT>::value : true
   >
   struct is_stored_origin
   : public bool_constant<IsStoredOrigin> {
@@ -1783,19 +1783,11 @@ namespace command {
     }
 
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    void init(erasure_base_t* target, Functor&& obj, std::true_type)
+    void init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
-    }
-
-    template <typename Functor>
-    void init(erasure_base_t*, Functor&&, std::false_type) noexcept {
-      static_assert(always_false<Functor>::value,
-        "Internal error: When `Config::isView` is false"
-        " the Functor must be stored originally.");
-      EMBED_DETAIL_UNREACHABLE();
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -1852,8 +1844,9 @@ namespace command {
     }
 
     // Enable if Functor is stored origin.
-    template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    void init(erasure_base_t* target, Functor&& obj, std::true_type) noexcept {
+    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
+    enable_if_t<IsStoredOrigin> /* Enable if the functor is function pointer(FP) */
+    init(erasure_base_t* target, Functor&& obj) noexcept {
       // Since the `is_stored_origin<Functor>` is true, then it must
       // be function pointer which have nothing about ownership.
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
@@ -1861,9 +1854,9 @@ namespace command {
     }
 
     // Enable if Functor is stored by pointer.
-    template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR void 
-    init(erasure_base_t* target, Functor&& obj, std::false_type) noexcept {
+    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
+    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin> /* Enable if the functor is not FP */
+    init(erasure_base_t* target, Functor&& obj) noexcept {
       static_assert(!std::is_rvalue_reference<Functor&&>::value,
         "function in view mode cannot be initialized with rvalue reference.");
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
@@ -2390,9 +2383,7 @@ namespace crtp_mixins {
         "Internal error: asserts_for_function<...>::value should be always true.");
 
       if (check_not_empty::check(functor)) {
-        m_command.template init<>(
-          &m_erasure, std::forward<Functor>(functor), 
-          /* is_stored_origin = */ std::true_type{});
+        m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
       } else {
         m_command.set_empty();
       }
@@ -2414,9 +2405,8 @@ namespace crtp_mixins {
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, 
         "[Embedded Function]: The function pointer should not be a nullptr.");
 
-      m_command.template init<>(
-        &m_erasure, std::forward<Func*>(function_ptr), 
-        /* is_stored_origin = */ std::true_type{});
+      m_command.template init</* IsStoredOrigin = */ true>(
+        &m_erasure, std::forward<Func*>(function_ptr));
     }
 
     /// @brief Builds a function reference from given functor.
@@ -2437,9 +2427,8 @@ namespace crtp_mixins {
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
         "Internal error: asserts_for_function<...>::value should be always true.");
 
-      m_command.template init<>(
-        &m_erasure, std::forward<Functor>(functor), 
-        is_stored_origin<decay_t<Functor>, Config::isView>{});
+      m_command.template init</* IsStoredOrigin = */ false>(
+        &m_erasure, std::forward<Functor>(functor));
     }
 
 #if EMBED_CXX_VERSION >= 201703L
