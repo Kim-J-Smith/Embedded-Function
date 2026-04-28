@@ -603,9 +603,17 @@ inline namespace cxx_traits {
       ((*std::declval<Arg>()).*std::declval<Memfunc>()) (std::declval<Args>()...));
   };
 
+  template <typename Func, typename ArgsTuple, typename = void>
+  struct call_is_nothrow_helper : std::false_type {};
+
   template <typename Func, typename... Args>
-  using call_is_nothrow = call_is_nothrow_impl<
-    typename invoke_result<Func, Args...>::tag, Func, Args...>;
+  struct call_is_nothrow_helper<Func, std::tuple<Args...>, 
+    void_t<typename invoke_result<Func, Args...>::tag>>
+  : call_is_nothrow_impl<typename invoke_result<Func, Args...>::tag, Func, Args...>
+  {};
+
+  template <typename Func, typename... Args>
+  using call_is_nothrow = call_is_nothrow_helper<Func, std::tuple<Args...>>;
 
   // See https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html .
   template <typename To, typename From>
