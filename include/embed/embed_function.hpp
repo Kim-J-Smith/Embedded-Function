@@ -996,7 +996,7 @@ inline namespace fn_traits {
       );
 
     static constexpr bool const_qualifier_ok = 
-      !(unwrap_to::hasConst && !unwrap_from::hasConst)
+      (unwrap_to::hasConst <= unwrap_from::hasConst)
       || (CfgTo::isView == true && CfgFrom::isView == true);
 
     /// TODO: Finalize the details of the conversion of the qualifiers
