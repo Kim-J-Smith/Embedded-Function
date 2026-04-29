@@ -103,7 +103,7 @@ process_data(100, &handle_result);
 
 ## Compare `ebd::fn_ref` with `std::function_ref`
 
-| Propertie | `ebd::fn_ref` | `std::function_ref` | Note
+| Property | `ebd::fn_ref` | `std::function_ref` | Note
 | --- | --- | --- | ---
 | Object size | `2 * sizeof(void(*)())` | usually `2 * sizeof(void(*)())` | Same
 | Trivially copyable | Yes | Yes | Same
