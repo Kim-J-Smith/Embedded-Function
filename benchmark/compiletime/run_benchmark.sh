@@ -116,7 +116,7 @@ fi
     echo ""
     echo "**Ratio (compile / baseline)**: ${ratio}"
     echo ""
-    echo "> The baseline represents the cost of some `make_integer_sequence` instantiations."
+    echo "> The baseline represents the cost of some \`make_integer_sequence\` instantiations."
 } > "${REPORT_FILE}"
 
 echo ""
