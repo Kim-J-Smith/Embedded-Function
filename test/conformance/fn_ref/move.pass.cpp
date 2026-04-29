@@ -12,8 +12,6 @@
 
 // REQUIRES: C++11 ~ C++26
 
-// constexpr fn_ref(const fn_ref&) noexcept = default;
-
 #include <functional>
 #include <utility>
 #include <type_traits>
@@ -29,11 +27,11 @@
 # define TEST_IS_CONSTANT_EVALUATED 0
 #endif
 
-STATIC_ASSERT_(std::is_copy_constructible<ebd::fn_ref<void()>>::value);
-STATIC_ASSERT_(std::is_copy_constructible<ebd::fn_ref<void() const>>::value);
+STATIC_ASSERT_(std::is_move_constructible<ebd::fn_ref<void()>>::value);
+STATIC_ASSERT_(std::is_move_constructible<ebd::fn_ref<void() const>>::value);
 #if __cpp_noexcept_function_type >= 201510L
-  STATIC_ASSERT_(std::is_copy_constructible<ebd::fn_ref<void() noexcept>>::value);
-  STATIC_ASSERT_(std::is_copy_constructible<ebd::fn_ref<void() const noexcept>>::value);
+  STATIC_ASSERT_(std::is_move_constructible<ebd::fn_ref<void() noexcept>>::value);
+  STATIC_ASSERT_(std::is_move_constructible<ebd::fn_ref<void() const noexcept>>::value);
 #endif
 
 static double f1(int x, double y) noexcept { return x + y; }
@@ -49,22 +47,21 @@ struct NeedsConversion {
 
 static int needs_conversion(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
 
-TEST(Conformance_fn_ref, copy_pass) {
+TEST(Conformance_fn_ref, move_pass) {
   static_cast<void>(&f1);
   static_cast<void>(&needs_conversion);
-
 #if 0 && __cpp_lib_function_ref >= 202603L
   {
     ebd::fn_ref<void()> f(std::cw<[] {}>);
-    auto f2 = f;
+    auto f2 = std::move(f);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       f2();
     }
   }
   {
-    const
+    // const
     ebd::fn_ref<int() const> f(std::cw<[] { return 42; }>);
-    auto f2 = f;
+    auto f2 = std::move(f);
 
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2() == 42);
@@ -73,7 +70,7 @@ TEST(Conformance_fn_ref, copy_pass) {
   {
     // noexcept
     ebd::fn_ref<double(int, double) noexcept> f(std::cw<&f1>);
-    auto f2 = f;
+    auto f2 = std::move(f);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2(1, 2.0) == 3.0);
     }
@@ -81,7 +78,7 @@ TEST(Conformance_fn_ref, copy_pass) {
   {
     // const noexcept
     ebd::fn_ref<double(int, double) const noexcept> f(std::cw<&f1>);
-    auto f2 = f;
+    auto f2 = std::move(f);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2(1, 2.0) == 3.0);
     }
@@ -89,25 +86,25 @@ TEST(Conformance_fn_ref, copy_pass) {
   {
     // with conversions
     ebd::fn_ref<Int(int, int, int)> f(std::cw<NeedsConversion{}>);
-    auto f_copy = f;
+    auto f_copy = std::move(f);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f_copy(1, 2, 3).i == 6);
     }
 
     ebd::fn_ref<Int(int, int, int) const> f2(std::cw<NeedsConversion{}>);
-    auto f2_copy = f2;
+    auto f2_copy = std::move(f2);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2_copy(1, 2, 3).i == 6);
     }
 
     ebd::fn_ref<Int(int, int, int) noexcept> f3(std::cw<NeedsConversion{}>);
-    auto f3_copy = f3;
+    auto f3_copy = std::move(f3);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f3_copy(1, 2, 3).i == 6);
     }
 
     ebd::fn_ref<Int(int, int, int) const noexcept> f4(std::cw<NeedsConversion{}>);
-    auto f4_copy = f4;
+    auto f4_copy = std::move(f4);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f4_copy(1, 2, 3).i == 6);
     }
@@ -115,25 +112,25 @@ TEST(Conformance_fn_ref, copy_pass) {
   {
     // with conversions function pointer
     ebd::fn_ref<Int(int, int, int)> f(std::cw<&needs_conversion>);
-    auto f_copy = f;
+    auto f_copy = std::move(f);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f_copy(1, 2, 3).i == 6);
     }
 
     ebd::fn_ref<Int(int, int, int) const> f2(std::cw<&needs_conversion>);
-    auto f2_copy = f2;
+    auto f2_copy = std::move(f2);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2_copy(1, 2, 3).i == 6);
     }
 
     ebd::fn_ref<Int(int, int, int) noexcept> f3(std::cw<&needs_conversion>);
-    auto f3_copy = f3;
+    auto f3_copy = std::move(f3);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f3_copy(1, 2, 3).i == 6);
     }
 
     ebd::fn_ref<Int(int, int, int) const noexcept> f4(std::cw<&needs_conversion>);
-    auto f4_copy = f4;
+    auto f4_copy = std::move(f4);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f4_copy(1, 2, 3).i == 6);
     }

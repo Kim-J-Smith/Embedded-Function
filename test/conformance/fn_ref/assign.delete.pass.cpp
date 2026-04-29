@@ -87,6 +87,8 @@ STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, void (*)(int)>::va
 static int forty_two() { return 42; }
 
 TEST(Conformance_fn_ref, assign_delete_pass) {
+  static_cast<void>(&forty_two);
+
 #if 0 && __cpp_lib_function_ref >= 202603L
   {
     ebd::fn_ref<int()> f(std::cw<[] { return 41; }>);

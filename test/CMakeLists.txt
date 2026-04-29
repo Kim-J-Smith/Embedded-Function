@@ -25,16 +25,16 @@ endif()
 
 # Include header search path
 include_directories(
-    ${CMAKE_SOURCE_DIR}/../include
-    ${CMAKE_SOURCE_DIR}/google-test/
-    ${CMAKE_SOURCE_DIR}/google-test/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/google-test/
+    ${CMAKE_CURRENT_SOURCE_DIR}/google-test/include
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # Get the gtest sourece files.
 file(
     GLOB GTEST_SOURCE_FILES 
-    "${CMAKE_SOURCE_DIR}/google-test/src/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/google-test/src/*.cc"
 )
 
 # Library of the gtest
@@ -54,7 +54,7 @@ set_target_properties(
 file(
     GLOB EMBED_FUNCTION_TEST_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/test_*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn_ref/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn_ref/*.pass.cpp"
 )
 
 # Target executable file.
