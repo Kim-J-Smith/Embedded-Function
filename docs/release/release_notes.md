@@ -1,7 +1,13 @@
+## New
+
+- New function reference (view) named `ebd::fn_ref`.
+
 ## Fix
 
-- Fix bug in `is_traditional_trivial`.
+- Make `call_is_nothrow` SFINAE.
 
-## Note
+## Notes
 
-- *Embedded Function v2.1.x* will change the API of `ebd::fn_view`.
+- `ebd::fn_view` is deprecated.
+
+- Update some documents.

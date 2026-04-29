@@ -209,5 +209,5 @@ public:
     ebd_test_non_move_non_copyable(const ebd_test_non_move_non_copyable&) = delete;
     ebd_test_non_move_non_copyable(ebd_test_non_move_non_copyable&&) = delete;
 
-    int operator()(char) { return OVL_CHAR; }
+    int operator()(char) const { return OVL_CHAR; }
 };

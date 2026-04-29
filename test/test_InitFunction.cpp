@@ -418,11 +418,10 @@ TEST(InitFunction, unique_fn_MoveOnly_Functor) {
 }
 
 // InitFunction[23]
-TEST(InitFunction, fn_view_MoveOnly_Functor) {
-    ebd_test_move_only_callable obj;
-    ebd::fn_view<int(char) &&> f1 = obj;
-    ASSERT_EQ(f1 != nullptr, true);
-    ASSERT_EQ(std::move(f1)('A'), OVL_CHAR);
+TEST(InitFunction, fn_ref_Lvalue_callable_Functor) {
+    ebd_test_operator_qualifier obj;
+    ebd::fn_ref<int(char)> f1 = obj;
+    ASSERT_EQ(f1('A'), OVL_L_REF);
 }
 
 // InitFunction[24]
@@ -534,9 +533,8 @@ TEST(InitFunction, make_fn_InPlaceBuildCpp17) {
 #endif
 
 // InitFunction[28]
-TEST(InitFunction, fn_view_static_member_function) {
-    ebd::fn_view<int(int, int) const> f1 = &ebd_test_member_fn::static_mem_fn_ii_add;
-    ASSERT_EQ(f1 != nullptr, true);
+TEST(InitFunction, fn_ref_static_member_function) {
+    ebd::fn_ref<int(int, int) const> f1 = &ebd_test_member_fn::static_mem_fn_ii_add;
     ASSERT_EQ(f1(3, 9), 3 + 9);
 }
 
@@ -545,9 +543,9 @@ TEST(InitFunction, make_fn_SpecifiedWrapper) {
     auto f1 = ebd::make_fn<ebd::fn>(&ebd_test_member_fn::static_mem_fn_ii_add);
     auto f2 = ebd::make_fn<ebd::unique_fn>(&ebd_test_member_fn::static_mem_fn_ii_add);
     auto f3 = ebd::make_fn<ebd::safe_fn>(&ebd_test_member_fn::static_mem_fn_ii_add);
-    auto f4 = ebd::make_fn<ebd::fn_view>(&ebd_test_member_fn::static_mem_fn_ii_add);
+    auto f4 = ebd::make_fn<ebd::fn_ref>(&ebd_test_member_fn::static_mem_fn_ii_add);
 
-    auto f5 = ebd::make_fn<ebd::fn_view>(ebd_test_free_func_iii_add);
+    auto f5 = ebd::make_fn<ebd::fn_ref>(&ebd_test_free_func_iii_add);
 
     ASSERT_EQ(f1 != nullptr, true);
     ASSERT_EQ(f1(3, 9), 3 + 9);
@@ -555,16 +553,38 @@ TEST(InitFunction, make_fn_SpecifiedWrapper) {
     ASSERT_EQ(f2(3, 9), 3 + 9);
     ASSERT_EQ(f3 != nullptr, true);
     ASSERT_EQ(f3(3, 9), 3 + 9);
-    ASSERT_EQ(f4 != nullptr, true);
     ASSERT_EQ(f4(3, 9), 3 + 9);
 
     ASSERT_EQ(f5(23, 45), 23 + 45);
 }
 
 // InitFunction[30]
-TEST(InitFunction, fn_view_NonMoveNonCopy_Functor) {
+TEST(InitFunction, fn_ref_NonMoveNonCopy_Functor) {
     ebd_test_non_move_non_copyable obj;
-    ebd::fn_view<int(char)> f1 = obj;
-    ASSERT_EQ(f1 != nullptr, true);
+    ebd::fn_ref<int(char)> f1 = obj;
     ASSERT_EQ(f1('A'), OVL_CHAR);
+}
+
+// InitFunction[31]
+TEST(InitFunction, fn_ref_FreeFunction_Pointer) {
+    ebd::fn_ref<int(int, int)> f1 = ebd_test_free_func_iii_add; // OK
+    ASSERT_EQ(f1(3, 4), 3 + 4);
+
+    ebd::fn_ref<int(int, int)> f2 = &ebd_test_free_func_iii_add; // OK
+    ASSERT_EQ(f2(3, 4), 3 + 4);
+}
+
+// InitFunction[32]
+TEST(InitFunction, fn_ref_constexprInit) {
+
+#if __cpp_constexpr >= 202002L
+    static constexpr auto la = [] {};
+    constexpr ebd::fn_ref<void()> f1 = la;
+    (void)f1;
+
+    static constexpr ebd_test_non_move_non_copyable obj;
+    constexpr ebd::fn_ref<int(char)> f2 = obj;
+    (void)f2;
+#endif
+
 }

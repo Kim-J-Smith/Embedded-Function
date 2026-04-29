@@ -77,4 +77,4 @@ fn(100);
 - [`ebd::detail::function`](./detail/function.md) - The underlying implementation
 - [`ebd::unique_fn`](./unique_fn.md) - For move-only callables
 - [`ebd::safe_fn`](./safe_fn.md) - For exception-safe callables
-- [`ebd::fn_view`](./fn_view.md) - For non-owning views of callables
+- [`ebd::fn_ref`](./fn_ref.md) - For non-owning views of callables

@@ -27,7 +27,7 @@ TEST(UnaryDereference, fn_freeFunction) {
     ASSERT_EQ(*f7 == nullptr, false);
 }
 
-TEST(UnaryDereference, fn_view_freeFunction) {
-    ebd::fn_view<void()> f1 = ebd_test_free_func_v;
+TEST(UnaryDereference, fn_ref_freeFunction) {
+    ebd::fn_ref<void()> f1 = ebd_test_free_func_v;
     ASSERT_EQ(*f1, &ebd_test_free_func_v);
 }

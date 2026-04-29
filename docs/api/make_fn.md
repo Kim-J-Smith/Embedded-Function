@@ -227,4 +227,4 @@ auto fn = ebd::make_fn(std::in_place_type<MyFunctor>, /* constructor arguments *
 - [`ebd::fn`](./fn.md) - Copyable function wrapper
 - [`ebd::unique_fn`](./unique_fn.md) - Move-only function wrapper
 - [`ebd::safe_fn`](./safe_fn.md) - Exception-safe function wrapper
-- [`ebd::fn_view`](./fn_view.md) - Non-owning view of callables
+- [`ebd::fn_ref`](./fn_ref.md) - For non-owning views of callables

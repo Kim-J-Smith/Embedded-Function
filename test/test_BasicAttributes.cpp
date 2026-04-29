@@ -9,7 +9,7 @@ TEST(BasicAttributes, SizeAndAlign) {
     using f_t = ebd::fn<void()>;
     using uf_t = ebd::unique_fn<void()>;
     using sf_t = ebd::safe_fn<void()>;
-    using fv_t = ebd::fn_view<void()>;
+    using fv_t = ebd::fn_ref<void()>;
 
     ASSERT_EQ(f_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
     ASSERT_EQ(uf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
@@ -32,7 +32,7 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     using f_t = ebd::fn<void()>;
     using uf_t = ebd::unique_fn<void()>;
     using sf_t = ebd::safe_fn<void()>;
-    using fv_t = ebd::fn_view<void()>;
+    using fv_t = ebd::fn_ref<void()>;
 
     // f_t
     ASSERT_EQ(std::is_move_constructible<f_t>::value == true, true);
@@ -77,7 +77,7 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
 
 // BasicAttributes[2]
 TEST(BasicAttributes, TrivialityViewMode) {
-    using view_t = ebd::fn_view<void()>;
+    using view_t = ebd::fn_ref<void()>;
     ASSERT_EQ(std::is_trivially_destructible<view_t>::value == true, true);
     ASSERT_EQ(std::is_trivially_move_constructible<view_t>::value == true, true);
     ASSERT_EQ(std::is_trivially_move_assignable<view_t>::value == true, true);
@@ -86,7 +86,7 @@ TEST(BasicAttributes, TrivialityViewMode) {
     ASSERT_EQ(std::is_trivially_copyable<view_t>::value == true, true);
 }
 
-static int test_const(const ebd::fn_view<int(int, int)> f) { return f(3, 4); }
+static int test_const(const ebd::fn_ref<int(int, int)> f) { return f(3, 4); }
 
 // BasicAttributes[3]
 TEST(BasicAttributes, AlwaysConstFnView) {

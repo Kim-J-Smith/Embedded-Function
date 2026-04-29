@@ -1,29 +1,35 @@
 #!/bin/bash
-# Run compile-time benchmark
+# Compile-time benchmark: compare ebd:: instantiation time between
+# ${BENCH_TESTSOURCE_x} ${BENCH_BASELINE_FILE}
+
+set -euo pipefail
+
+BENCH_BASELINE_FILE="benchmark_baseline.cpp"
+BENCH_TESTSOURCE_1="benchmark_make_fn.cpp"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/build"
 INCLUDE_PATH="${SCRIPT_DIR}/../../include"
-CPP_FILE="${SCRIPT_DIR}/compile_time_benchmark.cpp"
+CPP_COMPILE="${SCRIPT_DIR}/${BENCH_TESTSOURCE_1}"
+CPP_BASELINE="${SCRIPT_DIR}/${BENCH_BASELINE_FILE}"
 ANALYZE_SCRIPT="${SCRIPT_DIR}/analyze.py"
-
 REPORT_FILE="${SCRIPT_DIR}/benchmark_report.md"
 
-# Ensure build directory exists and is clean
+# Clean previous builds and report
 rm -rf "${BUILD_DIR}"
 rm -f "${REPORT_FILE}"
 mkdir -p "${BUILD_DIR}"
 
 # Check required files
-for f in "${CPP_FILE}" "${ANALYZE_SCRIPT}"; do
+for f in "${CPP_COMPILE}" "${CPP_BASELINE}" "${ANALYZE_SCRIPT}"; do
     if [ ! -f "$f" ]; then
         echo "Error: $f not found!" >&2
         exit 1
     fi
 done
 
-# Function to extract total microseconds from analyze.py output
-# analyze.py prints: "Total time: 123,456 us (123.456 ms)"
+# Extract total microsecond value from analyze.py output.
+# Output format example: "Total time: 123,456 us (123.456 ms)"
 extract_total_us() {
     local output="$1"
     if [[ $output =~ Total\ time:\ ([0-9,]+)\ us ]]; then
@@ -36,45 +42,85 @@ extract_total_us() {
     fi
 }
 
-# Run the benchmark and report result.
-# Modified: returns the extracted microseconds via stdout,
-#           and prints verbose info to stderr.
-run() {
-  # Print raw output to stderr (so it won't be captured)
-  clang++ ${CPP_FILE} \
-    -std=c++11 -I${INCLUDE_PATH} \
-    -ftime-trace -c \
-    -o ${BUILD_DIR}/compile_time_benchmark.o
+# Run a benchmark for a given .cpp file.
+# Arguments:
+#   $1 - source file path
+#   $2 - name for the output object (without extension, e.g. "compile")
+# Returns: extracted microseconds (stdout)
+run_benchmark() {
+    local src_file="$1"
+    local out_name="$2"
+    local obj_file="${BUILD_DIR}/${out_name}.o"
+    local json_file="${BUILD_DIR}/${out_name}.json"
 
-  echo "### Case $1" >> ${REPORT_FILE}
-  raw_output=$(python3 ${ANALYZE_SCRIPT} ${BUILD_DIR}/compile_time_benchmark.json)
-  echo "${raw_output}" >&2   # to stderr for debugging
-  analyze_result=$(extract_total_us "${raw_output}")
-  echo "Using \`${analyze_result}\` us to instantiate 'ebd::*'" >> ${REPORT_FILE}
-  
-  # Output the numerical result (stdout) for collection
-  echo "${analyze_result}"
+    # Compile with -ftime-trace
+    clang++ "${src_file}" \
+        -std=c++11 -I"${INCLUDE_PATH}" \
+        -ftime-trace -c \
+        -o "${obj_file}" > /dev/null 2>&1
+
+    # Run the analyzer on the generated JSON trace
+    local raw_output
+    raw_output="$(python3 "${ANALYZE_SCRIPT}" "${json_file}" 2>&1)"
+
+    local us
+    us="$(extract_total_us "${raw_output}")"
+    echo "${us}"
 }
 
-# Array to store results from each run
-results=()
+# Number of measurement runs
+RUNS=30
 
-for i in {1..30}; do
-    us=$(run ${i})          # Capture the returned microseconds
-    results+=("${us}")      # Store into array
+# Arrays to store results
+compile_times=()
+baseline_times=()
+
+echo "Running ${RUNS} measurements for ${BENCH_TESTSOURCE_1} ..."
+for i in $(seq 1 "${RUNS}"); do
+    us="$(run_benchmark "${CPP_COMPILE}" "compile_${i}")"
+    compile_times+=("${us}")
+    echo "  Run ${i}: ${us} us"
 done
 
-# Calculate average using awk (handles integer arithmetic safely)
-# Also handle empty or zero values.
-avg=$(printf '%s\n' "${results[@]}" | awk '{sum+=$1; count++} END {if(count>0) printf "%.2f", sum/count; else print "0"}')
+echo ""
+echo "Running ${RUNS} measurements for ${BENCH_BASELINE_FILE} ..."
+for i in $(seq 1 "${RUNS}"); do
+    us="$(run_benchmark "${CPP_BASELINE}" "baseline_${i}")"
+    baseline_times+=("${us}")
+    echo "  Run ${i}: ${us} us"
+done
 
-# Append average and explanation to report file
+# Compute average using awk (handles integers safely)
+avg_compile="$(printf '%s\n' "${compile_times[@]}" | awk '{sum+=$1; count++} END {if(count>0) printf "%.2f", sum/count; else print "0"}')"
+avg_baseline="$(printf '%s\n' "${baseline_times[@]}" | awk '{sum+=$1; count++} END {if(count>0) printf "%.2f", sum/count; else print "0"}')"
+
+# Compute ratio (compile / baseline)
+ratio="N/A"
+if [ "$(echo "${avg_baseline} > 0" | bc)" -eq 1 ]; then
+    ratio="$(echo "scale=4; ${avg_compile} / ${avg_baseline}" | bc)"
+fi
+
+# Write report
 {
+    echo "# Compile-Time Benchmark Report"
     echo ""
-    echo "## Summary"
-    echo "Average compile time over 10 runs: **${avg} us**"
-    echo "> Note: The values above are extracted from \`analyze.py\` output (microseconds)."
-    echo "> The average is computed using awk, ignoring any non-numeric lines."
-} >> "${REPORT_FILE}"
+    echo "## Methodology"
+    echo "For each source file, the script compiles it 30 times with \`-ftime-trace\` and extracts the total time spent in template instantiations containing \`ebd::\` (root events only)."
+    echo ""
+    echo "## Results"
+    echo ""
+    echo "| Measurement | Average time (μs) |"
+    echo "|-------------|------------------:|"
+    echo "| \`${BENCH_TESTSOURCE_1}\` | ${avg_compile} |"
+    echo "| \`${BENCH_BASELINE_FILE}\`     | ${avg_baseline} |"
+    echo ""
+    echo "**Ratio (compile / baseline)**: ${ratio}"
+    echo ""
+    echo "> The baseline represents the cost of some \`make_integer_sequence\` instantiations."
+} > "${REPORT_FILE}"
 
+echo ""
 echo "Benchmark finished. Report saved to ${REPORT_FILE}"
+echo "Compile average: ${avg_compile} μs"
+echo "Baseline average: ${avg_baseline} μs"
+echo "Ratio: ${ratio}"
