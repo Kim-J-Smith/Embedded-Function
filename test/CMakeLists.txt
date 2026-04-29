@@ -28,6 +28,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/../include
     ${CMAKE_SOURCE_DIR}/google-test/
     ${CMAKE_SOURCE_DIR}/google-test/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # Get the gtest sourece files.
@@ -52,7 +53,8 @@ set_target_properties(
 # Get the test source files.
 file(
     GLOB EMBED_FUNCTION_TEST_FILES
-    "${CMAKE_SOURCE_DIR}/test_*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn_ref/*.cpp"
 )
 
 # Target executable file.
