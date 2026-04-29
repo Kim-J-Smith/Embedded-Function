@@ -48,10 +48,10 @@ struct NeedsConversion {
   int operator()(Int x, Int y, Int z) const noexcept { return x.i + y.i + z.i; }
 };
 
-int needs_conversion(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
-int zero(Int, Int, Int) noexcept { return 0; }
+static int needs_conversion(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
+static int zero(Int, Int, Int) noexcept { return 0; }
 
-constexpr bool test() {
+TEST(Conformance_fn_ref, copy_assign_pass) {
 #if 0 && __cpp_lib_function_ref >= 202603L
   {
     ebd::fn_ref<void()> f(std::cw<[] {}>);

@@ -36,7 +36,7 @@ STATIC_ASSERT_(std::is_copy_constructible<ebd::fn_ref<void() const>>::value);
   STATIC_ASSERT_(std::is_copy_constructible<ebd::fn_ref<void() const noexcept>>::value);
 #endif
 
-double f1(int x, double y) noexcept { return x + y; }
+static double f1(int x, double y) noexcept { return x + y; }
 
 struct Int {
   int i;
@@ -47,7 +47,7 @@ struct NeedsConversion {
   int operator()(Int x, Int y, Int z) const noexcept { return x.i + y.i + z.i; }
 };
 
-int needs_conversion(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
+static int needs_conversion(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
 
 TEST(Conformance_fn_ref, copy_pass) {
 #if 0 && __cpp_lib_function_ref >= 202603L

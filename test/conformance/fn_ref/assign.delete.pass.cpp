@@ -84,7 +84,7 @@ STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, void (*)(int)>::va
   //     !std::is_assignable<ebd::fn_ref<void() const noexcept>, std::constant_wrapper<[](int) noexcept {}>>::value);
 #endif
 
-int forty_two() { return 42; }
+static int forty_two() { return 42; }
 
 TEST(Conformance_fn_ref, assign_delete_pass) {
 #if 0 && __cpp_lib_function_ref >= 202603L
