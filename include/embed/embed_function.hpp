@@ -1892,14 +1892,12 @@ namespace command {
 namespace crtp_mixins {
 
   // Implement the 'operator()' for function.
-  template <bool IsView, bool IsThrowing, typename Signature, typename Self>
+  template <bool IsView, typename Signature, typename Self>
   struct operator_call_impl; // Undefined
 
 #define EMBED_DETAIL_OPERATOR_CALL_IMPL_DEFINE(C, V, REF, NOEXCEPT)         \
-  template <bool IsView, bool IsThrowing,                                   \
-            typename Ret, typename Self, typename... Args>                  \
-  struct operator_call_impl<                                                \
-    IsView, IsThrowing, Ret(Args...) C V REF NOEXCEPT, Self> {              \
+  template <bool IsView, typename Ret, typename Self, typename... Args>     \
+  struct operator_call_impl<IsView, Ret(Args...) C V REF NOEXCEPT, Self> {  \
   public:                                                                   \
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
@@ -1915,7 +1913,7 @@ namespace crtp_mixins {
   /* Specialized for `ebd::fn_ref`, to make its operator() behavior */      \
   /* consistent with `std::function_ref`. */                                \
   template <typename Ret, typename Self, typename... Args>                  \
-  struct operator_call_impl</* IsView = */ true, /* IsThrowing = */ false,  \
+  struct operator_call_impl</* IsView = */ true,                            \
     Ret(Args...) C V REF NOEXCEPT, Self> {                                  \
   public:                                                                   \
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
@@ -2211,8 +2209,8 @@ namespace crtp_mixins {
         /* Buf = */ BufferSize, /* Cfg = */ Config, /* Sig = */ Signature
       >,
       public crtp_mixins::operator_call_impl<
-        /* IsView = */ Config::isView, /* IsThrowing = */ Config::isThrowing,
-        Signature, /* Self = */ function<BufferSize, Config, Signature>
+        /* IsView = */ Config::isView, /* Signature = */ Signature, 
+        /* Self = */ function<BufferSize, Config, Signature>
       >,
       public crtp_mixins::operator_dereference_impl<
         Signature, /* Self = */ function<BufferSize, Config, Signature>,
@@ -2233,7 +2231,7 @@ namespace crtp_mixins {
     template<std::size_t, typename, typename>
     friend class function;
 
-    template <bool, bool, typename, typename>
+    template <bool, typename, typename>
     friend struct crtp_mixins::operator_call_impl;
 
     template <typename, typename>
