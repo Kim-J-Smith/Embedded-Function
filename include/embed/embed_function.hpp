@@ -1554,7 +1554,8 @@ namespace invocation {
         auto* erased = static_cast<erasure_t*>(base);                             \
         auto& fn = erased->template access<Functor>();                            \
         using Fn = conditional_t<is_rvalue_ref,                                   \
-          remove_reference_t<decltype(fn)>&&, remove_reference_t<decltype(fn)>&>; \
+          C V remove_reference_t<decltype(fn)>&&,                                 \
+          C V remove_reference_t<decltype(fn)>&>;                                 \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
     };                                                                            \
@@ -1567,7 +1568,7 @@ namespace invocation {
       invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
         auto* erased = static_cast<erasure_t*>(base);                             \
         auto& fn = erased->template access<Functor>();                            \
-        using Fn = remove_reference_t<decltype(fn)>&;                             \
+        using Fn = C V remove_reference_t<decltype(fn)>&;                         \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
                                                                                   \
@@ -1577,7 +1578,7 @@ namespace invocation {
       invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
         auto* erased = static_cast<erasure_t*>(base);                             \
         auto& fn = *(erased->template access<Functor*>());                        \
-        using Fn = remove_reference_t<decltype(fn)>&;                             \
+        using Fn = C V remove_reference_t<decltype(fn)>&;                         \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
     };                                                                            \
