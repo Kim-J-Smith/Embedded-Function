@@ -2564,118 +2564,6 @@ namespace crtp_mixins {
 
 } // end namespace detail
 
-/**
- * @brief A function object wrapper for copyable and callable objects.
- * 
- * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
- * 
- * @tparam BufferSize - Buffer size. Used for storing the callable object.
- * And the buffer size will be aligned automatically.
- * 
- * @internal `Config` - Configuration package. Used to configure the wrapper.
- *  @arg IsCopyable - Here is `true`, means the callable object must be copyable.
- *  @arg IsView - Here is `false`, which means this is NOT a view.
- *  @arg IsThrowing - Here is `true`, which means the wrapper will throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
- *       to make sure it doesn't throw exceptions when constructing and destructing.
- */
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using fn = detail::function<
-  detail::get_aligned_size<BufferSize>::value, 
-  detail::config_package<
-    /* IsCopyable = */          true, 
-    /* IsView = */              false, 
-    /* IsThrowing = */          true, 
-    /* AssertObjectNoThrow = */ false
-  >, 
-  Signature
->;
-
-/**
- * @brief A function object wrapper for movable and callable objects.
- * 
- * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
- * 
- * @tparam BufferSize - Buffer size. Used for storing the callable object.
- * And the buffer size will be aligned automatically.
- * 
- * @internal `Config` - Configuration package. Used to configure the wrapper.
- *  @arg IsCopyable - Here is `false`, means the callable object can be move-only(copy-only is also OK).
- *  @arg IsView - Here is `false`, which means this is NOT a view.
- *  @arg IsThrowing - Here is `true`, which means the wrapper will throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
- *       to make sure it doesn't throw exceptions when constructing and destructing.
- */
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using unique_fn = detail::function<
-  detail::get_aligned_size<BufferSize>::value, 
-  detail::config_package<
-    /* IsCopyable = */          false, 
-    /* IsView = */              false, 
-    /* IsThrowing = */          true, 
-    /* AssertObjectNoThrow = */ false
-  >, 
-  Signature
->;
-
-/**
- * @brief A @b SAFE function object wrapper for copyable and callable objects.
- * 
- * @throws Strong noexcept guarantee. (ASSERT-NO-THROW)
- * 
- * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
- * 
- * @tparam BufferSize - Buffer size. Used for storing the callable object.
- * And the buffer size will be aligned automatically.
- * 
- * @internal `Config` - Configuration package. Used to configure the wrapper.
- *  @arg IsCopyable - Here is `true`, means the callable object must be copyable.
- *  @arg IsView - Here is `false`, which means this is NOT a view.
- *  @arg IsThrowing - Here is `false`, which means the wrapper will not throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `true`, which means the callable object must
- *       to make sure it doesn't throw exceptions when constructing and destructing.
- */
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using safe_fn = detail::function<
-  detail::get_aligned_size<BufferSize>::value, 
-  detail::config_package<
-    /* IsCopyable = */          true, 
-    /* IsView = */              false, 
-    /* IsThrowing = */          false, 
-    /* AssertObjectNoThrow = */ true
-  >, 
-  Signature
->;
-
-/**
- * @brief A function object view for callable objects.
- * 
- * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
- * 
- * @tparam Unused - Unused.
- * 
- * @internal `Config` - Configuration package. Used to configure the wrapper.
- *  @arg IsCopyable - Here is `true`, but unused because this is a view.
- *  @arg IsView - Here is `true`, which means this is a view.
- *  @arg IsThrowing - Here is `false`, which means the wrapper will not throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
- *       to make sure it doesn't throw exceptions when constructing and destructing.
- */
-template <typename Signature, std::size_t Unused = 0 /* Unused */>
-using fn_ref = detail::function<
-  detail::default_buffer_size::ref_buf, 
-  detail::config_package<
-    /* IsCopyable = */          true, 
-    /* IsView = */              true, 
-    /* IsThrowing = */          false, 
-    /* AssertObjectNoThrow = */ false
-  >, 
-  Signature
->;
-
-/// @deprecated Use `fn_ref` instead.
-template <typename Signature, std::size_t Unused = 0 /* Unused */>
-using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
 
 /**
  * @brief A basic function wrapper that users can customize.
@@ -2686,7 +2574,8 @@ using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
  * `safe_fn`, `fn_ref`) satisfy the required combination of copyability,
  * view semantics, exception behavior, and no‑throw assertions.
  * 
- * @tparam Signature              Function signature, e.g., `void(int, char)`.
+ * @tparam Signature              Function signature, e.g., `void(int, char)`, 
+ *                                `int(int, float) const`, `void() &&`, etc.
  * 
  * @tparam BufferSize             Size of the internal storage (in bytes).
  *                                The value will be automatically aligned.
@@ -2704,14 +2593,18 @@ using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
  * 
  * @tparam IsThrowing             If `true`, calling an empty wrapper throws
  *                                `std::bad_function_call` (if exceptions are
- *                                enabled); otherwise, `std::terminate` is called.
+ *                                enabled); otherwise, `std::terminate` is 
+ *                                called. When @arg `IsView` is `true`, this 
+ *                                config argument will be ignored cause there 
+ *                                is no empty state in view mode.
  * 
  * @tparam AssertObjectNoThrow    If `true`, the wrapper requires that the
  *                                callable object's construction, destruction,
  *                                copy, and move operations are `noexcept`.
  *                                Violations trigger a `static_assert`.
  * 
- * @note                          Prefer using the predefined aliases unless you
+ * @note                          Prefer using the predefined aliases (`fn`, 
+ *                                `unique_fn`, `safe_fn`, `fn_ref`) unless you
  *                                need a combination not covered by them.
  * 
  * @example                       A move-only, non‑throwing wrapper:
@@ -2742,6 +2635,66 @@ using basic_fn = detail::function<
   >, 
   Signature
 >;
+
+/// @brief A function object wrapper for copyable and callable objects.
+/// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
+/// @tparam BufferSize - Buffer size. Used for storing the callable object.
+/// And the buffer size will be aligned automatically.
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using fn = basic_fn<
+  /* Signature = */           Signature, 
+  /* BufferSize = */          BufferSize,
+  /* IsCopyable = */          true, 
+  /* IsView = */              false, 
+  /* IsThrowing = */          true, 
+  /* AssertObjectNoThrow = */ false
+>;
+
+/// @brief A function object wrapper for movable and callable objects.
+/// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
+/// @tparam BufferSize - Buffer size. Used for storing the callable object.
+/// And the buffer size will be aligned automatically.
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using unique_fn = basic_fn<
+  /* Signature = */           Signature, 
+  /* BufferSize = */          BufferSize,
+  /* IsCopyable = */          false, 
+  /* IsView = */              false, 
+  /* IsThrowing = */          true, 
+  /* AssertObjectNoThrow = */ false
+>;
+
+/// @brief A SAFE function object wrapper for copyable and callable objects.
+/// @throws Strong noexcept guarantee. (ASSERT-NO-THROW)
+/// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
+/// @tparam BufferSize - Buffer size. Used for storing the callable object.
+/// And the buffer size will be aligned automatically.
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using safe_fn = basic_fn<
+  /* Signature = */           Signature, 
+  /* BufferSize = */          BufferSize,
+  /* IsCopyable = */          true, 
+  /* IsView = */              false, 
+  /* IsThrowing = */          false, 
+  /* AssertObjectNoThrow = */ true
+>;
+
+/// @brief A function object reference(view) for callable objects.
+/// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
+/// @tparam Unused - Unused.
+template <typename Signature, std::size_t Unused = 0 /* Unused */>
+using fn_ref = basic_fn<
+  /* Signature = */           Signature, 
+  /* BufferSize = */          detail::default_buffer_size::ref_buf,
+  /* IsCopyable = */          true, 
+  /* IsView = */              true, 
+  /* IsThrowing = */          false, 
+  /* AssertObjectNoThrow = */ false
+>;
+
+/// @deprecated Use `fn_ref` instead.
+template <typename Signature, std::size_t Unused = 0 /* Unused */>
+using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
 
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
