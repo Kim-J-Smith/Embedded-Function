@@ -1,13 +1,13 @@
 ## New
 
-- New function reference (view) named `ebd::fn_ref`.
+- `basic_fn` is no more unstable or experimental.
+
+- TODO: support `std::constant_wrapper`.
 
 ## Fix
 
-- Make `call_is_nothrow` SFINAE.
+- 
 
 ## Notes
 
-- `ebd::fn_view` is deprecated.
-
-- Update some documents.
+- 
