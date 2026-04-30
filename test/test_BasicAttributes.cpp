@@ -92,3 +92,31 @@ static int test_const(const ebd::fn_ref<int(int, int)> f) { return f(3, 4); }
 TEST(BasicAttributes, AlwaysConstFnView) {
     ASSERT_EQ(test_const(ebd_test_free_func_iii_add), 3 + 4);
 }
+
+// BasicAttributes[4]
+TEST(BasicAttributes, DefaultConfig) {
+    static_assert(
+        std::is_same<
+            ebd::fn<void(), 0>, 
+            ebd::basic_fn<void(), 0, true, false, true, false>
+        >::value, 
+        "The default config of ebd::fn has been changed!");
+    static_assert(
+        std::is_same<
+            ebd::unique_fn<void(), 0>, 
+            ebd::basic_fn<void(), 0, false, false, true, false>
+        >::value, 
+        "The default config of ebd::unique_fn has been changed!");
+    static_assert(
+        std::is_same<
+            ebd::safe_fn<void(), 0>, 
+            ebd::basic_fn<void(), 0, true, false, false, true>
+        >::value, 
+        "The default config of ebd::safe_fn has been changed!");
+    static_assert(
+        std::is_same<
+            ebd::fn_ref<void(), 0>, 
+            ebd::basic_fn<void(), 0, true, true, false, false>
+        >::value, 
+        "The default config of ebd::fn_ref has been changed!");
+}
