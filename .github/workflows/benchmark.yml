@@ -43,13 +43,16 @@ jobs:
           cd ./compiletime
           chmod a+x ./run_benchmark.sh
           ./run_benchmark.sh
+          cd ..
+          mkdir -p runtime
+          cp build/runtime-report.md runtime
 
       # Output the report
       - name: Save the benchmark result
         uses: actions/upload-artifact@v4
         with:
-          name: compile-time-bench-results
+          name: benchmark-reports
           path: |
-            benchmark/build/runtime-report.md
+            benchmark/runtime/runtime-report.md
             benchmark/compiletime/benchmark_report.md
           retention-days: 60
