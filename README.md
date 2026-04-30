@@ -124,7 +124,7 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 | [`ebd::fn`](./docs/api/fn.md)    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
 | [`ebd::unique_fn`](./docs/api/unique_fn.md)    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
 | [`ebd::safe_fn`](./docs/api/safe_fn.md)    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Exception-safe copyable callable wrapper |
-| [`ebd::fn_ref`](./docs/api/fn_ref.md)    |  Yes  |   Yes  | No (`std::terminate()`) | No | Fixed | Lightweight non-owning  reference(view) of callables |
+| [`ebd::fn_ref`](./docs/api/fn_ref.md)    |  Yes  |   Yes  | No (*NO EMPTY STATE*) | No | Fixed | Lightweight non-owning  reference(view) of callables |
 
 ### Key takeaways
 
