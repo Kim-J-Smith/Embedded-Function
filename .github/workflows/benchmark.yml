@@ -43,6 +43,7 @@ jobs:
           cd ./compiletime
           chmod a+x ./run_benchmark.sh
           ./run_benchmark.sh
+          cd ..
           mkdir -p runtime
           cp build/runtime-report.md runtime
 
