@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.0">
+  <img src="https://img.shields.io/badge/Version-2.1.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.1">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
