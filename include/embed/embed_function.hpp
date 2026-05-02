@@ -2349,10 +2349,18 @@ namespace crtp_mixins {
     using CoreComponents::operator=;
 
     // Create an empty function wrapper.
-    function() noexcept : CoreComponents(nullptr) {}
+    function() noexcept
+#if __cpp_concepts >= 202002L
+      requires requires { CoreComponents(nullptr); }
+#endif
+    : CoreComponents(nullptr) {}
 
     // Create an empty function wrapper.
-    function(std::nullptr_t) noexcept : CoreComponents(nullptr) {}
+    function(std::nullptr_t) noexcept
+#if __cpp_concepts >= 202002L
+      requires requires { CoreComponents(nullptr); }
+#endif
+    : CoreComponents(nullptr) {}
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
