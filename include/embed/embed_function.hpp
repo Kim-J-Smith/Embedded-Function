@@ -1432,19 +1432,21 @@ inline namespace fn_traits {
 #endif
 
   // https://eel.is/c++draft/func.wrap#ref.ctor .
-  template <typename Sig, typename Func, typename PureSig = typename unwrap_signature<Sig>::pure_sig>
+  template <typename Sig, typename Tuple, 
+    typename PureSig = typename unwrap_signature<Sig>::pure_sig>
   struct is_invocable_using_impl;
-  template <typename Sig, typename Func, typename Ret, typename... Args>
-  struct is_invocable_using_impl<Sig, Func, Ret(Args...)> {
+  template <typename Sig, typename... TArgs, typename Ret, typename... Args>
+  struct is_invocable_using_impl<Sig, std::tuple<TArgs...>, Ret(Args...)> {
     using type = conditional_t<
       unwrap_signature<Sig>::isNoexcept,
-      is_nothrow_invocable_r<Ret, Func, Args...>,
-      is_invocable_r<Ret, Func, Args...>
+      is_nothrow_invocable_r<Ret, TArgs..., Args...>,
+      is_invocable_r<Ret, TArgs..., Args...>
     >;
   };
 
-  template <typename Signature, typename Func>
-  using is_invocable_using_t = typename is_invocable_using_impl<Signature, Func>::type;
+  template <typename Signature, typename... T>
+  using is_invocable_using_t = 
+    typename is_invocable_using_impl<Signature, std::tuple<T...>>::type;
 
   // Constraints for F&& constructor.
   template <typename Signature, typename Functor>
