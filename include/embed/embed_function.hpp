@@ -2418,7 +2418,7 @@ namespace crtp_mixins {
     /// @note Used for function reference only. (NOT function wrapper)
     template <typename Func, 
       EMBED_DETAIL_REQUIRES(std::is_function<Func>::value),
-      EMBED_DETAIL_REQUIRES(is_invocable_using_functor<Signature, Func>::value),
+      EMBED_DETAIL_REQUIRES(is_invocable_using_t<Signature, Func>::value),
       EMBED_DETAIL_REQUIRES(always_false<Func>::value || Config::isView)
     > function(Func* function_ptr) noexcept {
 
