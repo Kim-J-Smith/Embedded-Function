@@ -1448,6 +1448,14 @@ inline namespace fn_traits {
   using is_invocable_using_t = 
     typename is_invocable_using_impl<Signature, std::tuple<T...>>::type;
 
+  template <typename T>
+  struct is_constant_wrapper : std::false_type {};
+
+#if __cpp_lib_constant_wrapper >= 202603L
+  template <auto Cw, typename T>
+  struct is_constant_wrapper<std::constant_wrapper<Cw, T>> : std::true_type {};
+#endif
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -2177,7 +2185,8 @@ namespace crtp_mixins {
     core_components_impl& operator=(std::nullptr_t)   = delete;
     template <class T, 
       EMBED_DETAIL_REQUIRES(!fn_can_convert<Self, T>::value),
-      EMBED_DETAIL_REQUIRES(!std::is_pointer<T>::value)
+      EMBED_DETAIL_REQUIRES(!std::is_pointer<T>::value),
+      EMBED_DETAIL_REQUIRES(!is_constant_wrapper<T>::value)
     >
     core_components_impl& operator=(T)                = delete;
 
