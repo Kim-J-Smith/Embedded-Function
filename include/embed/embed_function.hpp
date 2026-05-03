@@ -1448,15 +1448,6 @@ inline namespace fn_traits {
   using is_invocable_using_t = 
     typename is_invocable_using_impl<Signature, std::tuple<T...>>::type;
 
-  // Constraints for F&& constructor.
-  template <typename Signature, typename Functor>
-  using is_invocable_using_functor = is_invocable_using_t<
-    Signature, 
-    typename unwrap_signature<Signature>::template add_cv_like<
-      remove_reference_t<Functor>
-    >&
-  >;
-
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -2448,9 +2439,11 @@ namespace crtp_mixins {
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
     /// @note Used for function reference only. (NOT function wrapper)
     template <typename Functor, 
+      typename Tp = remove_reference_t<Functor>,
+      typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>,
       EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value),
-      EMBED_DETAIL_REQUIRES(is_invocable_using_functor<Signature, Functor>::value),
-      EMBED_DETAIL_REQUIRES(!std::is_member_pointer<remove_reference_t<Functor>>::value),
+      EMBED_DETAIL_REQUIRES(is_invocable_using_t<Signature, Tp_cv>::value),
+      EMBED_DETAIL_REQUIRES(!std::is_member_pointer<Tp>::value),
       EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
       EMBED_DETAIL_REQUIRES(always_false<Functor>::value || Config::isView)
     >
