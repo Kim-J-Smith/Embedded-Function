@@ -244,11 +244,12 @@ module;
 export module ebd.function;
 
 export namespace ebd {
+  using ::ebd::basic_fn;
   using ::ebd::fn;
   using ::ebd::unique_fn;
   using ::ebd::safe_fn;
   using ::ebd::fn_ref;
-  using ::ebd::make_fn; // NOLINT(misc-unused-using-decls)
+  using ::ebd::make_fn;
 }
 ```
 
