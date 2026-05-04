@@ -1525,6 +1525,25 @@ namespace erasure_type {
 // types for objects that implement the behaviour of invocation.
 namespace invocation {
 
+// Implement invocation for constant_wrapper.
+#if __cpp_lib_constant_wrapper >= 202603L
+# define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                            \
+  struct view_cw {                                                                    \
+    template <typename Cw>                                                            \
+    static Ret invoke(erasure_base_t*, smart_forward_t<Args>... args) NOEXCEPT {      \
+      return invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);                   \
+    }                                                                                 \
+    template <typename Cw, typename Obj>                                              \
+    static Ret invoke(erasure_base_t* base, smart_forward_t<Args>... args) NOEXCEPT { \
+      auto* erased = static_cast<erasure_t*>(base);                                   \
+      C V auto& obj = *erased->template access<Obj*>();                               \
+      return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);              \
+    }                                                                                 \
+  }; /* end view_cw */
+#else
+# define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)
+#endif
+
   template <std::size_t Size, typename Config, typename Signature>
   struct InvokerImpl;
 
@@ -1584,11 +1603,13 @@ namespace invocation {
       }                                                                           \
     };                                                                            \
                                                                                   \
+    EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                             \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_INVOKER_IMPL_DEFINE)
 
 #undef EMBED_DETAIL_INVOKER_IMPL_DEFINE
+#undef EMBED_DETAIL_CW_INVOKER_IMPL
 
 } // end namespace invocation
 
@@ -1886,6 +1907,35 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
     }
+
+#if __cpp_lib_constant_wrapper >= 202603L
+
+    /// @brief Initialize the m_invoker from given std::constant_wrapper.
+
+    template <typename Cw>
+    constexpr void cw_init() noexcept {
+      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw>;
+
+      // Mandates are as follows.
+      if constexpr (sizeof...(Args) > 0 && (requires {
+          typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
+        static_assert(!requires { typename std::constant_wrapper<
+              std::invoke(Cw::value, remove_cvref_t<Args>::value...)>;
+          }, "The argument types of fn_ref are all constexpr-param, and the"
+          " INVOKE result can be wrapped into std::constant_wrapper. This"
+          " means that you can simply use std::invoke(f, args...) instead"
+          " of fn_ref to avoid indirect INVOKE."
+        );
+      }
+    }
+
+    template <typename Cw, typename Obj>
+    constexpr void cw_init(erasure_base_t* target, Obj* obj_ptr) noexcept {
+      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj>;
+      manager_impl_t::template ref_create<>(target, obj_ptr);
+    }
+
+#endif
   };
 
 } // end namespace command
@@ -2504,6 +2554,63 @@ namespace crtp_mixins {
         "Internal error: asserts_for_function<...>::value should be always true.");
 
       m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
+    }
+
+#endif
+
+#if __cpp_lib_constant_wrapper >= 202603L
+
+    /// @todo experimental @bug Clang 20 has a bug here.
+    /// In Clang 20, when a user creates two static free functions that have the
+    /// same name in two compile units and wraps them into two `std::cw<&free_fn>`
+    /// objects, a segmentation fault ( @e SIGSEGV ) occurs if one of the
+    /// `std::cw<&free_fn>` is called.
+
+    // Create function reference with given `std::constant_wrapper` param.
+    template <auto CwVal, typename Fn>
+      requires is_invocable_using_t<Signature, const Fn&>::value
+        && Config::isView
+    constexpr function(std::constant_wrapper<CwVal, Fn>) noexcept {
+      using Cw = std::constant_wrapper<CwVal, Fn>;
+      m_command.template cw_init<Cw>();
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
+    }
+
+    // Create function reference with given `std::constant_wrapper` and object params.
+    template <auto CwVal, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
+      requires std::is_rvalue_reference_v<Up&&>
+        && is_invocable_using_t<Signature, const Fn&, 
+          typename unwrap_signature<Signature>::template add_cv_like<Tp>&>::value
+        && Config::isView
+    constexpr function(std::constant_wrapper<CwVal, Fn>, Up&& obj) noexcept {
+      using Cw = std::constant_wrapper<CwVal, Fn>;
+      m_command.template cw_init<Cw>(&m_erasure, std::addressof(obj));
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
+    }
+
+    // Create function reference with given `std::constant_wrapper` and pointer params.
+    template <auto CwVal, typename Fn, typename Tp,
+      typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>
+    >
+      requires std::is_convertible_v<Tp*, Tp_cv*>
+        && is_invocable_using_t<Signature, const Fn&, Tp_cv*>::value
+        && Config::isView
+    constexpr function(std::constant_wrapper<CwVal, Fn>, Tp* obj) noexcept {
+      using Cw = std::constant_wrapper<CwVal, Fn>;
+      m_command.template cw_init<Cw>(&m_erasure, obj);
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
     }
 
 #endif
