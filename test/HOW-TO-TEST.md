@@ -19,5 +19,5 @@ cd ./test # Go to test directory: <repo_root>/test
 
 cmake -B build -S . -DCMAKE_CXX_STANDARD=11 # Generate build files
 
-cmake --build build --config Release --target test # Build and run tests. Add '-j 100' if slow.
+cmake --build build --config Debug --target test # Build and run tests. Add '-j 100' if slow.
 ```
