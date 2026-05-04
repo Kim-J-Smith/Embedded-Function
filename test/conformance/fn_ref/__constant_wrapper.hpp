@@ -16,7 +16,14 @@
 #include <utility>
 #include <functional>
 
-#if __cplusplus >= 202302L && !defined(__cpp_lib_constant_wrapper)
+#if defined(_MSC_VER)
+// C++23 is not full supported if _MSC_VER < 1950.
+# define MSVC_IS_OK (_MSC_VER >= 1950)
+#else
+# define MSVC_IS_OK 1
+#endif
+
+#if __cplusplus >= 202302L && !defined(__cpp_lib_constant_wrapper) && MSVC_IS_OK
 
 #define __cpp_lib_constant_wrapper 202603L
 
