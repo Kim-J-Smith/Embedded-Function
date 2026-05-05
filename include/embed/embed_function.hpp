@@ -1456,6 +1456,32 @@ inline namespace fn_traits {
   struct is_constant_wrapper<std::constant_wrapper<Cw, T>> : std::true_type {};
 #endif
 
+  template <typename Functor, typename FnSample, typename T, typename = void>
+  struct noexcept_qualify_like { using type = T; };
+
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+
+  template <typename T, typename Ret, typename... Args, 
+    std::size_t Buf, typename Sig, 
+    bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow
+  > struct noexcept_qualify_like<
+    Ret(*)(Args...) noexcept, function<Buf, config_package<
+      IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>, T,
+      enable_if_t<IsView || AssertObjectNoThrow>
+  > {
+    static_assert(std::is_same<T, Ret(Args...) const>::value, 
+      "Internal error: 'T' should be same as 'Ret(Args...) const'.");
+    using type = Ret(Args...) const noexcept;
+  };
+
+#endif
+
+  // Add noexcept qualifier if the Functor is noexcept free function, 
+  // and the function wrapper or reference support `noexcept`.
+  template <typename Functor, template <class, std::size_t> class Fn, typename T>
+  using noexcept_qualify_like_t = 
+    typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, T>::type;
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -3066,7 +3092,8 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
   typename Functor,
   typename Deduction = decltype(make_fn(std::declval<Functor>())),
-  typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
+  typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
+  typename Signature = detail::noexcept_qualify_like_t<Functor, Fn, RawSig>,
   std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
   typename FnWrapper = Fn<Signature, BufferSize>,
   bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))
