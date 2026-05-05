@@ -18,6 +18,8 @@
 #include <utility>
 #include <type_traits>
 
+#include "__constant_wrapper.hpp"
+
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 
@@ -36,8 +38,13 @@ STATIC_ASSERT_(std::is_copy_assignable<ebd::fn_ref<void() const>>::value);
   STATIC_ASSERT_(std::is_copy_assignable<ebd::fn_ref<void() const noexcept>>::value);
 #endif
 
-static double plus(int x, double y) noexcept { return x + y; }
-static double minus(int x, double y) noexcept { return x - y; }
+/// @bug In Clang 20, when a user creates two static free functions that have the
+/// same name in two compile units and wraps them into two `std::cw<&free_fn>`
+/// objects, a segmentation fault ( @e SIGSEGV ) occurs if one of the
+/// `std::cw<&free_fn>` is called.
+/// Add _1 to avoid the same name.
+static double plus_1(int x, double y) noexcept { return x + y; }
+static double minus_1(int x, double y) noexcept { return x - y; }
 
 struct Int {
   int i;
@@ -48,16 +55,16 @@ struct NeedsConversion {
   int operator()(Int x, Int y, Int z) const noexcept { return x.i + y.i + z.i; }
 };
 
-static int needs_conversion(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
-static int zero(Int, Int, Int) noexcept { return 0; }
+static int needs_conversion_1(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
+static int zero_1(Int, Int, Int) noexcept { return 0; }
 
 TEST(Conformance_fn_ref, copy_assign_pass) {
-  static_cast<void>(&plus);
-  static_cast<void>(&minus);
-  static_cast<void>(&needs_conversion);
-  static_cast<void>(&zero);
+  static_cast<void>(&plus_1);
+  static_cast<void>(&minus_1);
+  static_cast<void>(&needs_conversion_1);
+  static_cast<void>(&zero_1);
 
-#if 0 && __cpp_lib_function_ref >= 202603L
+#if 1 && __cpp_lib_constant_wrapper >= 202603L
   {
     ebd::fn_ref<void()> f(std::cw<[] {}>);
     ebd::fn_ref<void()> f2(std::cw<[] {}>);
@@ -80,8 +87,8 @@ TEST(Conformance_fn_ref, copy_assign_pass) {
   }
   {
     // noexcept
-    ebd::fn_ref<double(int, double) noexcept> f(std::cw<&plus>);
-    ebd::fn_ref<double(int, double) noexcept> f2(std::cw<&minus>);
+    ebd::fn_ref<double(int, double) noexcept> f(std::cw<&plus_1>);
+    ebd::fn_ref<double(int, double) noexcept> f2(std::cw<&minus_1>);
     f2 = f;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f(1, 2.0) == 3.0);
@@ -90,8 +97,8 @@ TEST(Conformance_fn_ref, copy_assign_pass) {
   }
   {
     // const noexcept
-    ebd::fn_ref<double(int, double) const noexcept> f(std::cw<&plus>);
-    ebd::fn_ref<double(int, double) const noexcept> f2(std::cw<&minus>);
+    ebd::fn_ref<double(int, double) const noexcept> f(std::cw<&plus_1>);
+    ebd::fn_ref<double(int, double) const noexcept> f2(std::cw<&minus_1>);
     f2 = f;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f(1, 2.0) == 3.0);
@@ -135,32 +142,32 @@ TEST(Conformance_fn_ref, copy_assign_pass) {
   }
   {
     // with conversions function pointer
-    ebd::fn_ref<Int(int, int, int)> f(std::cw<&zero>);
-    ebd::fn_ref<Int(int, int, int)> f2(std::cw<&needs_conversion>);
+    ebd::fn_ref<Int(int, int, int)> f(std::cw<&zero_1>);
+    ebd::fn_ref<Int(int, int, int)> f2(std::cw<&needs_conversion_1>);
     f = f2;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f(1, 2, 3).i == 6);
       ASSERT_(f2(1, 2, 3).i == 6);
     }
 
-    ebd::fn_ref<Int(int, int, int) const> f_const(std::cw<&zero>);
-    ebd::fn_ref<Int(int, int, int) const> f2_const(std::cw<&needs_conversion>);
+    ebd::fn_ref<Int(int, int, int) const> f_const(std::cw<&zero_1>);
+    ebd::fn_ref<Int(int, int, int) const> f2_const(std::cw<&needs_conversion_1>);
     f_const = f2_const;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f_const(1, 2, 3).i == 6);
       ASSERT_(f2_const(1, 2, 3).i == 6);
     }
 
-    ebd::fn_ref<Int(int, int, int) noexcept> f_noexcept(std::cw<&zero>);
-    ebd::fn_ref<Int(int, int, int) noexcept> f2_noexcept(std::cw<&needs_conversion>);
+    ebd::fn_ref<Int(int, int, int) noexcept> f_noexcept(std::cw<&zero_1>);
+    ebd::fn_ref<Int(int, int, int) noexcept> f2_noexcept(std::cw<&needs_conversion_1>);
     f_noexcept = f2_noexcept;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f_noexcept(1, 2, 3).i == 6);
       ASSERT_(f2_noexcept(1, 2, 3).i == 6);
     }
 
-    ebd::fn_ref<Int(int, int, int) const noexcept> f_const_noexcept(std::cw<&zero>);
-    ebd::fn_ref<Int(int, int, int) const noexcept> f2_const_noexcept(std::cw<&needs_conversion>);
+    ebd::fn_ref<Int(int, int, int) const noexcept> f_const_noexcept(std::cw<&zero_1>);
+    ebd::fn_ref<Int(int, int, int) const noexcept> f2_const_noexcept(std::cw<&needs_conversion_1>);
     f_const_noexcept = f2_const_noexcept;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f_const_noexcept(1, 2, 3).i == 6);
