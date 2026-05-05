@@ -46,4 +46,9 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
   }
 #endif
 
+  {
+    // volatile is still supported.
+    volatile ebd::fn_ref<void() volatile> f1 = +[] { volatile int a = 1; (void)a; };
+    f1();
+  }
 }

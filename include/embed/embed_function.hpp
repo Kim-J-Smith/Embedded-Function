@@ -1996,7 +1996,7 @@ namespace crtp_mixins {
   public:                                                                   \
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
-    Ret operator()(Args... args) const NOEXCEPT {                           \
+    Ret operator()(Args... args) const V NOEXCEPT {                         \
       using erasure_t = typename Self::erasure_t;                           \
       auto* self_q = static_cast<Self const V*>(this);                      \
       auto* erased = const_cast<erasure_t*>(&(self_q->m_erasure));          \
