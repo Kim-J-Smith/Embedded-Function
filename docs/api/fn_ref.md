@@ -117,7 +117,7 @@ process_data(100, &handle_result);
 | Do not provide default constructor | Yes | Yes | Same
 | Do not provide comparison with `nullptr` | Yes | Yes | Same
 | Constructor is constexpr except from FP | Yes(Since C++20) | Yes | Same
-| Can be constructed from `std::constant_wrapper` | No | Yes | Need C++26
+| Can be constructed from `std::constant_wrapper` | Yes(Since C++26) | Yes | Same
 
 ## See Also
 

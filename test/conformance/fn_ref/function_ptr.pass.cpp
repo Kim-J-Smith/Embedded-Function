@@ -18,6 +18,8 @@
 #include <utility>
 #include <type_traits>
 
+#include "__constant_wrapper.hpp"
+
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 
@@ -111,7 +113,12 @@ struct Int {
   Int(int ii) noexcept : i(ii) {}
 };
 
-static int needs_conversion(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
+/// @bug In Clang 20, when a user creates two static free functions that have the
+/// same name in two compile units and wraps them into two `std::cw<&free_fn>`
+/// objects, a segmentation fault ( @e SIGSEGV ) occurs if one of the
+/// `std::cw<&free_fn>` is called.
+/// Add _3 to avoid the same name.
+static int needs_conversion_3(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
 
 TEST(Conformance_fn_ref, function_ptr_pass) {
   {
@@ -146,16 +153,16 @@ TEST(Conformance_fn_ref, function_ptr_pass) {
   }
 
   {
-    ebd::fn_ref<Int(int, int, int)> f(&needs_conversion);
+    ebd::fn_ref<Int(int, int, int)> f(&needs_conversion_3);
     ASSERT_(f(1, 2, 3).i == 6);
 
-    ebd::fn_ref<Int(int, int, int) const> f2(&needs_conversion);
+    ebd::fn_ref<Int(int, int, int) const> f2(&needs_conversion_3);
     ASSERT_(f2(1, 2, 3).i == 6);
 
-    ebd::fn_ref<Int(int, int, int) noexcept> f3(&needs_conversion);
+    ebd::fn_ref<Int(int, int, int) noexcept> f3(&needs_conversion_3);
     ASSERT_(f3(1, 2, 3).i == 6);
 
-    ebd::fn_ref<Int(int, int, int) const noexcept> f4(&needs_conversion);
+    ebd::fn_ref<Int(int, int, int) const noexcept> f4(&needs_conversion_3);
     ASSERT_(f4(1, 2, 3).i == 6);
 
     {

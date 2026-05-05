@@ -68,7 +68,6 @@ view(42);
 
 ## Notes
 
-- `ebd::basic_fn` is marked as **unstable and experimental** in v2.0.x. The exact set of template parameters and their semantics may change in future versions.
 - Prefer using the predefined aliases (`ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_view`) unless you need a combination not covered by them.
 - The buffer size is automatically aligned to the nearest word size.
 - If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.

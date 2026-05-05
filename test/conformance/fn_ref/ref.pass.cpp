@@ -18,6 +18,8 @@
 #include <utility>
 #include <type_traits>
 
+#include "__constant_wrapper.hpp"
+
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 
@@ -87,7 +89,10 @@ STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void()>, L2&>::value);
 STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void()>, ebd::fn_ref<int()>&>::value);
 
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, L3&>::value);
-// STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>>::value); // CANNOT IMPLEMENT
+#if __cpp_concepts >= 202002L
+  STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>>::value);
+  STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, std::nullptr_t>::value);
+#endif
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, void (A::*)()>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(A*)>, void (A::*)()>::value);
 
@@ -131,7 +136,10 @@ STATIC_ASSERT_(
 STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void(int, double)>, NonConstInvocable&>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double)>, const NonConstInvocable&>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, NonConstInvocable&>::value);
-// STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>>::value); // CANNOT IMPLEMENT
+#if __cpp_concepts >= 202002L
+  STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>>::value);
+  STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, std::nullptr_t>::value);
+#endif
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, void (A::*)()>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(A*) const>, void (A::*)()>::value);
 
@@ -197,7 +205,7 @@ int fn() { return 5; }
 #if __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
   constexpr auto fn_noexcept = []() noexcept { return 6; };
 
-# if 0 && __cpp_lib_function_ref >= 202603L
+#if 1 && __cpp_lib_constant_wrapper >= 202603L
   const auto one = []() noexcept { return 1; };
   const auto two = []() noexcept { return 2; };
 # endif
@@ -349,7 +357,7 @@ TEST(Conformance_fn_ref, ref_pass) {
     }
   }
 #endif
-#if 0 && __cpp_lib_function_ref >= 202603L
+#if 1 && __cpp_lib_constant_wrapper >= 202603L
   {
     // P3961R1 Less double indirection in function_ref
     // double unwrapping

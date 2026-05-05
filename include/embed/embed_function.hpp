@@ -3,7 +3,7 @@
  * 
  * @date        2026-2-7
  * 
- * @version     2.1.0
+ * @version     2.1.1
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -1432,28 +1432,55 @@ inline namespace fn_traits {
 #endif
 
   // https://eel.is/c++draft/func.wrap#ref.ctor .
-  template <typename Sig, typename Func, typename PureSig = typename unwrap_signature<Sig>::pure_sig>
+  template <typename Sig, typename Tuple, 
+    typename PureSig = typename unwrap_signature<Sig>::pure_sig>
   struct is_invocable_using_impl;
-  template <typename Sig, typename Func, typename Ret, typename... Args>
-  struct is_invocable_using_impl<Sig, Func, Ret(Args...)> {
+  template <typename Sig, typename... TArgs, typename Ret, typename... Args>
+  struct is_invocable_using_impl<Sig, std::tuple<TArgs...>, Ret(Args...)> {
     using type = conditional_t<
       unwrap_signature<Sig>::isNoexcept,
-      is_nothrow_invocable_r<Ret, Func, Args...>,
-      is_invocable_r<Ret, Func, Args...>
+      is_nothrow_invocable_r<Ret, TArgs..., Args...>,
+      is_invocable_r<Ret, TArgs..., Args...>
     >;
   };
 
-  template <typename Signature, typename Func>
-  using is_invocable_using_t = typename is_invocable_using_impl<Signature, Func>::type;
+  template <typename Signature, typename... T>
+  using is_invocable_using_t = 
+    typename is_invocable_using_impl<Signature, std::tuple<T...>>::type;
 
-  // Constraints for F&& constructor.
-  template <typename Signature, typename Functor>
-  using is_invocable_using_functor = is_invocable_using_t<
-    Signature, 
-    typename unwrap_signature<Signature>::template add_cv_like<
-      remove_reference_t<Functor>
-    >&
-  >;
+  template <typename T>
+  struct is_constant_wrapper : std::false_type {};
+
+#if __cpp_lib_constant_wrapper >= 202603L
+  template <auto Cw, typename T>
+  struct is_constant_wrapper<std::constant_wrapper<Cw, T>> : std::true_type {};
+#endif
+
+  template <typename Functor, typename FnSample, typename T, typename = void>
+  struct noexcept_qualify_like { using type = T; };
+
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+
+  template <typename T, typename Ret, typename... Args, 
+    std::size_t Buf, typename Sig, 
+    bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow
+  > struct noexcept_qualify_like<
+    Ret(*)(Args...) noexcept, function<Buf, config_package<
+      IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>, T,
+      enable_if_t<IsView || AssertObjectNoThrow>
+  > {
+    static_assert(std::is_same<T, Ret(Args...) const>::value, 
+      "Internal error: 'T' should be same as 'Ret(Args...) const'.");
+    using type = Ret(Args...) const noexcept;
+  };
+
+#endif
+
+  // Add noexcept qualifier if the Functor is noexcept free function, 
+  // and the function wrapper or reference support `noexcept`.
+  template <typename Functor, template <class, std::size_t> class Fn, typename T>
+  using noexcept_qualify_like_t = 
+    typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, T>::type;
 
 } // end namespace fn_traits
 
@@ -1524,6 +1551,25 @@ namespace erasure_type {
 // types for objects that implement the behaviour of invocation.
 namespace invocation {
 
+// Implement invocation for constant_wrapper.
+#if __cpp_lib_constant_wrapper >= 202603L
+# define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                            \
+  struct view_cw {                                                                    \
+    template <typename Cw>                                                            \
+    static Ret invoke(erasure_base_t*, smart_forward_t<Args>... args) NOEXCEPT {      \
+      return invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);                   \
+    }                                                                                 \
+    template <typename Cw, typename Obj>                                              \
+    static Ret invoke(erasure_base_t* base, smart_forward_t<Args>... args) NOEXCEPT { \
+      auto* erased = static_cast<erasure_t*>(base);                                   \
+      C V auto& obj = *erased->template access<Obj*>();                               \
+      return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);              \
+    }                                                                                 \
+  }; /* end view_cw */
+#else
+# define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)
+#endif
+
   template <std::size_t Size, typename Config, typename Signature>
   struct InvokerImpl;
 
@@ -1583,11 +1629,13 @@ namespace invocation {
       }                                                                           \
     };                                                                            \
                                                                                   \
+    EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                             \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_INVOKER_IMPL_DEFINE)
 
 #undef EMBED_DETAIL_INVOKER_IMPL_DEFINE
+#undef EMBED_DETAIL_CW_INVOKER_IMPL
 
 } // end namespace invocation
 
@@ -1885,6 +1933,35 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
     }
+
+#if __cpp_lib_constant_wrapper >= 202603L
+
+    /// @brief Initialize the m_invoker from given std::constant_wrapper.
+
+    template <typename Cw>
+    constexpr void cw_init() noexcept {
+      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw>;
+
+      // Mandates are as follows.
+      if constexpr (sizeof...(Args) > 0 && (requires {
+          typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
+        static_assert(!requires { typename std::constant_wrapper<
+              std::invoke(Cw::value, remove_cvref_t<Args>::value...)>;
+          }, "The argument types of fn_ref are all constexpr-param, and the"
+          " INVOKE result can be wrapped into std::constant_wrapper. This"
+          " means that you can simply use std::invoke(f, args...) instead"
+          " of fn_ref to avoid indirect INVOKE."
+        );
+      }
+    }
+
+    template <typename Cw, typename Obj>
+    constexpr void cw_init(erasure_base_t* target, Obj* obj_ptr) noexcept {
+      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj>;
+      manager_impl_t::template ref_create<>(target, obj_ptr);
+    }
+
+#endif
   };
 
 } // end namespace command
@@ -2184,7 +2261,8 @@ namespace crtp_mixins {
     core_components_impl& operator=(std::nullptr_t)   = delete;
     template <class T, 
       EMBED_DETAIL_REQUIRES(!fn_can_convert<Self, T>::value),
-      EMBED_DETAIL_REQUIRES(!std::is_pointer<T>::value)
+      EMBED_DETAIL_REQUIRES(!std::is_pointer<T>::value),
+      EMBED_DETAIL_REQUIRES(!is_constant_wrapper<T>::value)
     >
     core_components_impl& operator=(T)                = delete;
 
@@ -2347,10 +2425,18 @@ namespace crtp_mixins {
     using CoreComponents::operator=;
 
     // Create an empty function wrapper.
-    function() noexcept : CoreComponents(nullptr) {}
+    function() noexcept
+#if __cpp_concepts >= 202002L
+      requires requires { CoreComponents(nullptr); }
+#endif
+    : CoreComponents(nullptr) {}
 
     // Create an empty function wrapper.
-    function(std::nullptr_t) noexcept : CoreComponents(nullptr) {}
+    function(std::nullptr_t) noexcept
+#if __cpp_concepts >= 202002L
+      requires requires { CoreComponents(nullptr); }
+#endif
+    : CoreComponents(nullptr) {}
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -2418,7 +2504,7 @@ namespace crtp_mixins {
     /// @note Used for function reference only. (NOT function wrapper)
     template <typename Func, 
       EMBED_DETAIL_REQUIRES(std::is_function<Func>::value),
-      EMBED_DETAIL_REQUIRES(is_invocable_using_functor<Signature, Func>::value),
+      EMBED_DETAIL_REQUIRES(is_invocable_using_t<Signature, Func>::value),
       EMBED_DETAIL_REQUIRES(always_false<Func>::value || Config::isView)
     > function(Func* function_ptr) noexcept {
 
@@ -2438,9 +2524,11 @@ namespace crtp_mixins {
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
     /// @note Used for function reference only. (NOT function wrapper)
     template <typename Functor, 
+      typename Tp = remove_reference_t<Functor>,
+      typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>,
       EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value),
-      EMBED_DETAIL_REQUIRES(is_invocable_using_functor<Signature, Functor>::value),
-      EMBED_DETAIL_REQUIRES(!std::is_member_pointer<remove_reference_t<Functor>>::value),
+      EMBED_DETAIL_REQUIRES(is_invocable_using_t<Signature, Tp_cv>::value),
+      EMBED_DETAIL_REQUIRES(!std::is_member_pointer<Tp>::value),
       EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
       EMBED_DETAIL_REQUIRES(always_false<Functor>::value || Config::isView)
     >
@@ -2492,6 +2580,63 @@ namespace crtp_mixins {
         "Internal error: asserts_for_function<...>::value should be always true.");
 
       m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
+    }
+
+#endif
+
+#if __cpp_lib_constant_wrapper >= 202603L
+
+    /// @todo experimental @bug Clang 20 has a bug here.
+    /// In Clang 20, when a user creates two static free functions that have the
+    /// same name in two compile units and wraps them into two `std::cw<&free_fn>`
+    /// objects, a segmentation fault ( @e SIGSEGV ) occurs if one of the
+    /// `std::cw<&free_fn>` is called.
+
+    // Create function reference with given `std::constant_wrapper` param.
+    template <auto CwVal, typename Fn>
+      requires is_invocable_using_t<Signature, const Fn&>::value
+        && Config::isView
+    constexpr function(std::constant_wrapper<CwVal, Fn>) noexcept {
+      using Cw = std::constant_wrapper<CwVal, Fn>;
+      m_command.template cw_init<Cw>();
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
+    }
+
+    // Create function reference with given `std::constant_wrapper` and object params.
+    template <auto CwVal, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
+      requires std::is_rvalue_reference_v<Up&&>
+        && is_invocable_using_t<Signature, const Fn&, 
+          typename unwrap_signature<Signature>::template add_cv_like<Tp>&>::value
+        && Config::isView
+    constexpr function(std::constant_wrapper<CwVal, Fn>, Up&& obj) noexcept {
+      using Cw = std::constant_wrapper<CwVal, Fn>;
+      m_command.template cw_init<Cw>(&m_erasure, std::addressof(obj));
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
+    }
+
+    // Create function reference with given `std::constant_wrapper` and pointer params.
+    template <auto CwVal, typename Fn, typename Tp,
+      typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>
+    >
+      requires std::is_convertible_v<Tp*, Tp_cv*>
+        && is_invocable_using_t<Signature, const Fn&, Tp_cv*>::value
+        && Config::isView
+    constexpr function(std::constant_wrapper<CwVal, Fn>, Tp* obj) noexcept {
+      using Cw = std::constant_wrapper<CwVal, Fn>;
+      m_command.template cw_init<Cw>(&m_erasure, obj);
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
     }
 
 #endif
@@ -2564,118 +2709,6 @@ namespace crtp_mixins {
 
 } // end namespace detail
 
-/**
- * @brief A function object wrapper for copyable and callable objects.
- * 
- * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
- * 
- * @tparam BufferSize - Buffer size. Used for storing the callable object.
- * And the buffer size will be aligned automatically.
- * 
- * @internal `Config` - Configuration package. Used to configure the wrapper.
- *  @arg IsCopyable - Here is `true`, means the callable object must be copyable.
- *  @arg IsView - Here is `false`, which means this is NOT a view.
- *  @arg IsThrowing - Here is `true`, which means the wrapper will throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
- *       to make sure it doesn't throw exceptions when constructing and destructing.
- */
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using fn = detail::function<
-  detail::get_aligned_size<BufferSize>::value, 
-  detail::config_package<
-    /* IsCopyable = */          true, 
-    /* IsView = */              false, 
-    /* IsThrowing = */          true, 
-    /* AssertObjectNoThrow = */ false
-  >, 
-  Signature
->;
-
-/**
- * @brief A function object wrapper for movable and callable objects.
- * 
- * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
- * 
- * @tparam BufferSize - Buffer size. Used for storing the callable object.
- * And the buffer size will be aligned automatically.
- * 
- * @internal `Config` - Configuration package. Used to configure the wrapper.
- *  @arg IsCopyable - Here is `false`, means the callable object can be move-only(copy-only is also OK).
- *  @arg IsView - Here is `false`, which means this is NOT a view.
- *  @arg IsThrowing - Here is `true`, which means the wrapper will throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
- *       to make sure it doesn't throw exceptions when constructing and destructing.
- */
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using unique_fn = detail::function<
-  detail::get_aligned_size<BufferSize>::value, 
-  detail::config_package<
-    /* IsCopyable = */          false, 
-    /* IsView = */              false, 
-    /* IsThrowing = */          true, 
-    /* AssertObjectNoThrow = */ false
-  >, 
-  Signature
->;
-
-/**
- * @brief A @b SAFE function object wrapper for copyable and callable objects.
- * 
- * @throws Strong noexcept guarantee. (ASSERT-NO-THROW)
- * 
- * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
- * 
- * @tparam BufferSize - Buffer size. Used for storing the callable object.
- * And the buffer size will be aligned automatically.
- * 
- * @internal `Config` - Configuration package. Used to configure the wrapper.
- *  @arg IsCopyable - Here is `true`, means the callable object must be copyable.
- *  @arg IsView - Here is `false`, which means this is NOT a view.
- *  @arg IsThrowing - Here is `false`, which means the wrapper will not throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `true`, which means the callable object must
- *       to make sure it doesn't throw exceptions when constructing and destructing.
- */
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using safe_fn = detail::function<
-  detail::get_aligned_size<BufferSize>::value, 
-  detail::config_package<
-    /* IsCopyable = */          true, 
-    /* IsView = */              false, 
-    /* IsThrowing = */          false, 
-    /* AssertObjectNoThrow = */ true
-  >, 
-  Signature
->;
-
-/**
- * @brief A function object view for callable objects.
- * 
- * @tparam Signature - Function signature. Seems like `Ret(Args...)`.
- * 
- * @tparam Unused - Unused.
- * 
- * @internal `Config` - Configuration package. Used to configure the wrapper.
- *  @arg IsCopyable - Here is `true`, but unused because this is a view.
- *  @arg IsView - Here is `true`, which means this is a view.
- *  @arg IsThrowing - Here is `false`, which means the wrapper will not throw std::bad_function_call.
- *  @arg AssertNoThrow - Here is `false`, which means the callable object doesn't need
- *       to make sure it doesn't throw exceptions when constructing and destructing.
- */
-template <typename Signature, std::size_t Unused = 0 /* Unused */>
-using fn_ref = detail::function<
-  detail::default_buffer_size::ref_buf, 
-  detail::config_package<
-    /* IsCopyable = */          true, 
-    /* IsView = */              true, 
-    /* IsThrowing = */          false, 
-    /* AssertObjectNoThrow = */ false
-  >, 
-  Signature
->;
-
-/// @deprecated Use `fn_ref` instead.
-template <typename Signature, std::size_t Unused = 0 /* Unused */>
-using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
 
 /**
  * @brief A basic function wrapper that users can customize.
@@ -2686,7 +2719,8 @@ using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
  * `safe_fn`, `fn_ref`) satisfy the required combination of copyability,
  * view semantics, exception behavior, and no‑throw assertions.
  * 
- * @tparam Signature              Function signature, e.g., `void(int, char)`.
+ * @tparam Signature              Function signature, e.g., `void(int, char)`, 
+ *                                `int(int, float) const`, `void() &&`, etc.
  * 
  * @tparam BufferSize             Size of the internal storage (in bytes).
  *                                The value will be automatically aligned.
@@ -2704,14 +2738,18 @@ using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
  * 
  * @tparam IsThrowing             If `true`, calling an empty wrapper throws
  *                                `std::bad_function_call` (if exceptions are
- *                                enabled); otherwise, `std::terminate` is called.
+ *                                enabled); otherwise, `std::terminate` is 
+ *                                called. When @arg `IsView` is `true`, this 
+ *                                config argument will be ignored cause there 
+ *                                is no empty state in view mode.
  * 
  * @tparam AssertObjectNoThrow    If `true`, the wrapper requires that the
  *                                callable object's construction, destruction,
  *                                copy, and move operations are `noexcept`.
  *                                Violations trigger a `static_assert`.
  * 
- * @note                          Prefer using the predefined aliases unless you
+ * @note                          Prefer using the predefined aliases (`fn`, 
+ *                                `unique_fn`, `safe_fn`, `fn_ref`) unless you
  *                                need a combination not covered by them.
  * 
  * @example                       A move-only, non‑throwing wrapper:
@@ -2742,6 +2780,66 @@ using basic_fn = detail::function<
   >, 
   Signature
 >;
+
+/// @brief A function object wrapper for copyable and callable objects.
+/// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
+/// @tparam BufferSize - Buffer size. Used for storing the callable object.
+/// And the buffer size will be aligned automatically.
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using fn = basic_fn<
+  /* Signature = */           Signature, 
+  /* BufferSize = */          BufferSize,
+  /* IsCopyable = */          true, 
+  /* IsView = */              false, 
+  /* IsThrowing = */          true, 
+  /* AssertObjectNoThrow = */ false
+>;
+
+/// @brief A function object wrapper for movable and callable objects.
+/// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
+/// @tparam BufferSize - Buffer size. Used for storing the callable object.
+/// And the buffer size will be aligned automatically.
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using unique_fn = basic_fn<
+  /* Signature = */           Signature, 
+  /* BufferSize = */          BufferSize,
+  /* IsCopyable = */          false, 
+  /* IsView = */              false, 
+  /* IsThrowing = */          true, 
+  /* AssertObjectNoThrow = */ false
+>;
+
+/// @brief A SAFE function object wrapper for copyable and callable objects.
+/// @throws Strong noexcept guarantee. (ASSERT-NO-THROW)
+/// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
+/// @tparam BufferSize - Buffer size. Used for storing the callable object.
+/// And the buffer size will be aligned automatically.
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using safe_fn = basic_fn<
+  /* Signature = */           Signature, 
+  /* BufferSize = */          BufferSize,
+  /* IsCopyable = */          true, 
+  /* IsView = */              false, 
+  /* IsThrowing = */          false, 
+  /* AssertObjectNoThrow = */ true
+>;
+
+/// @brief A function object reference(view) for callable objects.
+/// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
+/// @tparam Unused - Unused.
+template <typename Signature, std::size_t Unused = 0 /* Unused */>
+using fn_ref = basic_fn<
+  /* Signature = */           Signature, 
+  /* BufferSize = */          detail::default_buffer_size::ref_buf,
+  /* IsCopyable = */          true, 
+  /* IsView = */              true, 
+  /* IsThrowing = */          false, 
+  /* AssertObjectNoThrow = */ false
+>;
+
+/// @deprecated Use `fn_ref` instead.
+template <typename Signature, std::size_t Unused = 0 /* Unused */>
+using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
 
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
@@ -2994,7 +3092,8 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
   typename Functor,
   typename Deduction = decltype(make_fn(std::declval<Functor>())),
-  typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
+  typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
+  typename Signature = detail::noexcept_qualify_like_t<Functor, Fn, RawSig>,
   std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
   typename FnWrapper = Fn<Signature, BufferSize>,
   bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))

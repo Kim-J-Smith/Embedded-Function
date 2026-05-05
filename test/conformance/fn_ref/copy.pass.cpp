@@ -18,6 +18,8 @@
 #include <utility>
 #include <type_traits>
 
+#include "__constant_wrapper.hpp"
+
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 
@@ -36,7 +38,9 @@ STATIC_ASSERT_(std::is_copy_constructible<ebd::fn_ref<void() const>>::value);
   STATIC_ASSERT_(std::is_copy_constructible<ebd::fn_ref<void() const noexcept>>::value);
 #endif
 
-static double f1(int x, double y) noexcept { return x + y; }
+// In clang.bug.pass.cpp, there exists an identical static function 
+// `this_name_should_not_be_changed` (with the same parameters and return type).
+static double this_name_should_not_be_changed(int x, double y) noexcept { return x + y; }
 
 struct Int {
   int i;
@@ -47,13 +51,18 @@ struct NeedsConversion {
   int operator()(Int x, Int y, Int z) const noexcept { return x.i + y.i + z.i; }
 };
 
-static int needs_conversion(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
+/// @bug In Clang 20, when a user creates two static free functions that have the
+/// same name in two compile units and wraps them into two `std::cw<&free_fn>`
+/// objects, a segmentation fault ( @e SIGSEGV ) occurs if one of the
+/// `std::cw<&free_fn>` is called.
+/// Add _2 to avoid the same name.
+static int needs_conversion_2(Int x, Int y, Int z) noexcept { return x.i + y.i + z.i; }
 
 TEST(Conformance_fn_ref, copy_pass) {
-  static_cast<void>(&f1);
-  static_cast<void>(&needs_conversion);
+  static_cast<void>(&this_name_should_not_be_changed);
+  static_cast<void>(&needs_conversion_2);
 
-#if 0 && __cpp_lib_function_ref >= 202603L
+#if __cpp_lib_constant_wrapper >= 202603L
   {
     ebd::fn_ref<void()> f(std::cw<[] {}>);
     auto f2 = f;
@@ -72,7 +81,7 @@ TEST(Conformance_fn_ref, copy_pass) {
   }
   {
     // noexcept
-    ebd::fn_ref<double(int, double) noexcept> f(std::cw<&f1>);
+    ebd::fn_ref<double(int, double) noexcept> f(std::cw<&this_name_should_not_be_changed>);
     auto f2 = f;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2(1, 2.0) == 3.0);
@@ -80,7 +89,7 @@ TEST(Conformance_fn_ref, copy_pass) {
   }
   {
     // const noexcept
-    ebd::fn_ref<double(int, double) const noexcept> f(std::cw<&f1>);
+    ebd::fn_ref<double(int, double) const noexcept> f(std::cw<&this_name_should_not_be_changed>);
     auto f2 = f;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2(1, 2.0) == 3.0);
@@ -114,25 +123,25 @@ TEST(Conformance_fn_ref, copy_pass) {
   }
   {
     // with conversions function pointer
-    ebd::fn_ref<Int(int, int, int)> f(std::cw<&needs_conversion>);
+    ebd::fn_ref<Int(int, int, int)> f(std::cw<&needs_conversion_2>);
     auto f_copy = f;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f_copy(1, 2, 3).i == 6);
     }
 
-    ebd::fn_ref<Int(int, int, int) const> f2(std::cw<&needs_conversion>);
+    ebd::fn_ref<Int(int, int, int) const> f2(std::cw<&needs_conversion_2>);
     auto f2_copy = f2;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2_copy(1, 2, 3).i == 6);
     }
 
-    ebd::fn_ref<Int(int, int, int) noexcept> f3(std::cw<&needs_conversion>);
+    ebd::fn_ref<Int(int, int, int) noexcept> f3(std::cw<&needs_conversion_2>);
     auto f3_copy = f3;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f3_copy(1, 2, 3).i == 6);
     }
 
-    ebd::fn_ref<Int(int, int, int) const noexcept> f4(std::cw<&needs_conversion>);
+    ebd::fn_ref<Int(int, int, int) const noexcept> f4(std::cw<&needs_conversion_2>);
     auto f4_copy = f4;
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f4_copy(1, 2, 3).i == 6);
