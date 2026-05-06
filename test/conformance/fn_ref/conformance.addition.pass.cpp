@@ -9,6 +9,9 @@
 
 #include "test_function.hpp"
 
+template <class Sig, std::size_t Buf>
+using nothrow_fn = ebd::basic_fn<Sig, Buf, true, false, false, false>;
+
 TEST(Conformance_fn_ref, conformance_addition_pass) {
 
   {
@@ -42,7 +45,12 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
   {
     // Auto deduce the noexcept qualifier
     auto f1 = ebd::make_fn<ebd::fn_ref>(ebd_test_free_func_noexcept);
-    static_assert(std::is_same<decltype(f1), ebd::fn_ref<int() const noexcept>>::value, "BUG");
+    static_assert(std::is_same<decltype(f1), ebd::fn_ref<int() const noexcept, sizeof(void(*)())>>::value, "BUG");
+    ASSERT_EQ(f1(), 0);
+
+    auto f2 = ebd::make_fn<nothrow_fn>(ebd_test_free_func_noexcept);
+    static_assert(std::is_same<decltype(f2), nothrow_fn<int() const noexcept, sizeof(void(*)())>>::value, "BUG");
+    ASSERT_EQ(f2(), 0);
   }
 #endif
 

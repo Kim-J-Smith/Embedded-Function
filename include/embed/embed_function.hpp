@@ -1467,7 +1467,7 @@ inline namespace fn_traits {
   > struct noexcept_qualify_like<
     Ret(*)(Args...) noexcept, function<Buf, config_package<
       IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>, T,
-      enable_if_t<IsView || AssertObjectNoThrow>
+      enable_if_t<IsView || !IsThrowing>
   > {
     static_assert(std::is_same<T, Ret(Args...) const>::value, 
       "Internal error: 'T' should be same as 'Ret(Args...) const'.");
