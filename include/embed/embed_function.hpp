@@ -1559,11 +1559,16 @@ namespace invocation {
     static Ret invoke(erasure_base_t*, smart_forward_t<Args>... args) NOEXCEPT {      \
       return invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);                   \
     }                                                                                 \
-    template <typename Cw, typename Obj>                                              \
+    template <typename Cw, typename Obj, bool CallPointer>                            \
     static Ret invoke(erasure_base_t* base, smart_forward_t<Args>... args) NOEXCEPT { \
       auto* erased = static_cast<erasure_t*>(base);                                   \
-      C V auto& obj = *erased->template access<Obj*>();                               \
-      return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);              \
+      if constexpr (CallPointer) {                                                    \
+        C V auto* obj_ptr = erased->template access<Obj*>();                          \
+        return invoke_r<Ret>(Cw::value, obj_ptr, std::forward<Args>(args)...);        \
+      } else {                                                                        \
+        C V auto& obj = *erased->template access<Obj*>();                             \
+        return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);            \
+      }                                                                               \
     }                                                                                 \
   }; /* end view_cw */
 #else
@@ -1955,9 +1960,9 @@ namespace command {
       }
     }
 
-    template <typename Cw, typename Obj>
+    template <typename Cw, bool CallPointer, typename Obj>
     constexpr void cw_init(erasure_base_t* target, Obj* obj_ptr) noexcept {
-      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj>;
+      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj, CallPointer>;
       manager_impl_t::template ref_create<>(target, obj_ptr);
     }
 
@@ -2608,13 +2613,13 @@ namespace crtp_mixins {
 
     // Create function reference with given `std::constant_wrapper` and object params.
     template <auto CwVal, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
-      requires std::is_rvalue_reference_v<Up&&>
+      requires (!std::is_rvalue_reference_v<Up&&>)
         && is_invocable_using_t<Signature, const Fn&, 
           typename unwrap_signature<Signature>::template add_cv_like<Tp>&>::value
         && Config::isView
     constexpr function(std::constant_wrapper<CwVal, Fn>, Up&& obj) noexcept {
       using Cw = std::constant_wrapper<CwVal, Fn>;
-      m_command.template cw_init<Cw>(&m_erasure, std::addressof(obj));
+      m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
@@ -2631,7 +2636,7 @@ namespace crtp_mixins {
         && Config::isView
     constexpr function(std::constant_wrapper<CwVal, Fn>, Tp* obj) noexcept {
       using Cw = std::constant_wrapper<CwVal, Fn>;
-      m_command.template cw_init<Cw>(&m_erasure, obj);
+      m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
