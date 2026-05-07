@@ -249,7 +249,7 @@
 # define EMBED_DETAIL_REQUIRES_END(...) EMBED_DETAIL_REQUIRES(__VA_ARGS__)>
 #else
 # define EMBED_DETAIL_TEMPLATE_BEGIN(...) template <__VA_ARGS__>
-# define EMBED_DETAIL_REQUIRES_END(...) requires(__VA_ARGS__)
+# define EMBED_DETAIL_REQUIRES_END(...) requires __VA_ARGS__
 #endif
 
 #define EMBED_DETAIL_TEXT(text) EMBED_DETAIL_TEXT_IMPL(text)
@@ -2887,7 +2887,7 @@ EMBED_DETAIL_REQUIRES_END(
   // [Require] Functor must be movable.
   std::is_move_constructible<Functor>::value
   // [Require] Functor must be non-copyable.
-  && !std::is_copy_constructible<Functor>::value
+  && (!std::is_copy_constructible<Functor>::value)
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
 )
