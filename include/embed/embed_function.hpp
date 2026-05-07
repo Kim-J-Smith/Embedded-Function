@@ -1444,6 +1444,7 @@ inline namespace fn_traits {
     >;
   };
 
+  // [func.wrap.ref.ctor]/1 is-invokable-using
   template <typename Signature, typename... T>
   using is_invocable_using_t = 
     typename is_invocable_using_impl<Signature, std::tuple<T...>>::type;
@@ -2829,7 +2830,7 @@ using safe_fn = basic_fn<
   /* AssertObjectNoThrow = */ true
 >;
 
-/// @brief A function object reference(view) for callable objects.
+/// @brief A non-owning polymorphic function wrapper.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam Unused - Unused.
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
