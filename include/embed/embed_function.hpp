@@ -279,11 +279,11 @@ namespace ebd { namespace detail {
 
 #if defined(__OPTIMIZE__) || defined(NDEBUG)
 # define EMBED_DETAIL_FAIL_MESSAGE(message)
-# define EMBED_DETAIL_ASSERT_MESSAGE(cond, message)
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #else
 # define EMBED_DETAIL_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_TRACE_EMPTY_CALL(\
   __FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); } while(0)
-# define EMBED_DETAIL_ASSERT_MESSAGE(cond, message) do { if (!(cond)) { \
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message) do { if (!(expression)) { \
   EMBED_FN_HOOK_TRACE_EMPTY_CALL(__FILE__ ":" \
   EMBED_DETAIL_TEXT(__LINE__) " " message); } } while(0)
 #endif
@@ -2642,6 +2642,10 @@ namespace crtp_mixins {
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
+      if constexpr (std::is_member_pointer_v<Fn>) {
+        EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, 
+          "[Embedded Function]: The object pointer shouldn't be nullptr.");
       }
     }
 
