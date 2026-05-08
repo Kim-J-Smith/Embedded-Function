@@ -24,8 +24,8 @@
 /// @b EMBED_FN_CONFIG_UNDEF_MACROS
 /// If this macro is defined, EMBED_* macros will be undefined at the end of this file.
 
-/// @b EMBED_FN_HOOK_TRACE_EMPTY_CALL(message)
-/// If this macro is defined, it will be called in function `throw_or_terminate()` in debug mode.
+/// @b EMBED_FN_HOOK_DEBUG(message)
+/// If this macro is defined, it will be called to print debug message in debug mode.
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
@@ -273,19 +273,17 @@ namespace ebd { namespace detail {
 # define EMBED_DETAIL_ALIAS
 #endif
 
-#ifndef EMBED_FN_HOOK_TRACE_EMPTY_CALL
-# define EMBED_FN_HOOK_TRACE_EMPTY_CALL(message)
-#endif
-
-#if defined(__OPTIMIZE__) || defined(NDEBUG)
+#if defined(__OPTIMIZE__) || defined(NDEBUG) || !defined(EMBED_FN_HOOK_DEBUG)
 # define EMBED_DETAIL_FAIL_MESSAGE(message)
 # define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #else
-# define EMBED_DETAIL_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_TRACE_EMPTY_CALL(\
+# define EMBED_DETAIL_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_DEBUG(\
   __FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); } while(0)
-# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message) do { if (!(expression)) { \
-  EMBED_FN_HOOK_TRACE_EMPTY_CALL(__FILE__ ":" \
-  EMBED_DETAIL_TEXT(__LINE__) " " message); } } while(0)
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message) \
+  do { if (!(expression)) { \
+    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); \
+    std::terminate(); \
+  } } while(0)
 #endif
 
 #if __cpp_lib_unreachable >= 202202L
@@ -3192,7 +3190,7 @@ EMBED_INLINE void make_fn(...) noexcept {
 # undef EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
 # undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
-# undef EMBED_FN_HOOK_TRACE_EMPTY_CALL
+# undef EMBED_FN_HOOK_DEBUG
 #endif
 
 #if defined(_MSC_VER)
