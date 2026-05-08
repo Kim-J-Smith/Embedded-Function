@@ -2485,13 +2485,14 @@ namespace crtp_mixins {
     /// @brief Builds a Fn that targets a copy/move of the incoming function object.
     /// @param functor - A callable object with parameters of type `Args...`
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
-    /// @note Used for function wrapper only. (NOT function reference)
-    template <typename Functor, 
-      EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
-      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value),
-      EMBED_DETAIL_REQUIRES(!is_in_place_type<decay_t<Functor>>::value),
-      EMBED_DETAIL_REQUIRES(always_false<Functor>::value || !Config::isView)
-    > function(Functor&& functor)
+    /// @note Used for function wrapper only. (OWNING)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
+    EMBED_DETAIL_REQUIRES_END(
+      (!fn_can_convert<function, Functor>::value)
+      && (!is_self<Functor, function>::value)
+      && (!is_in_place_type<decay_t<Functor>>::value)
+      && (!Config::isView)
+    ) function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
       static_assert(asserts_for_function<
@@ -2507,12 +2508,13 @@ namespace crtp_mixins {
 
     /// @brief Builds a function reference from function pointer.
     /// @param function_ptr - A function pointer that is NOT a null pointer.
-    /// @note Used for function reference only. (NOT function wrapper)
-    template <typename Func, 
-      EMBED_DETAIL_REQUIRES(std::is_function<Func>::value),
-      EMBED_DETAIL_REQUIRES(is_invocable_using_t<Signature, Func>::value),
-      EMBED_DETAIL_REQUIRES(always_false<Func>::value || Config::isView)
-    > function(Func* function_ptr) noexcept {
+    /// @note Used for function reference only. (NON-OWNING)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Func)
+    EMBED_DETAIL_REQUIRES_END(
+      std::is_function<Func>::value
+      && is_invocable_using_t<Signature, Func>::value
+      && Config::isView
+    ) function(Func* function_ptr) noexcept {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Func*, Func*&&, erasure_t>::value,
@@ -2528,17 +2530,17 @@ namespace crtp_mixins {
     /// @brief Builds a function reference from given functor.
     /// @param functor - A callable object with parameters of type `Args...`
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
-    /// @note Used for function reference only. (NOT function wrapper)
-    template <typename Functor, 
+    /// @note Used for function reference only. (NON-OWNING)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, 
       typename Tp = remove_reference_t<Functor>,
-      typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>,
-      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value),
-      EMBED_DETAIL_REQUIRES(is_invocable_using_t<Signature, Tp_cv>::value),
-      EMBED_DETAIL_REQUIRES(!std::is_member_pointer<Tp>::value),
-      EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
-      EMBED_DETAIL_REQUIRES(always_false<Functor>::value || Config::isView)
-    >
-    EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
+      typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>)
+    EMBED_DETAIL_REQUIRES_END(
+      (!is_self<Functor, function>::value)
+      && is_invocable_using_t<Signature, Tp_cv>::value
+      && (!std::is_member_pointer<Tp>::value)
+      && (!fn_can_convert<function, Functor>::value)
+      && Config::isView
+    ) EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
     : MemberVariableBase(nullptr) {
 
       static_assert(asserts_for_function<
