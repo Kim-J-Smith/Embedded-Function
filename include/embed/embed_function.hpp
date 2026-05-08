@@ -2668,15 +2668,30 @@ namespace crtp_mixins {
 
     // Assign another `function` object to this object.
     // Enable if the `function` object can be converted to the current object.
-    template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      EMBED_DETAIL_REQUIRES(fn_can_convert<
-        function, function<OtherSize, OtherCfg, OtherSig>
-      >::value)
-    >
+    EMBED_DETAIL_TEMPLATE_BEGIN(
+      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
+    EMBED_DETAIL_REQUIRES_END(
+      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
+      && (!Config::isView) // OWNING
+    )
     function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
     && (OtherCfg::assertNoThrow || OtherCfg::isView)) {
       function(other).swap(*this);
+      return *this;
+    }
+
+    // Assign another `function` object to this object.
+    // Enable if the `function` object can be converted to the current object.
+    EMBED_DETAIL_TEMPLATE_BEGIN(
+      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
+    EMBED_DETAIL_REQUIRES_END(
+      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
+      && Config::isView && OtherCfg::isView // NON-OWNING
+    )
+    function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other) noexcept {
+      std::memcpy(&m_erasure, &other.m_erasure, default_buffer_size::ref_buf);
+      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
       return *this;
     }
   };
