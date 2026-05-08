@@ -1862,9 +1862,9 @@ namespace command {
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     void init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
+      manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
-      manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -1873,10 +1873,10 @@ namespace command {
     template <typename Functor, typename DecFunctor = decay_t<Functor>, typename... CArgs>
     void emplace_init(erasure_base_t* target, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<DecFunctor, CArgs&&...>::value) {
-      m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
-      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
       manager_impl_t::template emplace_create<DecFunctor>(
         target, std::forward<CArgs>(args)...);
+      m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
+      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
     }
 
 #endif
@@ -1926,8 +1926,8 @@ namespace command {
     init(erasure_base_t* target, Functor&& obj) noexcept {
       // Since the `is_stored_origin<Functor>` is true, then it must
       // be function pointer which have nothing about ownership.
-      m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
+      m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
     // Enable if Functor is stored by pointer.
@@ -1936,8 +1936,8 @@ namespace command {
     init(erasure_base_t* target, Functor&& obj) noexcept {
       static_assert(!std::is_rvalue_reference<Functor&&>::value,
         "function in view mode cannot be initialized with rvalue reference.");
-      m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
+      m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
 #if __cpp_lib_constant_wrapper >= 202603L
@@ -1963,8 +1963,8 @@ namespace command {
 
     template <typename Cw, bool CallPointer, typename Obj>
     constexpr void cw_init(erasure_base_t* target, Obj* obj_ptr) noexcept {
-      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj, CallPointer>;
       manager_impl_t::template ref_create<>(target, obj_ptr);
+      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj, CallPointer>;
     }
 
 #endif
