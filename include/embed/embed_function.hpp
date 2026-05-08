@@ -1595,7 +1595,7 @@ namespace invocation {
     struct empty {                                                                \
       static Ret invoke(erasure_base_t*, smart_forward_t<Args>...) {              \
         throw_or_terminate<Config::isThrowing>();                                 \
-        EMBED_DETAIL_UNREACHABLE();                                               \
+        /* Unreachable: throw_or_terminate() is [[noreturn]] */                   \
       }                                                                           \
     };                                                                            \
                                                                                   \
