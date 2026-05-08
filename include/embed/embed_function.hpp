@@ -2265,12 +2265,12 @@ namespace crtp_mixins {
     EMBED_CXX14_CONSTEXPR explicit operator bool()    = delete;
     void clear()                                      = delete;
     core_components_impl& operator=(std::nullptr_t)   = delete;
-    template <class T, 
-      EMBED_DETAIL_REQUIRES(!fn_can_convert<Self, T>::value),
-      EMBED_DETAIL_REQUIRES(!std::is_pointer<T>::value),
-      EMBED_DETAIL_REQUIRES(!is_constant_wrapper<T>::value)
-    >
-    core_components_impl& operator=(T)                = delete;
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
+    EMBED_DETAIL_REQUIRES_END(
+      (!fn_can_convert<Self, T>::value)
+      && (!std::is_pointer<T>::value)
+      && (!is_constant_wrapper<T>::value)
+    ) core_components_impl& operator=(T)              = delete;
 
     // Swap the contents of two function objects. (View mode)
     void swap(core_components_impl& fn_raw) noexcept {
@@ -2448,8 +2448,8 @@ namespace crtp_mixins {
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
       EMBED_DETAIL_REQUIRES(fn_can_convert<
-        function, function<OtherSize, OtherCfg, OtherSig>
-      >::value && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable)
+        function, function<OtherSize, OtherCfg, OtherSig>>::value
+        && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable)
     >
     function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept((Config::assertNoThrow || Config::isView)
@@ -2469,8 +2469,7 @@ namespace crtp_mixins {
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
     template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
       EMBED_DETAIL_REQUIRES(fn_can_convert<
-        function, function<OtherSize, OtherCfg, OtherSig>
-      >::value),
+        function, function<OtherSize, OtherCfg, OtherSig>>::value),
       EMBED_DETAIL_REQUIRES(always_false<OtherCfg>::value || !Config::isView)
     >
     function(function<OtherSize, OtherCfg, OtherSig>&& other)
@@ -2555,11 +2554,12 @@ namespace crtp_mixins {
 
     /// @brief In-place constructs the Fn within the internal storage with specified arguments.
     /// @param args - The arguments for constructing the Fn.
-    template <typename Fn, typename... CArgs,
-      EMBED_DETAIL_REQUIRES(always_false<Fn>::value || !Config::isView),
-      EMBED_DETAIL_REQUIRES(std::is_constructible<Fn, CArgs...>::value),
-      EMBED_DETAIL_REQUIRES(is_callable_functor<Fn, Signature>::value)
-    > explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename... CArgs)
+    EMBED_DETAIL_REQUIRES_END(
+      std::is_constructible<Fn, CArgs...>::value
+      && is_callable_functor<Fn, Signature>::value
+      && (!Config::isView)
+    ) explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
 
       static_assert(std::is_same<Fn, decay_t<Fn>>::value,
@@ -2574,11 +2574,12 @@ namespace crtp_mixins {
     /// @brief In-place constructs the Fn within the internal storage with init_list and specified arguments.
     /// @param il - The initializer_list for constructing the Fn.
     /// @param args - The arguments for constructing the Fn.
-    template <typename Fn, typename U, typename... CArgs,
-      EMBED_DETAIL_REQUIRES(always_false<Fn>::value || !Config::isView),
-      EMBED_DETAIL_REQUIRES(std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value),
-      EMBED_DETAIL_REQUIRES(is_callable_functor<Fn, Signature>::value)
-    > explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename U, typename... CArgs)
+    EMBED_DETAIL_REQUIRES_END(
+      std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
+      && is_callable_functor<Fn, Signature>::value
+      && (!Config::isView)
+    ) explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
 
       static_assert(std::is_same<Fn, decay_t<Fn>>::value,
@@ -2654,11 +2655,12 @@ namespace crtp_mixins {
 #endif
 
     // Assign a callable object to the object.
-    template <typename Functor, 
-      EMBED_DETAIL_REQUIRES(!fn_can_convert<function, Functor>::value),
-      EMBED_DETAIL_REQUIRES(!is_self<Functor, function>::value),
-      EMBED_DETAIL_REQUIRES(always_false<Functor>::value || !Config::isView)
-    > function& operator=(Functor&& fn)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
+    EMBED_DETAIL_REQUIRES_END(
+      (!fn_can_convert<function, Functor>::value)
+      && (!is_self<Functor, function>::value)
+      && (!Config::isView)
+    ) function& operator=(Functor&& fn)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
       function(std::forward<Functor>(fn)).swap(*this);
       return *this;
