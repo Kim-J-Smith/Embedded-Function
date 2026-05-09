@@ -100,8 +100,19 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     auto rx = get_ref();
     ebd::fn_ref<int(int)> f1(std::cw<&ebd_test_member_fn::get_var_and_increase>, rx);
 
-    // Should this be allowed? get_var_and_increase() is not `const`.
-    // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html#Why-stop-at-function_ref-as-opposed-to-extending-to-reference_wrapper .
+    // Should this be allowed? `get_var_and_increase` is a non-const member function,
+    // but `f2` expects a const-qualified function type `int(int) const`.
+    // See P3961r1 (Why stop at function_ref as opposed to extending to reference_wrapper).
+    // <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html#Why-stop-at-function_ref-as-opposed-to-extending-to-reference_wrapper>
+    //
+    // In embed_function.hpp line 1568: `C V auto& obj = *erased->template access<Obj*>()`.
+    // Here `Obj` is `std::reference_wrapper<ebd_test_member_fn>`, so the underlying
+    // `ebd_test_member_fn` is not const-qualified. This would allow calling a non-const
+    // member function through a const-qualified function_ref, which violates const-correctness.
+    // Therefore, P3961r1 recommends that such construction be disallowed.
+    //
+    // TODO: C++26 draft has not adopted this recommendation because they want to see
+    // evidence in real-world code to justify this change. (2026.5.9)
     ebd::fn_ref<int(int) const> f2(std::cw<&ebd_test_member_fn::get_var_and_increase>, rx);
   }
 
