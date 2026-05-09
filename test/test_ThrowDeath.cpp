@@ -66,7 +66,7 @@ TEST(ThrowDeath, mix_throw_and_death) {
 }
 
 #if !defined(_MSC_VER)
-// ThrowDeath[2]
+// ThrowDeath[3]
 struct ThrowDeath_must_fail {
     ThrowDeath_must_fail() = default;
     ~ThrowDeath_must_fail() noexcept(false) {

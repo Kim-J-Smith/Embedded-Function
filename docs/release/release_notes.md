@@ -1,13 +1,17 @@
-## New
+## Added
 
-- Provide a stable `basic_fn` for user customization.
-- Support `std::constant_wrapper` (C++26) for `fn_ref`.
-- Make `make_fn()` automatically deduce the `noexcept` specification of the signature for `fn_ref` from the function pointer. (Since C++17)
+- Specialized assignment operators for `fn_ref` to eliminate unnecessary
+  `swap()` overhead.
 
-## Fix
+## Fixed
 
-- Fix a bug in the constructor of `fn_ref`.
+- Corrected template argument deduction in `fn_ref` constructors accepting
+  `std::constant_wrapper`.
+
+## Changed
+
+- Renamed hook macro `EMBED_FN_HOOK_TRACE_EMPTY_CALL` to `EMBED_FN_HOOK_DEBUG`.
 
 ## Notes
 
-- The support of `std::constant_wrapper` is experimental in v2.1.1.
+- `std::constant_wrapper` support is experimental as of v2.1.2.

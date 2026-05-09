@@ -31,6 +31,8 @@ inline int ebd_test_free_func_iii_add(int a, int b) { return a + b; }
 inline float ebd_test_free_func_fff_mul(float a, float b) { return a * b; }
 
 inline int ebd_test_free_func_noexcept() noexcept { return 0; }
+inline int ebd_test_free_func_maythrow() noexcept(false) { return 1; }
+inline int ebd_test_free_func_noexcept_2() noexcept { return 2; }
 
 enum OverloadRes {
     OVL_VOID = 0,

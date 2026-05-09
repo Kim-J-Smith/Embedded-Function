@@ -2,7 +2,9 @@
 
 ## Overview
 
-`ebd::fn_ref` is a function object reference(view) for callable objects. It is an alias of `ebd::detail::function` with specific configuration parameters optimized for non-owning views, similar to `std::function_ref`.
+The `ebd::fn_ref` class template is a non-owning call wrapper, that refers to a bound object. Using fn_ref outside of the lifetime of the bound object has *undefined behavior*. It supports const-qualification, volatile-qualification and no-throw guarantees. The qualifications and exception-specification of the signature are respected when invoking the reference function.
+
+It is an alias of `ebd::detail::function` with specific configuration parameters optimized for non-owning views, similar to `std::function_ref`.
 
 ## Template Parameters
 
