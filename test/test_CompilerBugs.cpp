@@ -39,9 +39,9 @@ TEST(CompilerBugs, GCC_Bug_106067) {
 
 TEST(CompilerBugs, GCC_Bug_51452) {
     auto CanConv = std::is_constructible<
-        ebd::fn<int(int)>, ebd_test_operator_unambiguous&>::value;
+        ebd::fn<int(int) &>, ebd_test_operator_unambiguous&>::value;
     auto NoThrow = std::is_nothrow_constructible<
-        ebd::fn<int(int)>, ebd_test_operator_unambiguous&>::value;
+        ebd::fn<int(int) &>, ebd_test_operator_unambiguous&>::value;
 
     EXPECT_EQ(CanConv == true, true);
     EXPECT_EQ(NoThrow == true, EBD_RES_EXPECT);
