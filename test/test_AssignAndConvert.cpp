@@ -23,12 +23,12 @@ TEST(AssignAndConvert, small_to_big) {
     ASSERT_EQ(uf_big == nullptr, false);
     ASSERT_EQ(uf_big(23665, 666), 23665 + 666);
 
-    ebd::safe_fn<int(int, int) const EBD_TEST_NOEXCEPT, s_buf> sf_small = 
-        ebd_test_free_func_iii_add;
+    ebd::safe_fn<int() const EBD_TEST_NOEXCEPT, s_buf> sf_small = 
+        ebd_test_free_func_noexcept;
     ASSERT_EQ(sf_small != nullptr, true);
-    ebd::safe_fn<int(int, int) const EBD_TEST_NOEXCEPT, b_buf> sf_big = sf_small;
+    ebd::safe_fn<int() const EBD_TEST_NOEXCEPT, b_buf> sf_big = sf_small;
     ASSERT_EQ(sf_big != nullptr, true);
-    ASSERT_EQ(sf_big(1234, 5678), 1234 + 5678);
+    ASSERT_EQ(sf_big(), 0);
 
     auto small = ebd::make_fn<int(int)>([](int v){ return v * 2; });
     using Big = ebd::fn<int(int), 8 * sizeof(void*)>;

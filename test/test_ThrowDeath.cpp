@@ -56,7 +56,7 @@ TEST(ThrowDeath, mix_throw_and_death) {
     f2 = nullptr;
     EBD_EXPECT_THROW(f2(2), std::bad_function_call);
 
-    ebd::safe_fn<int(char) const EBD_TEST_NOEXCEPT> f3 =
+    ebd::safe_fn<int(char) const> f3 = 
         static_cast<int(*)(char)>(&ebd_test_member_fn::static_mem_fn_overload);
     ASSERT_EQ(f3 == nullptr, false);
     ASSERT_EQ(f3('W'), OVL_CHAR);

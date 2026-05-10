@@ -119,7 +119,7 @@ public:
         return self.m_member_var;
     }
 #else
-    int operator()(int change) {
+    int operator()(int change) & {
         m_member_var += change;
         return m_member_var; 
     }

@@ -321,7 +321,7 @@ TEST(InitFunction, fn_memberFunction_overload) {
 
 // InitFunction[18]
 TEST(InitFunction, fn_Functor) { 
-    ebd::fn<int(int)> f = ebd_test_operator_unambiguous{};
+    ebd::fn<int(int) &> f = ebd_test_operator_unambiguous{};
     ASSERT_EQ(f.is_empty(), false);
     ASSERT_EQ(f(1), 1);
     ASSERT_EQ(f(2), 3);
