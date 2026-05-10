@@ -850,6 +850,8 @@ inline namespace fn_traits {
 
     template <typename U>
     using add_cv_like = U;
+    template <typename U>
+    using add_cvref_like = U;
   };
 
 #define EMBED_DETAIL_UNWRAP_SIGNATURE_DEFINE(C, V, REF, NOEXCEPT)             \
@@ -871,6 +873,8 @@ inline namespace fn_traits {
                                                                               \
     template <typename T>                                                     \
     using add_cv_like = T C V;                                                \
+    template <typename T>                                                     \
+    using add_cvref_like = T C V REF;                                         \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_UNWRAP_SIGNATURE_DEFINE)
@@ -1041,17 +1045,35 @@ inline namespace fn_traits {
   struct invoke_result_package<Fn, args_package<Args...>>
   : public invoke_result<Fn, Args...> {};
 
+  // [func.wrap.move.ctor]/1
+  template <typename Signature, typename Fn, typename Ret, typename ArgsPackage>
+  struct is_callable_from_pkg;
+
+  template <typename Signature, typename Fn, typename Ret, typename... Args>
+  struct is_callable_from_pkg<Signature, Fn, Ret, args_package<Args...>> {
+    using unwrap_sig  = unwrap_signature<Signature>;
+    using f_cv        = typename unwrap_sig::template add_cv_like<Fn>;
+    using f_cvref     = typename unwrap_sig::template add_cvref_like<Fn>;
+    using f_inv_quals = conditional_t<unwrap_sig::hasRRef, f_cv&&, f_cv&>;
+
+    static constexpr bool value = unwrap_sig::isNoexcept
+      ? is_nothrow_invocable_r<Ret, f_cvref, Args...>::value
+        && is_nothrow_invocable_r<Ret, f_inv_quals, Args...>::value
+      : is_invocable_r<Ret, f_cvref, Args...>::value
+        && is_invocable_r<Ret, f_inv_quals, Args...>::value;
+  };
+
   // Check the functor is callable with given arguments.
+  // [func.wrap.move.ctor]/1
   template <typename Functor, typename Signature>
-  struct is_callable_functor {
+  struct is_callable_from {
     using unwrap_sig = unwrap_signature<Signature>;
     using ret       = typename unwrap_sig::ret;
     using args_pack = typename unwrap_sig::args;
     using dec_func  = decay_t<Functor>;
-    using cv_func   = typename unwrap_sig::template add_cv_like<dec_func>;
-    using callee    = conditional_t<unwrap_sig::hasRRef, cv_func&&, cv_func&>;
-    using res       = invoke_result_package<callee, args_pack>;
-    static constexpr bool value = is_invocable_impl<res, ret>::type::value;
+
+    static constexpr bool value = 
+      is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
   };
 
   // Check the align and size of functor.
@@ -1298,7 +1320,7 @@ inline namespace fn_traits {
   };
 
   // Check the qualifier of signature and functor is matching.
-  // The verification of the "&" and "&&" qualifier is in trait `is_callable_functor`.
+  // The verification of the "&" and "&&" qualifier is in trait `is_callable_from`.
   // Here is the verification of "const" and "volatile" qualifier.
   template <typename Signature, typename Functor>
   struct qualifier_of_signature_match_functor {
@@ -1389,8 +1411,6 @@ inline namespace fn_traits {
   template <std::size_t BufferSize, typename Config, typename Signature,
             typename Functor, typename Object, typename ErasureT>
   struct asserts_for_function : public std::true_type {
-    static_assert(is_callable_functor<Functor, Signature>::value,
-      "The functor is NOT callable with given arguments.");
 
     static_assert(align_size_is_ok<Functor, Config, BufferSize, ErasureT>::value,
       "The size of Functor is too large, and the BufferSize is too small."
@@ -2484,6 +2504,7 @@ namespace crtp_mixins {
       (!fn_can_convert<function, Functor>::value)
       && (!is_self<Functor, function>::value)
       && (!is_in_place_type<decay_t<Functor>>::value)
+      && is_callable_from<Functor, Signature>::value
       && (!Config::isView)
     ) function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
@@ -2551,7 +2572,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename... CArgs)
     EMBED_DETAIL_REQUIRES_END(
       std::is_constructible<Fn, CArgs...>::value
-      && is_callable_functor<Fn, Signature>::value
+      && is_callable_from<Fn, Signature>::value
       && (!Config::isView)
     ) explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
@@ -2571,7 +2592,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename U, typename... CArgs)
     EMBED_DETAIL_REQUIRES_END(
       std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
-      && is_callable_functor<Fn, Signature>::value
+      && is_callable_from<Fn, Signature>::value
       && (!Config::isView)
     ) explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
