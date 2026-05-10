@@ -993,14 +993,10 @@ inline namespace fn_traits {
         && unwrap_to::isNoexcept < unwrap_from::isNoexcept
       );
 
-    static constexpr bool const_qualifier_ok = 
-      (unwrap_to::hasConst <= unwrap_from::hasConst)
-      || (CfgTo::isView == true && CfgFrom::isView == true);
-
     /// TODO: Finalize the details of the conversion of the qualifiers
     // Check the qualifiers.
     static constexpr bool qualifier_ok = 
-      const_qualifier_ok
+      (unwrap_to::hasConst <= unwrap_from::hasConst)
       && (unwrap_to::hasVolatile == unwrap_from::hasVolatile)
       && (unwrap_to::hasRRef == unwrap_from::hasRRef)
       && (unwrap_to::hasLRef == unwrap_from::hasLRef)
@@ -2533,7 +2529,7 @@ namespace crtp_mixins {
       typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>)
     EMBED_DETAIL_REQUIRES_END(
       (!is_self<Functor, function>::value)
-      && is_invocable_using_t<Signature, Tp_cv>::value
+      && is_invocable_using_t<Signature, Tp_cv&>::value
       && (!std::is_member_pointer<Tp>::value)
       && (!fn_can_convert<function, Functor>::value)
       && Config::isView
