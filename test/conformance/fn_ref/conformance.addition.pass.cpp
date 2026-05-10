@@ -127,4 +127,11 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
   }
 
 #endif
+
+  {
+    ebd_test_operator_unambiguous lref_callable{};
+    ebd::fn_ref<int(int)> f = lref_callable;
+    ASSERT_EQ(f(1), 1);
+    ASSERT_EQ(f(1), 2);
+  }
 }

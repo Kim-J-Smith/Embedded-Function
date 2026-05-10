@@ -139,3 +139,45 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -O1
   )
 endif()
+
+# Fail tests
+file(
+  GLOB EMBED_FUNCTION_FAIL_TEST_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn_ref/fail/*.fail.cpp"
+)
+
+set(FAIL_TEST_CMAKE_FLAGS "")
+
+list(APPEND ${FAIL_TEST_CMAKE_FLAGS} "-DINCLUDE_DIRECTORIES=${INCLUDE_DIRECTORIES}")
+list(APPEND ${FAIL_TEST_CMAKE_FLAGS} "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
+list(APPEND ${FAIL_TEST_CMAKE_FLAGS} "-DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}")
+list(APPEND ${FAIL_TEST_CMAKE_FLAGS} "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}")
+
+message(STATUS "===---------------------- FAIL TEST BEGIN ----------------------===")
+
+foreach(FAIL_TEST_SRC ${EMBED_FUNCTION_FAIL_TEST_FILES})
+  get_filename_component(FAIL_TEST_NAME ${FAIL_TEST_SRC} NAME_WE)
+  get_filename_component(FAIL_TEST_FILE ${FAIL_TEST_SRC} NAME)
+
+  try_compile(
+    COMPILE_RESULT
+    ${CMAKE_CURRENT_BINARY_DIR}/fail_test/${FAIL_TEST_NAME}
+    SOURCES ${FAIL_TEST_SRC}
+    CMAKE_FLAGS ${FAIL_TEST_CMAKE_FLAGS}
+  )
+
+  if(${COMPILE_RESULT})
+    message(
+      FATAL_ERROR
+      "[  ERROR   ]: ${FAIL_TEST_FILE} passed but it should be rejected!"
+      " See ${FAIL_TEST_SRC}"
+    )
+  else()
+    message(
+      STATUS
+      "[  PASSED  ]: ${FAIL_TEST_FILE} correctly rejected"
+    )
+  endif()
+endforeach()
+
+message(STATUS "===----------------------- FAIL TEST END -----------------------===")
