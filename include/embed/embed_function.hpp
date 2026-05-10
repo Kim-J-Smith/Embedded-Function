@@ -2533,7 +2533,7 @@ namespace crtp_mixins {
       typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>)
     EMBED_DETAIL_REQUIRES_END(
       (!is_self<Functor, function>::value)
-      && is_invocable_using_t<Signature, Tp_cv>::value
+      && is_invocable_using_t<Signature, Tp_cv&>::value
       && (!std::is_member_pointer<Tp>::value)
       && (!fn_can_convert<function, Functor>::value)
       && Config::isView
