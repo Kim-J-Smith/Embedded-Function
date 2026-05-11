@@ -23,6 +23,20 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   )
 endif()
 
+
+# test-use macros
+set(
+  TEST_USE_MACROS ${TEST_USE_MACROS}
+  # "EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER"
+  # "EMBED_FN_CONFIG_DISABLE_SMART_FORWARD"
+  # "EMBED_FN_CONFIG_UNDEF_MACROS"
+  # "EMBED_FN_HOOK_DEBUG(msg)"
+  # "EBD_TEST_USE_FALLBACK"
+  # "EBD_TEST_TRY_BUG__GCC_106067"
+  # "EBD_TEST_TRY_BUG__Clang_SameNameStaticFunction" # Clang20 - C++23/26
+)
+add_compile_definitions(${TEST_USE_MACROS})
+
 # Include header search path
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -162,6 +176,15 @@ foreach(inc_directory ${PATH_INCLUDES})
     set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -I${inc_directory}")
   endif()
 endforeach()
+
+foreach(macros_ ${TEST_USE_MACROS})
+  if(MSVC)
+    set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} /D${macros_}")
+  else()
+    set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -D${macros_}")
+  endif()
+endforeach()
+
 
 message(STATUS "===---------------------- FAIL TEST BEGIN ----------------------===")
 message(STATUS "Flags: ${FAIL_TEST_CMAKE_FLAGS}")
