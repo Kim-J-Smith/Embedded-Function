@@ -8,9 +8,12 @@
 
 <p align="center">
   <a href="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml">
-    <img src="https://img.shields.io/badge/GCC_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="gcc-C++11/14/17/20/23 - passing">
-    <img src="https://img.shields.io/badge/Clang_C++11/14/17/20/23-passing-brightgreen?style=flat" alt="clang-C++11/14/17/20/23 - passing">
-    <img src="https://img.shields.io/badge/MSVC_C++14/17/20/23-passing-brightgreen?style=flat" alt="msvc-C++14/17/20/23 - passing">
+    <img src="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml/badge.svg">
+  </a>
+  <a>
+    <img src="https://img.shields.io/badge/GCC_C++11~23-support-B46F1B?style=flat&logo=gnu" alt="gcc-C++11~23 - support">
+    <img src="https://img.shields.io/badge/Clang_C++11~23-support-045891?style=flat&logo=llvm" alt="clang-C++11~23 - support">
+    <img src="https://img.shields.io/badge/MSVC_C++14~23-support-5C2D91?style=flat" alt="msvc-C++14~23 - support">
   </a>
 </p>
 

@@ -1,18 +1,17 @@
 # How to contribute
 
-Contributions are always very much appreciated. However, to make sure the
-process of accepting patches goes smoothly for everyone (especially for
-the maintainer), you should try to follow these few simple guidelines when
-you contribute:
+Thank you for contributing to *Embedded-Function*!
 
-0. Before contributing, please open an issue to discuss significant changes
+To make sure the process of accepting patches goes smoothly for everyone (especially for the maintainer), you should try to follow these few simple guidelines when you contribute:
+
+0. Before contributing, please open an issue to discuss significant changes.
 
 1. Fork the repository.
 
-2. Create a new branch based on the latest `version-x-x-x` branch. (If `version-x-x-x` branch does not exist, basing on the `main` is OK)
+2. Create a new branch based on the latest `version-x.y.z` branch. (If `version-x.y.z` branch does not exist, basing on the `main` is OK)
 
 ```bash
-  git checkout -b your_branch_name version-x-x-x
+  git checkout -b your_branch_name version-x.y.z
   # git checkout -b your_branch_name main
   # ATTENTION: your_branch_name cannot start with `version-`
 ```
@@ -25,7 +24,7 @@ you contribute:
 
 6. Push the changes to your fork (`git push origin your_branch_name`).
 
-7. Open a pull request against *Embedded-Function*'s latest `version-x-x-x` branch (or `main` branch if `version-x-x-x` branch does not exist). I'll do my best to respond quickly, but I can't make any guarantees until I've seen your code.
+7. Open a pull request against *Embedded-Function*'s latest `version-x.y.z` branch (or `main` branch if `version-x.y.z` branch does not exist). I'll do my best to respond quickly, but I can't make any guarantees until I've seen your code.
 
 # Who can contribute
 
