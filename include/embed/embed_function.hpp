@@ -1161,8 +1161,9 @@ inline namespace fn_traits {
       return static_cast<bool>(f);
     }
 
-    template <std::size_t Buf, typename Cfg, typename Sig>
-    static EMBED_CXX14_CONSTEXPR bool check(const function<Buf, Cfg, Sig>& f) noexcept {
+    template <std::size_t Buf, typename Cfg, typename Sig,
+      EMBED_DETAIL_REQUIRES(!Cfg::isView) // OWNING
+    > static EMBED_CXX14_CONSTEXPR bool check(const function<Buf, Cfg, Sig>& f) noexcept {
       return static_cast<bool>(f);
     }
 

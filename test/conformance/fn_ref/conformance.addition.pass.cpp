@@ -136,4 +136,15 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     ASSERT_EQ(f(1), 1);
     ASSERT_EQ(f(1), 2);
   }
+
+  {
+    ebd::fn_ref<int(int,int)> f1 = ebd_test_free_func_iii_add;
+    ebd::fn<int(int,int)> f2 = f1;
+    ebd::unique_fn<int(int,int)> f3 = f1;
+    ebd::safe_fn<int(int,int)> f4 = f1;
+    ASSERT_EQ(f1(1, 42), 43);
+    ASSERT_EQ(f2(1, 42), 43);
+    ASSERT_EQ(f3(1, 42), 43);
+    ASSERT_EQ(f4(1, 42), 43);
+  }
 }
