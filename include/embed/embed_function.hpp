@@ -299,6 +299,11 @@ namespace ebd { namespace detail {
 # define EMBED_DETAIL_UNREACHABLE()
 #endif
 
+// Guidelines for reporting internal errors.
+#define EMBED_DETAIL_REPORT_IE(error) \
+  "An internal error has occurred: " error " This is unexpected. " \
+  "Please report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
+
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
 
@@ -943,9 +948,10 @@ inline namespace fn_traits {
   : public bool_constant<IsStoredOrigin> {
     static constexpr bool isTrivial = is_traditional_trivial<DecT>::value;
     static_assert(!(IsView && IsStoredOrigin && !isTrivial),
-      "Internal error: Stored origin type in view mode must be trivially"
-      " copyable/destructible. Here Functor is stored originally,"
-      " but it is NOT trivial.");
+      EMBED_DETAIL_REPORT_IE(
+        "Stored origin type in view mode must be trivially"
+        " copyable/destructible. Here Functor is stored originally,"
+        " but it is NOT trivial."));
   };
 
   // Get the really stored type.
@@ -1488,8 +1494,8 @@ inline namespace fn_traits {
       IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>, T,
       enable_if_t<IsView || !IsThrowing>
   > {
-    static_assert(std::is_same<T, Ret(Args...) const>::value, 
-      "Internal error: 'T' should be same as 'Ret(Args...) const'.");
+    static_assert(std::is_same<T, Ret(Args...) const>::value,
+      EMBED_DETAIL_REPORT_IE("'T' should be same as 'Ret(Args...) const'."));
     using type = Ret(Args...) const noexcept;
   };
 
@@ -2195,10 +2201,10 @@ namespace crtp_mixins {
 
 #if !(defined(__OPTIMIZE__) || defined(NDEBUG))
     static_assert(is_traditional_trivial<erasure_t>::value,
-      "Internal error: erasure_t should be trivial.");
+      EMBED_DETAIL_REPORT_IE("erasure_t should be trivial."));
 
     static_assert(is_traditional_trivial<command_t>::value,
-      "Internal error: command_t should be trivial.");
+      EMBED_DETAIL_REPORT_IE("command_t should be trivial."));
 #endif
 
     erasure_t m_erasure;
@@ -2515,7 +2521,7 @@ namespace crtp_mixins {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       if (check_not_empty::check(functor)) {
         m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
@@ -2536,7 +2542,7 @@ namespace crtp_mixins {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Func*, Func*&&, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, 
         "[Embedded Function]: The function pointer should not be a nullptr.");
@@ -2563,7 +2569,7 @@ namespace crtp_mixins {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       m_command.template init</* IsStoredOrigin = */ false>(
         &m_erasure, std::forward<Functor>(functor));
@@ -2585,7 +2591,7 @@ namespace crtp_mixins {
         "decay_t<Fn> should be the same type as Fn.");
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       m_command.template emplace_init<Fn>(&m_erasure, std::forward<CArgs>(args)...);
     }
@@ -2605,7 +2611,7 @@ namespace crtp_mixins {
         "decay_t<Fn> should be the same type as Fn.");
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
     }
@@ -3194,6 +3200,7 @@ EMBED_INLINE void make_fn(...) noexcept {
 #undef EMBED_DETAIL_FAIL_MESSAGE
 #undef EMBED_DETAIL_UNREACHABLE
 #undef EMBED_DETAIL_ASSERT_MESSAGE
+#undef EMBED_DETAIL_REPORT_IE
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
