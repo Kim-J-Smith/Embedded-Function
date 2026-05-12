@@ -14,6 +14,8 @@
 
 // template<class F> fn_ref(F* f) noexcept;
 
+#include "test_fallback_macros.hpp"
+
 #include <functional>
 #include <utility>
 #include <type_traits>

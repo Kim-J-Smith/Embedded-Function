@@ -14,6 +14,8 @@
 
 // constexpr fn_ref(const fn_ref&) noexcept = default;
 
+#include "test_fallback_macros.hpp"
+
 #include <functional>
 #include <utility>
 #include <type_traits>

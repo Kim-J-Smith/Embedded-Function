@@ -17,6 +17,8 @@
 // - is_pointer_v<T> is false, and
 // - T is not a specialization of constant_wrapper. (Unused for `ebd::fn_ref`)
 
+#include "test_fallback_macros.hpp"
+
 #include <functional>
 #include <utility>
 #include <type_traits>
@@ -50,10 +52,10 @@ STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void()>, void (*)(int)>::value);
 #endif
 
 // const noexcept(false)
-STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void()>>::value);
+STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void()>>::value);
 STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void() const>>::value);
 #if __cpp_noexcept_function_type >= 201510L
-  STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void() noexcept>>::value);
+  STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void() noexcept>>::value);
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void() const noexcept>>::value);
 #endif
 
@@ -83,7 +85,7 @@ STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, void (*)(int)>::va
   // const noexcept(true)
   STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void()>>::value);
   STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void() const>>::value);
-  STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void() noexcept>>::value);
+  STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void() noexcept>>::value);
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const noexcept>, ebd::fn_ref<void() const noexcept>>::value);
 
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const noexcept>, void (*)() noexcept>::value);

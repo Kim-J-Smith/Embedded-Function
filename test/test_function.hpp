@@ -1,4 +1,6 @@
 #pragma once
+#include "test_fallback_macros.hpp"
+
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 
@@ -119,7 +121,7 @@ public:
         return self.m_member_var;
     }
 #else
-    int operator()(int change) {
+    int operator()(int change) & {
         m_member_var += change;
         return m_member_var; 
     }
