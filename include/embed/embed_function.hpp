@@ -7,10 +7,11 @@
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
- *              (https://github.com/Kim-J-Smith/Embedded-Function)
+ *              <https://github.com/Kim-J-Smith/Embedded-Function>
  * 
  * @attention   This source is released under the MIT license
- *              (http://opensource.org/licenses/MIT)
+ *              SPDX-License-Identifier: MIT
+ *              <http://opensource.org/licenses/MIT>
  */
 
 // Just like function pointers, it is quick and efficient.
@@ -190,9 +191,9 @@
   F(const, volatile, &&, NOEXCEPT)
 
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
-// See https://en.cppreference.com/w/cpp/language/noexcept_spec .
-// The noexcept-specification is a part of the function type and 
+// The noexcept-specification is a part of the function type and
 // may appear as part of any function declarator. (Since C++17)
+// See <https://en.cppreference.com/w/cpp/language/noexcept_spec>.
 
 # define EMBED_DETAIL_FN_EXPAND(F) \
   EMBED_DETAIL_FN_EXPAND_IMPL(F, ) EMBED_DETAIL_FN_EXPAND_IMPL(F, noexcept)
@@ -304,10 +305,13 @@ namespace detail {
 /// @brief Here are some standard traits that are not supported in C++11.
 inline namespace cxx_traits {
 
-  // See https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1558 .
+  // See <https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1558>.
   template <typename... Args> struct make_void { using type = void; };
 
-  // See https://en.cppreference.com/w/cpp/header/type_traits.html .
+  /// @brief Types from <type_traits> have been implemented,
+  /// consistent with the standard behavior (C++14 ~ C++23).
+  /// See <https://en.cppreference.com/w/cpp/header/type_traits.html>.
+
   template <typename... Args> using void_t = typename make_void<Args...>::type;
 
   template <typename T>
@@ -549,7 +553,7 @@ inline namespace cxx_traits {
   };
 
   // Get the invoke result and invoke tag.
-  // See https://en.cppreference.com/w/cpp/types/result_of.html .
+  // See <https://en.cppreference.com/w/cpp/types/result_of.html>.
   template <typename Func, typename... ArgsT>
   struct invoke_result : public invoke_result_impl<
     std::is_member_function_pointer<
@@ -613,7 +617,7 @@ inline namespace cxx_traits {
   template <typename Func, typename... Args>
   using call_is_nothrow = call_is_nothrow_helper<Func, std::tuple<Args...>>;
 
-  // See https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html .
+  // See <https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
   template <typename To, typename From>
   struct reference_converts_from_temporary
   : public bool_constant<
@@ -674,7 +678,7 @@ inline namespace cxx_traits {
 # pragma GCC diagnostic pop
 #endif
 
-  // See https://en.cppreference.com/w/cpp/types/is_invocable.html .
+  // See <https://en.cppreference.com/w/cpp/types/is_invocable.html>.
   template <typename Ret, typename Func, typename... Args>
   struct is_invocable_r : public bool_constant<
     is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
@@ -737,7 +741,7 @@ inline namespace cxx_traits {
     );
   }
 
-  // See https://en.cppreference.com/w/cpp/utility/functional/invoke.html .
+  // See <https://en.cppreference.com/w/cpp/utility/functional/invoke.html>.
   template <typename Result, typename Callee, typename... Args>
   inline EMBED_CXX14_CONSTEXPR enable_if_t<
     is_invocable_r<Result, Callee, Args...>::value 
@@ -784,7 +788,7 @@ inline namespace fn_traits {
   struct always_false { static constexpr bool value = false; };
 
   // Is trivial for the purposes of calls. (trivially destruct, copy and move)
-  // See https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters .
+  // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>.
   template <typename T>
   struct is_call_trivial : public bool_constant<
     std::is_trivially_destructible<T>::value
@@ -988,7 +992,7 @@ inline namespace fn_traits {
       && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
 
     // In view mode, the requires is special.
-    // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html .
+    // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html>.
     static constexpr bool noexcept_qualifier_ok = 
       (unwrap_to::isNoexcept == unwrap_from::isNoexcept)
       || (
@@ -1021,7 +1025,7 @@ inline namespace fn_traits {
   // Check whether Functor can be constructed as decay_t<Functor>
   // without throwing an exception. And `std::is_nothrow_constructible`
   // has bug. (It will also check the destructor)
-  // See https://cplusplus.github.io/LWG/issue2116 .
+  // See <https://cplusplus.github.io/LWG/issue2116>.
   template <typename Functor, typename Class = decay_t<Functor>,
     typename = void>
   struct is_nothrow_construct_from_functor
@@ -1221,8 +1225,8 @@ inline namespace fn_traits {
 
 #if ( __cpp_explicit_this_parameter >= 202110L ) || ( EMBED_CXX_VERSION >= 202302L )
 
-  // 3617. function/packaged_task deduction guides and deducing this.
-  // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html .
+  // [dcl.fct]/6 function/packaged_task deduction guides and deducing this.
+  // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html>.
 
   // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
   // signature by Mapping a `This` type and a base signature to a qualified function type.
@@ -1445,7 +1449,7 @@ inline namespace fn_traits {
 
 #endif
 
-  // https://eel.is/c++draft/func.wrap#ref.ctor .
+  // <https://eel.is/c++draft/func.wrap#ref.ctor-1>.
   template <typename Sig, typename Tuple, 
     typename PureSig = typename unwrap_signature<Sig>::pure_sig>
   struct is_invocable_using_impl;
@@ -1516,7 +1520,7 @@ namespace erasure_type {
   template <std::size_t Size>
   union EMBED_DETAIL_ALIAS ErasureCore {
     // An array of `unsigned char` can be used to hold other objects.
-    // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html .
+    // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html>.
     unsigned char pod[sizeof(ErasureCoreImpl<Size>)];
     ErasureCoreImpl<Size> ref_storage; // alignas(ref_storage)
   };
@@ -1529,7 +1533,7 @@ namespace erasure_type {
   // The well-defined operation of reusing its storage space is to use
   // placement new. After that, using `access` to obtain the address or reference
   // (rather than the content) is also in accordance with the C++ standard.
-  // See https://eel.is/c++draft/basic.life#7 .
+  // See <https://eel.is/c++draft/basic.life#7>.
   template <std::size_t Size>
   struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
     alignas(default_buffer_size::align_value)
