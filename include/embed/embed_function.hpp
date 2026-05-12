@@ -7,10 +7,11 @@
  * 
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
- *              (https://github.com/Kim-J-Smith/Embedded-Function)
+ *              <https://github.com/Kim-J-Smith/Embedded-Function>
  * 
  * @attention   This source is released under the MIT license
- *              (http://opensource.org/licenses/MIT)
+ *              SPDX-License-Identifier: MIT
+ *              <http://opensource.org/licenses/MIT>
  */
 
 // Just like function pointers, it is quick and efficient.
@@ -190,9 +191,9 @@
   F(const, volatile, &&, NOEXCEPT)
 
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
-// See https://en.cppreference.com/w/cpp/language/noexcept_spec .
-// The noexcept-specification is a part of the function type and 
+// The noexcept-specification is a part of the function type and
 // may appear as part of any function declarator. (Since C++17)
+// See <https://en.cppreference.com/w/cpp/language/noexcept_spec>.
 
 # define EMBED_DETAIL_FN_EXPAND(F) \
   EMBED_DETAIL_FN_EXPAND_IMPL(F, ) EMBED_DETAIL_FN_EXPAND_IMPL(F, noexcept)
@@ -298,16 +299,24 @@ namespace ebd { namespace detail {
 # define EMBED_DETAIL_UNREACHABLE()
 #endif
 
+// Guidelines for reporting internal errors.
+#define EMBED_DETAIL_REPORT_IE(error) \
+  "An internal error has occurred: " error " This is unexpected. " \
+  "Please report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
+
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
 
 /// @brief Here are some standard traits that are not supported in C++11.
 inline namespace cxx_traits {
 
-  // See https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1558 .
+  // See <https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1558>.
   template <typename... Args> struct make_void { using type = void; };
 
-  // See https://en.cppreference.com/w/cpp/header/type_traits.html .
+  /// @brief Types from <type_traits> have been implemented,
+  /// consistent with the standard behavior (C++14 ~ C++23).
+  /// See <https://en.cppreference.com/w/cpp/header/type_traits.html>.
+
   template <typename... Args> using void_t = typename make_void<Args...>::type;
 
   template <typename T>
@@ -549,7 +558,7 @@ inline namespace cxx_traits {
   };
 
   // Get the invoke result and invoke tag.
-  // See https://en.cppreference.com/w/cpp/types/result_of.html .
+  // See <https://en.cppreference.com/w/cpp/types/result_of.html>.
   template <typename Func, typename... ArgsT>
   struct invoke_result : public invoke_result_impl<
     std::is_member_function_pointer<
@@ -613,7 +622,7 @@ inline namespace cxx_traits {
   template <typename Func, typename... Args>
   using call_is_nothrow = call_is_nothrow_helper<Func, std::tuple<Args...>>;
 
-  // See https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html .
+  // See <https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
   template <typename To, typename From>
   struct reference_converts_from_temporary
   : public bool_constant<
@@ -674,7 +683,7 @@ inline namespace cxx_traits {
 # pragma GCC diagnostic pop
 #endif
 
-  // See https://en.cppreference.com/w/cpp/types/is_invocable.html .
+  // See <https://en.cppreference.com/w/cpp/types/is_invocable.html>.
   template <typename Ret, typename Func, typename... Args>
   struct is_invocable_r : public bool_constant<
     is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
@@ -737,7 +746,7 @@ inline namespace cxx_traits {
     );
   }
 
-  // See https://en.cppreference.com/w/cpp/utility/functional/invoke.html .
+  // See <https://en.cppreference.com/w/cpp/utility/functional/invoke.html>.
   template <typename Result, typename Callee, typename... Args>
   inline EMBED_CXX14_CONSTEXPR enable_if_t<
     is_invocable_r<Result, Callee, Args...>::value 
@@ -784,7 +793,7 @@ inline namespace fn_traits {
   struct always_false { static constexpr bool value = false; };
 
   // Is trivial for the purposes of calls. (trivially destruct, copy and move)
-  // See https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters .
+  // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>.
   template <typename T>
   struct is_call_trivial : public bool_constant<
     std::is_trivially_destructible<T>::value
@@ -939,9 +948,10 @@ inline namespace fn_traits {
   : public bool_constant<IsStoredOrigin> {
     static constexpr bool isTrivial = is_traditional_trivial<DecT>::value;
     static_assert(!(IsView && IsStoredOrigin && !isTrivial),
-      "Internal error: Stored origin type in view mode must be trivially"
-      " copyable/destructible. Here Functor is stored originally,"
-      " but it is NOT trivial.");
+      EMBED_DETAIL_REPORT_IE(
+        "Stored origin type in view mode must be trivially"
+        " copyable/destructible. Here Functor is stored originally,"
+        " but it is NOT trivial."));
   };
 
   // Get the really stored type.
@@ -988,7 +998,7 @@ inline namespace fn_traits {
       && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
 
     // In view mode, the requires is special.
-    // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html .
+    // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html>.
     static constexpr bool noexcept_qualifier_ok = 
       (unwrap_to::isNoexcept == unwrap_from::isNoexcept)
       || (
@@ -1021,7 +1031,7 @@ inline namespace fn_traits {
   // Check whether Functor can be constructed as decay_t<Functor>
   // without throwing an exception. And `std::is_nothrow_constructible`
   // has bug. (It will also check the destructor)
-  // See https://cplusplus.github.io/LWG/issue2116 .
+  // See <https://cplusplus.github.io/LWG/issue2116>.
   template <typename Functor, typename Class = decay_t<Functor>,
     typename = void>
   struct is_nothrow_construct_from_functor
@@ -1221,8 +1231,8 @@ inline namespace fn_traits {
 
 #if ( __cpp_explicit_this_parameter >= 202110L ) || ( EMBED_CXX_VERSION >= 202302L )
 
-  // 3617. function/packaged_task deduction guides and deducing this.
-  // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html .
+  // [dcl.fct]/6 function/packaged_task deduction guides and deducing this.
+  // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html>.
 
   // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
   // signature by Mapping a `This` type and a base signature to a qualified function type.
@@ -1445,7 +1455,7 @@ inline namespace fn_traits {
 
 #endif
 
-  // https://eel.is/c++draft/func.wrap#ref.ctor .
+  // <https://eel.is/c++draft/func.wrap#ref.ctor-1>.
   template <typename Sig, typename Tuple, 
     typename PureSig = typename unwrap_signature<Sig>::pure_sig>
   struct is_invocable_using_impl;
@@ -1484,8 +1494,8 @@ inline namespace fn_traits {
       IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>, T,
       enable_if_t<IsView || !IsThrowing>
   > {
-    static_assert(std::is_same<T, Ret(Args...) const>::value, 
-      "Internal error: 'T' should be same as 'Ret(Args...) const'.");
+    static_assert(std::is_same<T, Ret(Args...) const>::value,
+      EMBED_DETAIL_REPORT_IE("'T' should be same as 'Ret(Args...) const'."));
     using type = Ret(Args...) const noexcept;
   };
 
@@ -1516,7 +1526,7 @@ namespace erasure_type {
   template <std::size_t Size>
   union EMBED_DETAIL_ALIAS ErasureCore {
     // An array of `unsigned char` can be used to hold other objects.
-    // See https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html .
+    // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html>.
     unsigned char pod[sizeof(ErasureCoreImpl<Size>)];
     ErasureCoreImpl<Size> ref_storage; // alignas(ref_storage)
   };
@@ -1529,7 +1539,7 @@ namespace erasure_type {
   // The well-defined operation of reusing its storage space is to use
   // placement new. After that, using `access` to obtain the address or reference
   // (rather than the content) is also in accordance with the C++ standard.
-  // See https://eel.is/c++draft/basic.life#7 .
+  // See <https://eel.is/c++draft/basic.life#7>.
   template <std::size_t Size>
   struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
     alignas(default_buffer_size::align_value)
@@ -2191,10 +2201,10 @@ namespace crtp_mixins {
 
 #if !(defined(__OPTIMIZE__) || defined(NDEBUG))
     static_assert(is_traditional_trivial<erasure_t>::value,
-      "Internal error: erasure_t should be trivial.");
+      EMBED_DETAIL_REPORT_IE("erasure_t should be trivial."));
 
     static_assert(is_traditional_trivial<command_t>::value,
-      "Internal error: command_t should be trivial.");
+      EMBED_DETAIL_REPORT_IE("command_t should be trivial."));
 #endif
 
     erasure_t m_erasure;
@@ -2511,7 +2521,7 @@ namespace crtp_mixins {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       if (check_not_empty::check(functor)) {
         m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
@@ -2532,7 +2542,7 @@ namespace crtp_mixins {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Func*, Func*&&, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, 
         "[Embedded Function]: The function pointer should not be a nullptr.");
@@ -2559,7 +2569,7 @@ namespace crtp_mixins {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       m_command.template init</* IsStoredOrigin = */ false>(
         &m_erasure, std::forward<Functor>(functor));
@@ -2581,7 +2591,7 @@ namespace crtp_mixins {
         "decay_t<Fn> should be the same type as Fn.");
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       m_command.template emplace_init<Fn>(&m_erasure, std::forward<CArgs>(args)...);
     }
@@ -2601,7 +2611,7 @@ namespace crtp_mixins {
         "decay_t<Fn> should be the same type as Fn.");
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
-        "Internal error: asserts_for_function<...>::value should be always true.");
+        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
       m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
     }
@@ -3190,6 +3200,7 @@ EMBED_INLINE void make_fn(...) noexcept {
 #undef EMBED_DETAIL_FAIL_MESSAGE
 #undef EMBED_DETAIL_UNREACHABLE
 #undef EMBED_DETAIL_ASSERT_MESSAGE
+#undef EMBED_DETAIL_REPORT_IE
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
