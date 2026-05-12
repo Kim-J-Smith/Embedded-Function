@@ -17,6 +17,8 @@
 // - is_pointer_v<T> is false, and
 // - T is not a specialization of constant_wrapper. (Unused for `ebd::fn_ref`)
 
+#include "test_fallback_macros.hpp"
+
 #include <functional>
 #include <utility>
 #include <type_traits>

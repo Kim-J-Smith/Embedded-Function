@@ -36,7 +36,7 @@
 #endif
 
 #ifndef EMBED_CXX_VERSION
-# if defined(_MSC_VER) && ( _MSC_VER >= 1900 )
+# if defined(_MSVC_LANG) && ( _MSVC_LANG > __cplusplus )
 #  define EMBED_CXX_VERSION _MSVC_LANG
 # else
 #  define EMBED_CXX_VERSION __cplusplus
@@ -3198,6 +3198,7 @@ EMBED_INLINE void make_fn(...) noexcept {
 # undef EMBED_HAS_CXX_ATTRIBUTE
 # undef EMBED_ABI_VISIBILITY
 # undef EMBED_CXX14_CONSTEXPR
+# undef EMBED_CXX20_CONSTEXPR
 # undef EMBED_INLINE
 # undef EMBED_RESTRICT
 # undef EMBED_NODISCARD

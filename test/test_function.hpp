@@ -1,4 +1,6 @@
 #pragma once
+#include "test_fallback_macros.hpp"
+
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 

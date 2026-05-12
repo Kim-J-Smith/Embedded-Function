@@ -1,0 +1,18 @@
+#ifndef TEST_FALLBACK_MACRO_HPP_
+#define TEST_FALLBACK_MACRO_HPP_
+
+#if defined(EBD_TEST_USE_FALLBACK)
+
+# define EMBED_HAS_BUILTIN(x) 0
+# define EMBED_HAS_ATTRIBUTE(x) 0
+# define EMBED_HAS_CXX_ATTRIBUTE(x) 0
+# define EMBED_ABI_VISIBILITY(x)
+# define EMBED_INLINE inline
+# define EMBED_RESTRICT
+# define EMBED_NODISCARD
+# define EMBED_FALLTHROUGH()
+# define EMBED_DEPRECATED(x)
+
+#endif // defined(EBD_TEST_USE_FALLBACK)
+
+#endif // TEST_FALLBACK_MACRO_HPP_
