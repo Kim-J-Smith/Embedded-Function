@@ -139,12 +139,20 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
 
   {
     ebd::fn_ref<int(int,int)> f1 = ebd_test_free_func_iii_add;
-    ebd::fn<int(int,int)> f2 = f1;
-    ebd::unique_fn<int(int,int)> f3 = f1;
-    ebd::safe_fn<int(int,int)> f4 = f1;
+    static constexpr auto size_ = sizeof(ebd::fn_ref<int(int,int)>);
+    ebd::fn<int(int,int), size_> f2 = f1;
+    ebd::unique_fn<int(int,int), size_> f3 = f1;
+    ebd::safe_fn<int(int,int), size_> f4 = f1;
     ASSERT_EQ(f1(1, 42), 43);
     ASSERT_EQ(f2(1, 42), 43);
     ASSERT_EQ(f3(1, 42), 43);
     ASSERT_EQ(f4(1, 42), 43);
+
+    auto f5 = ebd::make_fn<ebd::fn>(f1);
+    auto f6 = ebd::make_fn<ebd::unique_fn>(f1);
+    auto f7 = ebd::make_fn<ebd::safe_fn>(f1);
+    ASSERT_EQ(f5(2, 42), 44);
+    ASSERT_EQ(f6(2, 42), 44);
+    ASSERT_EQ(f7(2, 42), 44);
   }
 }
