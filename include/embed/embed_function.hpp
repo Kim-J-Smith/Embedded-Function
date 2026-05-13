@@ -1524,8 +1524,11 @@ inline namespace fn_traits {
     enable_if_t<IsView || !IsThrowing>                                      \
   > {                                                                       \
     using is_nothrow = typename noexcept_qualify_like_helper<Functor>::type;\
-    using sig_normal = Ret(Args...) C V REF noexcept(is_nothrow::value);    \
-    using sig_view = Ret(Args...) C V noexcept(is_nothrow::value);          \
+/* MSVC 14.36~14.44 regression: noexcept(is_nothrow::value) trigger ICE. */ \
+    using sig_normal = conditional_t<is_nothrow::value,                     \
+      Ret(Args...) C V REF noexcept, Ret(Args...) C V REF>;                 \
+    using sig_view = conditional_t<is_nothrow::value,                       \
+      Ret(Args...) C V noexcept, Ret(Args...) C V>;                         \
     using type = conditional_t<IsView, sig_view, sig_normal>;               \
   };
 
