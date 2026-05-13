@@ -1484,31 +1484,62 @@ inline namespace fn_traits {
   struct is_constant_wrapper<std::constant_wrapper<Cw, T>> : std::true_type {};
 #endif
 
-  template <typename Functor, typename FnSample, typename T, typename = void>
-  struct noexcept_qualify_like { using type = T; };
+  template <typename Functor, typename FnSample, typename Sig, typename = void>
+  struct noexcept_qualify_like { using type = Sig; };
 
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 
-  template <typename T, typename Ret, typename... Args, 
-    std::size_t Buf, typename Sig, 
-    bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow
-  > struct noexcept_qualify_like<
-    Ret(*)(Args...) noexcept, function<Buf, config_package<
-      IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>, T,
-      enable_if_t<IsView || !IsThrowing>
-  > {
-    static_assert(std::is_same<T, Ret(Args...) const>::value,
-      EMBED_DETAIL_REPORT_IE("'T' should be same as 'Ret(Args...) const'."));
-    using type = Ret(Args...) const noexcept;
+  template <typename T, typename = void>
+  struct noexcept_qualify_like_helper : std::false_type {};
+
+  template <typename Ret, typename... Args>
+  struct noexcept_qualify_like_helper<Ret(*)(Args...) noexcept, void>
+  : std::true_type {};
+
+  template <typename Functor>
+  struct noexcept_qualify_like_helper<
+    Functor, enable_if_t<is_unique_callable<Functor>::value>>
+  : bool_constant<unwrap_signature<
+    typename get_unique_signature<Functor>::sig_with_noexcept
+  >::isNoexcept> {};
+
+# define EMBED_DETAIL_HELPER_MEMPTR_DEFINE(C, V, REF, NOEXCEPT)               \
+  template <typename Ret, typename Class, typename... Args>                   \
+  struct noexcept_qualify_like_helper<Ret(Class::*)(Args...) C V REF NOEXCEPT>\
+  : bool_constant<unwrap_signature<void() NOEXCEPT>::isNoexcept> {};
+
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_HELPER_MEMPTR_DEFINE)
+
+# undef EMBED_DETAIL_HELPER_MEMPTR_DEFINE
+
+# define EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE(C, V, REF, NOEXCEPT)     \
+  template <typename Functor, typename Ret, typename... Args,               \
+    std::size_t Buf, typename Sig,                                          \
+    bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow \
+  > struct noexcept_qualify_like<                                           \
+    /* Functor = */ Functor,                                                \
+    /* FnSample = */ function<Buf, config_package<                          \
+      IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>,           \
+    /* Sig = */ Ret(Args...) C V REF NOEXCEPT,                              \
+    enable_if_t<IsView || !IsThrowing>                                      \
+  > {                                                                       \
+    using is_nothrow = typename noexcept_qualify_like_helper<Functor>::type;\
+    using sig_normal = Ret(Args...) C V REF noexcept(is_nothrow::value);    \
+    using sig_view = Ret(Args...) C V noexcept(is_nothrow::value);          \
+    using type = conditional_t<IsView, sig_view, sig_normal>;               \
   };
+
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE)
+
+# undef EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE
 
 #endif
 
   // Add noexcept qualifier if the Functor is noexcept free function, 
   // and the function wrapper or reference support `noexcept`.
-  template <typename Functor, template <class, std::size_t> class Fn, typename T>
+  template <typename Functor, template <class, std::size_t> class Fn, typename Sig>
   using noexcept_qualify_like_t = 
-    typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, T>::type;
+    typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, Sig>::type;
 
 } // end namespace fn_traits
 
