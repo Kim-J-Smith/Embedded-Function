@@ -1224,6 +1224,7 @@ inline namespace fn_traits {
   template <typename Class, typename Ret, typename... Args>                   \
   struct get_unique_signature_impl<Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
     using type = Ret(Args...) C V REF;                                        \
+    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;                  \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE)
@@ -1243,7 +1244,8 @@ inline namespace fn_traits {
 # define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT) \
   template <typename This, typename Ret, typename... Args>                \
   struct add_qualifier_with_this<This C V REF, Ret(Args...) NOEXCEPT> {   \
-    using type = Ret(Args...) C V REF NOEXCEPT;                           \
+    using type = Ret(Args...) C V REF;                                    \
+    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;              \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE)
@@ -1251,14 +1253,12 @@ inline namespace fn_traits {
 # undef EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE
 
   template <typename This, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Ret(*)(This, Args...)> {
-    using type = typename add_qualifier_with_this<This, Ret(Args...)>::type;
-  };
+  struct get_unique_signature_impl<Ret(*)(This, Args...)>
+  : public add_qualifier_with_this<This, Ret(Args...)> {};
 
   template <typename This, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Ret(*)(This, Args...) noexcept> {
-    using type = typename add_qualifier_with_this<This, Ret(Args...) noexcept>::type;
-  };
+  struct get_unique_signature_impl<Ret(*)(This, Args...) noexcept>
+  : public add_qualifier_with_this<This, Ret(Args...) noexcept> {};
 
 #endif
 
@@ -1267,12 +1267,14 @@ inline namespace fn_traits {
     bool Unique = is_unique_callable<Functor>::value>
   struct get_unique_signature {
     using type = void;
+    using sig_with_noexcept = void;
   };
 
   template <typename Functor>
   struct get_unique_signature<Functor, /* Unique = */ true> {
-    using type = typename 
-      get_unique_signature_impl<decltype(&Functor::operator())>::type;
+    using impl_t = get_unique_signature_impl<decltype(&Functor::operator())>;
+    using type = typename impl_t::type;
+    using sig_with_noexcept = typename impl_t::sig_with_noexcept;
   };
 
   template <typename T>
