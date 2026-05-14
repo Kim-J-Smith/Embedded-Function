@@ -174,4 +174,20 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     ASSERT_EQ(f6(2, 42), 44);
     ASSERT_EQ(f7(2, 42), 44);
   }
+
+  {
+    auto f = ebd::make_fn<ebd::fn_ref>(std::less<int>{});
+    ASSERT_EQ(f(3, 4), true);
+    ASSERT_EQ(f(4, 3), false);
+  }
+
+# if (EMBED_CXX_VERSION >= 202002L && __cpp_constexpr >= 202002L)
+  {
+    static constexpr auto l = [] {};
+    constexpr ebd::fn_ref<void()> f1 = l;
+
+    constexpr ebd::fn_ref<int(int, int)> f2 = std::plus{};
+    ASSERT_EQ(f2(1, 2), 3);
+  }
+#endif
 }
