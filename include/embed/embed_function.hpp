@@ -1741,12 +1741,12 @@ namespace invocation {
       }                                                                           \
     };                                                                            \
                                                                                   \
-    /* Using for standard operation wrapper (like std::less). */                  \
+    /* Used for standard operator wrapper (like std::less). */                    \
     struct std_op_wrapper {                                                       \
       template <typename StdOperator>                                             \
       static Ret invoke(erasure_base_t*, smart_forward_t<Args>... args) {         \
         static_assert(is_std_op_wrapper<StdOperator>::value,                      \
-          EMBED_DETAIL_REPORT_IE("StdOperator should be std operation wrapper")); \
+          EMBED_DETAIL_REPORT_IE("'StdOperator' should be std operator wrapper"));\
         C V auto fn = StdOperator{};                                              \
         return invoke_r<Ret>(fn, std::forward<Args>(args)...);                    \
       }                                                                           \
