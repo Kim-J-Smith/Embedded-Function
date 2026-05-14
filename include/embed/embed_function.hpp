@@ -836,8 +836,12 @@ inline namespace fn_traits {
   template <typename T>
   struct is_config_package : public std::false_type {};
 
-  template <bool... ConfigArgs>
-  struct is_config_package<config_package<ConfigArgs...>>
+  // MSVC 19.33 and earlier have a bug where a bool parameter pack is not
+  // handled correctly. To work around this issue, we avoid using bool...
+  // in the template parameter list.
+  template <bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow>
+  struct is_config_package<
+    config_package<IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>>
   : public std::true_type {};
 
   // Uses `std::tuple` as the package of arguments.
