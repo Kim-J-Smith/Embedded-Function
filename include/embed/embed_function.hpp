@@ -1566,6 +1566,29 @@ inline namespace fn_traits {
   using noexcept_qualify_like_t = 
     typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, Sig>::type;
 
+  // Check if `T` is the stateless standard operator wrapper.
+  template <typename T> struct is_std_op_wrapper : std::false_type {};
+
+  template <typename T> struct is_std_op_wrapper<std::equal_to<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::not_equal_to<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::greater<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::less<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::greater_equal<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::less_equal<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::plus<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::minus<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::multiplies<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::divides<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::modulus<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::negate<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::logical_and<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::logical_or<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::logical_not<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::bit_and<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::bit_or<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -1715,6 +1738,17 @@ namespace invocation {
         auto& fn = *(erased->template access<Functor*>());                        \
         using Fn = C V remove_reference_t<decltype(fn)>&;                         \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+      }                                                                           \
+    };                                                                            \
+                                                                                  \
+    /* Used for standard operator wrapper (like std::less). */                    \
+    struct std_op_wrapper {                                                       \
+      template <typename StdOperator>                                             \
+      static Ret invoke(erasure_base_t*, smart_forward_t<Args>... args) {         \
+        static_assert(is_std_op_wrapper<StdOperator>::value,                      \
+          EMBED_DETAIL_REPORT_IE("'StdOperator' should be std operator wrapper"));\
+        C V auto fn = StdOperator{};                                              \
+        return invoke_r<Ret>(fn, std::forward<Args>(args)...);                    \
       }                                                                           \
     };                                                                            \
                                                                                   \
@@ -1943,11 +1977,19 @@ namespace command {
     }
 
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    void init(erasure_base_t* target, Functor&& obj)
+    enable_if_t<!is_std_op_wrapper<DecFunctor>::value>
+    init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
+    }
+
+    template <typename Functor, typename DecFunctor = decay_t<Functor>>
+    EMBED_CXX20_CONSTEXPR enable_if_t<is_std_op_wrapper<DecFunctor>::value>
+    init(erasure_base_t*, Functor&&) noexcept {
+      m_invoker = &invoker_impl_t::std_op_wrapper::template invoke<DecFunctor>;
+      m_manager = &manager_impl_t::empty::manage;
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -2003,7 +2045,7 @@ namespace command {
       // Do nothing here
     }
 
-    // Enable if Functor is stored origin.
+    // Enable if Functor is stored origin. (Enable if the functor is function pointer(FP))
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
     enable_if_t<IsStoredOrigin> /* Enable if the functor is function pointer(FP) */
     init(erasure_base_t* target, Functor&& obj) noexcept {
@@ -2013,14 +2055,21 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Enable if Functor is stored by pointer.
+    // Enable if Functor is stored by pointer. (Enable if the functor is neither FP or std-op-wrapper)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin> /* Enable if the functor is not FP */
+    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && !is_std_op_wrapper<DecFunctor>::value>
     init(erasure_base_t* target, Functor&& obj) noexcept {
       static_assert(!std::is_rvalue_reference<Functor&&>::value,
         "function in view mode cannot be initialized with rvalue reference.");
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
+    }
+
+    // Enable if Functor is not stored. (Enable if the functor is std-op-wrapper)
+    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
+    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && is_std_op_wrapper<DecFunctor>::value>
+    init(erasure_base_t*, Functor&&) noexcept {
+      m_invoker = &invoker_impl_t::std_op_wrapper::template invoke<DecFunctor>;
     }
 
 #if __cpp_lib_constant_wrapper >= 202603L

@@ -598,3 +598,11 @@ TEST(InitFunction, Functor_noexcept_make_fn) {
     ASSERT_EQ(f1(1), 1);
     ASSERT_EQ(f1(1), 2);
 }
+
+// InitFunction[34]
+TEST(InitFunction, std_op_wrapper) {
+    auto f1 = ebd::make_fn(std::greater<int>{});
+
+    ASSERT_EQ(f1(1, 0), true);
+    ASSERT_EQ(f1(1, 2), false);
+}
