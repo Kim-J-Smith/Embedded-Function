@@ -61,6 +61,25 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     auto f2 = ebd::make_fn<nothrow_fn>(ebd_test_free_func_noexcept);
     static_assert(std::is_same<decltype(f2), nothrow_fn<int() const noexcept, sizeof(void(*)())>>::value, "BUG");
     ASSERT_EQ(f2(), 0);
+
+    ebd_test_operator_unambiguous obj{};
+    auto f3 = ebd::make_fn<nothrow_fn>(obj);
+    static_assert(std::is_same<decltype(f3), nothrow_fn<int(int) & noexcept, sizeof(obj)>>::value, "BUG");
+    ASSERT_EQ(f3(10), 10);
+    ASSERT_EQ(f3(10), 20);
+
+    auto f4 = ebd::make_fn<ebd::fn_ref>(obj);
+    static_assert(std::is_same<decltype(f4), ebd::fn_ref<int(int) noexcept, sizeof(obj)>>::value, "BUG");
+    ASSERT_EQ(obj(10), 10);
+    ASSERT_EQ(f4(10), 20);
+    ASSERT_EQ(f4(10), 30);
+
+    auto ptm = &ebd_test_member_fn::get_var_and_increase;
+    auto f5 = ebd::make_fn<nothrow_fn>(ptm);
+    static_assert(std::is_same<
+      decltype(f5), 
+      nothrow_fn<int(ebd_test_member_fn &, int) const noexcept, sizeof(ptm)>
+    >::value, "BUG");
   }
 
   {

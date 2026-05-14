@@ -590,3 +590,11 @@ TEST(InitFunction, fn_ref_constexprInit) {
 #endif
 
 }
+
+// InitFunction[33]
+TEST(InitFunction, Functor_noexcept_make_fn) {
+    auto f1 = ebd::make_fn(ebd_test_operator_unambiguous{});
+
+    ASSERT_EQ(f1(1), 1);
+    ASSERT_EQ(f1(1), 2);
+}
