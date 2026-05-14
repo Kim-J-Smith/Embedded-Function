@@ -279,7 +279,7 @@ Every compiler with modern C++11 support should work.
 
 - GCC 5.1+
 - Clang 3.7+
-- MSVC v19.22+ (VS16.2+)
+- MSVC v19.20+ (VS16.0+)
 
 ## 🧪 Test
 

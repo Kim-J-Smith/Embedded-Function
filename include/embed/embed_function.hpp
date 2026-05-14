@@ -1403,14 +1403,32 @@ inline namespace fn_traits {
   template <typename Signature>
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
+  // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
+  // in `conditional_t`. To work around this issue and facilitate targeted
+  // optimization for each platform, we create `is_reg_passable`.
+  template <typename T>
+  struct is_reg_passable {
+    static constexpr std::size_t reg_size = sizeof(void*);
+    static constexpr std::size_t obj_size = sizeof(T);
+    static constexpr bool is_trivial_obj = is_call_trivial<T>::value;
+#if defined(__sparc_v8__) || defined(__sparcv8)
+    // class and union object are not allowed to pass by reg in SPARC V8 (32bit).
+    static constexpr bool value = false;
+#elif defined(__riscv)
+    // There is an abundance of register resources in RISC-V (a0 ~ a7).
+    static constexpr bool value = obj_size <= 2 * reg_size && is_trivial_obj;
+#else
+    static constexpr bool value = obj_size <= reg_size && is_trivial_obj;
+#endif
+  };
+
   // Used to choose either perfect forwarding or pass-by-value.
   // Pass-by-value is faster for scalar types because they can
   // be passed by the register rather than the stack.
 #if !defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
   template <typename T>
-  using smart_forward_t = conditional_t<std::is_scalar<T>::value
-    || (sizeof(T) <= sizeof(void*) && is_call_trivial<T>::value), 
-    T, T&&>;
+  using smart_forward_t = conditional_t<
+    std::is_scalar<T>::value || is_reg_passable<T>::value, T, T&&>;
 #else
   template <typename T>
   using smart_forward_t = T&&;
