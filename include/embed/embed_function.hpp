@@ -1122,7 +1122,7 @@ inline namespace fn_traits {
     static constexpr std::size_t ref_buf = sizeof(void (*) ());
     static constexpr std::size_t view_buf = ref_buf;
 #if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
-    // The CommandTable size plus the buffer size is about 8 * sizeof(void).
+    // The CommandTable size plus the buffer size is about 8 * sizeof(void*).
     // TODO: The size of this buffer zone needs further examination.
     static constexpr std::size_t value_c1 = 6 * sizeof(void*);
     static constexpr std::size_t value_c2 = sizeof(::std::function<void()>);
@@ -1987,7 +1987,7 @@ namespace command {
     }
 
     // Check the `m_invoker` is empty::invoke. (constexpr && noexcept)
-    constexpr bool is_empty() const noexcept {
+    EMBED_NODISCARD constexpr bool is_empty() const noexcept {
       return m_invoker == &invoker_impl_t::empty::invoke;
     }
 
@@ -2071,7 +2071,7 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Enable if Functor is stored by pointer. (Enable if the functor is neither FP or std-op-wrapper)
+    // Enable if Functor is stored by pointer. (Enable if the functor is neither FP nor std-op-wrapper)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
     EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && !is_std_op_wrapper<DecFunctor>::value>
     init(erasure_base_t* target, Functor&& obj) noexcept {
@@ -2358,7 +2358,7 @@ namespace crtp_mixins {
     }
 
     // Return `true` if the object is empty.
-    EMBED_CXX14_CONSTEXPR bool is_empty() const noexcept {
+    EMBED_NODISCARD EMBED_CXX14_CONSTEXPR bool is_empty() const noexcept {
       auto const& self = static_cast<const Self&>(*this);
       return self.m_command.is_empty();
     }
@@ -2541,7 +2541,7 @@ namespace crtp_mixins {
     EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
     get_buffer_size() noexcept { return buffer_size; }
 
-    /// @brief Return `true` if the function is capyable.
+    /// @brief Return `true` if the function is copyable.
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
     is_copyable() noexcept { return internal_is_copyable; }
 
@@ -3154,7 +3154,7 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
   // [Auto] The basic type of the functor.
   typename Class = detail::remove_cvref_t<Lambda>,
-  // [Auto] The buffersize of functor.
+  // [Auto] The buffer size of functor.
   std::size_t BufferSize = sizeof(Class),
   // [Auto] The signature of functor.
   typename Signature = detail::get_unique_signature_t<Class>,
