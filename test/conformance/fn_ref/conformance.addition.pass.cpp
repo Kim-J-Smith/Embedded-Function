@@ -183,8 +183,9 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
 
 # if (EMBED_CXX_VERSION >= 202002L && __cpp_constexpr >= 202002L)
   {
-    static constexpr auto l = [] {};
-    constexpr ebd::fn_ref<void()> f1 = l;
+    static constexpr auto l = [] { return 42; };
+    constexpr ebd::fn_ref<int()> f1 = l;
+    ASSERT_EQ(f1(), 42);
 
     constexpr ebd::fn_ref<int(int, int)> f2 = std::plus{};
     ASSERT_EQ(f2(1, 2), 3);

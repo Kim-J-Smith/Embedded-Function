@@ -1589,6 +1589,20 @@ inline namespace fn_traits {
   template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
   template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
 
+  // Log error for make_fn.
+  template <typename Unused>
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn_log_error() noexcept {
+    static_assert(always_false<Unused>::value,
+      "[Embedded Function]: The make_fn() cannot automatically deduce an"
+      " appropriate function wrapper based on your input parameters."
+      " This might be because the parameters you passed are ambiguous,"
+      " such as overloaded free functions, member functions, objects"
+      " that overload multiple operator() functions, nullptr, or just"
+      " non-parameters. If so, you can use 'make_fn<Signature>(...)' to"
+      " specify the signature of target callable object to disambiguate."
+      " The 'Signature' is like 'void()', 'float(int,int)'."
+    );
+  };
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -3275,19 +3289,13 @@ FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 // When all other make_fn() fail to match the input parameters, 
 // this function will be called as the fall back to avoid the 
 // awful template error flood.
-template <int = 0, typename Unused = void>
-EMBED_INLINE void make_fn(...) noexcept {
-  static_assert(detail::always_false<Unused>::value,
-    "[Embedded Function]: The make_fn() cannot automatically deduce an"
-    " appropriate function wrapper based on your input parameters."
-    " This might be because the parameters you passed are ambiguous,"
-    " such as overloaded free functions, member functions, objects"
-    " that overload multiple operator() functions, nullptr, or just"
-    " non-parameters. If so, you can use 'make_fn<Signature>()' to"
-    " specify the signature of target callable object to disambiguate."
-    " The 'Signature' is like 'void()', 'float(int,int)'."
-  );
-}
+template <typename Unused = void,
+  EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
+EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn(...) noexcept
+{ detail::make_fn_log_error<Unused>(); }
+template <template <class, std::size_t> class Unused>
+EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn(...) noexcept
+{ detail::make_fn_log_error<Unused<void(), 0>>(); }
 
 } // end namespace ebd
 
