@@ -2863,7 +2863,8 @@ namespace crtp_mixins {
 
   // Make a function.
   template <typename Fn, bool NoThrow, typename... CArgs>
-  inline Fn make_function_impl(CArgs&&... args) noexcept(NoThrow) {
+  EMBED_CXX20_CONSTEXPR inline
+  Fn make_function_impl(CArgs&&... args) noexcept(NoThrow) {
     static_assert(is_ebd_fn<Fn>::value,
       "Fn must be the alias of `ebd::detail::function`.");
     return Fn{std::forward<CArgs>(args)...};
@@ -3264,7 +3265,8 @@ EMBED_DETAIL_REQUIRES_END(
   detail::is_ebd_fn<FnWrapper>::value
   && detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
+EMBED_NODISCARD EMBED_CXX20_CONSTEXPR inline
+FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
     /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
   >(std::forward<Functor>(functor));
