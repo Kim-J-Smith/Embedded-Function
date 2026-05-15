@@ -1,13 +1,17 @@
 ## Fixed
 
-- Fixed a constructor bug in `fn_ref`.
+- Fixed bug in deducing `noexcept` functor when using `make_fn`.
+
+- Fixed bug in converting from `fn_ref` to `fn` / `unique_fn` / `safe_fn`.
 
 ## Changed
 
-- `fn`, `unique_fn`, and `safe_fn` now use `is-callable-from` as the constraint, aligning with [func.wrap.move.ctor]/1. This tightens overload resolution and avoids incorrect constructor participation.
+- **Embedded-Function now supports MSVC 19.20+ (previously required MSVC 19.34+).**
 
-- Added negative compilation tests for the above constraints.
+- Provided better ambiguity error log for `make_fn`.
+
+- Enhanced the performance of `fn_ref` / `fn` / `unique_fn` / `safe_fn`.
 
 ## Notes
 
-- `std::constant_wrapper` support is experimental as of v2.1.3.
+- `std::constant_wrapper` support is experimental as of v2.1.4.
