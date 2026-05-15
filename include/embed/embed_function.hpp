@@ -1685,10 +1685,10 @@ namespace invocation {
     template <typename Cw, typename Obj, bool CallPointer>                            \
     static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
       if constexpr (CallPointer) {                                                    \
-        C V auto* obj_ptr = static_cast<Obj*>(base.val.fill_ptr);                     \
+        auto* obj_ptr = static_cast<Obj C V*>(base.val.fill_ptr);                     \
         return invoke_r<Ret>(Cw::value, obj_ptr, std::forward<Args>(args)...);        \
       } else {                                                                        \
-        C V auto& obj = *static_cast<Obj*>(base.val.fill_ptr);                        \
+        auto& obj = *static_cast<Obj C V*>(base.val.fill_ptr);                        \
         return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);            \
       }                                                                               \
     }                                                                                 \
@@ -1725,11 +1725,11 @@ namespace invocation {
     struct inplace {                                                              \
       template <typename Functor>                                                 \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) {     \
-        auto* erased = static_cast<erasure_t*>(base.ptr);                         \
+        auto* erased = static_cast<erasure_t C V*>(base.ptr);                     \
         auto& fn = erased->template access<Functor>();                            \
         using Fn = conditional_t<is_rvalue_ref,                                   \
-          C V remove_reference_t<decltype(fn)>&&,                                 \
-          C V remove_reference_t<decltype(fn)>&>;                                 \
+          remove_reference_t<decltype(fn)>&&,                                     \
+          remove_reference_t<decltype(fn)>&>;                                     \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
     };                                                                            \
@@ -1741,7 +1741,7 @@ namespace invocation {
       static enable_if_t<is_stored_origin<Functor, true>::value, Ret>             \
       invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
         auto* fn = reinterpret_cast<Functor>(base.val.fill_func_ptr);             \
-        using Fn = C V remove_reference_t<decltype(fn)>&;                         \
+        using Fn = remove_reference_t<decltype(fn)>&;                             \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
                                                                                   \
@@ -1749,8 +1749,8 @@ namespace invocation {
       template <typename Functor>                                                 \
       static enable_if_t<!is_stored_origin<Functor, true>::value, Ret>            \
       invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
-        auto& fn = *(static_cast<Functor*>(base.val.fill_ptr));                   \
-        using Fn = C V remove_reference_t<decltype(fn)>&;                         \
+        auto& fn = *(static_cast<Functor C V*>(base.val.fill_ptr));               \
+        using Fn = remove_reference_t<decltype(fn)>&;                             \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
     };                                                                            \
