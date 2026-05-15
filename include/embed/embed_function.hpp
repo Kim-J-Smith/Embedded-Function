@@ -1411,14 +1411,13 @@ inline namespace fn_traits {
     static constexpr std::size_t reg_size = sizeof(void*);
     static constexpr std::size_t obj_size = sizeof(T);
     static constexpr bool is_trivial_obj = is_call_trivial<T>::value;
+    static constexpr bool is_scalar_obj = std::is_scalar<T>::value;
 #if defined(__sparc_v8__) || defined(__sparcv8)
     // class and union object are not allowed to pass by reg in SPARC V8 (32bit).
-    static constexpr bool value = false;
-#elif defined(__riscv)
-    // There is an abundance of register resources in RISC-V (a0 ~ a7).
-    static constexpr bool value = obj_size <= 2 * reg_size && is_trivial_obj;
+    static constexpr bool value = is_scalar_obj;
 #else
-    static constexpr bool value = obj_size <= reg_size && is_trivial_obj;
+    static constexpr bool value =
+      is_scalar_obj || (obj_size <= 2 * reg_size && is_trivial_obj);
 #endif
   };
 
@@ -1427,8 +1426,7 @@ inline namespace fn_traits {
   // be passed by the register rather than the stack.
 #if !defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
   template <typename T>
-  using smart_forward_t = conditional_t<
-    std::is_scalar<T>::value || is_reg_passable<T>::value, T, T&&>;
+  using smart_forward_t = conditional_t<is_reg_passable<T>::value, T, T&&>;
 #else
   template <typename T>
   using smart_forward_t = T&&;
