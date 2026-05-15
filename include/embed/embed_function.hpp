@@ -1105,7 +1105,7 @@ inline namespace fn_traits {
   // Get aligned size. Rounds up to the nearest word.
   template <std::size_t Size>
   struct get_aligned_size {
-    static constexpr std::size_t min_aligned = sizeof(void*);
+    static constexpr std::size_t min_aligned = sizeof(void (*) ());
     static constexpr std::size_t aligned_size = ((Size - 1) / min_aligned + 1) * min_aligned;
     static constexpr std::size_t value = Size == 0 ? min_aligned : aligned_size;
   };
