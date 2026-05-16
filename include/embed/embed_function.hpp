@@ -1122,7 +1122,7 @@ inline namespace fn_traits {
     static constexpr std::size_t ref_buf = sizeof(void (*) ());
     static constexpr std::size_t view_buf = ref_buf;
 #if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
-    // The CommandTable size plus the buffer size is about 8 * sizeof(void).
+    // The CommandTable size plus the buffer size is about 8 * sizeof(void*).
     // TODO: The size of this buffer zone needs further examination.
     static constexpr std::size_t value_c1 = 6 * sizeof(void*);
     static constexpr std::size_t value_c2 = sizeof(::std::function<void()>);
@@ -1215,8 +1215,19 @@ inline namespace fn_traits {
     Functor, void_t<decltype(&Functor::operator())>>
   : public std::true_type {};
 
+  // Check static callable functor.
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+  template <typename Fn, typename... Args>
+  struct is_static_callable_functor : bool_constant<
+    requires (Args&&... args) { Fn::operator()(std::forward<Args>(args)...); }
+  > {};
+#else
+  template <typename Fn, typename... Args>
+  struct is_static_callable_functor : std::false_type {};
+#endif
+
   // Implement the `get_unique_signature`.
-  template <typename T>
+  template <typename Fn, typename T, typename = void>
   struct get_unique_signature_impl {
     static_assert(always_false<T>::value,
       "T must be a function pointer or pointer to member function.");
@@ -1224,11 +1235,11 @@ inline namespace fn_traits {
 
   // The Config::isThrowing of ebd::fn and ebd::unique_fn is true.
   // So `get_unique_signature_impl` will ignore the `noexcept` specifier.
-#define EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE(C, V, REF, NOEXCEPT)    \
-  template <typename Class, typename Ret, typename... Args>                   \
-  struct get_unique_signature_impl<Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
-    using type = Ret(Args...) C V REF;                                        \
-    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;                  \
+#define EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE(C, V, REF, NOEXCEPT)        \
+  template <typename Fn, typename Class, typename Ret, typename... Args>          \
+  struct get_unique_signature_impl<Fn, Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
+    using type = Ret(Args...) C V REF;                                            \
+    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;                      \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE)
@@ -1237,7 +1248,7 @@ inline namespace fn_traits {
 
 #if ( __cpp_explicit_this_parameter >= 202110L ) || ( EMBED_CXX_VERSION >= 202302L )
 
-  // [dcl.fct]/6 function/packaged_task deduction guides and deducing this.
+  // [dcl.fct]/6 Deducing this.
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html>.
 
   // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
@@ -1256,13 +1267,52 @@ inline namespace fn_traits {
 
 # undef EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE
 
-  template <typename This, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Ret(*)(This, Args...)>
-  : public add_qualifier_with_this<This, Ret(Args...)> {};
+  // MSVC (as of 19.50.35717) cannot write `requires (...) {...}` in
+  // enable_if_t<> in the template argument list. To work around this,
+  // we use `is_explicit_this_call_v` instead.
+  template <typename Fn, typename This, typename Sig, typename... Args>
+  constexpr bool is_explicit_this_call_v = requires (Fn f, Args&&... args) {
+    static_cast<typename unwrap_signature<
+      typename add_qualifier_with_this<This, Sig>::type
+    >::template add_cvref_like<Fn>>(f)(std::forward<Args>(args)...);
+  };
 
-  template <typename This, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Ret(*)(This, Args...) noexcept>
-  : public add_qualifier_with_this<This, Ret(Args...) noexcept> {};
+  // noexcept(false)
+  template <typename Fn, typename This, typename Ret, typename... Args>
+  struct get_unique_signature_impl<Fn, Ret(*)(This, Args...),
+    enable_if_t<is_explicit_this_call_v<Fn, This, Ret(Args...), Args...>>
+  > : public add_qualifier_with_this<This, Ret(Args...)> {};
+
+  // noexcept(true)
+  template <typename Fn, typename This, typename Ret, typename... Args>
+  struct get_unique_signature_impl<Fn, Ret(*)(This, Args...) noexcept,
+    enable_if_t<is_explicit_this_call_v<Fn, This, Ret(Args...) noexcept, Args...>>
+  > : public add_qualifier_with_this<This, Ret(Args...) noexcept> {};
+
+#endif
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+
+  // [func.wrap.func.con]/16.2 Static operator().
+  // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1169r4.html>.
+
+  // noexcept(false)
+  template <typename Fn, typename Ret, typename... Args>
+  struct get_unique_signature_impl<Fn, Ret(*)(Args...), enable_if_t<
+    is_static_callable_functor<Fn, Args...>::value
+  >> { // ^^^ Cannot simply write `requires (...) {...}` due to MSVC(as of 19.50.35717) bug.
+    using type = Ret(Args...) const;
+    using sig_with_noexcept = Ret(Args...) const;
+  };
+
+  // noexcept(true)
+  template <typename Fn, typename Ret, typename... Args>
+  struct get_unique_signature_impl<Fn, Ret(*)(Args...) noexcept, enable_if_t<
+    is_static_callable_functor<Fn, Args...>::value
+  >> { // ^^^ Cannot simply write `requires (...) {...}` due to MSVC(as of 19.50.35717) bug.
+    using type = Ret(Args...) const;
+    using sig_with_noexcept = Ret(Args...) const noexcept;
+  };
 
 #endif
 
@@ -1276,7 +1326,7 @@ inline namespace fn_traits {
 
   template <typename Functor>
   struct get_unique_signature<Functor, /* Unique = */ true> {
-    using impl_t = get_unique_signature_impl<decltype(&Functor::operator())>;
+    using impl_t = get_unique_signature_impl<Functor, decltype(&Functor::operator())>;
     using type = typename impl_t::type;
     using sig_with_noexcept = typename impl_t::sig_with_noexcept;
   };
@@ -1587,6 +1637,12 @@ inline namespace fn_traits {
   template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
   template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
 
+  // Check whether the functor is stateless.
+  template <typename Fn, typename... Args>
+  struct is_stateless : bool_constant<
+    is_std_op_wrapper<Fn>::value || is_static_callable_functor<Fn, Args...>::value
+  > {};
+
   // Log error for make_fn.
   template <typename Unused>
   EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn_log_error() noexcept {
@@ -1607,22 +1663,20 @@ inline namespace fn_traits {
 // types for objects that implement type erasure.
 namespace erasure_type {
 
-  template <std::size_t Size>
-  union ErasureCoreImpl {
-    static_assert(Size > 0, "erasure size must greater than 0");
-
+  // Reference storage, which used in view mode.
+  union ErasureRefStorage {
     void*       fill_ptr;
     const void* fill_const_ptr;
     void (*fill_func_ptr) ();
-    char        fill[Size];
   };
 
   template <std::size_t Size>
   union EMBED_DETAIL_ALIAS ErasureCore {
+    static_assert(Size > 0, "erasure size must greater than 0");
     // An array of `unsigned char` can be used to hold other objects.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html>.
-    unsigned char pod[sizeof(ErasureCoreImpl<Size>)];
-    ErasureCoreImpl<Size> ref_storage; // alignas(ref_storage)
+    unsigned char pod[Size];
+    ErasureRefStorage ref_storage; // alignas(ref_storage)
   };
 
   // Passing the `ErasureBase*` as a parameter can avoid the 
@@ -1664,28 +1718,47 @@ namespace erasure_type {
     { return *EMBED_DETAIL_LAUNDER(static_cast<const volatile T*>(access())); }
   };
 
+  // ABI for passing either pointer or value.
+  union ErasurePass {
+    ErasureBase*      ptr;
+    ErasureRefStorage val;
+  };
+
 } // end namespace erasure_type
 
 // In the namespace "invocation", we define a series of 
 // types for objects that implement the behaviour of invocation.
 namespace invocation {
 
+// Implement invocation for static call operator.
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+# define EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT)             \
+  struct static_call {                                                          \
+    template <typename Functor>                                                 \
+    static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT { \
+      return Functor::operator()(std::forward<Args>(args)...);                  \
+    }                                                                           \
+  }; /* end static_call */
+#else
+# define EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT) \
+  struct static_call { /* empty struct */ };
+#endif
+
 // Implement invocation for constant_wrapper.
 #if __cpp_lib_constant_wrapper >= 202603L
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                            \
   struct view_cw {                                                                    \
     template <typename Cw>                                                            \
-    static Ret invoke(erasure_base_t*, smart_forward_t<Args>... args) NOEXCEPT {      \
+    static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT {       \
       return invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);                   \
     }                                                                                 \
     template <typename Cw, typename Obj, bool CallPointer>                            \
-    static Ret invoke(erasure_base_t* base, smart_forward_t<Args>... args) NOEXCEPT { \
-      auto* erased = static_cast<erasure_t*>(base);                                   \
+    static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
       if constexpr (CallPointer) {                                                    \
-        C V auto* obj_ptr = erased->template access<Obj*>();                          \
+        auto* obj_ptr = static_cast<Obj C V*>(base.val.fill_ptr);                     \
         return invoke_r<Ret>(Cw::value, obj_ptr, std::forward<Args>(args)...);        \
       } else {                                                                        \
-        C V auto& obj = *erased->template access<Obj*>();                             \
+        auto& obj = *static_cast<Obj C V*>(base.val.fill_ptr);                        \
         return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);            \
       }                                                                               \
     }                                                                                 \
@@ -1703,15 +1776,16 @@ namespace invocation {
   struct InvokerImpl<Size, Config, Ret(Args...) C V REF NOEXCEPT> {               \
   public:                                                                         \
     using erasure_base_t = erasure_type::ErasureBase C V;                         \
+    using erasure_pass_t = erasure_type::ErasurePass C;                           \
     using erasure_t = erasure_type::Erasure<Size> C V;                            \
     static constexpr bool is_rvalue_ref =                                         \
       std::is_rvalue_reference<int REF>::value;                                   \
-    using invoker_type = Ret (*) (                                                \
-      erasure_base_t* base, smart_forward_t<Args>... args);                       \
+    using invoker_type =                                                          \
+      Ret (*) (erasure_pass_t erased, smart_forward_t<Args>... args);             \
                                                                                   \
     /* Using when M_erasure is empty. */                                          \
     struct empty {                                                                \
-      static Ret invoke(erasure_base_t*, smart_forward_t<Args>...) {              \
+      static Ret invoke(erasure_pass_t, smart_forward_t<Args>...) {               \
         throw_or_terminate<Config::isThrowing>();                                 \
         /* Unreachable: throw_or_terminate() is [[noreturn]] */                   \
       }                                                                           \
@@ -1720,12 +1794,12 @@ namespace invocation {
     /* Using when Config::isView == false. */                                     \
     struct inplace {                                                              \
       template <typename Functor>                                                 \
-      static Ret invoke(erasure_base_t* base, smart_forward_t<Args>... args) {    \
-        auto* erased = static_cast<erasure_t*>(base);                             \
+      static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) {     \
+        auto* erased = static_cast<erasure_t C V*>(base.ptr);                     \
         auto& fn = erased->template access<Functor>();                            \
         using Fn = conditional_t<is_rvalue_ref,                                   \
-          C V remove_reference_t<decltype(fn)>&&,                                 \
-          C V remove_reference_t<decltype(fn)>&>;                                 \
+          remove_reference_t<decltype(fn)>&&,                                     \
+          remove_reference_t<decltype(fn)>&>;                                     \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
     };                                                                            \
@@ -1735,20 +1809,18 @@ namespace invocation {
       /* Using when Functor::is_stored_origin == true. */                         \
       template <typename Functor>                                                 \
       static enable_if_t<is_stored_origin<Functor, true>::value, Ret>             \
-      invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
-        auto* erased = static_cast<erasure_t*>(base);                             \
-        auto& fn = erased->template access<Functor>();                            \
-        using Fn = C V remove_reference_t<decltype(fn)>&;                         \
+      invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
+        auto* fn = reinterpret_cast<Functor>(base.val.fill_func_ptr);             \
+        using Fn = remove_reference_t<decltype(fn)>&;                             \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
                                                                                   \
       /* Using when Functor::is_stored_origin == false. */                        \
       template <typename Functor>                                                 \
       static enable_if_t<!is_stored_origin<Functor, true>::value, Ret>            \
-      invoke(erasure_base_t* base, smart_forward_t<Args>... args) {               \
-        auto* erased = static_cast<erasure_t*>(base);                             \
-        auto& fn = *(erased->template access<Functor*>());                        \
-        using Fn = C V remove_reference_t<decltype(fn)>&;                         \
+      invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
+        auto& fn = *(static_cast<Functor C V*>(base.val.fill_ptr));               \
+        using Fn = remove_reference_t<decltype(fn)>&;                             \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
     };                                                                            \
@@ -1756,7 +1828,7 @@ namespace invocation {
     /* Used for standard operator wrapper (like std::less). */                    \
     struct std_op_wrapper {                                                       \
       template <typename StdOperator>                                             \
-      static Ret invoke(erasure_base_t*, smart_forward_t<Args>... args) {         \
+      static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) {          \
         static_assert(is_std_op_wrapper<StdOperator>::value,                      \
           EMBED_DETAIL_REPORT_IE("'StdOperator' should be std operator wrapper"));\
         C V auto fn = StdOperator{};                                              \
@@ -1764,6 +1836,7 @@ namespace invocation {
       }                                                                           \
     };                                                                            \
                                                                                   \
+    EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT)                    \
     EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                             \
   };
 
@@ -1951,12 +2024,13 @@ namespace command {
     using manager_impl_t = management::ManagerImpl<Size, Config, Signature>;
     using invoker_t       = typename invoker_impl_t::invoker_type;
     using erasure_base_t  = typename invoker_impl_t::erasure_base_t;
+    using erasure_pass_t  = typename invoker_impl_t::erasure_pass_t;
     using manager_t       = typename manager_impl_t::manager_type;
 
     manager_t m_manager;
     invoker_t m_invoker;
 
-    auto invoke(erasure_base_t* erased, Args&&... args) const
+    auto invoke(erasure_pass_t erased, Args&&... args) const
     noexcept(unwrap_signature<Signature>::isNoexcept)
     -> typename unwrap_signature<Signature>::ret {
       return m_invoker(erased, std::forward<Args>(args)...);
@@ -1984,12 +2058,13 @@ namespace command {
     }
 
     // Check the `m_invoker` is empty::invoke. (constexpr && noexcept)
-    constexpr bool is_empty() const noexcept {
+    EMBED_NODISCARD constexpr bool is_empty() const noexcept {
       return m_invoker == &invoker_impl_t::empty::invoke;
     }
 
+    // Initialize owning function wrapper. (Enable if Functor is NOT stateless.)
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    enable_if_t<!is_std_op_wrapper<DecFunctor>::value>
+    enable_if_t<!is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
@@ -1997,10 +2072,16 @@ namespace command {
       m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
     }
 
+    // Initialize owning function wrapper. (Enable if Functor is stateless.)
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<is_std_op_wrapper<DecFunctor>::value>
+    EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
-      m_invoker = &invoker_impl_t::std_op_wrapper::template invoke<DecFunctor>;
+      using invoker_impl_target_t = conditional_t<
+        is_static_callable_functor<DecFunctor, Args...>::value,
+        typename invoker_impl_t::static_call,
+        typename invoker_impl_t::std_op_wrapper
+      >;
+      m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::empty::manage;
     }
 
@@ -2026,12 +2107,13 @@ namespace command {
     using manager_impl_t = management::ManagerImpl<Size, Config, Signature>;
     using invoker_t       = typename invoker_impl_t::invoker_type;
     using erasure_base_t  = typename invoker_impl_t::erasure_base_t;
+    using erasure_pass_t  = typename invoker_impl_t::erasure_pass_t;
     using erasure_t       = typename invoker_impl_t::erasure_t;
 
     // No m_manager because IsView = true.
     invoker_t m_invoker;
 
-    auto invoke(erasure_base_t* erased, Args&&... args) const
+    auto invoke(erasure_pass_t erased, Args&&... args) const
     noexcept(unwrap_signature<Signature>::isNoexcept)
     -> typename unwrap_signature<Signature>::ret {
       return m_invoker(erased, std::forward<Args>(args)...);
@@ -2057,7 +2139,7 @@ namespace command {
       // Do nothing here
     }
 
-    // Enable if Functor is stored origin. (Enable if the functor is function pointer(FP))
+    // Initialize non-owning function wrapper. (Enable if the functor is function pointer(FP))
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
     enable_if_t<IsStoredOrigin> /* Enable if the functor is function pointer(FP) */
     init(erasure_base_t* target, Functor&& obj) noexcept {
@@ -2067,9 +2149,9 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Enable if Functor is stored by pointer. (Enable if the functor is neither FP or std-op-wrapper)
+    // Initialize non-owning function wrapper. (Enable if the functor is neither FP nor stateless-fn)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && !is_std_op_wrapper<DecFunctor>::value>
+    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && !is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj) noexcept {
       static_assert(!std::is_rvalue_reference<Functor&&>::value,
         "function in view mode cannot be initialized with rvalue reference.");
@@ -2077,11 +2159,16 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Enable if Functor is not stored. (Enable if the functor is std-op-wrapper)
+    // Initialize non-owning function wrapper. (Enable if the functor is stateless-fn)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && is_std_op_wrapper<DecFunctor>::value>
+    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
-      m_invoker = &invoker_impl_t::std_op_wrapper::template invoke<DecFunctor>;
+      using invoker_impl_target_t = conditional_t<
+        is_static_callable_functor<DecFunctor, Args...>::value,
+        typename invoker_impl_t::static_call,
+        typename invoker_impl_t::std_op_wrapper
+      >;
+      m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
     }
 
 #if __cpp_lib_constant_wrapper >= 202603L
@@ -2130,10 +2217,13 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
     Ret operator()(Args... args) C V REF NOEXCEPT {                         \
-      auto* self_q = static_cast<Self C V*>(this);                          \
-      auto* erased = &(self_q->m_erasure);                                  \
+      using erasure_t = typename Self::erasure_t;                           \
       using command_t = const typename Self::command_t;                     \
+      using pass_t = typename command_t::erasure_pass_t;                    \
+      remove_cv_t<pass_t> erased;                                           \
+      auto* self_q = static_cast<Self C V*>(this);                          \
       auto& cmd = const_cast<command_t&>(self_q->m_command);                \
+      erased.ptr = const_cast<erasure_t*>(&(self_q->m_erasure));            \
       return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
   };                                                                        \
@@ -2148,10 +2238,13 @@ namespace crtp_mixins {
                                                                             \
     Ret operator()(Args... args) const V NOEXCEPT {                         \
       using erasure_t = typename Self::erasure_t;                           \
-      auto* self_q = static_cast<Self const V*>(this);                      \
-      auto* erased = const_cast<erasure_t*>(&(self_q->m_erasure));          \
       using command_t = const typename Self::command_t;                     \
+      using pass_t = typename command_t::erasure_pass_t;                    \
+      remove_cv_t<pass_t> erased;                                           \
+      auto* self_q = static_cast<Self const V*>(this);                      \
+      auto& erasure = const_cast<erasure_t&>(self_q->m_erasure);            \
       auto& cmd = const_cast<command_t&>(self_q->m_command);                \
+      erased.val = erasure.m_core.ref_storage;                              \
       return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
   };
@@ -2348,7 +2441,7 @@ namespace crtp_mixins {
     }
 
     // Return `true` if the object is empty.
-    EMBED_CXX14_CONSTEXPR bool is_empty() const noexcept {
+    EMBED_NODISCARD EMBED_CXX14_CONSTEXPR bool is_empty() const noexcept {
       auto const& self = static_cast<const Self&>(*this);
       return self.m_command.is_empty();
     }
@@ -2531,7 +2624,7 @@ namespace crtp_mixins {
     EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
     get_buffer_size() noexcept { return buffer_size; }
 
-    /// @brief Return `true` if the function is capyable.
+    /// @brief Return `true` if the function is copyable.
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
     is_copyable() noexcept { return internal_is_copyable; }
 
@@ -3144,7 +3237,7 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
   // [Auto] The basic type of the functor.
   typename Class = detail::remove_cvref_t<Lambda>,
-  // [Auto] The buffersize of functor.
+  // [Auto] The buffer size of functor.
   std::size_t BufferSize = sizeof(Class),
   // [Auto] The signature of functor.
   typename Signature = detail::get_unique_signature_t<Class>,

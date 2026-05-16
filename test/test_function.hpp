@@ -215,3 +215,9 @@ public:
 
     int operator()(char) const { return OVL_CHAR; }
 };
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+struct ebd_test_static_call_operator {
+    static int operator()(int a, int b) noexcept { return a + b; }
+};
+#endif

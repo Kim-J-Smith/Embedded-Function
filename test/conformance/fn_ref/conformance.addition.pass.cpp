@@ -191,4 +191,15 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     ASSERT_EQ(f2(1, 2), 3);
   }
 #endif
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+  {
+    ebd::fn_ref<int(int, int)> f1 = ebd_test_static_call_operator{};
+    ASSERT_EQ(f1(0, 42), 42);
+
+    auto f2 = ebd::make_fn<ebd::fn_ref>(ebd_test_static_call_operator{});
+    static_assert(std::is_same_v<decltype(f2), ebd::fn_ref<int(int, int) const noexcept>>, "BUG");
+    ASSERT_EQ(f2(1, 42), 43);
+  }
+#endif
 }
