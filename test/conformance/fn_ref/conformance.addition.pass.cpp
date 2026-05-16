@@ -183,11 +183,23 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
 
 # if (EMBED_CXX_VERSION >= 202002L && __cpp_constexpr >= 202002L)
   {
-    static constexpr auto l = [] {};
-    constexpr ebd::fn_ref<void()> f1 = l;
+    static constexpr auto l = [] { return 42; };
+    constexpr ebd::fn_ref<int()> f1 = l;
+    ASSERT_EQ(f1(), 42);
 
     constexpr ebd::fn_ref<int(int, int)> f2 = std::plus{};
     ASSERT_EQ(f2(1, 2), 3);
+  }
+#endif
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+  {
+    ebd::fn_ref<int(int, int)> f1 = ebd_test_static_call_operator{};
+    ASSERT_EQ(f1(0, 42), 42);
+
+    auto f2 = ebd::make_fn<ebd::fn_ref>(ebd_test_static_call_operator{});
+    static_assert(std::is_same_v<decltype(f2), ebd::fn_ref<int(int, int) const noexcept>>, "BUG");
+    ASSERT_EQ(f2(1, 42), 43);
   }
 #endif
 }
