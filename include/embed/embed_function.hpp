@@ -1215,8 +1215,19 @@ inline namespace fn_traits {
     Functor, void_t<decltype(&Functor::operator())>>
   : public std::true_type {};
 
+  // Check static callable functor.
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+  template <typename Fn, typename... Args>
+  struct is_static_callable_functor : bool_constant<
+    requires (Args&&... args) { Fn::operator()(std::forward<Args>(args)...); }
+  > {};
+#else
+  template <typename Fn, typename... Args>
+  struct is_static_callable_functor : std::false_type {};
+#endif
+
   // Implement the `get_unique_signature`.
-  template <typename T>
+  template <typename Fn, typename T, typename = void>
   struct get_unique_signature_impl {
     static_assert(always_false<T>::value,
       "T must be a function pointer or pointer to member function.");
@@ -1224,11 +1235,11 @@ inline namespace fn_traits {
 
   // The Config::isThrowing of ebd::fn and ebd::unique_fn is true.
   // So `get_unique_signature_impl` will ignore the `noexcept` specifier.
-#define EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE(C, V, REF, NOEXCEPT)    \
-  template <typename Class, typename Ret, typename... Args>                   \
-  struct get_unique_signature_impl<Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
-    using type = Ret(Args...) C V REF;                                        \
-    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;                  \
+#define EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE(C, V, REF, NOEXCEPT)        \
+  template <typename Fn, typename Class, typename Ret, typename... Args>          \
+  struct get_unique_signature_impl<Fn, Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
+    using type = Ret(Args...) C V REF;                                            \
+    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;                      \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE)
@@ -1237,7 +1248,7 @@ inline namespace fn_traits {
 
 #if ( __cpp_explicit_this_parameter >= 202110L ) || ( EMBED_CXX_VERSION >= 202302L )
 
-  // [dcl.fct]/6 function/packaged_task deduction guides and deducing this.
+  // [dcl.fct]/6 Deducing this.
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html>.
 
   // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
@@ -1256,13 +1267,52 @@ inline namespace fn_traits {
 
 # undef EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE
 
-  template <typename This, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Ret(*)(This, Args...)>
-  : public add_qualifier_with_this<This, Ret(Args...)> {};
+  // MSVC (as of 19.50.35717) cannot write `requires (...) {...}` in
+  // enable_if_t<> in the template argument list. To work around this,
+  // we use `is_explicit_this_call` instead.
+  template <typename Fn, typename This, typename Sig, typename... Args>
+  constexpr bool is_explicit_this_call_v = requires (Fn f, Args&&... args) {
+    static_cast<typename unwrap_signature<
+      typename add_qualifier_with_this<This, Sig>::type
+    >::template add_cvref_like<Fn>>(f)(std::forward<Args>(args)...);
+  };
 
-  template <typename This, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Ret(*)(This, Args...) noexcept>
-  : public add_qualifier_with_this<This, Ret(Args...) noexcept> {};
+  // noexcept(false)
+  template <typename Fn, typename This, typename Ret, typename... Args>
+  struct get_unique_signature_impl<Fn, Ret(*)(This, Args...),
+    enable_if_t<is_explicit_this_call_v<Fn, This, Ret(Args...), Args...>>
+  > : public add_qualifier_with_this<This, Ret(Args...)> {};
+
+  // noexcept(true)
+  template <typename Fn, typename This, typename Ret, typename... Args>
+  struct get_unique_signature_impl<Fn, Ret(*)(This, Args...) noexcept,
+    enable_if_t<is_explicit_this_call_v<Fn, This, Ret(Args...) noexcept, Args...>>
+  > : public add_qualifier_with_this<This, Ret(Args...) noexcept> {};
+
+#endif
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+
+  // [func.wrap.func.con]/16.2 Static operator().
+  // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1169r4.html>.
+
+  // noexcept(false)
+  template <typename Fn, typename Ret, typename... Args>
+  struct get_unique_signature_impl<Fn, Ret(*)(Args...), enable_if_t<
+    is_static_callable_functor<Fn, Args...>::value
+  >> { // ^^^ Cannot simply write `requires (...) {...}` due to MSVC(as of 19.50.35717) bug.
+    using type = Ret(Args...) const;
+    using sig_with_noexcept = Ret(Args...) const;
+  };
+
+  // noexcept(true)
+  template <typename Fn, typename Ret, typename... Args>
+  struct get_unique_signature_impl<Fn, Ret(*)(Args...) noexcept, enable_if_t<
+    is_static_callable_functor<Fn, Args...>::value
+  >> { // ^^^ Cannot simply write `requires (...) {...}` due to MSVC(as of 19.50.35717) bug.
+    using type = Ret(Args...) const;
+    using sig_with_noexcept = Ret(Args...) const noexcept;
+  };
 
 #endif
 
@@ -1276,7 +1326,7 @@ inline namespace fn_traits {
 
   template <typename Functor>
   struct get_unique_signature<Functor, /* Unique = */ true> {
-    using impl_t = get_unique_signature_impl<decltype(&Functor::operator())>;
+    using impl_t = get_unique_signature_impl<Functor, decltype(&Functor::operator())>;
     using type = typename impl_t::type;
     using sig_with_noexcept = typename impl_t::sig_with_noexcept;
   };
@@ -1587,6 +1637,12 @@ inline namespace fn_traits {
   template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
   template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
 
+  // Check whether the functor is stateless.
+  template <typename Fn, typename... Args>
+  struct is_stateless : bool_constant<
+    is_std_op_wrapper<Fn>::value || is_static_callable_functor<Fn, Args...>::value
+  > {};
+
   // Log error for make_fn.
   template <typename Unused>
   EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn_log_error() noexcept {
@@ -1673,6 +1729,20 @@ namespace erasure_type {
 // In the namespace "invocation", we define a series of 
 // types for objects that implement the behaviour of invocation.
 namespace invocation {
+
+// Implement invocation for static call operator.
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+# define EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT)             \
+  struct static_call {                                                          \
+    template <typename Functor>                                                 \
+    static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT { \
+      return Functor::operator()(std::forward<Args>(args)...);                  \
+    }                                                                           \
+  }; /* end static_call */
+#else
+# define EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT) \
+  struct static_call { /* empty struct */ };
+#endif
 
 // Implement invocation for constant_wrapper.
 #if __cpp_lib_constant_wrapper >= 202603L
@@ -1766,6 +1836,7 @@ namespace invocation {
       }                                                                           \
     };                                                                            \
                                                                                   \
+    EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT)                    \
     EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                             \
   };
 
@@ -1992,7 +2063,7 @@ namespace command {
     }
 
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    enable_if_t<!is_std_op_wrapper<DecFunctor>::value>
+    enable_if_t<!is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
@@ -2001,9 +2072,14 @@ namespace command {
     }
 
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<is_std_op_wrapper<DecFunctor>::value>
+    EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
-      m_invoker = &invoker_impl_t::std_op_wrapper::template invoke<DecFunctor>;
+      using invoker_impl_target_t = conditional_t<
+        is_static_callable_functor<DecFunctor, Args...>::value,
+        typename invoker_impl_t::static_call,
+        typename invoker_impl_t::std_op_wrapper
+      >;
+      m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::empty::manage;
     }
 
@@ -2071,9 +2147,9 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Enable if Functor is stored by pointer. (Enable if the functor is neither FP nor std-op-wrapper)
+    // Enable if Functor is stored by pointer. (Enable if the functor is neither FP nor stateless-fn)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && !is_std_op_wrapper<DecFunctor>::value>
+    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && !is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj) noexcept {
       static_assert(!std::is_rvalue_reference<Functor&&>::value,
         "function in view mode cannot be initialized with rvalue reference.");
@@ -2081,11 +2157,16 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Enable if Functor is not stored. (Enable if the functor is std-op-wrapper)
+    // Enable if Functor is not stored. (Enable if the functor is stateless-fn)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && is_std_op_wrapper<DecFunctor>::value>
+    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
-      m_invoker = &invoker_impl_t::std_op_wrapper::template invoke<DecFunctor>;
+      using invoker_impl_target_t = conditional_t<
+        is_static_callable_functor<DecFunctor, Args...>::value,
+        typename invoker_impl_t::static_call,
+        typename invoker_impl_t::std_op_wrapper
+      >;
+      m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
     }
 
 #if __cpp_lib_constant_wrapper >= 202603L
