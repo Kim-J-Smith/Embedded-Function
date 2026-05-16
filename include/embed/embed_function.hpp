@@ -1269,7 +1269,7 @@ inline namespace fn_traits {
 
   // MSVC (as of 19.50.35717) cannot write `requires (...) {...}` in
   // enable_if_t<> in the template argument list. To work around this,
-  // we use `is_explicit_this_call` instead.
+  // we use `is_explicit_this_call_v` instead.
   template <typename Fn, typename This, typename Sig, typename... Args>
   constexpr bool is_explicit_this_call_v = requires (Fn f, Args&&... args) {
     static_cast<typename unwrap_signature<
@@ -2062,6 +2062,7 @@ namespace command {
       return m_invoker == &invoker_impl_t::empty::invoke;
     }
 
+    // Initialize owning function wrapper. (Enable if Functor is NOT stateless.)
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     enable_if_t<!is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj)
@@ -2071,6 +2072,7 @@ namespace command {
       m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
     }
 
+    // Initialize owning function wrapper. (Enable if Functor is stateless.)
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
     EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
@@ -2137,7 +2139,7 @@ namespace command {
       // Do nothing here
     }
 
-    // Enable if Functor is stored origin. (Enable if the functor is function pointer(FP))
+    // Initialize non-owning function wrapper. (Enable if the functor is function pointer(FP))
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
     enable_if_t<IsStoredOrigin> /* Enable if the functor is function pointer(FP) */
     init(erasure_base_t* target, Functor&& obj) noexcept {
@@ -2147,7 +2149,7 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Enable if Functor is stored by pointer. (Enable if the functor is neither FP nor stateless-fn)
+    // Initialize non-owning function wrapper. (Enable if the functor is neither FP nor stateless-fn)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
     EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && !is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj) noexcept {
@@ -2157,7 +2159,7 @@ namespace command {
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Enable if Functor is not stored. (Enable if the functor is stateless-fn)
+    // Initialize non-owning function wrapper. (Enable if the functor is stateless-fn)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
     EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && is_stateless<DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
