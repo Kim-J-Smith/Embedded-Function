@@ -1614,33 +1614,16 @@ inline namespace fn_traits {
   using noexcept_qualify_like_t = 
     typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, Sig>::type;
 
-  // Check if `T` is the stateless standard operator wrapper.
-  template <typename T> struct is_std_op_wrapper : std::false_type {};
-
-  template <typename T> struct is_std_op_wrapper<std::equal_to<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::not_equal_to<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::greater<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::less<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::greater_equal<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::less_equal<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::plus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::minus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::multiplies<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::divides<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::modulus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::negate<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_and<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_or<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_not<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_and<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_or<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
+  // Check empty and normal callable functor.
+  template <typename Fn>
+  struct is_empty_normal : bool_constant<
+    std::is_empty<Fn>::value && is_traditional_trivial<Fn>::value
+  > {};
 
   // Check whether the functor is stateless.
   template <typename Fn, typename... Args>
   struct is_stateless : bool_constant<
-    is_std_op_wrapper<Fn>::value || is_static_callable_functor<Fn, Args...>::value
+    is_static_callable_functor<Fn, Args...>::value || is_empty_normal<Fn>::value
   > {};
 
   // Log error for make_fn.
@@ -1825,14 +1808,15 @@ namespace invocation {
       }                                                                           \
     };                                                                            \
                                                                                   \
-    /* Used for standard operator wrapper (like std::less). */                    \
-    struct std_op_wrapper {                                                       \
-      template <typename StdOperator>                                             \
+    /* Used for stateless(empty) Functor (like std::less). */                     \
+    struct empty_normal {                                                         \
+      template <typename EmptyFn>                                                 \
       static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) {          \
-        static_assert(is_std_op_wrapper<StdOperator>::value,                      \
-          EMBED_DETAIL_REPORT_IE("'StdOperator' should be std operator wrapper"));\
-        C V auto fn = StdOperator{};                                              \
-        return invoke_r<Ret>(fn, std::forward<Args>(args)...);                    \
+        C V EmptyFn fn{};  /* Empty and trivial class. It is stateless */         \
+        using Fn = conditional_t<is_rvalue_ref,                                   \
+          remove_reference_t<decltype(fn)>&&,                                     \
+          remove_reference_t<decltype(fn)>&>;                                     \
+        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
     };                                                                            \
                                                                                   \
@@ -2079,7 +2063,7 @@ namespace command {
       using invoker_impl_target_t = conditional_t<
         is_static_callable_functor<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
-        typename invoker_impl_t::std_op_wrapper
+        typename invoker_impl_t::empty_normal
       >;
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::empty::manage;
@@ -2166,7 +2150,7 @@ namespace command {
       using invoker_impl_target_t = conditional_t<
         is_static_callable_functor<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
-        typename invoker_impl_t::std_op_wrapper
+        typename invoker_impl_t::empty_normal
       >;
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
     }
