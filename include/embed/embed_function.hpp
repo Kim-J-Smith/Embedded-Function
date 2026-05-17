@@ -1615,9 +1615,11 @@ inline namespace fn_traits {
     typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, Sig>::type;
 
   // Check empty and normal callable functor.
+  // Lambda has trivially default constructor since C++20.
+  // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0624r2.pdf>.
   template <typename Fn>
   struct is_empty_normal : bool_constant<
-    std::is_empty<Fn>::value && is_traditional_trivial<Fn>::value
+    std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value
   > {};
 
   // Check whether the functor is stateless.

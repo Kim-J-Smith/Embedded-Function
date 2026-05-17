@@ -204,10 +204,23 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
 #endif
 
   {
+#if EMBED_CXX_VERSION >= 202002L
     ebd::fn_ref<int() const> f1 = [] { return 42; }; // stateless
     ASSERT_EQ(f1(), 42);
 
     ebd::fn_ref<int(int, int) const> f2 = [](int a, int b) { return a * b; }; // stateless
     ASSERT_EQ(f2(3, 4), 3 * 4);
+
+# if __cpp_lib_ranges >= 202110L
+
+    ebd::fn_ref<bool(int, int) const> f3 = std::ranges::less{}; // stateless
+    ASSERT_EQ(f3(1, 2), true);
+
+    ebd::fn_ref<bool(int, int) const> f4 = std::ranges::greater_equal{}; // stateless
+    ASSERT_EQ(f4(4, 4), true);
+    ASSERT_EQ(f4(5, 4), true);
+
+# endif // __cpp_lib_ranges >= 202110L
+#endif // EMBED_CXX_VERSION >= 202002L
   }
 }
