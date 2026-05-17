@@ -150,6 +150,14 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
 
+### Zero-stack overhead
+
+`ebd::fn_ref` occupies no stack space when used as a function parameter; it is passed entirely in registers. This allows the compiler to directly tail-call the wrapped target, removing the cost of an extra stack frame. See [x86_64-asm](./docs/perf/x86_64_gcc_fn_ref_zero_stack.md).
+
+### Stateless elimination
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., empty classes with trivial operations). This reduces memory access operations and improves cache efficiency.
+
 > Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 
 ## 🧩 Automatic deduction
