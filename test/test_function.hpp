@@ -221,3 +221,5 @@ struct ebd_test_static_call_operator {
     static int operator()(int a, int b) noexcept { return a + b; }
 };
 #endif
+
+inline int ebd_test_safe_tmp_fn(ebd::fn_ref<int()> f) { return f(); }
