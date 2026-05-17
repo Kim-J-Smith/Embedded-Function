@@ -590,3 +590,87 @@ TEST(InitFunction, fn_ref_constexprInit) {
 #endif
 
 }
+
+// InitFunction[33]
+TEST(InitFunction, Functor_noexcept_make_fn) {
+    auto f1 = ebd::make_fn(ebd_test_operator_unambiguous{});
+
+    ASSERT_EQ(f1(1), 1);
+    ASSERT_EQ(f1(1), 2);
+}
+
+// InitFunction[34]
+TEST(InitFunction, std_op_wrapper) {
+    {
+        auto f1 = ebd::make_fn(std::greater<int>{});
+
+        ASSERT_EQ(f1(1, 0), true);
+        ASSERT_EQ(f1(1, 2), false);
+
+        auto f2 = ebd::make_fn<ebd::unique_fn>(std::greater<int>{});
+
+        ASSERT_EQ(f2(1, 0), true);
+        ASSERT_EQ(f2(1, 2), false);
+
+        auto f3 = ebd::make_fn<ebd::safe_fn>(std::greater<int>{});
+
+        ASSERT_EQ(f3(1, 0), true);
+        ASSERT_EQ(f3(1, 2), false);
+
+        auto f4 = ebd::make_fn<ebd::fn_ref>(std::greater<int>{});
+
+        ASSERT_EQ(f4(1, 0), true);
+        ASSERT_EQ(f4(1, 2), false);
+    }
+
+#if __cpp_lib_ranges >= 202110L
+
+    {
+        auto f1 = ebd::make_fn<bool(int, int)>(std::ranges::greater{});
+
+        ASSERT_EQ(f1(1, 0), true);
+        ASSERT_EQ(f1(1, 2), false);
+
+        f1 = ebd::make_fn<bool(int, int)>(std::ranges::equal_to{});
+
+        ASSERT_EQ(f1(1, 0), false);
+        ASSERT_EQ(f1(1, 1), true);
+
+        f1 = ebd::make_fn<bool(int, int)>(std::ranges::less{});
+
+        ASSERT_EQ(f1(1, 0), false);
+        ASSERT_EQ(f1(1, 2), true);
+
+        f1 = ebd::make_fn<bool(int, int)>(std::ranges::not_equal_to{});
+
+        ASSERT_EQ(f1(1, 0), true);
+        ASSERT_EQ(f1(1, 2), true);
+    }
+
+#endif
+}
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+// InitFunction[35]
+TEST(InitFunction, static_operator_call) {
+    auto f1 = ebd::make_fn(ebd_test_static_call_operator{});
+
+    ASSERT_EQ(f1(1, 0), 1);
+    ASSERT_EQ(f1(1, 2), 3);
+
+    auto f2 = ebd::make_fn<ebd::unique_fn>(ebd_test_static_call_operator{});
+
+    ASSERT_EQ(f2(1, 0), 1);
+    ASSERT_EQ(f2(1, 2), 3);
+
+    auto f3 = ebd::make_fn<ebd::safe_fn>(ebd_test_static_call_operator{});
+
+    ASSERT_EQ(f3(1, 0), 1);
+    ASSERT_EQ(f3(1, 2), 3);
+
+    auto f4 = ebd::make_fn<ebd::fn_ref>(ebd_test_static_call_operator{});
+
+    ASSERT_EQ(f4(1, 0), 1);
+    ASSERT_EQ(f4(1, 2), 3);
+}
+#endif // #if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)

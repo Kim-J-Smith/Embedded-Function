@@ -116,12 +116,12 @@ class ebd_test_operator_unambiguous {
 public:
     int m_member_var = 0;
 #if ( __cpp_explicit_this_parameter >= 202110L ) || ( EMBED_CXX_VERSION >= 202302L )
-    int operator()(this ebd_test_operator_unambiguous& self, int change) {
+    int operator()(this ebd_test_operator_unambiguous& self, int change) noexcept {
         self.m_member_var += change;
         return self.m_member_var;
     }
 #else
-    int operator()(int change) & {
+    int operator()(int change) & noexcept {
         m_member_var += change;
         return m_member_var; 
     }
@@ -215,3 +215,9 @@ public:
 
     int operator()(char) const { return OVL_CHAR; }
 };
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+struct ebd_test_static_call_operator {
+    static int operator()(int a, int b) noexcept { return a + b; }
+};
+#endif

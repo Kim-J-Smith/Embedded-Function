@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.3-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.3">
+  <img src="https://img.shields.io/badge/Version-2.1.4-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.4">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
@@ -150,6 +150,14 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
 
+### Zero-stack overhead
+
+`ebd::fn_ref` occupies no stack space when used as a function parameter; it is passed entirely in registers. This allows the compiler to directly tail-call the wrapped target, removing the cost of an extra stack frame. See [x86_64-asm](./docs/perf/x86_64_gcc_fn_ref_zero_stack.md).
+
+### Stateless elimination
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., empty classes with trivial operations). This reduces memory access operations and improves cache efficiency.
+
 > Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 
 ## 🧩 Automatic deduction
@@ -279,7 +287,7 @@ Every compiler with modern C++11 support should work.
 
 - GCC 5.1+
 - Clang 3.7+
-- MSVC v19.34+ (VS17.4+)
+- MSVC v19.20+ (VS16.0+)
 
 ## 🧪 Test
 
