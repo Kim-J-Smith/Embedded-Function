@@ -601,25 +601,53 @@ TEST(InitFunction, Functor_noexcept_make_fn) {
 
 // InitFunction[34]
 TEST(InitFunction, std_op_wrapper) {
-    auto f1 = ebd::make_fn(std::greater<int>{});
+    {
+        auto f1 = ebd::make_fn(std::greater<int>{});
 
-    ASSERT_EQ(f1(1, 0), true);
-    ASSERT_EQ(f1(1, 2), false);
+        ASSERT_EQ(f1(1, 0), true);
+        ASSERT_EQ(f1(1, 2), false);
 
-    auto f2 = ebd::make_fn<ebd::unique_fn>(std::greater<int>{});
+        auto f2 = ebd::make_fn<ebd::unique_fn>(std::greater<int>{});
 
-    ASSERT_EQ(f2(1, 0), true);
-    ASSERT_EQ(f2(1, 2), false);
+        ASSERT_EQ(f2(1, 0), true);
+        ASSERT_EQ(f2(1, 2), false);
 
-    auto f3 = ebd::make_fn<ebd::safe_fn>(std::greater<int>{});
+        auto f3 = ebd::make_fn<ebd::safe_fn>(std::greater<int>{});
 
-    ASSERT_EQ(f3(1, 0), true);
-    ASSERT_EQ(f3(1, 2), false);
+        ASSERT_EQ(f3(1, 0), true);
+        ASSERT_EQ(f3(1, 2), false);
 
-    auto f4 = ebd::make_fn<ebd::fn_ref>(std::greater<int>{});
+        auto f4 = ebd::make_fn<ebd::fn_ref>(std::greater<int>{});
 
-    ASSERT_EQ(f4(1, 0), true);
-    ASSERT_EQ(f4(1, 2), false);
+        ASSERT_EQ(f4(1, 0), true);
+        ASSERT_EQ(f4(1, 2), false);
+    }
+
+#if __cpp_lib_ranges >= 202110L
+
+    {
+        auto f1 = ebd::make_fn<bool(int, int)>(std::ranges::greater{});
+
+        ASSERT_EQ(f1(1, 0), true);
+        ASSERT_EQ(f1(1, 2), false);
+
+        f1 = ebd::make_fn<bool(int, int)>(std::ranges::equal_to{});
+
+        ASSERT_EQ(f1(1, 0), false);
+        ASSERT_EQ(f1(1, 1), true);
+
+        f1 = ebd::make_fn<bool(int, int)>(std::ranges::less{});
+
+        ASSERT_EQ(f1(1, 0), false);
+        ASSERT_EQ(f1(1, 2), true);
+
+        f1 = ebd::make_fn<bool(int, int)>(std::ranges::not_equal_to{});
+
+        ASSERT_EQ(f1(1, 0), true);
+        ASSERT_EQ(f1(1, 2), true);
+    }
+
+#endif
 }
 
 #if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)

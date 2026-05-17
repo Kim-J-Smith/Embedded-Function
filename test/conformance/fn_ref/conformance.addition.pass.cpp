@@ -202,4 +202,12 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     ASSERT_EQ(f2(1, 42), 43);
   }
 #endif
+
+  {
+    ebd::fn_ref<int() const> f1 = [] { return 42; }; // stateless
+    ASSERT_EQ(f1(), 42);
+
+    ebd::fn_ref<int(int, int) const> f2 = [](int a, int b) { return a * b; }; // stateless
+    ASSERT_EQ(f2(3, 4), 3 * 4);
+  }
 }
