@@ -1614,18 +1614,59 @@ inline namespace fn_traits {
   using noexcept_qualify_like_t = 
     typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, Sig>::type;
 
+  // Check if `T` is the stateless standard operator wrapper.
+  template <typename T> struct is_std_op_wrapper : std::false_type {};
+  template <typename T> struct is_std_op_wrapper<std::equal_to<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::not_equal_to<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::greater<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::less<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::greater_equal<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::less_equal<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::plus<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::minus<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::multiplies<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::divides<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::modulus<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::negate<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::logical_and<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::logical_or<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::logical_not<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::bit_and<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::bit_or<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
+  template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
+#if EMBED_CXX_VERSION >= 202002L
+  template <> struct is_std_op_wrapper<std::identity>: std::true_type {};
+# if __cpp_lib_ranges >= 201911L
+  template <> struct is_std_op_wrapper<std::ranges::equal_to> : std::true_type {};
+  template <> struct is_std_op_wrapper<std::ranges::not_equal_to> : std::true_type {};
+  template <> struct is_std_op_wrapper<std::ranges::less> : std::true_type {};
+  template <> struct is_std_op_wrapper<std::ranges::greater> : std::true_type {};
+  template <> struct is_std_op_wrapper<std::ranges::less_equal> : std::true_type {};
+  template <> struct is_std_op_wrapper<std::ranges::greater_equal> : std::true_type {};
+# endif // ^^^ __cpp_lib_ranges >= 201911L
+# if __cpp_lib_three_way_comparison >= 201907L
+  template <> struct is_std_op_wrapper<std::compare_three_way> : std::true_type {};
+# endif // ^^^ __cpp_lib_three_way_comparison >= 201907L
+#endif // ^^^ EMBED_CXX_VERSION >= 202002L
+
   // Check empty and normal callable functor.
   // Lambda has trivially default constructor since C++20.
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0624r2.pdf>.
   template <typename Fn>
   struct is_empty_normal : bool_constant<
     std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value
+    && std::is_trivially_destructible<Fn>::value
   > {};
 
   // Check whether the functor is stateless.
-  template <typename Fn, typename... Args>
+  template <bool IsView, typename Fn, typename... Args>
   struct is_stateless : bool_constant<
-    is_static_callable_functor<Fn, Args...>::value || is_empty_normal<Fn>::value
+    is_static_callable_functor<Fn, Args...>::value
+    || is_std_op_wrapper<Fn>::value
+    || (is_empty_normal<Fn>::value && !IsView)
+    // ^^^ empty trivial functor may use `this` in operator(). This is
+    // not strict stateless and cannot be used in reference semantic.
   > {};
 
   // Log error for make_fn.
@@ -2050,7 +2091,7 @@ namespace command {
 
     // Initialize owning function wrapper. (Enable if Functor is NOT stateless.)
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    enable_if_t<!is_stateless<DecFunctor, Args...>::value>
+    enable_if_t<!is_stateless</*IsView*/false, DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
@@ -2060,7 +2101,7 @@ namespace command {
 
     // Initialize owning function wrapper. (Enable if Functor is stateless.)
     template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless<DecFunctor, Args...>::value>
+    EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless</*IsView*/false, DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
         is_static_callable_functor<DecFunctor, Args...>::value,
@@ -2137,7 +2178,8 @@ namespace command {
 
     // Initialize non-owning function wrapper. (Enable if the functor is neither FP nor stateless-fn)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && !is_stateless<DecFunctor, Args...>::value>
+    EMBED_CXX20_CONSTEXPR
+    enable_if_t<!IsStoredOrigin && !is_stateless</*IsView*/true, DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj) noexcept {
       static_assert(!std::is_rvalue_reference<Functor&&>::value,
         "function in view mode cannot be initialized with rvalue reference.");
@@ -2147,7 +2189,8 @@ namespace command {
 
     // Initialize non-owning function wrapper. (Enable if the functor is stateless-fn)
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<!IsStoredOrigin && is_stateless<DecFunctor, Args...>::value>
+    EMBED_CXX20_CONSTEXPR
+    enable_if_t<!IsStoredOrigin && is_stateless</*IsView*/true, DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
         is_static_callable_functor<DecFunctor, Args...>::value,
