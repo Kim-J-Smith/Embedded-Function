@@ -2163,14 +2163,8 @@ namespace command {
       );
     }
 
-    void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
-    const noexcept {
-      clone(dst, src); // Trivial move is same as copy.
-    }
-
-    void destroy(erasure_base_t* /*dst*/) const noexcept {
-      // Do nothing here
-    }
+    void move(erasure_base_t*, erasure_base_t*) = delete;
+    void destroy(erasure_base_t*) = delete;
 
     // Initialize non-owning function wrapper. (Enable if the functor is function pointer(FP))
     template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
