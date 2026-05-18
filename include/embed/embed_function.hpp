@@ -1482,7 +1482,8 @@ inline namespace fn_traits {
   // be passed by the register rather than the stack.
 #if !defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
   template <typename T>
-  using smart_forward_t = conditional_t<is_reg_passable<T>::value, T, T&&>;
+  using smart_forward_t = // vvv MSVC 19.10~19.14 workaround: avoid using `conditional_t`.
+    typename std::conditional<is_reg_passable<T>::value, T, T&&>::type;
 #else
   template <typename T>
   using smart_forward_t = T&&;
