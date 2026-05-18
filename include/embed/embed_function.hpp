@@ -259,11 +259,8 @@
 #if __cpp_lib_launder >= 201606L
 # define EMBED_DETAIL_LAUNDER(x) ( ::std::launder(x) )
 #elif EMBED_HAS_BUILTIN(__builtin_launder)
-namespace ebd { namespace detail {
-  template <typename T> EMBED_NODISCARD EMBED_INLINE constexpr
-  T* launder(T* ptr) noexcept { return __builtin_launder(ptr); }
-}} // end namespace ebd::detail
 # define EMBED_DETAIL_LAUNDER(x) ( ::ebd::detail::launder(x) )
+# define EMBED_DETAIL__NEED_LAUNDER
 #else
 # define EMBED_DETAIL_LAUNDER(x) ( x )
 #endif
@@ -778,6 +775,15 @@ inline namespace cxx_traits {
     return invoke_impl<invoke_t>(tag_t{}, std::forward<Callee>(fn),
       std::forward<Args>(args)...);
   }
+
+#ifdef EMBED_DETAIL__NEED_LAUNDER
+
+  // [ptr.launder]
+  template <typename T> EMBED_NODISCARD EMBED_INLINE constexpr
+  T* launder(T* ptr) noexcept { return __builtin_launder(ptr); }
+
+#undef EMBED_DETAIL__NEED_LAUNDER
+#endif
 
 } // end namespace cxx_traits
 
@@ -1722,7 +1728,7 @@ namespace erasure_type {
     // Access the pointer of erasureCore that qualified with nothing or const.
     void* access() noexcept { return &m_core.pod[0]; }
     const void* access() const noexcept { return &m_core.pod[0]; }
-    
+
     // Access the pointer of erasureCore that qualified with volatile or const volatile.
     volatile void* access() volatile noexcept { return &m_core.pod[0]; }
     const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
