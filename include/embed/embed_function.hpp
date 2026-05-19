@@ -2181,8 +2181,7 @@ namespace command {
     EMBED_CXX20_CONSTEXPR
     enable_if_t<!IsStoredOrigin && !is_stateless</*IsView*/true, DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj) noexcept {
-      static_assert(!std::is_rvalue_reference<Functor&&>::value,
-        "function in view mode cannot be initialized with rvalue reference.");
+      // User has to make sure the callable object must remain alive while the function_ref is in use.
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
