@@ -1768,7 +1768,7 @@ namespace invocation {
 # define EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT)             \
   struct static_call {                                                          \
     template <typename Functor>                                                 \
-    static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT { \
+    static Ret invoke(smart_forward_t<Args>... args, erasure_pass_t) NOEXCEPT { \
       return Functor::operator()(std::forward<Args>(args)...);                  \
     }                                                                           \
   }; /* end static_call */
@@ -1782,11 +1782,11 @@ namespace invocation {
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                            \
   struct view_cw {                                                                    \
     template <typename Cw>                                                            \
-    static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT {       \
+    static Ret invoke(smart_forward_t<Args>... args, erasure_pass_t) NOEXCEPT {       \
       return invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);                   \
     }                                                                                 \
     template <typename Cw, typename Obj, bool CallPointer>                            \
-    static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
+    static Ret invoke(smart_forward_t<Args>... args, erasure_pass_t base) NOEXCEPT {  \
       if constexpr (CallPointer) {                                                    \
         auto* obj_ptr = static_cast<Obj C V*>(base.val.fill_ptr);                     \
         return invoke_r<Ret>(Cw::value, obj_ptr, std::forward<Args>(args)...);        \
@@ -1814,11 +1814,11 @@ namespace invocation {
     static constexpr bool is_rvalue_ref =                                         \
       std::is_rvalue_reference<int REF>::value;                                   \
     using invoker_type =                                                          \
-      Ret (*) (erasure_pass_t erased, smart_forward_t<Args>... args);             \
+      Ret (*) (smart_forward_t<Args>... args, erasure_pass_t erased);             \
                                                                                   \
     /* Using when M_erasure is empty. */                                          \
     struct empty {                                                                \
-      static Ret invoke(erasure_pass_t, smart_forward_t<Args>...) {               \
+      static Ret invoke(smart_forward_t<Args>..., erasure_pass_t) {               \
         throw_or_terminate<Config::isThrowing>();                                 \
         /* Unreachable: throw_or_terminate() is [[noreturn]] */                   \
       }                                                                           \
@@ -1827,7 +1827,7 @@ namespace invocation {
     /* Using when Config::isView == false. */                                     \
     struct inplace {                                                              \
       template <typename Functor>                                                 \
-      static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) {     \
+      static Ret invoke(smart_forward_t<Args>... args, erasure_pass_t base) {     \
         auto* erased = static_cast<erasure_t C V*>(base.ptr);                     \
         auto& fn = erased->template access<Functor>();                            \
         using Fn = conditional_t<is_rvalue_ref,                                   \
@@ -1842,7 +1842,7 @@ namespace invocation {
       /* Using when Functor::is_stored_origin == true. */                         \
       template <typename Functor>                                                 \
       static enable_if_t<is_stored_origin<Functor, true>::value, Ret>             \
-      invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
+      invoke(smart_forward_t<Args>... args, erasure_pass_t base) {                \
         auto* fn = reinterpret_cast<Functor>(base.val.fill_func_ptr);             \
         using Fn = remove_reference_t<decltype(fn)>&;                             \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
@@ -1851,7 +1851,7 @@ namespace invocation {
       /* Using when Functor::is_stored_origin == false. */                        \
       template <typename Functor>                                                 \
       static enable_if_t<!is_stored_origin<Functor, true>::value, Ret>            \
-      invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
+      invoke(smart_forward_t<Args>... args, erasure_pass_t base) {                \
         auto& fn = *(static_cast<Functor C V*>(base.val.fill_ptr));               \
         using Fn = remove_reference_t<decltype(fn)>&;                             \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
@@ -1861,7 +1861,7 @@ namespace invocation {
     /* Used for stateless(empty) Functor (like std::less). */                     \
     struct empty_normal {                                                         \
       template <typename EmptyFn>                                                 \
-      static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) {          \
+      static Ret invoke(smart_forward_t<Args>... args, erasure_pass_t) {          \
         C V EmptyFn fn{};  /* Empty and trivial class. It is stateless */         \
         using Fn = conditional_t<is_rvalue_ref,                                   \
           remove_reference_t<decltype(fn)>&&,                                     \
@@ -1895,7 +1895,6 @@ namespace management {
   struct ManagerImpl {
   private:
     using invoke_impl_t = invocation::InvokerImpl<Size, Config, Signature>;
-    using invoke_t        = typename invoke_impl_t::invoker_type;
     using erasure_base_t  = typename invoke_impl_t::erasure_base_t;
     using erasure_t       = typename invoke_impl_t::erasure_t;
   public:
@@ -2067,7 +2066,7 @@ namespace command {
     auto invoke(erasure_pass_t erased, Args&&... args) const
     noexcept(unwrap_signature<Signature>::isNoexcept)
     -> typename unwrap_signature<Signature>::ret {
-      return m_invoker(erased, std::forward<Args>(args)...);
+      return m_invoker(std::forward<Args>(args)..., erased);
     }
 
     void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
@@ -2150,7 +2149,7 @@ namespace command {
     auto invoke(erasure_pass_t erased, Args&&... args) const
     noexcept(unwrap_signature<Signature>::isNoexcept)
     -> typename unwrap_signature<Signature>::ret {
-      return m_invoker(erased, std::forward<Args>(args)...);
+      return m_invoker(std::forward<Args>(args)..., erased);
     }
 
     void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
