@@ -1273,9 +1273,7 @@ inline namespace fn_traits {
 
 # undef EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE
 
-  // MSVC (as of 19.50.35717) cannot write `requires (...) {...}` in
-  // enable_if_t<> in the template argument list. To work around this,
-  // we use `is_explicit_this_call_v` instead.
+  // `true` if the operator() of Fn is deducing this.
   template <typename Fn, typename This, typename Sig, typename... Args>
   constexpr bool is_explicit_this_call_v = requires (Fn f, Args&&... args) {
     static_cast<typename unwrap_signature<
@@ -1285,15 +1283,15 @@ inline namespace fn_traits {
 
   // noexcept(false)
   template <typename Fn, typename This, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Fn, Ret(*)(This, Args...),
-    enable_if_t<is_explicit_this_call_v<Fn, This, Ret(Args...), Args...>>
-  > : public add_qualifier_with_this<This, Ret(Args...)> {};
+    requires is_explicit_this_call_v<Fn, This, Ret(Args...), Args...>
+  struct get_unique_signature_impl<Fn, Ret(*)(This, Args...)>
+  : public add_qualifier_with_this<This, Ret(Args...)> {};
 
   // noexcept(true)
   template <typename Fn, typename This, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Fn, Ret(*)(This, Args...) noexcept,
-    enable_if_t<is_explicit_this_call_v<Fn, This, Ret(Args...) noexcept, Args...>>
-  > : public add_qualifier_with_this<This, Ret(Args...) noexcept> {};
+    requires is_explicit_this_call_v<Fn, This, Ret(Args...) noexcept, Args...>
+  struct get_unique_signature_impl<Fn, Ret(*)(This, Args...) noexcept>
+  : public add_qualifier_with_this<This, Ret(Args...) noexcept> {};
 
 #endif
 
@@ -1304,18 +1302,16 @@ inline namespace fn_traits {
 
   // noexcept(false)
   template <typename Fn, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Fn, Ret(*)(Args...), enable_if_t<
-    is_static_callable_functor<Fn, Args...>::value
-  >> { // ^^^ Cannot simply write `requires (...) {...}` due to MSVC(as of 19.50.35717) bug.
+    requires is_static_callable_functor<Fn, Args...>::value
+  struct get_unique_signature_impl<Fn, Ret(*)(Args...)> {
     using type = Ret(Args...) const;
     using sig_with_noexcept = Ret(Args...) const;
   };
 
   // noexcept(true)
   template <typename Fn, typename Ret, typename... Args>
-  struct get_unique_signature_impl<Fn, Ret(*)(Args...) noexcept, enable_if_t<
-    is_static_callable_functor<Fn, Args...>::value
-  >> { // ^^^ Cannot simply write `requires (...) {...}` due to MSVC(as of 19.50.35717) bug.
+    requires is_static_callable_functor<Fn, Args...>::value
+  struct get_unique_signature_impl<Fn, Ret(*)(Args...) noexcept> {
     using type = Ret(Args...) const;
     using sig_with_noexcept = Ret(Args...) const noexcept;
   };
@@ -1895,7 +1891,6 @@ namespace management {
   struct ManagerImpl {
   private:
     using invoke_impl_t = invocation::InvokerImpl<Size, Config, Signature>;
-    using invoke_t        = typename invoke_impl_t::invoker_type;
     using erasure_base_t  = typename invoke_impl_t::erasure_base_t;
     using erasure_t       = typename invoke_impl_t::erasure_t;
   public:
@@ -2182,8 +2177,7 @@ namespace command {
     EMBED_CXX20_CONSTEXPR
     enable_if_t<!IsStoredOrigin && !is_stateless</*IsView*/true, DecFunctor, Args...>::value>
     init(erasure_base_t* target, Functor&& obj) noexcept {
-      static_assert(!std::is_rvalue_reference<Functor&&>::value,
-        "function in view mode cannot be initialized with rvalue reference.");
+      // User has to make sure the callable object must remain alive while the function_ref is in use.
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
