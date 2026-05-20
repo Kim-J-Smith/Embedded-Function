@@ -225,4 +225,9 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     auto f1 = ebd::make_fn<ebd::fn_ref>(obj);
     ASSERT_EQ(f1(), obj());
   }
+
+  {
+    int result = 42;
+    ASSERT_EQ(ebd_test_safe_tmp_fn([result]{ return result; }), result);
+  }
 }
