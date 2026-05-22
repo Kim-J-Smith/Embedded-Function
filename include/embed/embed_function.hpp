@@ -1637,7 +1637,9 @@ inline namespace fn_traits {
   template <typename T> struct is_std_op_wrapper<std::bit_and<T>> : std::true_type {};
   template <typename T> struct is_std_op_wrapper<std::bit_or<T>> : std::true_type {};
   template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
+#if EMBED_CXX_VERSION >= 201402L
   template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
+#endif
 #if EMBED_CXX_VERSION >= 202002L
   template <> struct is_std_op_wrapper<std::identity>: std::true_type {};
 # if __cpp_lib_ranges >= 201911L
@@ -1651,7 +1653,7 @@ inline namespace fn_traits {
 # if __cpp_lib_three_way_comparison >= 201907L
   template <> struct is_std_op_wrapper<std::compare_three_way> : std::true_type {};
 # endif // ^^^ __cpp_lib_three_way_comparison >= 201907L
-#endif // ^^^ EMBED_CXX_VERSION >= 202002L
+#endif
 
   // Check empty and normal callable functor.
   // Lambda has trivially default constructor since C++20.
