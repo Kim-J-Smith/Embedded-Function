@@ -2930,7 +2930,8 @@ namespace crtp_mixins {
       && (!Config::isView)
     ) function& operator=(Functor&& fn)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
-      function(std::forward<Functor>(fn)).swap(*this);
+      /// Call move assignment in @e `crtp_mixins::move_impl`.
+      *this = function(std::forward<Functor>(fn));
       return *this;
     }
 
