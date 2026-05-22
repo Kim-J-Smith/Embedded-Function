@@ -1688,6 +1688,10 @@ inline namespace fn_traits {
       " The 'Signature' is like 'void()', 'float(int,int)'."
     );
   };
+
+  // `true` if Cfg::assertNoThrow || Cfg::isView
+  template <typename Cfg>
+  struct is_cfg_noexcept : bool_constant<Cfg::assertNoThrow || Cfg::isView> {};
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -2428,7 +2432,7 @@ namespace crtp_mixins {
   struct member_variable_impl {
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
 
-    // Used by fn_ref only.
+    // Zero initialize the `m_erasure` and `m_command`.
     constexpr member_variable_impl(std::nullptr_t) noexcept
     : m_erasure(erasure_t{}), m_command(command_t{}) {}
   protected:
@@ -2715,13 +2719,12 @@ namespace crtp_mixins {
         && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable)
     >
     function(const function<OtherSize, OtherCfg, OtherSig>& other)
-    noexcept((Config::assertNoThrow || Config::isView)
-    && (OtherCfg::assertNoThrow || OtherCfg::isView)) {
+    noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       using other_fn_t = function<OtherSize, OtherCfg, OtherSig>;
       using other_erasure_t = typename other_fn_t::erasure_t;
 
       // Suppress GCC warning: "-Wmaybe-uninitialized".
-      std::memset(&m_erasure, 0, sizeof(m_erasure));
+      std::memset(&m_erasure, 0, sizeof(void*));
 
       other.m_command.clone(
         &m_erasure, const_cast<other_erasure_t*>(&other.m_erasure));
@@ -2736,8 +2739,10 @@ namespace crtp_mixins {
       EMBED_DETAIL_REQUIRES(always_false<OtherCfg>::value || !Config::isView)
     >
     function(function<OtherSize, OtherCfg, OtherSig>&& other)
-    noexcept((Config::assertNoThrow || Config::isView)
-    && (OtherCfg::assertNoThrow || OtherCfg::isView)) {
+    noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
+      // Suppress GCC warning: "-Wmaybe-uninitialized".
+      std::memset(&m_erasure, 0, sizeof(void*));
+
       other.m_command.move(&m_erasure, &other.m_erasure);
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
       other.m_command.destroy(&other.m_erasure);
@@ -2859,17 +2864,14 @@ namespace crtp_mixins {
 
 #if __cpp_lib_constant_wrapper >= 202603L
 
-    /// @todo experimental @bug Clang 20 has a bug here.
-    /// In Clang 20, when a user creates two static free functions that have the
-    /// same name in two compile units and wraps them into two `std::cw<&free_fn>`
-    /// objects, a segmentation fault ( @e SIGSEGV ) occurs if one of the
-    /// `std::cw<&free_fn>` is called.
+    /// @todo experimental
 
     // Create function reference with given `std::constant_wrapper` param.
     template <auto CwVal, typename Fn>
       requires is_invocable_using_t<Signature, const Fn&>::value
         && Config::isView
-    constexpr function(std::constant_wrapper<CwVal, Fn>) noexcept {
+    constexpr function(std::constant_wrapper<CwVal, Fn>) noexcept
+    : MemberVariableBase(nullptr) {
       using Cw = std::constant_wrapper<CwVal, Fn>;
       m_command.template cw_init<Cw>();
 
@@ -2885,7 +2887,8 @@ namespace crtp_mixins {
         && is_invocable_using_t<Signature, const Fn&, 
           typename unwrap_signature<Signature>::template add_cv_like<Tp>&>::value
         && Config::isView
-    constexpr function(std::constant_wrapper<CwVal, Fn>, Up&& obj) noexcept {
+    constexpr function(std::constant_wrapper<CwVal, Fn>, Up&& obj) noexcept
+    : MemberVariableBase(nullptr) {
       using Cw = std::constant_wrapper<CwVal, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
 
@@ -2902,7 +2905,8 @@ namespace crtp_mixins {
       requires std::is_convertible_v<Tp*, Tp_cv*>
         && is_invocable_using_t<Signature, const Fn&, Tp_cv*>::value
         && Config::isView
-    constexpr function(std::constant_wrapper<CwVal, Fn>, Tp* obj) noexcept {
+    constexpr function(std::constant_wrapper<CwVal, Fn>, Tp* obj) noexcept
+    : MemberVariableBase(nullptr) {
       using Cw = std::constant_wrapper<CwVal, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
 
