@@ -2713,12 +2713,12 @@ namespace crtp_mixins {
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
-    template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      EMBED_DETAIL_REQUIRES(fn_can_convert<
-        function, function<OtherSize, OtherCfg, OtherSig>>::value
-        && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable)
-    >
-    function(const function<OtherSize, OtherCfg, OtherSig>& other)
+    EMBED_DETAIL_TEMPLATE_BEGIN(
+      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
+    EMBED_DETAIL_REQUIRES_END(
+      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
+      && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
+    ) function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       using other_fn_t = function<OtherSize, OtherCfg, OtherSig>;
       using other_erasure_t = typename other_fn_t::erasure_t;
@@ -2733,12 +2733,12 @@ namespace crtp_mixins {
 
     // Use `placement new` to create new functor during construction. (Move)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
-    template <std::size_t OtherSize, typename OtherCfg, typename OtherSig,
-      EMBED_DETAIL_REQUIRES(fn_can_convert<
-        function, function<OtherSize, OtherCfg, OtherSig>>::value),
-      EMBED_DETAIL_REQUIRES(always_false<OtherCfg>::value || !Config::isView)
-    >
-    function(function<OtherSize, OtherCfg, OtherSig>&& other)
+    EMBED_DETAIL_TEMPLATE_BEGIN(
+      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
+    EMBED_DETAIL_REQUIRES_END(
+      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
+      && (!Config::isView)
+    ) function(function<OtherSize, OtherCfg, OtherSig>&& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
       std::memset(&m_erasure, 0, sizeof(void*));
