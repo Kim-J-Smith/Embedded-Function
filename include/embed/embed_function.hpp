@@ -2944,8 +2944,7 @@ namespace crtp_mixins {
       && (!Config::isView) // OWNING
     )
     function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other)
-    noexcept((Config::assertNoThrow || Config::isView)
-    && (OtherCfg::assertNoThrow || OtherCfg::isView)) {
+    noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       function(other).swap(*this);
       return *this;
     }
