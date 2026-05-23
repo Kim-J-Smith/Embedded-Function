@@ -1232,6 +1232,22 @@ inline namespace fn_traits {
   struct is_static_callable_functor : std::false_type {};
 #endif
 
+  // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
+  // signature by mapping a `This` type and a base signature to a qualified function type.
+  template <typename This, typename Signature>
+  struct add_qualifier_like;
+
+#define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT)  \
+  template <typename This, typename Ret, typename... Args>                \
+  struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {        \
+    using type = Ret(Args...) C V REF;                                    \
+    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;              \
+  };
+
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE)
+
+#undef EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE
+
   // Implement the `get_unique_signature`.
   template <typename Fn, typename T, typename = void>
   struct get_unique_signature_impl {
@@ -1257,27 +1273,11 @@ inline namespace fn_traits {
   // [dcl.fct]/6 Deducing this.
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html>.
 
-  // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
-  // signature by Mapping a `This` type and a base signature to a qualified function type.
-  template <typename This, typename Signature>
-  struct add_qualifier_with_this;
-
-# define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT) \
-  template <typename This, typename Ret, typename... Args>                \
-  struct add_qualifier_with_this<This C V REF, Ret(Args...) NOEXCEPT> {   \
-    using type = Ret(Args...) C V REF;                                    \
-    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;              \
-  };
-
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE)
-
-# undef EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE
-
   // `true` if the operator() of Fn is deducing this.
   template <typename Fn, typename This, typename Sig, typename... Args>
   constexpr bool is_explicit_this_call_v = requires (Fn f, Args&&... args) {
     static_cast<typename unwrap_signature<
-      typename add_qualifier_with_this<This, Sig>::type
+      typename add_qualifier_like<This, Sig>::type
     >::template add_cvref_like<Fn>>(f)(std::forward<Args>(args)...);
   };
 
@@ -1285,13 +1285,13 @@ inline namespace fn_traits {
   template <typename Fn, typename This, typename Ret, typename... Args>
     requires is_explicit_this_call_v<Fn, This, Ret(Args...), Args...>
   struct get_unique_signature_impl<Fn, Ret(*)(This, Args...)>
-  : public add_qualifier_with_this<This, Ret(Args...)> {};
+  : public add_qualifier_like<This, Ret(Args...)> {};
 
   // noexcept(true)
   template <typename Fn, typename This, typename Ret, typename... Args>
     requires is_explicit_this_call_v<Fn, This, Ret(Args...) noexcept, Args...>
   struct get_unique_signature_impl<Fn, Ret(*)(This, Args...) noexcept>
-  : public add_qualifier_with_this<This, Ret(Args...) noexcept> {};
+  : public add_qualifier_like<This, Ret(Args...) noexcept> {};
 
 #endif
 
