@@ -388,6 +388,8 @@ TEST(Conformance_fn_ref, constant_wrapper_ref_pass) {
     }
   }
 
+#if __cpp_deduction_guides >= 201907L
+
   {
     static ebd_test_member_fn obj;
     constexpr ebd::fn_ref f(std::cw<&ebd_test_member_fn::mem_fn_ii_add>, obj);
@@ -401,6 +403,9 @@ TEST(Conformance_fn_ref, constant_wrapper_ref_pass) {
     static_assert(std::is_same_v<decltype(f), ebd::fn_ref<int&() noexcept>>);
     ASSERT_EQ(f(), 0);
   }
+
+#endif // ^^^ __cpp_deduction_guides >= 201907L
+
 }
 
 #endif // __cpp_lib_constant_wrapper >= 202603L
