@@ -2224,8 +2224,8 @@ namespace command {
 
     template <typename Cw, bool CallPointer, typename Obj>
     constexpr void cw_init(erasure_base_t* target, Obj* obj_ptr) noexcept {
-      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj, CallPointer>;
       manager_impl_t::template ref_create<>(target, obj_ptr);
+      m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj, CallPointer>;
     }
 
 #endif
