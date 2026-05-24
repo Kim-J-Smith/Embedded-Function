@@ -3016,12 +3016,16 @@ namespace ctad_helper {
   using add_const_to_sig_t = typename add_qualifier_like<int const, Signature>::sig_with_noexcept;
 
   template <typename Fn, typename Tp> struct ref_sig;
-
   template <typename Ret, typename FirstArg, typename... Args, typename Tp>
-  struct ref_sig<Ret(*)(FirstArg, Args...), Tp> { using type = Ret(Args...) const; };
+  struct ref_sig<Ret(*)(FirstArg, Args...), Tp> {
+    using type = typename add_qualifier_like<
+        std::remove_reference_t<FirstArg>, Ret(Args...)>::sig_with_noexcept;
+  };
   template <typename Ret, typename FirstArg, typename... Args, typename Tp>
-  struct ref_sig<Ret(*)(FirstArg, Args...) noexcept, Tp> { using type = Ret(Args...) const noexcept; };
-
+  struct ref_sig<Ret(*)(FirstArg, Args...) noexcept, Tp> {
+    using type = typename add_qualifier_like<
+        std::remove_reference_t<FirstArg>, Ret(Args...) noexcept>::sig_with_noexcept;
+  };
   template <typename Mt, typename Class, typename Tp>
     requires std::is_object_v<Mt> struct ref_sig<Mt Class::*, Tp>
   { using type = invoke_result<Mt Class::*, Tp>::type() noexcept; };

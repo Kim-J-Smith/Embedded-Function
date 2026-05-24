@@ -29,6 +29,8 @@ inline void ebd_test_free_func_v() {}
 inline void ebd_test_free_func_vii(int, int) {}
 
 inline int ebd_test_free_func_iii_add(int a, int b) { return a + b; }
+inline int ebd_test_free_func_iii_add_noexcept(int& a, int& b) noexcept { return a + b; }
+inline int ebd_test_free_func_iii_add_const(const int& a, const int& b) { return a + b; }
 
 inline float ebd_test_free_func_fff_mul(float a, float b) { return a * b; }
 

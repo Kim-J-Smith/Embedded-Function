@@ -369,6 +369,7 @@ TEST(Conformance_fn_ref, constant_wrapper_ptr_pass) {
 #if __cpp_deduction_guides >= 201907L
 
   {
+    // constexpr and CTAD
     static ebd_test_member_fn obj;
     constexpr ebd::fn_ref f(std::cw<&ebd_test_member_fn::mem_fn_ii_add>, &obj);
     static_assert(std::is_same_v<decltype(f), const ebd::fn_ref<int(int, int)>>);
@@ -376,6 +377,7 @@ TEST(Conformance_fn_ref, constant_wrapper_ptr_pass) {
   }
 
   {
+    // standard CTAD guides
     static ebd_test_member_fn obj;
     ebd::fn_ref f(std::cw<&ebd_test_member_fn::member_var>, &obj);
     static_assert(std::is_same_v<decltype(f), ebd::fn_ref<int&() noexcept>>);
