@@ -17,26 +17,24 @@
   </a>
 </p>
 
-> *Embedded [std::function](http://en.cppreference.com/w/cpp/utility/functional/function) alternative: lightweight, deterministic, heap-free.*
+> *A **lightweight** and **heap-free** polymorphic function wrapper collection.*
 
 ## 📌 Overview
 
-**Embedded Function** is an embedded-friendly lightweight function wrapper implemented based on the C++11 standard, tailored specifically for embedded systems. 
-
-While functionally and conceptually analogous to *std::function*, it offers substantially reduced overhead and superior real-time performance characteristics. **Notably, Embedded Function eliminates dynamic heap memory allocations entirely**, ensuring deterministic execution behavior and predictable real-time performance for embedded applications.
+*Embedded Function* is a **lightweight** and **no-heap-allocation** function wrapper collection implemented based on the C++11 standard, tailored specifically for embedded systems.
 
 In only **one** [header file](./include/embed/embed_function.hpp), **4** function wrappers are provided as follows:
 
 ```cpp
 namespace ebd {
-  // Wrapper for copyable callable objects.
-  template <class Signature, size_t BufferSize = DefaultSize> fn;
-  // Wrapper for movable, especially move-only callable objects.
-  template <class Signature, size_t BufferSize = DefaultSize> unique_fn;
-  // Wrapper for copyable callable objects which assert no-throw in Ctor and Dtor.
-  template <class Signature, size_t BufferSize = DefaultSize> safe_fn;
-  // View (aka reference) for callable objects.
-  template <class Signature, size_t Unused = 0> fn_ref;
+template <class Signature, size_t BufferSize = DefaultSize>
+  class fn; // Wrapper for copyable callable objects.
+template <class Signature, size_t BufferSize = DefaultSize>
+  class unique_fn; // Wrapper for movable, especially move-only callable objects.
+template <class Signature, size_t BufferSize = DefaultSize>
+  class safe_fn; // Wrapper for copyable callable objects which assert no-throw in Ctor and Dtor.
+template <class Signature, size_t Unused = 0>
+  class fn_ref; // View (non-owning wrapper) for callable objects.
 }
 ```
 

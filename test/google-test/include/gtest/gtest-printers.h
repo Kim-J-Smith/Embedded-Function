@@ -474,7 +474,7 @@ inline void PrintTo(char16_t c, ::std::ostream* os) {
 }
 #ifdef __cpp_char8_t
 inline void PrintTo(char8_t c, ::std::ostream* os) {
-  PrintTo(ImplicitCast_<char32_t>(c), os);
+  PrintTo(ImplicitCast_<char32_t>(static_cast<char32_t>(c)), os);
 }
 #endif
 
