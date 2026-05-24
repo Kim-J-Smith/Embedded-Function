@@ -3005,6 +3005,58 @@ namespace crtp_mixins {
     return Fn{std::forward<CArgs>(args)...};
   }
 
+#if __cpp_lib_constant_wrapper >= 202603L
+
+  /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
+
+namespace ctad_helper {
+
+  // Add `const`-qualifier to signature. (e.g. `void()` -> `void() const`)
+  template <typename Signature>
+  using add_const_to_sig_t = typename add_qualifier_like<int const, Signature>::sig_with_noexcept;
+
+  template <typename Fn, typename Tp> struct ref_sig;
+
+  template <typename Ret, typename FirstArg, typename... Args, typename Tp>
+  struct ref_sig<Ret(*)(FirstArg, Args...), Tp> { using type = Ret(Args...) const; };
+  template <typename Ret, typename FirstArg, typename... Args, typename Tp>
+  struct ref_sig<Ret(*)(FirstArg, Args...) noexcept, Tp> { using type = Ret(Args...) const noexcept; };
+
+  template <typename Mt, typename Class, typename Tp>
+    requires std::is_object_v<Mt> struct ref_sig<Mt Class::*, Tp>
+  { using type = invoke_result<Mt Class::*, Tp>::type() noexcept; };
+
+# define EMBED_DETAIL_REF_SIG_DEFINE(C, V, REF, NOEXCEPT)                 \
+  template <typename Ret, typename Class, typename... Args, typename Tp>  \
+  struct ref_sig<Ret(Class::*)(Args...) C V REF NOEXCEPT, Tp>             \
+  { using type = Ret(Args...) C V NOEXCEPT; };
+
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_REF_SIG_DEFINE)
+
+# undef EMBED_DETAIL_REF_SIG_DEFINE
+
+  template <typename Fn, typename Tp>
+  using ref_sig_t = typename ref_sig<Fn, Tp>::type;
+
+} // end namespace ctad_helper
+
+  template <auto Cw, typename Fn>
+    requires std::is_function_v<std::remove_pointer_t<Fn>>
+  function(std::constant_wrapper<Cw, Fn>) -> function<
+    default_buffer_size::ref_buf,
+    config_package<true, true, false, false>, // fn_ref
+    ctad_helper::add_const_to_sig_t<std::remove_pointer_t<Fn>>
+  >;
+
+  template <auto Cw, typename Fn, typename Tp>
+  function(std::constant_wrapper<Cw, Fn>, Tp&&) -> function<
+    default_buffer_size::ref_buf,
+    config_package<true, true, false, false>, // fn_ref
+    ctad_helper::ref_sig_t<Fn, Tp&>
+  >;
+
+#endif // ^^^ __cpp_lib_constant_wrapper >= 202603L
+
 } // end namespace detail
 
 
@@ -3125,14 +3177,17 @@ using safe_fn = basic_fn<
 /// @brief A non-owning polymorphic function wrapper.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam Unused - Unused.
+/// @note `fn_ref` is defined as a direct alias of `detail::function` to avoid
+/// using `detail::get_aligned_size` in order to make it deducible in CTAD.
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
-using fn_ref = basic_fn<
-  /* Signature = */           Signature, 
-  /* BufferSize = */          detail::default_buffer_size::ref_buf,
-  /* IsCopyable = */          true, 
-  /* IsView = */              true, 
-  /* IsThrowing = */          false, 
-  /* AssertObjectNoThrow = */ false
+using fn_ref = detail::function<
+  /* BufferSize = */  detail::default_buffer_size::ref_buf, 
+  /* Config = */      detail::config_package<
+    /* IsCopyable = */          true,
+    /* IsView = */              true,
+    /* IsThrowing = */          false,
+    /* AssertObjectNoThrow = */ false>,
+  /* Signature = */   Signature
 >;
 
 /// @deprecated Use `fn_ref` instead.

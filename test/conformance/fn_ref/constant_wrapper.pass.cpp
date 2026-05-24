@@ -181,6 +181,12 @@ TEST(Conformance_fn_ref, constant_wrapper_pass) {
       ASSERT_(f4(1, 2, 3).i == 6);
     }
   }
+
+  {
+    constexpr ebd::fn_ref f = std::cw<&ebd_test_free_func_iii_add>;
+    static_assert(std::is_same_v<decltype(f), const ebd::fn_ref<int(int, int) const>>);
+    ASSERT_EQ(f(42, 42), 42 + 42);
+  }
 }
 
 #endif // __cpp_lib_constant_wrapper >= 202603L
