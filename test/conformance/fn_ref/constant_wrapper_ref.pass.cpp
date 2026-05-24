@@ -387,6 +387,40 @@ TEST(Conformance_fn_ref, constant_wrapper_ref_pass) {
       ASSERT_(f() == 47);
     }
   }
+
+#if __cpp_deduction_guides >= 201907L
+
+  {
+    // constexpr and CTAD
+    static ebd_test_member_fn obj;
+    constexpr ebd::fn_ref f(std::cw<&ebd_test_member_fn::mem_fn_ii_add>, obj);
+    static_assert(std::is_same_v<decltype(f), const ebd::fn_ref<int(int, int)>>);
+    ASSERT_EQ(f(42, 42), 42 + 42);
+  }
+
+  {
+    // standard CTAD guides
+    static ebd_test_member_fn obj;
+    ebd::fn_ref f(std::cw<&ebd_test_member_fn::member_var>, obj);
+    static_assert(std::is_same_v<decltype(f), ebd::fn_ref<int&() noexcept>>);
+    ASSERT_EQ(f(), 0);
+
+    int a = 0;
+    ebd::fn_ref f2(std::cw<&ebd_test_free_func_iii_add>, a);
+    static_assert(std::is_same_v<decltype(f2), ebd::fn_ref<int(int)>>);
+    ASSERT_EQ(f2(42), 42);
+
+    ebd::fn_ref f3(std::cw<&ebd_test_free_func_iii_add_noexcept>, a);
+    static_assert(std::is_same_v<decltype(f3), ebd::fn_ref<int(int&) noexcept>>);
+    ASSERT_EQ(f3(a), 0);
+
+    ebd::fn_ref f4(std::cw<&ebd_test_free_func_iii_add_const>, a);
+    static_assert(std::is_same_v<decltype(f4), ebd::fn_ref<int(const int&) const>>);
+    ASSERT_EQ(f4(42), 42);
+  }
+
+#endif // ^^^ __cpp_deduction_guides >= 201907L
+
 }
 
 #endif // __cpp_lib_constant_wrapper >= 202603L
