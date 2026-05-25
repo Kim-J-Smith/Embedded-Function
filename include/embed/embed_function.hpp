@@ -1242,6 +1242,7 @@ inline namespace fn_traits {
   struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {        \
     using type = Ret(Args...) C V REF;                                    \
     using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;              \
+    using sig_without_ref = Ret(Args...) C V NOEXCEPT;                    \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE)
@@ -1569,6 +1570,9 @@ inline namespace fn_traits {
   struct noexcept_qualify_like_helper<Ret(*)(Args...) noexcept, void>
   : std::true_type {};
 
+  template <typename Mp, typename Class>
+  struct noexcept_qualify_like_helper<Mp Class::*> : std::true_type {};
+
   template <typename Functor>
   struct noexcept_qualify_like_helper<
     Functor, enable_if_t<is_unique_callable<Functor>::value>>
@@ -1692,6 +1696,24 @@ inline namespace fn_traits {
   // `true` if Cfg::assertNoThrow || Cfg::isView
   template <typename Cfg>
   struct is_cfg_noexcept : bool_constant<Cfg::assertNoThrow || Cfg::isView> {};
+
+  template <typename Signature>
+  struct skip_first_arg_sig;
+
+#define EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE(C, V, REF, NOEXCEPT) \
+  template <typename Ret, typename First, typename... Args>         \
+  struct skip_first_arg_sig<Ret(First, Args...) C V REF NOEXCEPT> { \
+    using type = typename add_qualifier_like<                       \
+      First, Ret(Args...) NOEXCEPT>::sig_without_ref;               \
+  };
+
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE)
+
+#undef EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE
+
+  template <typename Signature>
+  using skip_first_arg_sig_t = typename skip_first_arg_sig<Signature>::type;
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -3005,62 +3027,6 @@ namespace crtp_mixins {
     return Fn{std::forward<CArgs>(args)...};
   }
 
-#if __cpp_lib_constant_wrapper >= 202603L
-
-  /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
-
-namespace ctad_helper {
-
-  // Add `const`-qualifier to signature. (e.g. `void()` -> `void() const`)
-  template <typename Signature>
-  using add_const_to_sig_t = typename add_qualifier_like<int const, Signature>::sig_with_noexcept;
-
-  template <typename Fn, typename Tp> struct ref_sig;
-  template <typename Ret, typename FirstArg, typename... Args, typename Tp>
-  struct ref_sig<Ret(*)(FirstArg, Args...), Tp> {
-    using type = typename add_qualifier_like<
-        std::remove_reference_t<FirstArg>, Ret(Args...)>::sig_with_noexcept;
-  };
-  template <typename Ret, typename FirstArg, typename... Args, typename Tp>
-  struct ref_sig<Ret(*)(FirstArg, Args...) noexcept, Tp> {
-    using type = typename add_qualifier_like<
-        std::remove_reference_t<FirstArg>, Ret(Args...) noexcept>::sig_with_noexcept;
-  };
-  template <typename Mt, typename Class, typename Tp>
-    requires std::is_object_v<Mt> struct ref_sig<Mt Class::*, Tp>
-  { using type = invoke_result<Mt Class::*, Tp>::type() noexcept; };
-
-# define EMBED_DETAIL_REF_SIG_DEFINE(C, V, REF, NOEXCEPT)                 \
-  template <typename Ret, typename Class, typename... Args, typename Tp>  \
-  struct ref_sig<Ret(Class::*)(Args...) C V REF NOEXCEPT, Tp>             \
-  { using type = Ret(Args...) C V NOEXCEPT; };
-
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_REF_SIG_DEFINE)
-
-# undef EMBED_DETAIL_REF_SIG_DEFINE
-
-  template <typename Fn, typename Tp>
-  using ref_sig_t = typename ref_sig<Fn, Tp>::type;
-
-} // end namespace ctad_helper
-
-  template <auto Cw, typename Fn>
-    requires std::is_function_v<std::remove_pointer_t<Fn>>
-  function(std::constant_wrapper<Cw, Fn>) -> function<
-    default_buffer_size::ref_buf,
-    config_package<true, true, false, false>, // fn_ref
-    ctad_helper::add_const_to_sig_t<std::remove_pointer_t<Fn>>
-  >;
-
-  template <auto Cw, typename Fn, typename Tp>
-  function(std::constant_wrapper<Cw, Fn>, Tp&&) -> function<
-    default_buffer_size::ref_buf,
-    config_package<true, true, false, false>, // fn_ref
-    ctad_helper::ref_sig_t<Fn, Tp&>
-  >;
-
-#endif // ^^^ __cpp_lib_constant_wrapper >= 202603L
-
 } // end namespace detail
 
 
@@ -3394,11 +3360,12 @@ make_fn(MemFuncPtr memfunc_ptr) noexcept {
 
 /// @brief make_fn[10]: Make function for pointer to member object.
 /// @return `fn<T(Class&) const, sizeof(ptr_memobj)>` 
-template <typename Class, typename T>
+template <typename Class, typename T,
+  typename Ret = typename detail::invoke_result<T Class::*, Class&>::type>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
--> fn<T(Class&) const, sizeof(ptr_memobj)> {
+-> fn<Ret(Class&) const, sizeof(ptr_memobj)> {
   return detail::make_function_impl<
-    fn<T(Class&) const, sizeof(ptr_memobj)>,
+    fn<Ret(Class&) const, sizeof(ptr_memobj)>,
     /* NoThrow = */ true
   >(ptr_memobj);
 }
@@ -3476,6 +3443,32 @@ EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn(...) noexcept
 template <template <class, std::size_t> class Unused>
 EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn(...) noexcept
 { detail::make_fn_log_error<Unused<void(), 0>>(); }
+
+#if __cpp_lib_constant_wrapper >= 202603L
+namespace detail {
+
+  /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
+
+  template <typename Fn>
+  using make_fn_ref_deduction_sig_t = noexcept_qualify_like_t<
+    Fn, fn_ref, typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature>;
+
+  template <auto Cw, typename Fn>
+  function(std::constant_wrapper<Cw, Fn>) -> function<
+    default_buffer_size::ref_buf,
+    config_package<true, true, false, false>, // fn_ref
+    make_fn_ref_deduction_sig_t<Fn>
+  >;
+
+  template <auto Cw, typename Fn, typename Tp>
+  function(std::constant_wrapper<Cw, Fn>, Tp&&) -> function<
+    default_buffer_size::ref_buf,
+    config_package<true, true, false, false>, // fn_ref
+    skip_first_arg_sig_t<make_fn_ref_deduction_sig_t<Fn>>
+  >;
+
+} // end namespace detail
+#endif // ^^^ __cpp_lib_constant_wrapper >= 202603L
 
 } // end namespace ebd
 
