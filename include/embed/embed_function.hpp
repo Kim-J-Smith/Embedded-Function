@@ -1276,7 +1276,7 @@ inline namespace fn_traits {
 
   // `true` if the operator() of Fn is deducing this.
   template <typename Fn, typename This, typename Sig, typename... Args>
-  constexpr bool is_explicit_this_call_v = requires (Fn f, Args&&... args) {
+  concept deducing_this_call = requires (Fn f, Args&&... args) {
     static_cast<typename unwrap_signature<
       typename add_qualifier_like<This, Sig>::type
     >::template add_cvref_like<Fn>>(f)(std::forward<Args>(args)...);
@@ -1284,13 +1284,13 @@ inline namespace fn_traits {
 
   // noexcept(false)
   template <typename Fn, typename This, typename Ret, typename... Args>
-    requires is_explicit_this_call_v<Fn, This, Ret(Args...), Args...>
+    requires deducing_this_call<Fn, This, Ret(Args...), Args...>
   struct get_unique_signature_impl<Fn, Ret(*)(This, Args...)>
   : public add_qualifier_like<This, Ret(Args...)> {};
 
   // noexcept(true)
   template <typename Fn, typename This, typename Ret, typename... Args>
-    requires is_explicit_this_call_v<Fn, This, Ret(Args...) noexcept, Args...>
+    requires deducing_this_call<Fn, This, Ret(Args...) noexcept, Args...>
   struct get_unique_signature_impl<Fn, Ret(*)(This, Args...) noexcept>
   : public add_qualifier_like<This, Ret(Args...) noexcept> {};
 
