@@ -14,7 +14,7 @@
 #include "test_function.hpp"
 
 template <class Sig, std::size_t Buf>
-using nothrow_fn = ebd::basic_fn<Sig, Buf, true, false, false, false>;
+using nothrow_fn = ebd::basic_fn<Sig, ebd::detail::get_aligned_size(Buf), true, false, false, false>;
 
 static std::reference_wrapper<ebd_test_member_fn> get_ref() {
   static ebd_test_member_fn x;
