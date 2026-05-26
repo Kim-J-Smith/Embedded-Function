@@ -100,25 +100,25 @@ TEST(BasicAttributes, DefaultConfig) {
     static_assert(
         std::is_same<
             ebd::fn<void(), 0>, 
-            ebd::basic_fn<void(), 0, true, false, true, false>
+            ebd::basic_fn<void(), sizeof(void(*)()), true, false, true, false>
         >::value, 
         "The default config of ebd::fn has been changed!");
     static_assert(
         std::is_same<
             ebd::unique_fn<void(), 0>, 
-            ebd::basic_fn<void(), 0, false, false, true, false>
+            ebd::basic_fn<void(), sizeof(void(*)()), false, false, true, false>
         >::value, 
         "The default config of ebd::unique_fn has been changed!");
     static_assert(
         std::is_same<
             ebd::safe_fn<void(), 0>, 
-            ebd::basic_fn<void(), 0, true, false, false, true>
+            ebd::basic_fn<void(), sizeof(void(*)()), true, false, false, true>
         >::value, 
         "The default config of ebd::safe_fn has been changed!");
     static_assert(
         std::is_same<
             ebd::fn_ref<void(), 0>, 
-            ebd::basic_fn<void(), 0, true, true, false, false>
+            ebd::basic_fn<void(), ebd::detail::default_buffer_size::ref_buf, true, true, false, false>
         >::value, 
         "The default config of ebd::fn_ref has been changed!");
 }

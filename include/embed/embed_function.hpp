@@ -1109,12 +1109,9 @@ inline namespace fn_traits {
   };
 
   // Get aligned size. Rounds up to the nearest word.
-  template <std::size_t Size>
-  struct get_aligned_size {
-    static constexpr std::size_t min_aligned = sizeof(void (*) ());
-    static constexpr std::size_t aligned_size = ((Size - 1) / min_aligned + 1) * min_aligned;
-    static constexpr std::size_t value = Size == 0 ? min_aligned : aligned_size;
-  };
+  template <std::size_t MinAlign = sizeof(void (*) ())>
+  constexpr std::size_t get_aligned_size(std::size_t size)
+  { return size == 0 ? MinAlign : ((size - 1) / MinAlign + 1) * MinAlign; }
 
   /// @brief Undefined class.
   /// @e EMBED_DETAIL_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC
@@ -1276,7 +1273,7 @@ inline namespace fn_traits {
 
   // `true` if the operator() of Fn is deducing this.
   template <typename Fn, typename This, typename Sig, typename... Args>
-  constexpr bool is_explicit_this_call_v = requires (Fn f, Args&&... args) {
+  concept deducing_this_call = requires (Fn f, Args&&... args) {
     static_cast<typename unwrap_signature<
       typename add_qualifier_like<This, Sig>::type
     >::template add_cvref_like<Fn>>(f)(std::forward<Args>(args)...);
@@ -1284,13 +1281,13 @@ inline namespace fn_traits {
 
   // noexcept(false)
   template <typename Fn, typename This, typename Ret, typename... Args>
-    requires is_explicit_this_call_v<Fn, This, Ret(Args...), Args...>
+    requires deducing_this_call<Fn, This, Ret(Args...), Args...>
   struct get_unique_signature_impl<Fn, Ret(*)(This, Args...)>
   : public add_qualifier_like<This, Ret(Args...)> {};
 
   // noexcept(true)
   template <typename Fn, typename This, typename Ret, typename... Args>
-    requires is_explicit_this_call_v<Fn, This, Ret(Args...) noexcept, Args...>
+    requires deducing_this_call<Fn, This, Ret(Args...) noexcept, Args...>
   struct get_unique_signature_impl<Fn, Ret(*)(This, Args...) noexcept>
   : public add_qualifier_like<This, Ret(Args...) noexcept> {};
 
@@ -3043,7 +3040,7 @@ namespace crtp_mixins {
  *                                `int(int, float) const`, `void() &&`, etc.
  * 
  * @tparam BufferSize             Size of the internal storage (in bytes).
- *                                The value will be automatically aligned.
+ *                                The value will NOT be automatically aligned.
  * 
  * @tparam IsCopyable             If `true`, the stored callable object must be
  *                                copy‑constructible; otherwise, move‑only is
@@ -3091,14 +3088,13 @@ template <
   bool AssertObjectNoThrow
 >
 using basic_fn = detail::function<
-  detail::get_aligned_size<BufferSize>::value, 
-  detail::config_package<
-    /* IsCopyable = */          IsCopyable, 
-    /* IsView = */              IsView, 
-    /* IsThrowing = */          IsThrowing, 
-    /* AssertObjectNoThrow = */ AssertObjectNoThrow
-  >, 
-  Signature
+  /* BufferSize = */  BufferSize,
+  /* Config = */      detail::config_package<
+    /* IsCopyable = */          IsCopyable,
+    /* IsView = */              IsView,
+    /* IsThrowing = */          IsThrowing,
+    /* AssertObjectNoThrow = */ AssertObjectNoThrow>,
+  /* Signature = */   Signature
 >;
 
 /// @brief A function object wrapper for copyable and callable objects.
@@ -3107,11 +3103,11 @@ using basic_fn = detail::function<
 /// And the buffer size will be aligned automatically.
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using fn = basic_fn<
-  /* Signature = */           Signature, 
-  /* BufferSize = */          BufferSize,
-  /* IsCopyable = */          true, 
-  /* IsView = */              false, 
-  /* IsThrowing = */          true, 
+  /* Signature = */           Signature,
+  /* BufferSize = */          detail::get_aligned_size(BufferSize),
+  /* IsCopyable = */          true,
+  /* IsView = */              false,
+  /* IsThrowing = */          true,
   /* AssertObjectNoThrow = */ false
 >;
 
@@ -3121,11 +3117,11 @@ using fn = basic_fn<
 /// And the buffer size will be aligned automatically.
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using unique_fn = basic_fn<
-  /* Signature = */           Signature, 
-  /* BufferSize = */          BufferSize,
-  /* IsCopyable = */          false, 
-  /* IsView = */              false, 
-  /* IsThrowing = */          true, 
+  /* Signature = */           Signature,
+  /* BufferSize = */          detail::get_aligned_size(BufferSize),
+  /* IsCopyable = */          false,
+  /* IsView = */              false,
+  /* IsThrowing = */          true,
   /* AssertObjectNoThrow = */ false
 >;
 
@@ -3136,28 +3132,25 @@ using unique_fn = basic_fn<
 /// And the buffer size will be aligned automatically.
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
 using safe_fn = basic_fn<
-  /* Signature = */           Signature, 
-  /* BufferSize = */          BufferSize,
-  /* IsCopyable = */          true, 
-  /* IsView = */              false, 
-  /* IsThrowing = */          false, 
+  /* Signature = */           Signature,
+  /* BufferSize = */          detail::get_aligned_size(BufferSize),
+  /* IsCopyable = */          true,
+  /* IsView = */              false,
+  /* IsThrowing = */          false,
   /* AssertObjectNoThrow = */ true
 >;
 
 /// @brief A non-owning polymorphic function wrapper.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam Unused - Unused.
-/// @note `fn_ref` is defined as a direct alias of `detail::function` to avoid
-/// using `detail::get_aligned_size` in order to make it deducible in CTAD.
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
-using fn_ref = detail::function<
-  /* BufferSize = */  detail::default_buffer_size::ref_buf, 
-  /* Config = */      detail::config_package<
-    /* IsCopyable = */          true,
-    /* IsView = */              true,
-    /* IsThrowing = */          false,
-    /* AssertObjectNoThrow = */ false>,
-  /* Signature = */   Signature
+using fn_ref = basic_fn<
+  /* Signature = */           Signature,
+  /* BufferSize = */          detail::default_buffer_size::ref_buf,
+  /* IsCopyable = */          true,
+  /* IsView = */              true,
+  /* IsThrowing = */          false,
+  /* AssertObjectNoThrow = */ false
 >;
 
 /// @deprecated Use `fn_ref` instead.
