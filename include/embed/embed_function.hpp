@@ -1683,17 +1683,17 @@ inline namespace fn_traits {
 
   // Log error for make_fn.
   template <typename Unused>
-  EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn_log_error() noexcept {
+  EMBED_INLINE constexpr bool make_fn_log_error() noexcept {
     static_assert(always_false<Unused>::value,
-      "[Embedded Function]: The make_fn() cannot automatically deduce an"
-      " appropriate function wrapper based on your input parameters."
-      " This might be because the parameters you passed are ambiguous,"
-      " such as overloaded free functions, member functions, objects"
-      " that overload multiple operator() functions, nullptr, or just"
-      " non-parameters. If so, you can use 'make_fn<Signature>(...)' to"
-      " specify the signature of target callable object to disambiguate."
-      " The 'Signature' is like 'void()', 'float(int,int)'."
+      "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` by given arguments.\n"
+      "You can specified the signature and try again:\n\n"
+      "        auto f = ebd::make_fn<Signature>(CallableObject);\n"
+      "        auto f = ebd::make_fn<FnWrapper, Signature>(CallableObject);\n\n"
+      "The `Signature` is like `void()`, `float(int,int) const`;\n"
+      "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
+      "as template arguments list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc."
     );
+    return true;
   };
 
   // `true` if Cfg::assertNoThrow || Cfg::isView
@@ -3420,10 +3420,14 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 /// @return `Fn<Signature, sizeof(functor)>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
+  typename SpecifiedSig = void,
   typename Functor,
   typename Deduction = decltype(make_fn(std::declval<Functor>())),
   typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
-  typename Signature = detail::noexcept_qualify_like_t<Functor, Fn, RawSig>,
+  typename Signature = detail::conditional_t<
+    std::is_void<SpecifiedSig>::value,
+    detail::noexcept_qualify_like_t<Functor, Fn, RawSig>, SpecifiedSig
+  >,
   std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
   typename FnWrapper = Fn<Signature, BufferSize>,
   bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))
@@ -3444,11 +3448,9 @@ FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
 // awful template error flood.
 template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
-EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn(...) noexcept
-{ detail::make_fn_log_error<Unused>(); }
+constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
 template <template <class, std::size_t> class Unused>
-EMBED_INLINE EMBED_CXX14_CONSTEXPR void make_fn(...) noexcept
-{ detail::make_fn_log_error<Unused<void(), 0>>(); }
+constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
 
 #if __cpp_lib_constant_wrapper >= 202603L
 namespace detail {
