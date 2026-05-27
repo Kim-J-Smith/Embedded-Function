@@ -33,7 +33,8 @@ set(
   # "EMBED_FN_HOOK_DEBUG(msg)"
   # "EBD_TEST_USE_FALLBACK"
   # "EBD_TEST_TRY_BUG__GCC_106067"
-  # "EBD_TEST_TRY_BUG__Clang_SameNameStaticFunction" # Clang20 - C++23/26
+  # "EBD_TEST_TRY_BUG__Clang_SameNameStaticFunction" # Clang20 - C++23/26; Fixed in Clang22
+  # "EBD_TEST_TRY_BUG__MSVC_1944_1" # MSVC 19.44; Fixed in MSVC 19.50
 )
 add_compile_definitions(${TEST_USE_MACROS})
 

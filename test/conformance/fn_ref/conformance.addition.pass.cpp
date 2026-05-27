@@ -14,13 +14,17 @@
 #include "test_function.hpp"
 
 template <class Sig, std::size_t Buf>
-using nothrow_fn = ebd::basic_fn<Sig, Buf, true, false, false, false>;
+using nothrow_fn = ebd::basic_fn<Sig, ebd::detail::get_aligned_size(Buf), true, false, false, false>;
 
 static std::reference_wrapper<ebd_test_member_fn> get_ref() {
   static ebd_test_member_fn x;
   x.member_var = 0;
   return x;
 }
+
+struct empty_trivial_but_state {
+  std::uintptr_t operator()() const { return reinterpret_cast<std::uintptr_t>(this); }
+};
 
 TEST(Conformance_fn_ref, conformance_addition_pass) {
 
@@ -204,14 +208,7 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
 #endif
 
   {
-#if EMBED_CXX_VERSION >= 202002L
-    ebd::fn_ref<int() const> f1 = [] { return 42; }; // stateless
-    ASSERT_EQ(f1(), 42);
-
-    ebd::fn_ref<int(int, int) const> f2 = [](int a, int b) { return a * b; }; // stateless
-    ASSERT_EQ(f2(3, 4), 3 * 4);
-
-# if __cpp_lib_ranges >= 202110L
+#if EMBED_CXX_VERSION >= 202002L && __cpp_lib_ranges >= 202110L
 
     ebd::fn_ref<bool(int, int) const> f3 = std::ranges::less{}; // stateless
     ASSERT_EQ(f3(1, 2), true);
@@ -220,7 +217,17 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     ASSERT_EQ(f4(4, 4), true);
     ASSERT_EQ(f4(5, 4), true);
 
-# endif // __cpp_lib_ranges >= 202110L
-#endif // EMBED_CXX_VERSION >= 202002L
+#endif // __cpp_lib_ranges >= 202110L
+  }
+
+  {
+    empty_trivial_but_state obj;
+    auto f1 = ebd::make_fn<ebd::fn_ref>(obj);
+    ASSERT_EQ(f1(), obj());
+  }
+
+  {
+    int result = 42;
+    ASSERT_EQ(ebd_test_safe_tmp_fn([result]{ return result; }), result);
   }
 }
