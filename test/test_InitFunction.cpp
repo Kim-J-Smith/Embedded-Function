@@ -679,11 +679,11 @@ TEST(InitFunction, static_operator_call) {
 // InitFunction[36]
 TEST(InitFunction, from_move_only_function) {
     std::move_only_function<int(int, int)> mo_f = &ebd_test_free_func_iii_add;
-    auto f1 = ebd::make_fn(std::move(mo_f));
+    auto f1 = ebd::make_fn<int(int, int)>(std::move(mo_f));
     ASSERT_EQ(f1.is_copyable(), false);
     ASSERT_EQ(f1(42, 3), 42 + 3);
 
-    auto f2 = ebd::make_fn(std::move(mo_f));
+    auto f2 = ebd::make_fn<int(int, int)>(std::move(mo_f));
     ASSERT_EQ(f2.is_copyable(), false);
     ASSERT_EQ(f2.is_empty(), true);
 }
