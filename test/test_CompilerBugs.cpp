@@ -49,3 +49,21 @@ TEST(CompilerBugs, GCC_Bug_51452) {
     EXPECT_EQ(NoThrow == true, EBD_RES_EXPECT);
     SUCCEED();
 }
+
+#if !defined(_MSC_VER) || defined(EBD_TEST_TRY_BUG__MSVC_1944_1)
+
+template <class... _Signature> struct MSVC_Bug_1944_1_Base;
+template <class Ret, class... Args> struct MSVC_Bug_1944_1_Base<Ret(Args...)> { void operator()() {} };
+template <class Ret, class... Args> struct MSVC_Bug_1944_1_Base<Ret(Args...)&> { void operator()() & {} };
+template <class... _Signature>
+struct MSVC_Bug_1944_1_Derive : private /* `private` trigger bug */ MSVC_Bug_1944_1_Base<_Signature...> {
+    using Call_t = MSVC_Bug_1944_1_Base<_Signature...>;
+    using Call_t::operator();
+};
+
+TEST(CompilerBugs, MSVC_Bug_1944_1) {
+    auto f = ebd::make_fn(MSVC_Bug_1944_1_Derive<void()>{});
+    SUCCEED();
+}
+
+#endif

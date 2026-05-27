@@ -697,9 +697,12 @@ TEST(InitFunction, from_copyable_function) {
     ASSERT_EQ(f1.is_copyable(), true);
     ASSERT_EQ(f1(42, 3), 42 + 3);
 
+    auto f2 = ebd::make_fn<ebd::fn_ref, int(short, short)>(cpy_f);
+    ASSERT_EQ(f2(42, 42), 42 + 42);
+
     cpy_f = nullptr;
-    auto f2 = ebd::make_fn(cpy_f);
-    ASSERT_EQ(f2.is_copyable(), true);
-    ASSERT_EQ(f2.is_empty(), true);
+    auto f3 = ebd::make_fn(cpy_f);
+    ASSERT_EQ(f3.is_copyable(), true);
+    ASSERT_EQ(f3.is_empty(), true);
 }
 #endif

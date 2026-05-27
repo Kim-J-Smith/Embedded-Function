@@ -15,4 +15,12 @@
 
 #endif // defined(EBD_TEST_USE_FALLBACK)
 
+#if defined(__clang__) && __clang_major__ >= 22
+# define EBD_TEST_TRY_BUG__Clang_SameNameStaticFunction
+#endif
+
+#if defined(_MSC_VER) && _MSC_VER >= 1950
+# define EBD_TEST_TRY_BUG__MSVC_1944_1
+#endif
+
 #endif // TEST_FALLBACK_MACRO_HPP_
