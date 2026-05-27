@@ -674,3 +674,32 @@ TEST(InitFunction, static_operator_call) {
     ASSERT_EQ(f4(1, 2), 3);
 }
 #endif // #if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+
+#if __cpp_lib_move_only_function >= 202110L
+// InitFunction[36]
+TEST(InitFunction, from_move_only_function) {
+    std::move_only_function<int(int, int)> mo_f = &ebd_test_free_func_iii_add;
+    auto f1 = ebd::make_fn(std::move(mo_f));
+    ASSERT_EQ(f1.is_copyable(), false);
+    ASSERT_EQ(f1(42, 3), 42 + 3);
+
+    auto f2 = ebd::make_fn(std::move(mo_f));
+    ASSERT_EQ(f2.is_copyable(), false);
+    ASSERT_EQ(f2.is_empty(), true);
+}
+#endif
+
+#if __cpp_lib_copyable_function >= 202306L
+// InitFunction[37]
+TEST(InitFunction, from_copyable_function) {
+    std::copyable_function<int(int, int)> cpy_f = &ebd_test_free_func_iii_add;
+    auto f1 = ebd::make_fn(cpy_f);
+    ASSERT_EQ(f1.is_copyable(), true);
+    ASSERT_EQ(f1(42, 3), 42 + 3);
+
+    cpy_f = nullptr;
+    auto f2 = ebd::make_fn(cpy_f);
+    ASSERT_EQ(f2.is_copyable(), true);
+    ASSERT_EQ(f2.is_empty(), true);
+}
+#endif

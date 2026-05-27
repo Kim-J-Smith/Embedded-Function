@@ -1162,32 +1162,38 @@ inline namespace fn_traits {
 
   // Utility struct to check if a callable object is not empty.
   struct check_not_empty {
+    template <typename T>
+    static constexpr bool check(T* f) noexcept { return f != nullptr; }
+    template <typename Class, typename T>
+    static constexpr bool check(T Class::* f) noexcept { return f != nullptr; }
+    template <typename T>
+    static constexpr bool check(const T&) noexcept { return true; }
 
     template <typename Sig>
-    static bool check(const ::std::function<Sig>& f) noexcept {
-      return static_cast<bool>(f);
-    }
+    static bool check(const ::std::function<Sig>& f) noexcept
+    { return static_cast<bool>(f); }
 
     template <std::size_t Buf, typename Cfg, typename Sig,
-      EMBED_DETAIL_REQUIRES(!Cfg::isView) // OWNING
-    > static EMBED_CXX14_CONSTEXPR bool check(const function<Buf, Cfg, Sig>& f) noexcept {
-      return static_cast<bool>(f);
-    }
+      EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/> static
+    EMBED_CXX14_CONSTEXPR bool check(const function<Buf, Cfg, Sig>& f) noexcept
+    { return static_cast<bool>(f); }
 
-    template <typename T>
-    static constexpr bool check(T* f) noexcept {
-      return f != nullptr;
-    }
+#if __cpp_lib_move_only_function >= 202110L
 
-    template <typename Class, typename T>
-    static constexpr bool check(T Class::* f) noexcept {
-      return f != nullptr;
-    }
+    template <typename Sig>
+    static bool check(const ::std::move_only_function<Sig>& f) noexcept
+    { return static_cast<bool>(f); }
 
-    template <typename T>
-    static constexpr bool check(const T&) noexcept {
-      return true;
-    }
+#endif // ^^^ __cpp_lib_move_only_function >= 202110L
+
+#if __cpp_lib_copyable_function >= 202306L
+
+    template <typename Sig>
+    static bool check(const ::std::copyable_function<Sig>& f) noexcept
+    { return static_cast<bool>(f); }
+
+#endif // ^^^ __cpp_lib_copyable_function >= 202306L
+
   };
 
   // Trait to check if a functor's copy/move capabilities match the configuration.
