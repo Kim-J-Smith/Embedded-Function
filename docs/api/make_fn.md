@@ -2,152 +2,187 @@
 
 ## Overview
 
-`ebd::make_fn` is a factory function that creates function wrapper objects. It automatically deduces the signature and buffer size of the callable object, and returns an appropriate function wrapper (`ebd::fn` or `ebd::unique_fn`).
+`ebd::make_fn` is a factory for creating Embedded Function wrappers from callable objects, function pointers, member pointers, and existing wrappers.
+
+It can:
+
+- deduce the signature of a lambda or other uniquely callable functor,
+- choose `ebd::fn` or `ebd::unique_fn` automatically,
+- build an empty wrapper with an explicit signature,
+- create a wrapper with a specific wrapper type such as `ebd::safe_fn` or `ebd::fn_ref`.
 
 ## Overloads
 
-### 1. Make function with specified signature for copyable functor
+### 1. Copyable functor with explicit signature
 
 ```cpp
-template <typename Signature, typename Functor>
-EMBED_NODISCARD inline fn<Signature, sizeof(Functor)>
-make_fn(Functor&& functor) noexcept;
+template <typename Signature, typename Functor,
+          typename Class = detail::remove_cvref_t<Functor>,
+          std::size_t BufferSize = sizeof(Class),
+          typename Fn = detail::conditional_t<
+              std::is_copy_constructible<Class>::value,
+              fn<Signature, BufferSize>,
+              unique_fn<Signature, BufferSize>>,
+          bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value>
+EMBED_NODISCARD inline Fn make_fn(Functor&& functor) noexcept(NoThrow);
 ```
 
-Creates an `ebd::fn` with the specified signature for a copyable functor.
+Creates a wrapper for a class-type callable when the signature is specified explicitly. For copyable functors, the resulting type is `ebd::fn<Signature, BufferSize>`.
 
-### 2. Make function with specified signature for move-only functor
+### 2. Move-only functor with explicit signature
 
 ```cpp
-template <typename Signature, typename Functor>
+template <typename Signature, typename Functor,
+          bool NoThrow = std::is_nothrow_move_constructible<Functor>::value>
 EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor)>
-make_fn(Functor&& functor) noexcept;
+make_fn(Functor&& functor) noexcept(NoThrow);
 ```
 
-Creates an `ebd::unique_fn` with the specified signature for a move-only functor.
+Creates an `ebd::unique_fn` for a move-only functor when the signature is specified explicitly.
 
-### 3. Make an empty function with specified signature and buffer size
+### 3. Empty wrapper with explicit signature
 
 ```cpp
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+template <typename Signature,
+          std::size_t BufferSize = detail::default_buffer_size::value>
 EMBED_NODISCARD inline fn<Signature, BufferSize>
 make_fn(std::nullptr_t = nullptr) noexcept;
 ```
 
-Creates an empty `ebd::fn` with the specified signature and buffer size.
+Creates an empty `ebd::fn` with the given signature and buffer size.
 
-### 4. Make function for function pointer (auto deduce signature and buffer size)
+### 4. Function pointer with deduced signature
 
 ```cpp
 template <typename Ret, typename... Args>
 EMBED_NODISCARD inline fn<Ret(Args...) const, sizeof(Ret(*)(Args...))>
-make_fn(Ret (*func_ptr) (Args...)) noexcept;
+make_fn(Ret (*func_ptr)(Args...)) noexcept;
 ```
 
-Creates an `ebd::fn` from a function pointer, automatically deducing the signature and buffer size.
+Creates an `ebd::fn` from a free-function pointer and deduces both signature and buffer size.
 
-### 5. Make function for function pointer with specified signature
+### 5. Function pointer with explicit signature
 
 ```cpp
-template <typename Signature, typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*>
+template <typename Signature,
+          typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*>
 EMBED_NODISCARD inline fn<Signature, sizeof(FunctionPtr)>
 make_fn(FunctionPtr func_ptr) noexcept;
 ```
 
-Creates an `ebd::fn` from a function pointer with the specified signature.
+Creates an `ebd::fn` from a free-function pointer using the specified signature.
 
-### 6. Create a function from another function (Copy)
-
-```cpp
-template <std::size_t Buf, typename Cfg, typename Sig>
-EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
-make_fn(const detail::function<Buf, Cfg, Sig>& fn) noexcept;
-```
-
-Creates a function wrapper by copying another function wrapper.
-
-### 7. Create a function from another function (Move)
+### 6. Copy from another wrapper
 
 ```cpp
 template <std::size_t Buf, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
-make_fn(detail::function<Buf, Cfg, Sig>&& fn) noexcept;
+make_fn(const detail::function<Buf, Cfg, Sig>& fn)
+noexcept(Cfg::isView || Cfg::assertNoThrow);
 ```
 
-Creates a function wrapper by moving another function wrapper.
+Creates a wrapper by copying another `ebd::detail::function`.
 
-### 8. Make a function from lambda or unique-operator() functor
+### 7. Move from another wrapper
 
 ```cpp
-template <typename Lambda, typename Class = detail::remove_cvref_t<Lambda>,
+template <std::size_t Buf, typename Cfg, typename Sig>
+EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
+make_fn(detail::function<Buf, Cfg, Sig>&& fn)
+noexcept(Cfg::isView || Cfg::assertNoThrow);
+```
+
+Creates a wrapper by moving another `ebd::detail::function`.
+
+### 8. Lambda or uniquely callable functor
+
+```cpp
+template <typename Lambda,
+          typename Class = detail::remove_cvref_t<Lambda>,
           std::size_t BufferSize = sizeof(Class),
           typename Signature = detail::get_unique_signature_t<Class>,
           typename Fn = detail::conditional_t<
               std::is_copy_constructible<Class>::value,
-              fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
-          >>
-EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept;
+              fn<Signature, BufferSize>,
+              unique_fn<Signature, BufferSize>>,
+          bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value>
+EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow);
 ```
 
-Creates a function wrapper from a lambda or functor with a unique `operator()`, automatically deducing the signature and buffer size.
+Creates a wrapper from a lambda or other functor with exactly one viable `operator()`. The signature is deduced automatically.
 
-### 9. Make function for pointer to member function
+### 9. Pointer to member function
 
 ```cpp
 template <typename Class, typename Ret, typename... Args>
 EMBED_NODISCARD inline auto
 make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept
--> fn<Ret(detail::get_qualified_with_t<int REF, C V Class>, Args...) const, sizeof(memfunc)>;
+-> fn<
+    Ret(detail::get_qualified_with_t<int REF, C V Class>, Args...) const,
+    sizeof(memfunc)
+   >;
 ```
 
-Creates an `ebd::fn` from a pointer to member function, automatically deducing the signature and buffer size.
+Creates an `ebd::fn` from a pointer to member function. Cv/ref/noexcept qualifiers are preserved in the generated signature family.
 
-### 10. Make function for member function pointer with specified signature
+### 10. Member function pointer with explicit signature
 
 ```cpp
-template <typename Signature, typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
+template <typename Signature,
+          typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
           std::size_t BufferSize = sizeof(MemFuncPtr)>
 EMBED_NODISCARD inline fn<Signature, BufferSize>
 make_fn(MemFuncPtr memfunc_ptr) noexcept;
 ```
 
-Creates an `ebd::fn` from a member function pointer with the specified signature.
+Creates an `ebd::fn` from a pointer to member function using the specified signature.
 
-### 11. Make function for pointer to member object
+### 11. Pointer to member object
 
 ```cpp
-template <typename Class, typename T>
+template <typename Class, typename T,
+          typename Ret = typename detail::invoke_result<T Class::*, Class&>::type>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
--> fn<T(Class&) const, sizeof(ptr_memobj)>;
+-> fn<Ret(Class&) const, sizeof(ptr_memobj)>;
 ```
 
-Creates an `ebd::fn` from a pointer to member object.
+Creates an `ebd::fn` that reads a member object from an instance.
 
-### 12. In-place make function (C++17+)
+### 12. In-place construction (C++17+)
 
 ```cpp
 template <typename Functor, typename... CArgs>
-EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args) noexcept;
+EMBED_NODISCARD inline auto
+make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
+noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value);
 
 template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto
-make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args) noexcept;
+make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
+noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value);
 ```
 
-Creates a function wrapper by in-place constructing the callable object within the internal buffer.
+Constructs the callable directly inside the wrapper buffer. The returned wrapper type is deduced from the functor.
 
-### 13. Make function with specified wrapper
+### 13. Explicit wrapper type
 
 ```cpp
-template <template <class, std::size_t> class Fn, typename Functor,
+template <template <class, std::size_t> class Fn,
+          typename SpecifiedSig = void,
+          typename Functor,
           typename Deduction = decltype(make_fn(std::declval<Functor>())),
-          typename Signature = typename detail::is_ebd_fn<Deduction>::signature,
+          typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
+          typename Signature = detail::conditional_t<
+              std::is_void<SpecifiedSig>::value,
+              detail::noexcept_qualify_like_t<Functor, Fn, RawSig>,
+              SpecifiedSig>,
           std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
-          typename FnWrapper = Fn<Signature, BufferSize>>
-EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept;
+          typename FnWrapper = Fn<Signature, BufferSize>,
+          bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))>
+EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow);
 ```
 
-Creates a function wrapper with the specified wrapper type (e.g., `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_view`).
+Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_ref`. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(functor)`.
 
 ## Usage Examples
 
@@ -156,75 +191,75 @@ Creates a function wrapper with the specified wrapper type (e.g., `ebd::fn`, `eb
 ```cpp
 #include "embed/embed_function.hpp"
 
-// Create a function wrapper from a function pointer
-void foo() { /* do something */ }
+void foo() {}
+
 auto fn1 = ebd::make_fn(&foo);
 fn1();
 
-// Create a function wrapper from a lambda
-auto fn2 = ebd::make_fn([]() { /* do something */ });
-fn2();
+auto fn2 = ebd::make_fn([](int x) { return x + 1; });
+int y = fn2(41);
 
-// Create a function wrapper with specified signature
-auto fn3 = ebd::make_fn<void(int)>([](int x) { /* do something */ });
+auto fn3 = ebd::make_fn<void(int)>([](int x) { /* ... */ });
 fn3(42);
 
-// Create an empty function wrapper
 auto fn4 = ebd::make_fn<void()>();
 if (!fn4) {
-    // Handle empty function
+    // Handle empty wrapper
 }
 ```
 
-### With Member Functions
+### Member Pointers
 
 ```cpp
 struct MyClass {
-    void method(int x) { /* do something */ }
+    void method(int x) { value += x; }
     int value = 42;
 };
 
 MyClass obj;
 
-// Create a function wrapper for a member function
 auto mem_fn = ebd::make_fn(&MyClass::method);
-mem_fn(obj, 100); // Call obj.method(100)
+mem_fn(obj, 8);
 
-// Create a function wrapper for a member variable
 auto mem_obj = ebd::make_fn(&MyClass::value);
-int val = mem_obj(obj); // Get obj.value
+int value = mem_obj(obj);
 ```
 
-### With Custom Wrapper Type
+### Explicit Wrapper Type
 
 ```cpp
-// Create a safe_fn from a lambda
-auto safe_fn = ebd::make_fn<ebd::safe_fn>([]() noexcept { /* do something */ });
+auto safe = ebd::make_fn<ebd::safe_fn>([]() noexcept { /* ... */ });
 
-// Create a fn_view from a function pointer
-void bar() { /* do something */ }
-auto view = ebd::make_fn<ebd::fn_view>(&bar);
+void bar() {}
+auto ref = ebd::make_fn<ebd::fn_ref>(&bar);
+
+auto ref2 = ebd::make_fn<ebd::fn_ref, void()>(bar);
 ```
 
-### In-place Construction (C++17+)
+### In-place Construction
 
 ```cpp
-// In-place construct a functor within the function wrapper
-auto fn = ebd::make_fn(std::in_place_type<MyFunctor>, /* constructor arguments */);
+struct Functor {
+    explicit Functor(int x) : value(x) {}
+    int operator()() const { return value; }
+    int value;
+};
+
+auto fn = ebd::make_fn(std::in_place_type<Functor>, 42);
+int value = fn();
 ```
 
 ## Notes
 
-- `ebd::make_fn` automatically deduces the appropriate function wrapper type based on the callable object:
-  - Returns `ebd::fn` for copyable callables
-  - Returns `ebd::unique_fn` for move-only callables
-- The buffer size is automatically set to the size of the callable object.
-- For ambiguous callables (e.g., overloaded functions), you must specify the signature explicitly.
-- If `ebd::make_fn` cannot deduce an appropriate function wrapper, it will trigger a static assertion with a helpful error message.
+- `ebd::make_fn` returns `ebd::fn` for copyable deduced callables and `ebd::unique_fn` for move-only deduced callables.
+- When the callable is ambiguous, such as an overloaded function, specify the signature explicitly.
+- The explicit-wrapper overload accepts `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, and `ebd::fn_ref`.
+- `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.
+- When deduction fails, the fallback overload triggers a static assertion with guidance.
 
 ## See Also
 
-- [`ebd::fn`](./fn.md) - Copyable function wrapper
-- [`ebd::unique_fn`](./unique_fn.md) - Move-only function wrapper
-- [`ebd::safe_fn`](./safe_fn.md) - Exception-safe function wrapper
-- [`ebd::fn_ref`](./fn_ref.md) - For non-owning views of callables
+- [`ebd::fn`](./fn.md) - Copyable owning wrapper
+- [`ebd::unique_fn`](./unique_fn.md) - Move-only owning wrapper
+- [`ebd::safe_fn`](./safe_fn.md) - Non-throwing wrapper
+- [`ebd::fn_ref`](./fn_ref.md) - Non-owning wrapper

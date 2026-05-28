@@ -193,11 +193,11 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 
 ```cpp
 // Create specified function wrapper and automatically deduce the template arguments.
-// The Callable_Object should be unambiguously callable (non-overload).
-auto f = ebd::make_fn<ebd::fn>(Callable_Object);
-auto f = ebd::make_fn<ebd::unique_fn>(Callable_Object);
-auto f = ebd::make_fn<ebd::safe_fn>(Callable_Object);
-auto f = ebd::make_fn<ebd::fn_ref>(Callable_Object);
+// The Callable_Object should be unambiguously callable (non-overload) if `Signature` is omitted.
+auto f = ebd::make_fn<ebd::fn[, Signature]>(Callable_Object);
+auto f = ebd::make_fn<ebd::unique_fn[, Signature]>(Callable_Object);
+auto f = ebd::make_fn<ebd::safe_fn[, Signature]>(Callable_Object);
+auto f = ebd::make_fn<ebd::fn_ref[, Signature]>(Callable_Object);
 ```
 
 ```cpp
