@@ -1685,16 +1685,18 @@ inline namespace fn_traits {
   template <typename Unused>
   constexpr bool make_fn_log_error() noexcept {
     static_assert(always_false<Unused>::value,
-      "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` by given arguments.\n"
-      "You can specified the signature and try again:\n\n"
+      "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` from the given "
+      "arguments.\nYou can specify the signature and try again:\n\n"
       "        auto f = ebd::make_fn<Signature>(CallableObject);\n"
       "        auto f = ebd::make_fn<FnWrapper, Signature>(CallableObject);\n\n"
       "The `Signature` is like `void()`, `float(int,int) const`;\n"
       "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
-      "as template arguments list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc."
+      "as a template argument list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc. If omitted, "
+      "the `FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` is copyable, "
+      "and `ebd::unique_fn` otherwise."
     );
     return true;
-  };
+  }
 
   // `true` if Cfg::assertNoThrow || Cfg::isView
   template <typename Cfg>
