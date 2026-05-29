@@ -1162,25 +1162,25 @@ inline namespace fn_traits {
   // Utility struct to check if a callable object is not empty.
   struct check_not_empty {
     template <typename T>
-    static constexpr bool check(T* f) noexcept { return f != nullptr; }
+    static constexpr bool not_empty(T* f) noexcept { return f != nullptr; }
     template <typename Class, typename T>
-    static constexpr bool check(T Class::* f) noexcept { return f != nullptr; }
+    static constexpr bool not_empty(T Class::* f) noexcept { return f != nullptr; }
     template <typename T>
-    static constexpr bool check(const T&) noexcept { return true; }
+    static constexpr bool not_empty(const T&) noexcept { return true; }
 
     template <typename Sig>
-    static bool check(const ::std::function<Sig>& f) noexcept
+    static bool not_empty(const ::std::function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
     template <std::size_t Buf, typename Cfg, typename Sig,
       EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/> static
-    EMBED_CXX14_CONSTEXPR bool check(const function<Buf, Cfg, Sig>& f) noexcept
+    EMBED_CXX14_CONSTEXPR bool not_empty(const function<Buf, Cfg, Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #if __cpp_lib_move_only_function >= 202110L
 
     template <typename Sig>
-    static bool check(const ::std::move_only_function<Sig>& f) noexcept
+    static bool not_empty(const ::std::move_only_function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // ^^^ __cpp_lib_move_only_function >= 202110L
@@ -1188,7 +1188,7 @@ inline namespace fn_traits {
 #if __cpp_lib_copyable_function >= 202306L
 
     template <typename Sig>
-    static bool check(const ::std::copyable_function<Sig>& f) noexcept
+    static bool not_empty(const ::std::copyable_function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // ^^^ __cpp_lib_copyable_function >= 202306L
@@ -2793,7 +2793,7 @@ namespace crtp_mixins {
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
         EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
-      if (check_not_empty::check(functor)) {
+      if (check_not_empty::not_empty(functor)) {
         m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
       } else {
         m_command.set_empty();
