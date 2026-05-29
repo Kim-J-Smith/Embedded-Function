@@ -2948,46 +2948,6 @@ namespace crtp_mixins {
 
 #endif
 
-    // Assign a callable object to the object.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
-    EMBED_DETAIL_REQUIRES_END(
-      (!fn_can_convert<function, Functor>::value)
-      && (!is_self<Functor, function>::value)
-      && (!Config::isView)
-    ) function& operator=(Functor&& fn)
-    noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
-      /// Call move assignment in @e `crtp_mixins::move_impl`.
-      *this = function(std::forward<Functor>(fn));
-      return *this;
-    }
-
-    // Assign another `function` object to this object.
-    // Enable if the `function` object can be converted to the current object.
-    EMBED_DETAIL_TEMPLATE_BEGIN(
-      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
-    EMBED_DETAIL_REQUIRES_END(
-      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
-      && (!Config::isView) // OWNING
-    )
-    function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other)
-    noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
-      function(other).swap(*this);
-      return *this;
-    }
-
-    // Assign another `function` object to this object.
-    // Enable if the `function` object can be converted to the current object.
-    EMBED_DETAIL_TEMPLATE_BEGIN(
-      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
-    EMBED_DETAIL_REQUIRES_END(
-      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
-      && Config::isView && OtherCfg::isView // NON-OWNING
-    )
-    function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other) noexcept {
-      std::memcpy(&m_erasure, &other.m_erasure, default_buffer_size::ref_buf);
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-      return *this;
-    }
   };
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
