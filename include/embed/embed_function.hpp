@@ -204,9 +204,8 @@
 
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES_IMPL(require_condition) \
-  ::ebd::detail::enable_if_t<(require_condition), int> = 0
-#define EMBED_DETAIL_REQUIRES(...)  EMBED_DETAIL_REQUIRES_IMPL((__VA_ARGS__))
+#define EMBED_DETAIL_REQUIRES(...) \
+  ::ebd::detail::enable_if_t<(__VA_ARGS__), int> = 0
 
 #if defined(_MSC_VER)
 # define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
@@ -3485,7 +3484,6 @@ namespace detail {
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
 #undef EMBED_DETAIL_REQUIRES
-#undef EMBED_DETAIL_REQUIRES_IMPL
 #undef EMBED_DETAIL_FORCE_EBO
 #undef EMBED_DETAIL_VIRTUAL_INHERITANCE
 #undef EMBED_DETAIL_MOVE_FUNCTION
