@@ -1671,7 +1671,7 @@ inline namespace fn_traits {
   // Lambda has trivially default constructor since C++20.
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0624r2.pdf>.
   template <typename Fn>
-  struct is_empty_normal : bool_constant<
+  struct is_empty_trivial : bool_constant<
     std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value
     && std::is_trivially_destructible<Fn>::value
   > {};
@@ -1681,7 +1681,7 @@ inline namespace fn_traits {
   struct is_stateless : bool_constant<
     is_static_callable_functor<Fn, Args...>::value
     || is_std_op_wrapper<Fn>::value
-    || (is_empty_normal<Fn>::value && !IsView)
+    || (is_empty_trivial<Fn>::value && !IsView)
     // ^^^ empty trivial functor may use `this` in operator(). This is
     // not strict stateless and cannot be used in reference semantic.
   > {};
@@ -1895,7 +1895,7 @@ namespace invocation {
     };                                                                            \
                                                                                   \
     /* Used for stateless(empty) Functor (like std::less). */                     \
-    struct empty_normal {                                                         \
+    struct empty_trivial_class {                                                  \
       template <typename EmptyFn>                                                 \
       static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) {          \
         C V EmptyFn fn{};  /* Empty and trivial class. It is stateless */         \
@@ -2148,7 +2148,7 @@ namespace command {
       using invoker_impl_target_t = conditional_t<
         is_static_callable_functor<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
-        typename invoker_impl_t::empty_normal
+        typename invoker_impl_t::empty_trivial_class
       >;
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::empty::manage;
@@ -2230,7 +2230,7 @@ namespace command {
       using invoker_impl_target_t = conditional_t<
         is_static_callable_functor<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
-        typename invoker_impl_t::empty_normal
+        typename invoker_impl_t::empty_trivial_class
       >;
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
     }
