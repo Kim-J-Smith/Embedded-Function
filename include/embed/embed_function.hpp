@@ -297,8 +297,8 @@
 
 // Guidelines for reporting internal errors.
 #define EMBED_DETAIL_REPORT_IE(error) \
-  "An internal error has occurred: " error " This is unexpected. " \
-  "Please report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
+  "An internal library error has occurred: " error " This is unexpected.\n" \
+  "PLEASE report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
