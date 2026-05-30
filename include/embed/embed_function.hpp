@@ -1502,8 +1502,14 @@ inline namespace fn_traits {
   struct asserts_for_function : public std::true_type {
 
     static_assert(align_size_is_ok<Functor, Config, BufferSize, ErasureT>::value,
-      "The size of Functor is too large, and the BufferSize is too small."
-      " Try use greater 'BufferSize' as the template argument");
+      "The `BufferSize` is smaller than the callable object. Please use bigger "
+      "`BufferSize` and try again:\n\n"
+      "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
+      "                             ^^^^^^^^^^^^^^^^^\n"
+      "                                     |\n"
+      "             should be greater than `sizeof(CallableObject)`\n\n"
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, etc."
+    );
 
     static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
       "The 'Functor' may throw exceptions during construction and destruction,"
@@ -1687,7 +1693,9 @@ inline namespace fn_traits {
       "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` from the given "
       "arguments.\nYou can specify the signature and try again:\n\n"
       "        auto f = ebd::make_fn<Signature>(CallableObject);\n"
-      "        auto f = ebd::make_fn<FnWrapper, Signature>(CallableObject);\n\n"
+      "                              ^^^^^^^^^\n"
+      "        auto f = ebd::make_fn<FnWrapper, Signature>(CallableObject);\n"
+      "                                         ^^^^^^^^^\n\n"
       "The `Signature` is like `void()`, `float(int,int) const`;\n"
       "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
       "as a template argument list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc. If omitted, "
