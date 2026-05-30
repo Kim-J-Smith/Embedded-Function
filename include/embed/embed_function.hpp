@@ -798,7 +798,8 @@ inline namespace fn_traits {
   struct always_false { static constexpr bool value = false; };
 
   // Is trivial for the purposes of calls. (trivially destruct, copy and move)
-  // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>.
+  // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>
+  // and <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial>.
   template <typename T>
   struct is_call_trivial : public bool_constant<
     std::is_trivially_destructible<T>::value
@@ -2389,7 +2390,7 @@ namespace crtp_mixins {
     copy_impl& operator=(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
       auto& other = static_cast<const Self&>(other_raw);
       if (!other.is_empty() && this != std::addressof(other)) {
-        Self(other).swap(static_cast<Self&>(*this));
+        Self(other).swap(static_cast<Self&>(*this)); // TODO: avoid using `swap`.
       }
       return *this;
     }
@@ -2760,8 +2761,7 @@ namespace crtp_mixins {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
       std::memset(&m_erasure, 0, sizeof(void*));
 
-      other.m_command.clone(
-        &m_erasure, const_cast<other_erasure_t*>(&other.m_erasure));
+      other.m_command.clone(&m_erasure, const_cast<other_erasure_t*>(&other.m_erasure));
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
