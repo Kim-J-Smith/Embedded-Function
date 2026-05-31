@@ -21,9 +21,11 @@
 
 ## 📌 Overview
 
-*Embedded Function* is a **lightweight** and **no-heap-allocation** function wrapper collection implemented based on the C++11 standard, tailored specifically for embedded systems.
+*Embedded Function* is a **lightweight** and **no-heap-allocation** function wrapper collection implemented based on the C++11 standard, optimized([see below](#-performance-optimization)) for resource-constrained or high-performance environments.
 
-In only **one** [header file](./include/embed/embed_function.hpp), **4** function wrappers are provided as follows:
+The library is [freestanding](https://en.cppreference.com/w/cpp/freestanding), making it feasible for embedded development or kernel design of an operating system.
+
+In a [single header file](./include/embed/embed_function.hpp), **four** function wrappers are provided as follows:
 
 ```cpp
 namespace ebd {
@@ -87,7 +89,9 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 > The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
 
-> The *`Buffer size`* is the size used to store the callable object, which can be omitted. If omitted, this parameter will be set to `detail::default_buffer_size::value` by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
+> The *`Buffer size`* is the size used to store the callable object, which can be omitted.
+> If omitted, this parameter will be set to *DefaultSize* by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
+> *If the buffer size is insufficient, a `static_assert` will be triggered.*
 
 ## 🧠 Design goals driving the design
 
@@ -138,25 +142,19 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 4. **Triviality**: `fn_ref` is trivially copyable (same as `std::function_ref`).
 
-## 🚀 Performance optimization
+### Convertibility
 
-### Branch elimination
+- `Yes-D`: Convertible and direct wrapping (`To.BufferSize` >= `From.BufferSize`);
+- `Yes-I`: Convertible and indirect wrapping (`To.BufferSize` >= `sizeof(From)`);
+- `Yes-R`: Convertible and non-owning wrapping.
+- `No`: Inconvertible
 
-`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` completely eliminate runtime checks for empty function states during invocation, significantly boosting performance of frequent function calls.
-
-### Smart forwarding
-
-`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
-
-### Zero-stack overhead
-
-`ebd::fn_ref` occupies no stack space when used as a function parameter; it is passed entirely in registers. This allows the compiler to directly tail-call the wrapped target, removing the cost of an extra stack frame. See [x86_64-asm](./docs/perf/x86_64_gcc_fn_ref_zero_stack.md).
-
-### Stateless elimination
-
-`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., empty classes with trivial operations). This reduces memory access operations and improves cache efficiency.
-
-> Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
+| From \ To | `ebd::fn` | `ebd::unique_fn` | `ebd::safe_fn` | `ebd::fn_ref` |
+| :---: | :---: | :---: | :---: | :---: |
+| `ebd::fn` | Yes-D | Yes-D | No | Yes-R |
+| `ebd::unique_fn` | No | Yes-D | No | Yes-R |
+| `ebd::safe_fn` | Yes-I | Yes-I | Yes-D | Yes-R |
+| `ebd::fn_ref` | Yes-I | Yes-I | Yes-I | Yes-D |
 
 ## 🧩 Automatic deduction
 
@@ -291,73 +289,53 @@ Every compiler with modern C++11 support should work.
 
 Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
 
+## 🚀 Performance optimization
+
+### Branch elimination
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` completely eliminate runtime checks for empty function states during invocation, significantly boosting performance of frequent function calls.
+
+### Smart forwarding
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
+
+### Zero-stack overhead
+
+`ebd::fn_ref` occupies no stack space when used as a function parameter; it is passed entirely in registers. This allows the compiler to directly tail-call the wrapped target, removing the cost of an extra stack frame. See [x86_64-asm](./docs/perf/x86_64_gcc_fn_ref_zero_stack.md).
+
+### Stateless elimination
+
+`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., empty classes with trivial operations). This reduces memory access operations and improves cache efficiency.
+
+> Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
+
 ## ⏱️ Benchmark
 
-Go to the `<root>/benchmark/` directory, and follow the instructions in [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the tests.
+**Embedded-Function has 5%~30% performance enhancement over `std::function`.**
 
-> *( Compiler: `MSVC` Standard: `C++14` Config: `Release` Tool: [picobench](https://github.com/iboB/picobench) )* 
+> *( `Compiler`: GCC-14 `Standard`: C++14 `Config`: -Os `Tool`: [picobench](https://github.com/iboB/picobench) `fu2`: [function2](https://github.com/Naios/function2) )*
 
-> **std**: `std::function`, **ebd**: `ebd::fn`, **fu2**: [`fu2::function`](https://github.com/Naios/function2)
-
-```md
-## FreeFunction.ScalarParameters:
+### StdOperatorWrapper.FunctionWrapperAsParams:
 
  Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
 --------------------------|--------:|----------:|--------:|-------:|----------:
- free_scalar_std *        |   10000 |     0.030 |       3 |      - |332225913.6
- free_scalar_ebd          |   10000 |     0.028 |       2 |  0.930 |357142857.1
- free_scalar_fu2          |   10000 |     0.052 |       5 |  1.731 |191938579.7
- free_scalar_std *        |  100000 |     0.301 |       3 |      - |332667997.3
- free_scalar_ebd          |  100000 |     0.265 |       2 |  0.881 |377643504.5
- free_scalar_fu2          |  100000 |     0.523 |       5 |  1.742 |191021967.5
- free_scalar_std *        | 1000000 |     3.006 |       3 |      - |332712270.4
- free_scalar_ebd          | 1000000 |     2.708 |       2 |  0.901 |369317132.6
- free_scalar_fu2          | 1000000 |     5.264 |       5 |  1.751 |189958778.9
+ `std::function` *        |   10000 |     0.090 |       8 |      - |111671952.5
+ `fu2::function`          |   10000 |     0.176 |      17 |  1.968 | 56744349.7
+ **`ebd::fn`**            |   10000 |     0.068 |       6 |  0.758 |147412179.2
+ `fu2::function_view`     |   10000 |     0.034 |       3 |  0.379 |294602875.3
+ **`ebd::fn_ref`**        |   10000 |     0.034 |       3 |  0.375 |297424305.5
+ `std::function` *        |  100000 |     0.895 |       8 |      - |111756442.5
+ `fu2::function`          |  100000 |     1.765 |      17 |  1.973 | 56644386.5
+ **`ebd::fn`**            |  100000 |     0.678 |       6 |  0.758 |147444347.1
+ `fu2::function_view`     |  100000 |     0.340 |       3 |  0.380 |294061429.4
+ **`ebd::fn_ref`**        |  100000 |     0.308 |       3 |  0.345 |324361494.4
+ `std::function` *        | 1000000 |     9.952 |       9 |      - |100481295.4
+ `fu2::function`          | 1000000 |    17.733 |      17 |  1.782 | 56391833.9
+ **`ebd::fn`**            | 1000000 |     6.832 |       6 |  0.686 |146378186.5
+ `fu2::function_view`     | 1000000 |     3.420 |       3 |  0.344 |292392274.6
+ **`ebd::fn_ref`**        | 1000000 |     3.249 |       3 |  0.326 |307826614.8
 
-## FreeFunction.TrivialParameters:
-
- Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
---------------------------|--------:|----------:|--------:|-------:|----------:
- free_trivial_std *       |   10000 |     0.032 |       3 |      - |311526479.8
- free_trivial_ebd         |   10000 |     0.024 |       2 |  0.754 |413223140.5
- free_trivial_fu2         |   10000 |     0.052 |       5 |  1.626 |191570881.2
- free_trivial_std *       |  100000 |     0.322 |       3 |      - |310366232.2
- free_trivial_ebd         |  100000 |     0.240 |       2 |  0.746 |415800415.8
- free_trivial_fu2         |  100000 |     0.510 |       5 |  1.583 |196001568.0
- free_trivial_std *       | 1000000 |     3.222 |       3 |      - |310375865.2
- free_trivial_ebd         | 1000000 |     2.508 |       2 |  0.778 |398692289.3
- free_trivial_fu2         | 1000000 |     5.792 |       5 |  1.798 |172660876.8
-
-## FreeFunction.CopyHardParameters:
-
- Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
---------------------------|--------:|----------:|--------:|-------:|----------:
- free_copyhard_std *      |   10000 |     0.197 |      19 |      - | 50684237.2
- free_copyhard_ebd        |   10000 |     0.198 |      19 |  1.004 | 50505050.5
- free_copyhard_fu2        |   10000 |     0.303 |      30 |  1.537 | 32981530.3
- free_copyhard_std *      |  100000 |     1.976 |      19 |      - | 50604726.5
- free_copyhard_ebd        |  100000 |     1.982 |      19 |  1.003 | 50456632.5
- free_copyhard_fu2        |  100000 |     3.044 |      30 |  1.541 | 32849352.9
- free_copyhard_std *      | 1000000 |    19.898 |      19 |      - | 50256307.2
- free_copyhard_ebd        | 1000000 |    20.052 |      20 |  1.008 | 49870088.4
- free_copyhard_fu2        | 1000000 |    31.358 |      31 |  1.576 | 31889890.6
-
-## FreeFunction.CallTrivialParameters:
-
- Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
---------------------------|--------:|----------:|--------:|-------:|----------:
- free_calltrivial_std *   |   10000 |     0.032 |       3 |      - |311526479.8
- free_calltrivial_ebd     |   10000 |     0.024 |       2 |  0.751 |414937759.3
- free_calltrivial_fu2     |   10000 |     0.056 |       5 |  1.757 |177304964.5
- free_calltrivial_std *   |  100000 |     0.320 |       3 |      - |312597686.8
- free_calltrivial_ebd     |  100000 |     0.257 |       2 |  0.802 |389711613.4
- free_calltrivial_fu2     |  100000 |     0.584 |       5 |  1.827 |171115674.2
- free_calltrivial_std *   | 1000000 |     3.223 |       3 |      - |310269934.8
- free_calltrivial_ebd     | 1000000 |     2.407 |       2 |  0.747 |415506710.4
- free_calltrivial_fu2     | 1000000 |     5.934 |       5 |  1.841 |168517551.1
-```
-
-> See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results.
+> See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the benchmark in your platform.
 
 ## 🧭 Future learning & evolution reference
 

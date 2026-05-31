@@ -204,9 +204,8 @@
 
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES_IMPL(require_condition) \
-  ::ebd::detail::enable_if_t<(require_condition), int> = 0
-#define EMBED_DETAIL_REQUIRES(...)  EMBED_DETAIL_REQUIRES_IMPL((__VA_ARGS__))
+#define EMBED_DETAIL_REQUIRES(...) \
+  ::ebd::detail::enable_if_t<(__VA_ARGS__), int> = 0
 
 #if defined(_MSC_VER)
 # define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
@@ -298,8 +297,8 @@
 
 // Guidelines for reporting internal errors.
 #define EMBED_DETAIL_REPORT_IE(error) \
-  "An internal error has occurred: " error " This is unexpected. " \
-  "Please report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
+  "An internal library error has occurred: " error " This is unexpected.\n" \
+  "PLEASE report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -799,7 +798,8 @@ inline namespace fn_traits {
   struct always_false { static constexpr bool value = false; };
 
   // Is trivial for the purposes of calls. (trivially destruct, copy and move)
-  // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>.
+  // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>
+  // and <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial>.
   template <typename T>
   struct is_call_trivial : public bool_constant<
     std::is_trivially_destructible<T>::value
@@ -1163,25 +1163,25 @@ inline namespace fn_traits {
   // Utility struct to check if a callable object is not empty.
   struct check_not_empty {
     template <typename T>
-    static constexpr bool check(T* f) noexcept { return f != nullptr; }
+    static constexpr bool not_empty(T* f) noexcept { return f != nullptr; }
     template <typename Class, typename T>
-    static constexpr bool check(T Class::* f) noexcept { return f != nullptr; }
+    static constexpr bool not_empty(T Class::* f) noexcept { return f != nullptr; }
     template <typename T>
-    static constexpr bool check(const T&) noexcept { return true; }
+    static constexpr bool not_empty(const T&) noexcept { return true; }
 
     template <typename Sig>
-    static bool check(const ::std::function<Sig>& f) noexcept
+    static bool not_empty(const ::std::function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
     template <std::size_t Buf, typename Cfg, typename Sig,
       EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/> static
-    EMBED_CXX14_CONSTEXPR bool check(const function<Buf, Cfg, Sig>& f) noexcept
+    EMBED_CXX14_CONSTEXPR bool not_empty(const function<Buf, Cfg, Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #if __cpp_lib_move_only_function >= 202110L
 
     template <typename Sig>
-    static bool check(const ::std::move_only_function<Sig>& f) noexcept
+    static bool not_empty(const ::std::move_only_function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // ^^^ __cpp_lib_move_only_function >= 202110L
@@ -1189,7 +1189,7 @@ inline namespace fn_traits {
 #if __cpp_lib_copyable_function >= 202306L
 
     template <typename Sig>
-    static bool check(const ::std::copyable_function<Sig>& f) noexcept
+    static bool not_empty(const ::std::copyable_function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // ^^^ __cpp_lib_copyable_function >= 202306L
@@ -1503,8 +1503,14 @@ inline namespace fn_traits {
   struct asserts_for_function : public std::true_type {
 
     static_assert(align_size_is_ok<Functor, Config, BufferSize, ErasureT>::value,
-      "The size of Functor is too large, and the BufferSize is too small."
-      " Try use greater 'BufferSize' as the template argument");
+      "The `BufferSize` is smaller than the callable object. Please use bigger "
+      "`BufferSize` and try again:\n\n"
+      "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
+      "                             ^^^^^^^^^^^^^^^^^\n"
+      "                                     |\n"
+      "             should be greater than `sizeof(CallableObject)`\n\n"
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, etc."
+    );
 
     static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
       "The 'Functor' may throw exceptions during construction and destruction,"
@@ -1666,7 +1672,7 @@ inline namespace fn_traits {
   // Lambda has trivially default constructor since C++20.
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0624r2.pdf>.
   template <typename Fn>
-  struct is_empty_normal : bool_constant<
+  struct is_empty_trivial : bool_constant<
     std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value
     && std::is_trivially_destructible<Fn>::value
   > {};
@@ -1676,25 +1682,29 @@ inline namespace fn_traits {
   struct is_stateless : bool_constant<
     is_static_callable_functor<Fn, Args...>::value
     || is_std_op_wrapper<Fn>::value
-    || (is_empty_normal<Fn>::value && !IsView)
+    || (is_empty_trivial<Fn>::value && !IsView)
     // ^^^ empty trivial functor may use `this` in operator(). This is
     // not strict stateless and cannot be used in reference semantic.
   > {};
 
   // Log error for make_fn.
   template <typename Unused>
-  EMBED_INLINE constexpr bool make_fn_log_error() noexcept {
+  constexpr bool make_fn_log_error() noexcept {
     static_assert(always_false<Unused>::value,
-      "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` by given arguments.\n"
-      "You can specified the signature and try again:\n\n"
+      "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` from the given "
+      "arguments.\nYou can specify the signature and try again:\n\n"
       "        auto f = ebd::make_fn<Signature>(CallableObject);\n"
-      "        auto f = ebd::make_fn<FnWrapper, Signature>(CallableObject);\n\n"
+      "                              ^^^^^^^^^\n"
+      "        auto f = ebd::make_fn<FnWrapper, Signature>(CallableObject);\n"
+      "                                         ^^^^^^^^^\n\n"
       "The `Signature` is like `void()`, `float(int,int) const`;\n"
       "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
-      "as template arguments list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc."
+      "as a template argument list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc. If omitted, "
+      "the `FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` is copyable, "
+      "and `ebd::unique_fn` otherwise."
     );
     return true;
-  };
+  }
 
   // `true` if Cfg::assertNoThrow || Cfg::isView
   template <typename Cfg>
@@ -1886,7 +1896,7 @@ namespace invocation {
     };                                                                            \
                                                                                   \
     /* Used for stateless(empty) Functor (like std::less). */                     \
-    struct empty_normal {                                                         \
+    struct empty_trivial_class {                                                  \
       template <typename EmptyFn>                                                 \
       static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) {          \
         C V EmptyFn fn{};  /* Empty and trivial class. It is stateless */         \
@@ -2139,7 +2149,7 @@ namespace command {
       using invoker_impl_target_t = conditional_t<
         is_static_callable_functor<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
-        typename invoker_impl_t::empty_normal
+        typename invoker_impl_t::empty_trivial_class
       >;
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
       m_manager = &manager_impl_t::empty::manage;
@@ -2221,7 +2231,7 @@ namespace command {
       using invoker_impl_target_t = conditional_t<
         is_static_callable_functor<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
-        typename invoker_impl_t::empty_normal
+        typename invoker_impl_t::empty_trivial_class
       >;
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
     }
@@ -2380,7 +2390,7 @@ namespace crtp_mixins {
     copy_impl& operator=(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
       auto& other = static_cast<const Self&>(other_raw);
       if (!other.is_empty() && this != std::addressof(other)) {
-        Self(other).swap(static_cast<Self&>(*this));
+        Self(other).swap(static_cast<Self&>(*this)); // TODO: avoid using `swap`.
       }
       return *this;
     }
@@ -2751,8 +2761,7 @@ namespace crtp_mixins {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
       std::memset(&m_erasure, 0, sizeof(void*));
 
-      other.m_command.clone(
-        &m_erasure, const_cast<other_erasure_t*>(&other.m_erasure));
+      other.m_command.clone(&m_erasure, const_cast<other_erasure_t*>(&other.m_erasure));
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
@@ -2792,7 +2801,7 @@ namespace crtp_mixins {
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
         EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
 
-      if (check_not_empty::check(functor)) {
+      if (check_not_empty::not_empty(functor)) {
         m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
       } else {
         m_command.set_empty();
@@ -2947,46 +2956,6 @@ namespace crtp_mixins {
 
 #endif
 
-    // Assign a callable object to the object.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
-    EMBED_DETAIL_REQUIRES_END(
-      (!fn_can_convert<function, Functor>::value)
-      && (!is_self<Functor, function>::value)
-      && (!Config::isView)
-    ) function& operator=(Functor&& fn)
-    noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
-      /// Call move assignment in @e `crtp_mixins::move_impl`.
-      *this = function(std::forward<Functor>(fn));
-      return *this;
-    }
-
-    // Assign another `function` object to this object.
-    // Enable if the `function` object can be converted to the current object.
-    EMBED_DETAIL_TEMPLATE_BEGIN(
-      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
-    EMBED_DETAIL_REQUIRES_END(
-      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
-      && (!Config::isView) // OWNING
-    )
-    function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other)
-    noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
-      function(other).swap(*this);
-      return *this;
-    }
-
-    // Assign another `function` object to this object.
-    // Enable if the `function` object can be converted to the current object.
-    EMBED_DETAIL_TEMPLATE_BEGIN(
-      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
-    EMBED_DETAIL_REQUIRES_END(
-      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
-      && Config::isView && OtherCfg::isView // NON-OWNING
-    )
-    function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other) noexcept {
-      std::memcpy(&m_erasure, &other.m_erasure, default_buffer_size::ref_buf);
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-      return *this;
-    }
   };
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
@@ -3483,7 +3452,6 @@ namespace detail {
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
 #undef EMBED_DETAIL_REQUIRES
-#undef EMBED_DETAIL_REQUIRES_IMPL
 #undef EMBED_DETAIL_FORCE_EBO
 #undef EMBED_DETAIL_VIRTUAL_INHERITANCE
 #undef EMBED_DETAIL_MOVE_FUNCTION
