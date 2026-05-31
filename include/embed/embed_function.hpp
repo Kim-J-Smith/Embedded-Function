@@ -2357,8 +2357,7 @@ namespace crtp_mixins {
       auto&& other = static_cast<Self&&>(other_raw);
       using command_t = typename Self::command_t;
 
-      // Clear and move from `other` to `self`.
-      if (this != std::addressof(other)) {
+      if (this != std::addressof(other_raw)) {
         self.m_command.destroy(&self.m_erasure);
 
         other.m_command.move(&self.m_erasure, &other.m_erasure);
@@ -2395,7 +2394,7 @@ namespace crtp_mixins {
       using erasure_t = typename Self::erasure_t;
       using command_t = typename Self::command_t;
 
-      if (this != std::addressof(other)) {
+      if (this != std::addressof(other_raw)) {
         self.m_command.destroy(&self.m_erasure);
 
         other.m_command.clone(&self.m_erasure, const_cast<erasure_t*>(&other.m_erasure));
