@@ -15,6 +15,10 @@
 
 #endif // defined(EBD_TEST_USE_FALLBACK)
 
+#if defined(__GNUC__) && __GNUC__ >= 16
+# define EBD_TEST_TRY_BUG__GCC_106067
+#endif
+
 #if defined(__clang__) && __clang_major__ >= 22
 # define EBD_TEST_TRY_BUG__Clang_SameNameStaticFunction
 #endif
