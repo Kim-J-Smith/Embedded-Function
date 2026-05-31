@@ -144,9 +144,10 @@ ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
 
 ### Convertibility
 
-> `Yes-D`: Yes and directly wrapping (`To.BufferSize` >= `From.BufferSize`);
-> `Yes-I`: Yes and indirectly wrapping (`To.BufferSize` >= `sizeof(From)`);
-> `Yes-R`: Yes and is reference.
+- `Yes-D`: Convertible and direct wrapping (`To.BufferSize` >= `From.BufferSize`);
+- `Yes-I`: Convertible and indirect wrapping (`To.BufferSize` >= `sizeof(From)`);
+- `Yes-R`: Convertible and non-owning wrapping.
+- `No`: Inconvertible
 
 | From \ To | `ebd::fn` | `ebd::unique_fn` | `ebd::safe_fn` | `ebd::fn_ref` |
 | :---: | :---: | :---: | :---: | :---: |
