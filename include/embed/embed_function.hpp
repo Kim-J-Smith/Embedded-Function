@@ -2699,6 +2699,9 @@ namespace crtp_mixins {
     template <typename... T>
     using is_invocable_using = is_invocable_using_impl<Signature, std::tuple<T...>>;
 
+    template <typename T>
+    using add_cv_like_sig_t = typename unwrap_signature<Signature>::template add_cv_like<T>;
+
   public:
 
     // The return type.
@@ -2854,7 +2857,7 @@ namespace crtp_mixins {
     /// @note Used for function reference only. (NON-OWNING)
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, 
       typename Tp = remove_reference_t<Functor>,
-      typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>)
+      typename Tp_cv = add_cv_like_sig_t<Tp>)
     EMBED_DETAIL_REQUIRES_END(
       (!is_self<Functor, function>::value)
       && is_invocable_using<Tp_cv&>::value
@@ -2937,8 +2940,7 @@ namespace crtp_mixins {
     // Create function reference with given `std::constant_wrapper` and object params.
     template <auto CwVal, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
       requires (!std::is_rvalue_reference_v<Up&&>)
-        && is_invocable_using<const Fn&,
-          typename unwrap_signature<Signature>::template add_cv_like<Tp>&>::value
+        && is_invocable_using<const Fn&, add_cv_like_sig_t<Tp>&>::value
         && Config::isView
     constexpr function(std::constant_wrapper<CwVal, Fn>, Up&& obj) noexcept
     : MemberVariableBase(nullptr) {
@@ -2952,9 +2954,7 @@ namespace crtp_mixins {
     }
 
     // Create function reference with given `std::constant_wrapper` and pointer params.
-    template <auto CwVal, typename Fn, typename Tp,
-      typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>
-    >
+    template <auto CwVal, typename Fn, typename Tp, typename Tp_cv = add_cv_like_sig_t<Tp>>
       requires std::is_convertible_v<Tp*, Tp_cv*>
         && is_invocable_using<const Fn&, Tp_cv*>::value
         && Config::isView
