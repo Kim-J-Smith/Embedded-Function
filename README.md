@@ -78,15 +78,15 @@ auto main() -> int {
 
 ```cpp
 /// The definition of method of a function wrapper is as follows:
-        FnWrapper <void(int, float, char) const, 3*sizeof(void*)> fn_ = +[](int, float, char){};
-//          ^       ^   ^~~~~~~~~~~~~      ^     ^~~~~~                 ^~~~~~~~~~~~~~~~~~~~~~~
-//          |       |   |                  |     |                      |
-// Function wrapper |   |                  |     |                      |
-// Return type ~~~~~|   |                  |     |                      |
-// Parameters ~~~~~~~~~~|                  |     |                      |
-// Qualifier ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|     |                      |
-// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|                      |
-// Callable object ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+        FnWrapper <void(int, char) const, 3*sizeof(void*)> fn_ = +[](int, char) {};
+//          ^       ^   ^~~~~~~      ^     ^~~~~~                 ^~~~~~~~~~~~~
+//          |       |   |            |     |                      |
+// Function wrapper |   |            |     |                      |
+// Return type ~~~~~|   |            |     |                      |
+// Parameters ~~~~~~~~~~|            |     |                      |
+// Qualifier ~~~~~~~~~~~~~~~~~~~~~~~~|     |                      |
+// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~|                      |
+// Callable object ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
 
 - *`Function wrapper`*: One of `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_ref`.
