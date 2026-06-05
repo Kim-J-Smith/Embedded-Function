@@ -1086,7 +1086,7 @@ inline namespace fn_traits {
   // Check the functor is callable with given arguments.
   // [func.wrap.move.ctor]/1
   template <typename Functor, typename Signature>
-  struct is_callable_from {
+  struct is_callable_from_impl {
     using unwrap_sig = unwrap_signature<Signature>;
     using ret       = typename unwrap_sig::ret;
     using args_pack = typename unwrap_sig::args;
@@ -1549,7 +1549,8 @@ inline namespace fn_traits {
 #endif
 
   // <https://eel.is/c++draft/func.wrap#ref.ctor-1>.
-  template <typename Sig, typename Tuple, 
+  // [func.wrap.ref.ctor]/1 is-invocable-using
+  template <typename Sig, typename Tuple,
     typename PureSig = typename unwrap_signature<Sig>::pure_sig>
   struct is_invocable_using_impl;
   template <typename Sig, typename... TArgs, typename Ret, typename... Args>
@@ -1560,11 +1561,6 @@ inline namespace fn_traits {
       is_invocable_r<Ret, TArgs..., Args...>
     >;
   };
-
-  // [func.wrap.ref.ctor]/1 is-invokable-using
-  template <typename Signature, typename... T>
-  using is_invocable_using_t = 
-    typename is_invocable_using_impl<Signature, std::tuple<T...>>::type;
 
   template <typename T>
   struct is_constant_wrapper : std::false_type {};
@@ -2695,6 +2691,14 @@ namespace crtp_mixins {
     // `true` if self is copyable.
     static constexpr bool internal_is_copyable = Config::isCopyable || Config::isView;
 
+    // [func.wrap.move.ctor]/1 is-callable-from
+    template <typename Functor>
+    using is_callable_from = is_callable_from_impl<Functor, Signature>;
+
+    // [func.wrap.ref.ctor]/1 is-invocable-using
+    template <typename... T>
+    using is_invocable_using = is_invocable_using_impl<Signature, std::tuple<T...>>;
+
   public:
 
     // The return type.
@@ -2807,7 +2811,7 @@ namespace crtp_mixins {
       (!fn_can_convert<function, Functor>::value)
       && (!is_self<Functor, function>::value)
       && (!is_in_place_type<decay_t<Functor>>::value)
-      && is_callable_from<Functor, Signature>::value
+      && is_callable_from<Functor>::value
       && (!Config::isView)
     ) function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
@@ -2829,7 +2833,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Func)
     EMBED_DETAIL_REQUIRES_END(
       std::is_function<Func>::value
-      && is_invocable_using_t<Signature, Func>::value
+      && is_invocable_using<Func>::value
       && Config::isView
     ) function(Func* function_ptr) noexcept {
 
@@ -2853,7 +2857,7 @@ namespace crtp_mixins {
       typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>)
     EMBED_DETAIL_REQUIRES_END(
       (!is_self<Functor, function>::value)
-      && is_invocable_using_t<Signature, Tp_cv&>::value
+      && is_invocable_using<Tp_cv&>::value
       && (!std::is_member_pointer<Tp>::value)
       && (!fn_can_convert<function, Functor>::value)
       && Config::isView
@@ -2875,7 +2879,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename... CArgs)
     EMBED_DETAIL_REQUIRES_END(
       std::is_constructible<Fn, CArgs...>::value
-      && is_callable_from<Fn, Signature>::value
+      && is_callable_from<Fn>::value
       && (!Config::isView)
     ) explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
@@ -2895,7 +2899,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename U, typename... CArgs)
     EMBED_DETAIL_REQUIRES_END(
       std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
-      && is_callable_from<Fn, Signature>::value
+      && is_callable_from<Fn>::value
       && (!Config::isView)
     ) explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
@@ -2917,7 +2921,7 @@ namespace crtp_mixins {
 
     // Create function reference with given `std::constant_wrapper` param.
     template <auto CwVal, typename Fn>
-      requires is_invocable_using_t<Signature, const Fn&>::value
+      requires is_invocable_using<const Fn&>::value
         && Config::isView
     constexpr function(std::constant_wrapper<CwVal, Fn>) noexcept
     : MemberVariableBase(nullptr) {
@@ -2933,7 +2937,7 @@ namespace crtp_mixins {
     // Create function reference with given `std::constant_wrapper` and object params.
     template <auto CwVal, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
       requires (!std::is_rvalue_reference_v<Up&&>)
-        && is_invocable_using_t<Signature, const Fn&, 
+        && is_invocable_using<const Fn&,
           typename unwrap_signature<Signature>::template add_cv_like<Tp>&>::value
         && Config::isView
     constexpr function(std::constant_wrapper<CwVal, Fn>, Up&& obj) noexcept
@@ -2952,7 +2956,7 @@ namespace crtp_mixins {
       typename Tp_cv = typename unwrap_signature<Signature>::template add_cv_like<Tp>
     >
       requires std::is_convertible_v<Tp*, Tp_cv*>
-        && is_invocable_using_t<Signature, const Fn&, Tp_cv*>::value
+        && is_invocable_using<const Fn&, Tp_cv*>::value
         && Config::isView
     constexpr function(std::constant_wrapper<CwVal, Fn>, Tp* obj) noexcept
     : MemberVariableBase(nullptr) {
