@@ -801,10 +801,10 @@ inline namespace fn_traits {
   // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>
   // and <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial>.
   template <typename T>
-  struct is_call_trivial : public bool_constant<
+  struct is_trivial_for_call : public bool_constant<
     std::is_trivially_destructible<T>::value
-      && std::is_trivially_copy_constructible<T>::value
-      && std::is_trivially_move_constructible<T>::value
+    && std::is_trivially_copy_constructible<T>::value
+    && std::is_trivially_move_constructible<T>::value
   > {};
 
   // std::is_trivial is deprecated in C++26. But we need it.
@@ -1464,17 +1464,24 @@ inline namespace fn_traits {
   // optimization for each platform, we create `is_reg_passable`.
   template <typename T>
   struct is_reg_passable {
-    static constexpr std::size_t reg_size = sizeof(void*);
     static constexpr std::size_t obj_size = sizeof(T);
-    static constexpr bool is_trivial_obj = is_call_trivial<T>::value;
+    static constexpr bool is_trivial_obj = is_trivial_for_call<T>::value;
     static constexpr bool is_scalar_obj = std::is_scalar<T>::value;
+
 #if defined(__sparc_v8__) || defined(__sparcv8)
-    // class and union object are not allowed to pass by reg in SPARC V8 (32bit).
-    static constexpr bool value = is_scalar_obj;
+    // Class and union object are not allowed to pass by reg in SPARC V8 (32bit).
+    static constexpr bool aggregate_passable = false;
+#elif defined(_WIN64) && defined(_M_X64)
+    static_assert(sizeof(void*) == 8, EMBED_DETAIL_REPORT_IE("sizeof(void*) != 8 in Windows x64."));
+    // See <https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-180#parameter-passing>.
+    static constexpr bool aggregate_passable = is_trivial_obj
+      && (obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8);
 #else
-    static constexpr bool value =
-      is_scalar_obj || (obj_size <= 2 * reg_size && is_trivial_obj);
+    static constexpr bool aggregate_passable = is_trivial_obj
+      && obj_size <= 2 * sizeof(void*);
 #endif
+
+    static constexpr bool value = is_scalar_obj || aggregate_passable;
   };
 
   // Used to choose either perfect forwarding or pass-by-value.

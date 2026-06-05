@@ -78,20 +78,28 @@ auto main() -> int {
 
 ```cpp
 /// The definition of method of a function wrapper is as follows:
-ebd::fn<int (int, float, char) const, 3*sizeof(void*)> fn_;
-//       ^     ^     ^     ^     ^        ^
-//       |     |     |     |     |        |
-// Return type |     |     |     |        |
-// Parameters ~|~~~~~|~~~~~|     |        |
-// Qualifier ~~~~~~~~~~~~~~~~~~~~|        |
-// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+        FnWrapper <void(int, char) const, 3*sizeof(void*)> fn_ = +[](int, char) {};
+//          ^       ^   ^~~~~~~      ^     ^~~~~~                 ^~~~~~~~~~~~~
+//          |       |   |            |     |                      |
+// Function wrapper |   |            |     |                      |
+// Return type ~~~~~|   |            |     |                      |
+// Parameters ~~~~~~~~~~|            |     |                      |
+// Qualifier ~~~~~~~~~~~~~~~~~~~~~~~~|     |                      |
+// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~|                      |
+// Callable object ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
 
-> The *`Qualifier`* is used to restrict the callable objects wrapped within `ebd::fn`, rather than `ebd::fn` itself. In other words, the `operator()` of the `ebd::fn` object will be qualified with the `Qualifier` modifier.
+- *`Function wrapper`*: One of `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_ref`.
 
-> The *`Buffer size`* is the size used to store the callable object, which can be omitted.
-> If omitted, this parameter will be set to *DefaultSize* by default, which is sufficient to store most common callable objects, including function pointers, simple non-capturing and capturing lambdas, and lightweight custom classes.
-> *If the buffer size is insufficient, a `static_assert` will be triggered.*
+- *`Return type`*: A type that can be implicitly converted from the direct return type of *`Callable object`*.
+
+- *`Parameters`*: Types that can implicitly converts to the parameter types of *`Callable object`*.
+
+- *`Qualifier`*: Applies to the wrapper's `operator()` (e.g., `const`, `noexcept`, `&`, `&&`), restricting which callable objects can be stored.
+
+- *`Buffer size`*: Size (in bytes) of the internal storage. Defaults to `DefaultSize`. Triggers `static_assert` if insufficient - no heap allocation.
+
+- *`Callable object`*: Any entity callable with the target signature (function pointer, lambda, function object, `std::reference_wrapper`). Copied or moved into the buffer depending on wrapper type.
 
 ## 🧠 Design goals driving the design
 
