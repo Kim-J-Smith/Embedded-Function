@@ -801,10 +801,10 @@ inline namespace fn_traits {
   // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>
   // and <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial>.
   template <typename T>
-  struct is_call_trivial : public bool_constant<
+  struct is_trivial_for_call : public bool_constant<
     std::is_trivially_destructible<T>::value
-      && std::is_trivially_copy_constructible<T>::value
-      && std::is_trivially_move_constructible<T>::value
+    && std::is_trivially_copy_constructible<T>::value
+    && std::is_trivially_move_constructible<T>::value
   > {};
 
   // std::is_trivial is deprecated in C++26. But we need it.
@@ -1466,7 +1466,7 @@ inline namespace fn_traits {
   struct is_reg_passable {
     static constexpr std::size_t reg_size = sizeof(void*);
     static constexpr std::size_t obj_size = sizeof(T);
-    static constexpr bool is_trivial_obj = is_call_trivial<T>::value;
+    static constexpr bool is_trivial_obj = is_trivial_for_call<T>::value;
     static constexpr bool is_scalar_obj = std::is_scalar<T>::value;
 #if defined(__sparc_v8__) || defined(__sparcv8)
     // class and union object are not allowed to pass by reg in SPARC V8 (32bit).
