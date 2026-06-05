@@ -1554,13 +1554,13 @@ inline namespace fn_traits {
     typename PureSig = typename unwrap_signature<Sig>::pure_sig>
   struct is_invocable_using_impl;
   template <typename Sig, typename... TArgs, typename Ret, typename... Args>
-  struct is_invocable_using_impl<Sig, std::tuple<TArgs...>, Ret(Args...)> {
-    using type = conditional_t<
+  struct is_invocable_using_impl<Sig, std::tuple<TArgs...>, Ret(Args...)>
+  : conditional_t<
       unwrap_signature<Sig>::isNoexcept,
       is_nothrow_invocable_r<Ret, TArgs..., Args...>,
       is_invocable_r<Ret, TArgs..., Args...>
-    >;
-  };
+    >
+  {};
 
   template <typename T>
   struct is_constant_wrapper : std::false_type {};
