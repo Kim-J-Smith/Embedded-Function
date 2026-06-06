@@ -801,7 +801,7 @@ inline namespace fn_traits {
   // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial-parameters>
   // and <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#non-trivial>.
   template <typename T>
-  struct is_trivial_for_call : public bool_constant<
+  struct is_itanium_trivial_for_calls : public bool_constant<
     std::is_trivially_destructible<T>::value
     && std::is_trivially_copy_constructible<T>::value
     && std::is_trivially_move_constructible<T>::value
@@ -1461,27 +1461,24 @@ inline namespace fn_traits {
 
   // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
   // in `conditional_t`. To work around this issue and facilitate targeted
-  // optimization for each platform, we create `is_reg_passable`.
+  // optimization for each platform, we create `is_register_passable`.
   template <typename T>
-  struct is_reg_passable {
+  struct is_register_passable {
     static constexpr std::size_t obj_size = sizeof(T);
-    static constexpr bool is_trivial_obj = is_trivial_for_call<T>::value;
-    static constexpr bool is_scalar_obj = std::is_scalar<T>::value;
+    static constexpr bool is_trivial_for_calls = is_itanium_trivial_for_calls<T>::value;
 
 #if defined(__sparc_v8__) || defined(__sparcv8)
     // Class and union object are not allowed to pass by reg in SPARC V8 (32bit).
-    static constexpr bool aggregate_passable = false;
+    static constexpr bool value = std::is_scalar<T>::value;
 #elif defined(_WIN64) && defined(_M_X64)
-    static_assert(sizeof(void*) == 8, EMBED_DETAIL_REPORT_IE("sizeof(void*) != 8 in Windows x64."));
     // See <https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-180#parameter-passing>.
-    static constexpr bool aggregate_passable = is_trivial_obj
-      && (obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8);
+    static_assert(sizeof(void*) == 8, EMBED_DETAIL_REPORT_IE("sizeof(void*) != 8 in Windows x64."));
+    static constexpr bool size_is_ok = obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8;
+    static constexpr bool value = !std::is_reference<T>::value && is_trivial_for_calls && size_is_ok;
 #else
-    static constexpr bool aggregate_passable = is_trivial_obj
-      && obj_size <= 2 * sizeof(void*);
+    static constexpr bool size_is_ok = sizeof(T) <= 2 * sizeof(void*);
+    static constexpr bool value = !std::is_reference<T>::value && is_trivial_for_calls && size_is_ok;
 #endif
-
-    static constexpr bool value = is_scalar_obj || aggregate_passable;
   };
 
   // Used to choose either perfect forwarding or pass-by-value.
@@ -1490,7 +1487,7 @@ inline namespace fn_traits {
 #if !defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
   template <typename T>
   using smart_forward_t = // vvv MSVC 19.10~19.14 workaround: avoid using `conditional_t`.
-    typename std::conditional<is_reg_passable<T>::value, T, T&&>::type;
+    typename std::conditional<is_register_passable<T>::value, T, T&&>::type;
 #else
   template <typename T>
   using smart_forward_t = T&&;
