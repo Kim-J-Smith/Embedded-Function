@@ -1474,10 +1474,10 @@ inline namespace fn_traits {
     // See <https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-180#parameter-passing>.
     static_assert(sizeof(void*) == 8, EMBED_DETAIL_REPORT_IE("sizeof(void*) != 8 in Windows x64."));
     static constexpr bool size_is_ok = obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8;
-    static constexpr bool value = !std::is_reference<T>::value && is_trivial_for_calls && size_is_ok;
+    static constexpr bool value = is_trivial_for_calls && size_is_ok;
 #else
     static constexpr bool size_is_ok = sizeof(T) <= 2 * sizeof(void*);
-    static constexpr bool value = !std::is_reference<T>::value && is_trivial_for_calls && size_is_ok;
+    static constexpr bool value = is_trivial_for_calls && size_is_ok;
 #endif
   };
 
