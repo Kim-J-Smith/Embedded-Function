@@ -49,6 +49,11 @@ struct A {
 #endif
 };
 
+struct Static_call_operator_test {
+  int operator()(int) const { return 0; }
+  static int operator()(long) { return 1; }
+};
+
 template <typename T>
 using remove_cvref_t = typename std::remove_cv<
   typename std::remove_reference<T>::type
@@ -380,5 +385,13 @@ TEST(Conformance_fn_ref, ref_pass) {
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f() == 42);
     }
+  }
+  {
+    // static call operator
+    Static_call_operator_test obj{};
+    ebd::fn_ref<int(long)> f = obj;
+    ASSERT_EQ(f(0), 1);
+    ebd::fn_ref<int(long) const> f1 = obj;
+    ASSERT_EQ(f1(0), 1);
   }
 }
