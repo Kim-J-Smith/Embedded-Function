@@ -2853,13 +2853,12 @@ namespace crtp_mixins {
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
     /// @note Used for function reference only. (NON-OWNING)
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, 
-      typename Tp = remove_reference_t<Functor>,
-      typename Tp_cv = add_cv_like_sig_t<Tp>)
+      typename Tp = remove_reference_t<Functor>)
     EMBED_DETAIL_REQUIRES_END(
       (!is_self<Functor, function>::value)
-      && is_invocable_using<Tp_cv&>::value
-      && (!std::is_member_pointer<Tp>::value)
       && (!fn_can_convert<function, Functor>::value)
+      && (!std::is_member_pointer<Tp>::value)
+      && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
       && Config::isView
     ) EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
     : MemberVariableBase(nullptr) {
