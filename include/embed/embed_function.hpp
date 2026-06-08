@@ -1465,7 +1465,6 @@ inline namespace fn_traits {
   template <typename T>
   struct is_register_passable {
     static constexpr std::size_t obj_size = sizeof(T);
-    static constexpr bool is_trivial_for_calls = is_itanium_trivial_for_calls<T>::value;
 
 #if defined(__sparc_v8__) || defined(__sparcv8)
     // Class and union object are not allowed to pass by reg in SPARC V8 (32bit).
@@ -1474,10 +1473,10 @@ inline namespace fn_traits {
     // See <https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-180#parameter-passing>.
     static_assert(sizeof(void*) == 8, EMBED_DETAIL_REPORT_IE("sizeof(void*) != 8 in Windows x64."));
     static constexpr bool size_is_ok = obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8;
-    static constexpr bool value = is_trivial_for_calls && size_is_ok;
+    static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
 #else
     static constexpr bool size_is_ok = sizeof(T) <= 2 * sizeof(void*);
-    static constexpr bool value = is_trivial_for_calls && size_is_ok;
+    static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
 #endif
   };
 
