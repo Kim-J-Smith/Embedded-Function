@@ -26,6 +26,15 @@ struct empty_trivial_but_state {
   std::uintptr_t operator()() const { return reinterpret_cast<std::uintptr_t>(this); }
 };
 
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+
+struct Static_call_operator_test {
+  int operator()(int) const { return 0; }
+  static int operator()(long) { return 1; }
+};
+
+#endif
+
 TEST(Conformance_fn_ref, conformance_addition_pass) {
 
   {
@@ -204,6 +213,14 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     auto f2 = ebd::make_fn<ebd::fn_ref>(ebd_test_static_call_operator{});
     static_assert(std::is_same_v<decltype(f2), ebd::fn_ref<int(int, int) const noexcept>>, "BUG");
     ASSERT_EQ(f2(1, 42), 43);
+  }
+  {
+    // static call operator
+    Static_call_operator_test obj{};
+    ebd::fn_ref<int(long)> f = obj;
+    ASSERT_EQ(f(0), 1);
+    ebd::fn_ref<int(long) const> f1 = obj;
+    ASSERT_EQ(f1(0), 1);
   }
 #endif
 
