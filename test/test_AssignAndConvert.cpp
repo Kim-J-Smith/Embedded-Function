@@ -81,3 +81,46 @@ TEST(AssignAndConvert, ConstToNonConst) {
     f_non_const = f_const; // OK
     // f_const = f_non_const; // Error
 }
+
+// AssignAndConvert[5]
+TEST(AssignAndConvert, StatelessAssign) {
+    {
+        ebd::fn<bool(int, int)> f1 = std::less<int>{};
+        auto f2 = f1;
+        ASSERT_EQ(f1(1, 2), true);
+        ASSERT_EQ(f1(2, 1), false);
+        ASSERT_EQ(f2(1, 2), true);
+        ASSERT_EQ(f2(2, 1), false);
+        auto f3 = std::move(f2);
+        ASSERT_EQ(f3(1, 2), true);
+        ASSERT_EQ(f3(2, 1), false);
+    }
+    {
+        ebd::safe_fn<bool(int, int)> f1 = std::less<int>{};
+        auto f2 = f1;
+        ASSERT_EQ(f1(1, 2), true);
+        ASSERT_EQ(f1(2, 1), false);
+        ASSERT_EQ(f2(1, 2), true);
+        ASSERT_EQ(f2(2, 1), false);
+        auto f3 = std::move(f2);
+        ASSERT_EQ(f3(1, 2), true);
+        ASSERT_EQ(f3(2, 1), false);
+    }
+    {
+        ebd::fn_ref<bool(int, int)> f1 = std::less<int>{};
+        auto f2 = f1;
+        ASSERT_EQ(f1(1, 2), true);
+        ASSERT_EQ(f1(2, 1), false);
+        ASSERT_EQ(f2(1, 2), true);
+        ASSERT_EQ(f2(2, 1), false);
+        auto f3 = std::move(f2);
+        ASSERT_EQ(f3(1, 2), true);
+        ASSERT_EQ(f3(2, 1), false);
+    }
+    {
+        ebd::unique_fn<bool(int, int)> f1 = std::less<int>{};
+        auto f2 = std::move(f1);
+        ASSERT_EQ(f2(1, 2), true);
+        ASSERT_EQ(f2(2, 1), false);
+    }
+}

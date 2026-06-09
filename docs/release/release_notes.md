@@ -1,19 +1,19 @@
 ## Fixed
 
-- Fixed a bug where empty and trivial functor could be incorrectly treated as stateless.
-
-- Fixed MSVC 19.10–19.14 compatibility issue.
+- No swap in copy assignment.
 
 ## Changed
 
-- `fn_ref` now accepts temporary callable objects (previously disallowed rvalue references).
-
-- `basic_fn` no longer automatically aligns `BufferSize`.
+- Rename `is_trivial_for_call` as `is_itanium_trivial_for_calls` and `is_reg_passable` as `is_register_passable`.
+- Refactor `is_callable_from` and `is_invocable_using`.
+- Add specialization for `is_register_passable` for Windows x64.
+- Update README.md and make_fn.md.
 
 ## Added
 
-- Added CTAD guides for `fn_ref` with `std::constant_wrapper`.
+- Add static call operator test.
+- Add stateless assign test.
 
 ## Notes
 
-- `std::constant_wrapper` support is experimental as of v2.1.5.
+- `std::constant_wrapper` support is experimental as of v2.1.6.
