@@ -2973,33 +2973,33 @@ namespace crtp_mixins {
   };
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
-  template <std::size_t Buf, typename Cfg, typename Sig,
-    EMBED_DETAIL_REQUIRES(Cfg::isView == false)
-  > EMBED_INLINE EMBED_CXX14_CONSTEXPR bool 
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
   operator==(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return fn.is_empty();
   }
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
-  template <std::size_t Buf, typename Cfg, typename Sig,
-    EMBED_DETAIL_REQUIRES(Cfg::isView == false)
-  > EMBED_INLINE EMBED_CXX14_CONSTEXPR bool 
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
   operator==(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
     return fn.is_empty();
   }
 
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
-  template <std::size_t Buf, typename Cfg, typename Sig,
-    EMBED_DETAIL_REQUIRES(Cfg::isView == false)
-  > EMBED_INLINE EMBED_CXX14_CONSTEXPR bool 
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
   operator!=(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return !fn.is_empty();
   }
 
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
-  template <std::size_t Buf, typename Cfg, typename Sig,
-    EMBED_DETAIL_REQUIRES(Cfg::isView == false)
-  > EMBED_INLINE EMBED_CXX14_CONSTEXPR bool 
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
   operator!=(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
     return !fn.is_empty();
   }
