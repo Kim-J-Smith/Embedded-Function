@@ -70,6 +70,14 @@
 # endif
 #endif
 
+#ifndef EMBED_HAS_FEATURE
+# if defined(__has_feature)
+#  define EMBED_HAS_FEATURE(x) __has_feature(x)
+# else
+#  define EMBED_HAS_FEATURE(x) 0
+# endif
+#endif
+
 #ifndef EMBED_CXX_ENABLE_EXCEPTION
 # if defined(__cpp_exceptions)
 #  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions != 0)
@@ -299,6 +307,18 @@
 #define EMBED_DETAIL_REPORT_IE(error) \
   "An internal library error has occurred: " error " This is unexpected.\n" \
   "PLEASE report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
+
+#if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wnullability-completeness"
+# pragma clang diagnostic ignored "-Wnullability-extension"
+# define EMBED_DETAIL_NOT_NULL(T) T _Nonnull
+#elif defined(_MSC_VER) && defined(_PREFAST_)
+# include <sal.h>
+# define EMBED_DETAIL_NOT_NULL(T) _Notnull_ T
+#else
+# define EMBED_DETAIL_NOT_NULL(T) T
+#endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -2839,7 +2859,7 @@ namespace crtp_mixins {
       std::is_function<Func>::value
       && is_invocable_using<Func>::value
       && Config::isView
-    ) function(Func* function_ptr) noexcept {
+    ) function(EMBED_DETAIL_NOT_NULL(Func*) function_ptr) noexcept {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Func*, Func*&&, erasure_t>::value,
@@ -3487,6 +3507,10 @@ namespace detail {
 #undef EMBED_DETAIL_UNREACHABLE
 #undef EMBED_DETAIL_ASSERT_MESSAGE
 #undef EMBED_DETAIL_REPORT_IE
+#if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
+# pragma clang diagnostic pop
+#endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NOT_NULL
+#undef EMBED_DETAIL_NOT_NULL
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.

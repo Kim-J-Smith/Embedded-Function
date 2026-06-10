@@ -108,6 +108,8 @@ if(MSVC)
     /wd4514
     /wd4626
     /wd5045
+    /wd6326
+    /analyze
   )
   target_link_options(
     ${PROJECT_NAME} PRIVATE
@@ -187,6 +189,11 @@ foreach(macros_ ${TEST_USE_MACROS})
   endif()
 endforeach()
 
+if(MSVC)
+  set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} /analyze /WX")
+else()
+  set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -Werror")
+endif()
 
 message(STATUS "===---------------------- FAIL TEST BEGIN ----------------------===")
 message(STATUS "Flags: ${FAIL_TEST_CMAKE_FLAGS}")
