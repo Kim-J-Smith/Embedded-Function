@@ -25,48 +25,17 @@
 
 #if __cplusplus >= 202302L && !defined(__cpp_lib_constant_wrapper) && MSVC_IS_OK
 
-#define __cpp_lib_constant_wrapper 202603L
+#define __cpp_lib_constant_wrapper 202606L
 
 namespace std {
 
-template <class _Tp>
-struct __cw_fixed_value {
-  using __type  = _Tp;
-   constexpr __cw_fixed_value(__type __v) noexcept : __data(__v) {}
-  _Tp __data;
-};
-
-template <class _Tp, size_t _Extent>
-struct __cw_fixed_value<_Tp[_Extent]> {
-  using __type  = _Tp[_Extent];
-  _Tp __data[_Extent];
-
-   constexpr __cw_fixed_value(_Tp (&__arr)[_Extent]) noexcept
-      : __cw_fixed_value(__arr, make_index_sequence<_Extent>{}) {}
-
-private:
-  template <size_t... _Idxs>
-   constexpr __cw_fixed_value(_Tp (&__arr)[_Extent], index_sequence<_Idxs...>) noexcept
-      : __data{__arr[_Idxs]...} {}
-};
-
-template <class _Tp, size_t _Extent>
-__cw_fixed_value(_Tp (&)[_Extent]) -> __cw_fixed_value<_Tp[_Extent]>;
-
-template <__cw_fixed_value _Xp,
-#  ifdef __GNUC__
-          // gcc bug:  https://gcc.gnu.org/PR117392
-          class = typename decltype(__cw_fixed_value(_Xp))::__type
-#  else
-          class = typename decltype(_Xp)::__type
-#  endif
-          >
+template <auto _Xp, class = decltype(_Xp)>
 struct constant_wrapper;
 
 template <class _Tp>
 concept __constexpr_param = requires { typename constant_wrapper<_Tp::value>; };
 
-template <__cw_fixed_value _Xp>
+template <auto _Xp>
 constexpr auto cw = constant_wrapper<_Xp>{};
 
 struct __cw_operators {
@@ -290,11 +259,11 @@ concept __constexpr_indexable = (__constexpr_param<remove_cvref_t<_Args>> && ...
   typename constant_wrapper<_Obj[remove_cvref_t<_Args>::value...]>;
 };
 
-template <__cw_fixed_value _Xp, class>
+template <auto _Xp, class>
 struct constant_wrapper : __cw_operators {
-  static constexpr const auto& value = _Xp.__data;
+  static constexpr decltype(auto) value = (_Xp);
   using type                         = constant_wrapper;
-  using value_type                   = decltype(_Xp)::__type;
+  using value_type                   = decltype(_Xp);
 
   template <__constexpr_param _Rp>
   [[nodiscard]]  constexpr auto operator=(_Rp) const noexcept
