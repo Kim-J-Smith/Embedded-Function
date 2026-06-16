@@ -1784,8 +1784,7 @@ namespace erasure_type {
   // See <https://eel.is/c++draft/basic.life#7>.
   template <std::size_t Size>
   struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
-    alignas(default_buffer_size::align_value)
-    ErasureCore<Size> m_core;
+    alignas(default_buffer_size::align_value) ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
     void* access() noexcept { return &m_core.pod[0]; }
@@ -2706,9 +2705,6 @@ namespace crtp_mixins {
     // The `m_command` is responsible for managing and invoking the `m_erasure`.
     using MemberVariableBase::m_command;
 
-    // The buffer size.
-    static constexpr std::size_t buffer_size = BufferSize;
-
     // `true` if self is copyable.
     static constexpr bool internal_is_copyable = Config::isCopyable || Config::isView;
 
@@ -2730,7 +2726,7 @@ namespace crtp_mixins {
 
     /// @brief Get the buffer size.
     EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
-    get_buffer_size() noexcept { return buffer_size; }
+    get_buffer_size() noexcept { return BufferSize; }
 
     /// @brief Return `true` if the function is copyable.
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
