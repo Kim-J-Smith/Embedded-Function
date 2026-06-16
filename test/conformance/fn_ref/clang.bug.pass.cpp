@@ -30,7 +30,7 @@ TEST(Conformance_fn_ref, clang_bug_pass) {
 
   static_cast<void>(&this_name_should_not_be_changed);
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if __cpp_lib_constant_wrapper >= 202606L
 
 # if defined(__clang__) && !defined(EBD_TEST_TRY_BUG__Clang_SameNameStaticFunction)
   ebd::fn_ref<double(int,double)> f = std::cw<+[](int x, double y) { return x + y; }>;
