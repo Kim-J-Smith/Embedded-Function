@@ -15,6 +15,7 @@
 
 #include <utility>
 #include <functional>
+#include <type_traits>
 
 #if defined(_MSC_VER)
 // C++23 is not full supported if _MSC_VER < 1950.
@@ -29,7 +30,7 @@
 
 namespace std {
 
-template <auto _Xp, class = decltype(_Xp)>
+template <auto _Xp, class = std::remove_cvref_t<decltype(_Xp)>>
 struct constant_wrapper;
 
 template <class _Tp>
