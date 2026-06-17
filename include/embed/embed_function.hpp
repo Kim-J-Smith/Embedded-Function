@@ -1561,9 +1561,9 @@ inline namespace fn_traits {
   template <typename T>
   struct is_constant_wrapper : std::false_type {};
 
-#if __cpp_lib_constant_wrapper >= 202603L
-  template <auto Cw, typename T>
-  struct is_constant_wrapper<std::constant_wrapper<Cw, T>> : std::true_type {};
+#if __cpp_lib_constant_wrapper >= 202606L
+  template <auto Val, typename T>
+  struct is_constant_wrapper<std::constant_wrapper<Val, T>> : std::true_type {};
 #endif
 
   template <typename Functor, typename FnSample, typename Sig, typename = void>
@@ -1814,7 +1814,7 @@ namespace invocation {
 #endif
 
 // Implement invocation for constant_wrapper.
-#if __cpp_lib_constant_wrapper >= 202603L
+#if __cpp_lib_constant_wrapper >= 202606L
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                            \
   struct view_cw {                                                                    \
     template <typename Cw>                                                            \
@@ -2235,7 +2235,7 @@ namespace command {
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
     }
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if __cpp_lib_constant_wrapper >= 202606L
 
     /// @brief Initialize the m_invoker from given std::constant_wrapper.
 
@@ -2913,17 +2913,17 @@ namespace crtp_mixins {
 
 #endif
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if __cpp_lib_constant_wrapper >= 202606L
 
     /// @todo experimental
 
     // Create function reference with given `std::constant_wrapper` param.
-    template <auto CwVal, typename Fn>
+    template <auto Val, typename Fn>
       requires is_invocable_using<const Fn&>::value
         && Config::isView
-    constexpr function(std::constant_wrapper<CwVal, Fn>) noexcept
+    constexpr function(std::constant_wrapper<Val, Fn>) noexcept
     : MemberVariableBase(nullptr) {
-      using Cw = std::constant_wrapper<CwVal, Fn>;
+      using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw>();
 
       // Mandates are as follows.
@@ -2933,13 +2933,13 @@ namespace crtp_mixins {
     }
 
     // Create function reference with given `std::constant_wrapper` and object params.
-    template <auto CwVal, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
+    template <auto Val, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
       requires (!std::is_rvalue_reference_v<Up&&>)
         && is_invocable_using<const Fn&, add_cv_like_sig_t<Tp>&>::value
         && Config::isView
-    constexpr function(std::constant_wrapper<CwVal, Fn>, Up&& obj) noexcept
+    constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
     : MemberVariableBase(nullptr) {
-      using Cw = std::constant_wrapper<CwVal, Fn>;
+      using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
 
       // Mandates are as follows.
@@ -2949,13 +2949,13 @@ namespace crtp_mixins {
     }
 
     // Create function reference with given `std::constant_wrapper` and pointer params.
-    template <auto CwVal, typename Fn, typename Tp, typename Tp_cv = add_cv_like_sig_t<Tp>>
+    template <auto Val, typename Fn, typename Tp, typename Tp_cv = add_cv_like_sig_t<Tp>>
       requires std::is_convertible_v<Tp*, Tp_cv*>
         && is_invocable_using<const Fn&, Tp_cv*>::value
         && Config::isView
-    constexpr function(std::constant_wrapper<CwVal, Fn>, Tp* obj) noexcept
+    constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept
     : MemberVariableBase(nullptr) {
-      using Cw = std::constant_wrapper<CwVal, Fn>;
+      using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
 
       // Mandates are as follows.
@@ -3435,7 +3435,7 @@ constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { retur
 template <template <class, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if __cpp_lib_constant_wrapper >= 202606L
 namespace detail {
 
   /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
@@ -3459,7 +3459,7 @@ namespace detail {
   >;
 
 } // end namespace detail
-#endif // ^^^ __cpp_lib_constant_wrapper >= 202603L
+#endif // ^^^ __cpp_lib_constant_wrapper >= 202606L
 
 } // end namespace ebd
 

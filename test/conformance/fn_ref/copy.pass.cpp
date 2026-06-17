@@ -64,7 +64,7 @@ TEST(Conformance_fn_ref, copy_pass) {
   static_cast<void>(&this_name_should_not_be_changed);
   static_cast<void>(&needs_conversion_2);
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if __cpp_lib_constant_wrapper >= 202606L
   {
     ebd::fn_ref<void()> f(std::cw<[] {}>);
     auto f2 = f;

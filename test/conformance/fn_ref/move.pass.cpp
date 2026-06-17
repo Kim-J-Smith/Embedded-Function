@@ -59,7 +59,7 @@ static int needs_conversion_5(Int x, Int y, Int z) noexcept { return x.i + y.i +
 TEST(Conformance_fn_ref, move_pass) {
   static_cast<void>(&f2);
   static_cast<void>(&needs_conversion_5);
-#if 1 && __cpp_lib_constant_wrapper >= 202603L
+#if 1 && __cpp_lib_constant_wrapper >= 202606L
   {
     ebd::fn_ref<void()> f(std::cw<[] {}>);
     auto f2 = std::move(f);
