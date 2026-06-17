@@ -1116,17 +1116,16 @@ inline namespace fn_traits {
       is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
   };
 
-  // Check the align and size of functor.
-  template <typename Functor, typename Config, std::size_t BufSize, typename Erasure,
-    typename DecFunctor = decay_t<Functor>>
-  struct align_size_is_ok {
-    static constexpr bool is_ok = sizeof(DecFunctor) <= sizeof(Erasure)
-      && alignof(DecFunctor) <= alignof(Erasure)
-      && (sizeof(DecFunctor) % alignof(DecFunctor) == 0);
+  template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
+  struct buffer_size_is_enough : bool_constant<
+    !is_stored_origin<DecFn, Cfg::isView>::value || sizeof(DecFn) <= sizeof(Erasure)
+  > {};
 
-    static constexpr bool value = 
-      !is_stored_origin<DecFunctor, Config::isView>::value || is_ok;
-  };
+  template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
+  struct buffer_alignment_is_enough : bool_constant<
+    !is_stored_origin<DecFn, Cfg::isView>::value
+    || (alignof(DecFn) <= alignof(Erasure) && (sizeof(DecFn) % alignof(DecFn) == 0))
+  > {};
 
   // Get aligned size. Rounds up to the nearest word.
   template <std::size_t MinAlign = sizeof(void (*) ())>
@@ -1525,7 +1524,7 @@ inline namespace fn_traits {
             typename Functor, typename Object, typename ErasureT>
   struct asserts_for_function : public std::true_type {
 
-    static_assert(align_size_is_ok<Functor, Config, BufferSize, ErasureT>::value,
+    static_assert(buffer_size_is_enough<Functor, Config, ErasureT>::value,
       "The `BufferSize` is smaller than the callable object. Please use bigger "
       "`BufferSize` and try again:\n\n"
       "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
@@ -1534,6 +1533,9 @@ inline namespace fn_traits {
       "             should be greater than `sizeof(CallableObject)`\n\n"
       "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, etc."
     );
+
+    static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
+      "The alignment of the callable object is too big to be wrapped into ebd::fn.");
 
     static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
       "The 'Functor' may throw exceptions during construction and destruction,"
