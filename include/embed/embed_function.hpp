@@ -1768,10 +1768,9 @@ namespace erasure_type {
 
   template <std::size_t Size>
   union EMBED_DETAIL_ALIAS ErasureCore {
-    static_assert(Size > 0, "erasure size must greater than 0");
     // An array of `unsigned char` can be used to hold other objects.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html>.
-    unsigned char pod[Size];
+    unsigned char pod[get_aligned_size(Size)];
     ErasureRefStorage ref_storage; // alignas(ref_storage)
   };
 
@@ -2667,19 +2666,7 @@ namespace crtp_mixins {
     template <bool, std::size_t, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
 
-    /// @brief ASSERT the given template arguments are valid.
-
-    /// @tparam BufferSize
-    static_assert(BufferSize >= sizeof(void*), 
-      "The 'BufferSize' that you pass in is too small."
-      " Try to use a BufferSize that is greater than or equal to sizeof(void*).");
-    
-    /// @tparam Config
-    static_assert(is_config_package<Config>::value, 
-      "The second argument must be 'config_package'."
-      " Try to use config_package<...> as the second argument.");
-
-    /// @tparam Signature
+    // Assert the `Signature` is well-formed.
     static_assert(unwrap_signature<Signature>::isSignature, 
       "The `Signature` of the function wrapper is invalid:\n\n"
       "        FnWrapper<Signature, BufferSize> f = CallableObject;\n"
@@ -2689,10 +2676,10 @@ namespace crtp_mixins {
       "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
     );
 
-    /// Check the "noexcept" is same.
+    // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
     static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
-      "This 'noexcept' qualifier is in conflict with the 'IsThrowing'"
-      " configuration option. (Use 'ebd::safe_fn' or 'ebd::fn_ref')");
+      "This `noexcept`-qualifier is in conflict with the `IsThrowing` configuration "
+      "option in `Config`. (Use 'ebd::safe_fn' or 'ebd::fn_ref')");
 
     using MemberVariableBase = crtp_mixins::member_variable_impl<
       BufferSize, Config, Signature>;
