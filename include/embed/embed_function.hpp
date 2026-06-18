@@ -2681,21 +2681,20 @@ namespace crtp_mixins {
       "This `noexcept`-qualifier is in conflict with the `IsThrowing` configuration "
       "option in `Config`. (Use 'ebd::safe_fn' or 'ebd::fn_ref')");
 
-    using MemberVariableBase = crtp_mixins::member_variable_impl<
-      BufferSize, Config, Signature>;
+    using Base_MemberVariable = crtp_mixins::member_variable_impl<BufferSize, Config, Signature>;
 
-    using CoreComponents = crtp_mixins::core_components_impl<
-      Config::isView, BufferSize, Config, Signature, function>;
+    using Base_CoreComponents =
+      crtp_mixins::core_components_impl<Config::isView, BufferSize, Config, Signature, function>;
 
-    using erasure_t = typename MemberVariableBase::erasure_t;
+    using erasure_t = typename Base_MemberVariable::erasure_t;
 
-    using command_t = typename MemberVariableBase::command_t;
+    using command_t = typename Base_MemberVariable::command_t;
 
     // The `m_erasure` contains the type-erased object.
-    using MemberVariableBase::m_erasure;
+    using Base_MemberVariable::m_erasure;
 
     // The `m_command` is responsible for managing and invoking the `m_erasure`.
-    using MemberVariableBase::m_command;
+    using Base_MemberVariable::m_command;
 
     // `true` if self is copyable.
     static constexpr bool internal_is_copyable = Config::isCopyable || Config::isView;
@@ -2750,32 +2749,32 @@ namespace crtp_mixins {
 # pragma GCC diagnostic pop
 #endif
 
-    /// @brief All following methods that begin with `CoreComponents` are implemented in 
+    /// @brief All following methods that begin with `Base_CoreComponents` are implemented in 
     /// the base class @e `crtp_mixins::core_components_impl`.
 
-    using CoreComponents::is_empty;
+    using Base_CoreComponents::is_empty;
 
-    using CoreComponents::operator bool;
+    using Base_CoreComponents::operator bool;
 
-    using CoreComponents::clear;
+    using Base_CoreComponents::clear;
 
-    using CoreComponents::swap;
+    using Base_CoreComponents::swap;
 
-    using CoreComponents::operator=;
+    using Base_CoreComponents::operator=;
 
     // Create an empty function wrapper.
     function() noexcept
 #if __cpp_concepts >= 202002L
-      requires requires { CoreComponents(nullptr); }
+      requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : CoreComponents(nullptr) {}
+    : Base_CoreComponents(nullptr) {}
 
     // Create an empty function wrapper.
     function(std::nullptr_t) noexcept
 #if __cpp_concepts >= 202002L
-      requires requires { CoreComponents(nullptr); }
+      requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : CoreComponents(nullptr) {}
+    : Base_CoreComponents(nullptr) {}
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -2873,7 +2872,7 @@ namespace crtp_mixins {
       && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
       && Config::isView
     ) EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
-    : MemberVariableBase(nullptr) {
+    : Base_MemberVariable(nullptr) {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
@@ -2935,7 +2934,7 @@ namespace crtp_mixins {
       requires is_invocable_using<const Fn&>::value
         && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>) noexcept
-    : MemberVariableBase(nullptr) {
+    : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw>();
 
@@ -2951,7 +2950,7 @@ namespace crtp_mixins {
         && is_invocable_using<const Fn&, add_cv_like_sig_t<Tp>&>::value
         && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
-    : MemberVariableBase(nullptr) {
+    : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
 
@@ -2967,7 +2966,7 @@ namespace crtp_mixins {
         && is_invocable_using<const Fn&, Tp_cv*>::value
         && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept
-    : MemberVariableBase(nullptr) {
+    : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
 
