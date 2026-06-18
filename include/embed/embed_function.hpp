@@ -2681,8 +2681,13 @@ namespace crtp_mixins {
 
     /// @tparam Signature
     static_assert(unwrap_signature<Signature>::isSignature, 
-      "The 'Signature' argument of ebd::function must be a function type,"
-      " such as void(), void(int) const or int(char*, float).");
+      "The `Signature` of the function wrapper is invalid:\n\n"
+      "        FnWrapper<Signature, BufferSize> f = CallableObject;\n"
+      "                  ^^^^^^^^^\n"
+      "                      |\n"
+      " should be like `void()`, `int(int) const`, etc\n\n"
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
+    );
 
     /// Check the "noexcept" is same.
     static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
