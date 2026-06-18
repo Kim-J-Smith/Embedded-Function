@@ -2656,10 +2656,8 @@ namespace crtp_mixins {
 
     template <typename, typename>
     friend struct crtp_mixins::copy_impl;
-
     template <typename, typename>
     friend struct crtp_mixins::move_impl;
-
     template <typename, typename>
     friend struct crtp_mixins::destructor_impl;
 
