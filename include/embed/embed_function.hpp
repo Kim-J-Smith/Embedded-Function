@@ -2032,12 +2032,17 @@ namespace management {
 
     // Using when Config::isView == false.
     struct inplace {
+      // TODO: @performance @optimize @enhancement
+      // Maybe `is_traditional_trivial` is too restrictive.
+      // `is_itanium_trivial_for_calls` can be better?
+      // or just `is_trivially_copyable` ?
+
       // Using when the Functor is copyable and not trivial.
-      template <typename Functor, bool IsCopyable>
-      static enable_if_t<IsCopyable && !is_traditional_trivial<Functor>::value>
-      /* copyable */ manage(
-        OperatorCode op, 
-        erasure_base_t* EMBED_RESTRICT dst, 
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!is_traditional_trivial<Functor>::value))
+      /* copyable */ static void manage(
+        OperatorCode op,
+        erasure_base_t* EMBED_RESTRICT dst,
         erasure_base_t* EMBED_RESTRICT src
       ) {
         switch (op) {
@@ -2055,11 +2060,11 @@ namespace management {
       }
 
       // Using when the Functor is move only and not trivial.
-      template <typename Functor, bool IsCopyable>
-      static enable_if_t<!IsCopyable && !is_traditional_trivial<Functor>::value>
-      /* move-only */ manage(
-        OperatorCode op, 
-        erasure_base_t* EMBED_RESTRICT dst, 
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!is_traditional_trivial<Functor>::value))
+      /* move-only */ static void manage(
+        OperatorCode op,
+        erasure_base_t* EMBED_RESTRICT dst,
         erasure_base_t* EMBED_RESTRICT src
       ) {
         switch (op) {
@@ -2077,10 +2082,11 @@ namespace management {
       }
 
       // Used when the Functor is trivial.
-      template <typename Functor, bool IsCopyable>
-      static enable_if_t<is_traditional_trivial<Functor>::value> manage(
-        OperatorCode op, 
-        erasure_base_t* EMBED_RESTRICT dst, 
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END(is_traditional_trivial<Functor>::value)
+      /* trivial */ static void manage(
+        OperatorCode op,
+        erasure_base_t* EMBED_RESTRICT dst,
         erasure_base_t* EMBED_RESTRICT src
       ) {
         switch (op) {
