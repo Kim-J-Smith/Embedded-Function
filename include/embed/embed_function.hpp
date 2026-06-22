@@ -1242,15 +1242,15 @@ inline namespace fn_traits {
     Functor, void_t<decltype(&Functor::operator())>>
   : public std::true_type {};
 
-  // Check static callable functor.
+  // Check statically callable functor. ([func.wrap.func.con]/16.2 Static operator())
 #if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
   template <typename Fn, typename... Args>
-  struct is_static_callable_functor : bool_constant<
+  struct is_statically_callable : bool_constant<
     requires (Args&&... args) { Fn::operator()(std::forward<Args>(args)...); }
   > {};
 #else
   template <typename Fn, typename... Args>
-  struct is_static_callable_functor : std::false_type {};
+  struct is_statically_callable : std::false_type {};
 #endif
 
   // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
@@ -1324,7 +1324,7 @@ inline namespace fn_traits {
 
   // noexcept(false)
   template <typename Fn, typename Ret, typename... Args>
-    requires is_static_callable_functor<Fn, Args...>::value
+    requires is_statically_callable<Fn, Args...>::value
   struct get_unique_signature_impl<Fn, Ret(*)(Args...)> {
     using type = Ret(Args...) const;
     using sig_with_noexcept = Ret(Args...) const;
@@ -1332,7 +1332,7 @@ inline namespace fn_traits {
 
   // noexcept(true)
   template <typename Fn, typename Ret, typename... Args>
-    requires is_static_callable_functor<Fn, Args...>::value
+    requires is_statically_callable<Fn, Args...>::value
   struct get_unique_signature_impl<Fn, Ret(*)(Args...) noexcept> {
     using type = Ret(Args...) const;
     using sig_with_noexcept = Ret(Args...) const noexcept;
@@ -1700,7 +1700,7 @@ inline namespace fn_traits {
   // Check whether the functor is stateless.
   template <bool IsView, typename Fn, typename... Args>
   struct is_stateless : bool_constant<
-    is_static_callable_functor<Fn, Args...>::value
+    is_statically_callable<Fn, Args...>::value
     || is_std_op_wrapper<Fn>::value
     || (is_empty_trivial<Fn>::value && !IsView)
     // ^^^ empty trivial functor may use `this` in operator(). This is
@@ -2169,7 +2169,7 @@ namespace command {
     EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless</*IsView*/false, DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
-        is_static_callable_functor<DecFunctor, Args...>::value,
+        is_statically_callable<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
         typename invoker_impl_t::empty_trivial_class
       >;
@@ -2251,7 +2251,7 @@ namespace command {
     enable_if_t<!IsStoredOrigin && is_stateless</*IsView*/true, DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
-        is_static_callable_functor<DecFunctor, Args...>::value,
+        is_statically_callable<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
         typename invoker_impl_t::empty_trivial_class
       >;
