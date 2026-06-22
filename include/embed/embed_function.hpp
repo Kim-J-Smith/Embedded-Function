@@ -2096,7 +2096,7 @@ namespace management {
           std::memcpy(
             const_cast<void*>(static_cast<erasure_t*>(dst)->access()),
             const_cast<const void*>(static_cast<erasure_t*>(src)->access()),
-            sizeof(erasure_t)
+            sizeof(Functor) // Copy the whole `m_erasure` is unnecessary.
           );
           break;
         case OperatorCode::destroy: /* Do nothing */ break;
