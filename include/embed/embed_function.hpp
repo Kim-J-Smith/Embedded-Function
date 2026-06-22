@@ -2032,14 +2032,15 @@ namespace management {
 
     // Using when Config::isView == false.
     struct inplace {
-      // TODO: @performance @optimize @enhancement
-      // Maybe `is_traditional_trivial` is too restrictive.
-      // `is_itanium_trivial_for_calls` can be better?
-      // or just `is_trivially_copyable` ?
+      // The `manage` function only call the copy-Ctor, move-Ctor and Dtor, so
+      // a functor is trivial-for-manager if all of them are trivial. This
+      // requirement is the same as `is_itanium_trivial_for_calls`.
+      template <typename T>
+      using is_trivial_for_manager = is_itanium_trivial_for_calls<T>;
 
       // Using when the Functor is copyable and not trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!is_traditional_trivial<Functor>::value))
+        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!is_trivial_for_manager<Functor>::value))
       /* copyable */ static void manage(
         OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
@@ -2061,7 +2062,7 @@ namespace management {
 
       // Using when the Functor is move only and not trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!is_traditional_trivial<Functor>::value))
+        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!is_trivial_for_manager<Functor>::value))
       /* move-only */ static void manage(
         OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
@@ -2083,7 +2084,7 @@ namespace management {
 
       // Used when the Functor is trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(is_traditional_trivial<Functor>::value)
+        EMBED_DETAIL_REQUIRES_END(is_trivial_for_manager<Functor>::value)
       /* trivial */ static void manage(
         OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
