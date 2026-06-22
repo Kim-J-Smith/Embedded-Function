@@ -70,6 +70,14 @@
 # endif
 #endif
 
+#ifndef EMBED_HAS_FEATURE
+# if defined(__has_feature)
+#  define EMBED_HAS_FEATURE(x) __has_feature(x)
+# else
+#  define EMBED_HAS_FEATURE(x) 0
+# endif
+#endif
+
 #ifndef EMBED_CXX_ENABLE_EXCEPTION
 # if defined(__cpp_exceptions)
 #  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions != 0)
@@ -204,8 +212,7 @@
 
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES(...) \
-  ::ebd::detail::enable_if_t<(__VA_ARGS__), int> = 0
+#define EMBED_DETAIL_REQUIRES(...) ::ebd::detail::enable_if_t<__VA_ARGS__, int> = 0
 
 #if defined(_MSC_VER)
 # define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
@@ -299,6 +306,18 @@
 #define EMBED_DETAIL_REPORT_IE(error) \
   "An internal library error has occurred: " error " This is unexpected.\n" \
   "PLEASE report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
+
+#if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wnullability-completeness"
+# pragma clang diagnostic ignored "-Wnullability-extension"
+# define EMBED_DETAIL_NOT_NULL(T) T _Nonnull
+#elif defined(_MSC_VER) && defined(_PREFAST_)
+# include <sal.h>
+# define EMBED_DETAIL_NOT_NULL(T) _Notnull_ T
+#else
+# define EMBED_DETAIL_NOT_NULL(T) T
+#endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
@@ -1096,17 +1115,16 @@ inline namespace fn_traits {
       is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
   };
 
-  // Check the align and size of functor.
-  template <typename Functor, typename Config, std::size_t BufSize, typename Erasure,
-    typename DecFunctor = decay_t<Functor>>
-  struct align_size_is_ok {
-    static constexpr bool is_ok = sizeof(DecFunctor) <= sizeof(Erasure)
-      && alignof(DecFunctor) <= alignof(Erasure)
-      && (sizeof(DecFunctor) % alignof(DecFunctor) == 0);
+  template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
+  struct buffer_size_is_enough : bool_constant<
+    !is_stored_origin<DecFn, Cfg::isView>::value || sizeof(DecFn) <= sizeof(Erasure)
+  > {};
 
-    static constexpr bool value = 
-      !is_stored_origin<DecFunctor, Config::isView>::value || is_ok;
-  };
+  template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
+  struct buffer_alignment_is_enough : bool_constant<
+    !is_stored_origin<DecFn, Cfg::isView>::value
+    || (alignof(DecFn) <= alignof(Erasure) && (sizeof(DecFn) % alignof(DecFn) == 0))
+  > {};
 
   // Get aligned size. Rounds up to the nearest word.
   template <std::size_t MinAlign = sizeof(void (*) ())>
@@ -1224,15 +1242,15 @@ inline namespace fn_traits {
     Functor, void_t<decltype(&Functor::operator())>>
   : public std::true_type {};
 
-  // Check static callable functor.
+  // Check statically callable functor. ([func.wrap.func.con]/16.2 Static operator())
 #if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
   template <typename Fn, typename... Args>
-  struct is_static_callable_functor : bool_constant<
+  struct is_statically_callable : bool_constant<
     requires (Args&&... args) { Fn::operator()(std::forward<Args>(args)...); }
   > {};
 #else
   template <typename Fn, typename... Args>
-  struct is_static_callable_functor : std::false_type {};
+  struct is_statically_callable : std::false_type {};
 #endif
 
   // Trait to add qualifiers (const, volatile, &, &&, noexcept) to a function
@@ -1306,7 +1324,7 @@ inline namespace fn_traits {
 
   // noexcept(false)
   template <typename Fn, typename Ret, typename... Args>
-    requires is_static_callable_functor<Fn, Args...>::value
+    requires is_statically_callable<Fn, Args...>::value
   struct get_unique_signature_impl<Fn, Ret(*)(Args...)> {
     using type = Ret(Args...) const;
     using sig_with_noexcept = Ret(Args...) const;
@@ -1314,7 +1332,7 @@ inline namespace fn_traits {
 
   // noexcept(true)
   template <typename Fn, typename Ret, typename... Args>
-    requires is_static_callable_functor<Fn, Args...>::value
+    requires is_statically_callable<Fn, Args...>::value
   struct get_unique_signature_impl<Fn, Ret(*)(Args...) noexcept> {
     using type = Ret(Args...) const;
     using sig_with_noexcept = Ret(Args...) const noexcept;
@@ -1505,7 +1523,7 @@ inline namespace fn_traits {
             typename Functor, typename Object, typename ErasureT>
   struct asserts_for_function : public std::true_type {
 
-    static_assert(align_size_is_ok<Functor, Config, BufferSize, ErasureT>::value,
+    static_assert(buffer_size_is_enough<Functor, Config, ErasureT>::value,
       "The `BufferSize` is smaller than the callable object. Please use bigger "
       "`BufferSize` and try again:\n\n"
       "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
@@ -1514,6 +1532,9 @@ inline namespace fn_traits {
       "             should be greater than `sizeof(CallableObject)`\n\n"
       "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, etc."
     );
+
+    static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
+      "The alignment of the callable object is too big to be wrapped into ebd::fn.");
 
     static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
       "The 'Functor' may throw exceptions during construction and destruction,"
@@ -1679,7 +1700,7 @@ inline namespace fn_traits {
   // Check whether the functor is stateless.
   template <bool IsView, typename Fn, typename... Args>
   struct is_stateless : bool_constant<
-    is_static_callable_functor<Fn, Args...>::value
+    is_statically_callable<Fn, Args...>::value
     || is_std_op_wrapper<Fn>::value
     || (is_empty_trivial<Fn>::value && !IsView)
     // ^^^ empty trivial functor may use `this` in operator(). This is
@@ -1692,11 +1713,16 @@ inline namespace fn_traits {
     static_assert(always_false<Unused>::value,
       "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` from the given "
       "arguments.\nYou can specify the signature and try again:\n\n"
+      "        auto f = ebd::make_fn<Signature[, BufferSize]>();\n"
+      "                              ^^^^^^^^^\n"
+      "        auto f = ebd::make_fn<Signature[, BufferSize]>(nullptr);\n"
+      "                              ^^^^^^^^^\n"
       "        auto f = ebd::make_fn<Signature>(CallableObject);\n"
       "                              ^^^^^^^^^\n"
       "        auto f = ebd::make_fn<FnWrapper, Signature>(CallableObject);\n"
       "                                         ^^^^^^^^^\n\n"
       "The `Signature` is like `void()`, `float(int,int) const`;\n"
+      "The `BufferSize` is the size (in bytes) of the internal storage;\n"
       "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
       "as a template argument list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc. If omitted, "
       "the `FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` is copyable, "
@@ -1741,10 +1767,9 @@ namespace erasure_type {
 
   template <std::size_t Size>
   union EMBED_DETAIL_ALIAS ErasureCore {
-    static_assert(Size > 0, "erasure size must greater than 0");
     // An array of `unsigned char` can be used to hold other objects.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html>.
-    unsigned char pod[Size];
+    unsigned char pod[get_aligned_size(Size)];
     ErasureRefStorage ref_storage; // alignas(ref_storage)
   };
 
@@ -1759,8 +1784,7 @@ namespace erasure_type {
   // See <https://eel.is/c++draft/basic.life#7>.
   template <std::size_t Size>
   struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
-    alignas(default_buffer_size::align_value)
-    ErasureCore<Size> m_core;
+    alignas(default_buffer_size::align_value) ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
     void* access() noexcept { return &m_core.pod[0]; }
@@ -1875,20 +1899,19 @@ namespace invocation {
                                                                                   \
     /* Using when Config::isView == true. */                                      \
     struct view {                                                                 \
-      /* Using when Functor::is_stored_origin == true. */                         \
-      template <typename Functor>                                                 \
-      static enable_if_t<is_stored_origin<Functor, true>::value, Ret>             \
-      invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
+      /* Using when the `Functor` is function pointer. */                         \
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)                               \
+        EMBED_DETAIL_REQUIRES_END(is_stored_origin<Functor, true>::value)         \
+      static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) {     \
         auto* fn = reinterpret_cast<Functor>(base.val.fill_func_ptr);             \
-        using Fn = remove_reference_t<decltype(fn)>&;                             \
-        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+        return invoke_r<Ret>(fn, std::forward<Args>(args)...);                    \
       }                                                                           \
                                                                                   \
-      /* Using when Functor::is_stored_origin == false. */                        \
-      template <typename Functor>                                                 \
-      static enable_if_t<!is_stored_origin<Functor, true>::value, Ret>            \
-      invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
-        auto& fn = *(static_cast<Functor C V*>(base.val.fill_ptr));               \
+      /* Using when the `Functor` is NOT function pointer. */                     \
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)                               \
+        EMBED_DETAIL_REQUIRES_END((!is_stored_origin<Functor, true>::value))      \
+      static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) {     \
+        auto& fn = *static_cast<Functor C V*>(base.val.fill_ptr);                 \
         using Fn = remove_reference_t<decltype(fn)>&;                             \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
@@ -2009,12 +2032,17 @@ namespace management {
 
     // Using when Config::isView == false.
     struct inplace {
+      // TODO: @performance @optimize @enhancement
+      // Maybe `is_traditional_trivial` is too restrictive.
+      // `is_itanium_trivial_for_calls` can be better?
+      // or just `is_trivially_copyable` ?
+
       // Using when the Functor is copyable and not trivial.
-      template <typename Functor, bool IsCopyable>
-      static enable_if_t<IsCopyable && !is_traditional_trivial<Functor>::value>
-      /* copyable */ manage(
-        OperatorCode op, 
-        erasure_base_t* EMBED_RESTRICT dst, 
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!is_traditional_trivial<Functor>::value))
+      /* copyable */ static void manage(
+        OperatorCode op,
+        erasure_base_t* EMBED_RESTRICT dst,
         erasure_base_t* EMBED_RESTRICT src
       ) {
         switch (op) {
@@ -2032,11 +2060,11 @@ namespace management {
       }
 
       // Using when the Functor is move only and not trivial.
-      template <typename Functor, bool IsCopyable>
-      static enable_if_t<!IsCopyable && !is_traditional_trivial<Functor>::value>
-      /* move-only */ manage(
-        OperatorCode op, 
-        erasure_base_t* EMBED_RESTRICT dst, 
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!is_traditional_trivial<Functor>::value))
+      /* move-only */ static void manage(
+        OperatorCode op,
+        erasure_base_t* EMBED_RESTRICT dst,
         erasure_base_t* EMBED_RESTRICT src
       ) {
         switch (op) {
@@ -2054,10 +2082,11 @@ namespace management {
       }
 
       // Used when the Functor is trivial.
-      template <typename Functor, bool IsCopyable>
-      static enable_if_t<is_traditional_trivial<Functor>::value> manage(
-        OperatorCode op, 
-        erasure_base_t* EMBED_RESTRICT dst, 
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END(is_traditional_trivial<Functor>::value)
+      /* trivial */ static void manage(
+        OperatorCode op,
+        erasure_base_t* EMBED_RESTRICT dst,
         erasure_base_t* EMBED_RESTRICT src
       ) {
         switch (op) {
@@ -2146,7 +2175,7 @@ namespace command {
     EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless</*IsView*/false, DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
-        is_static_callable_functor<DecFunctor, Args...>::value,
+        is_statically_callable<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
         typename invoker_impl_t::empty_trivial_class
       >;
@@ -2228,7 +2257,7 @@ namespace command {
     enable_if_t<!IsStoredOrigin && is_stateless</*IsView*/true, DecFunctor, Args...>::value>
     init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
-        is_static_callable_functor<DecFunctor, Args...>::value,
+        is_statically_callable<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
         typename invoker_impl_t::empty_trivial_class
       >;
@@ -2630,10 +2659,8 @@ namespace crtp_mixins {
 
     template <typename, typename>
     friend struct crtp_mixins::copy_impl;
-
     template <typename, typename>
     friend struct crtp_mixins::move_impl;
-
     template <typename, typename>
     friend struct crtp_mixins::destructor_impl;
 
@@ -2643,46 +2670,35 @@ namespace crtp_mixins {
     template <bool, std::size_t, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
 
-    /// @brief ASSERT the given template arguments are valid.
-
-    /// @tparam BufferSize
-    static_assert(BufferSize >= sizeof(void*), 
-      "The 'BufferSize' that you pass in is too small."
-      " Try to use a BufferSize that is greater than or equal to sizeof(void*).");
-    
-    /// @tparam Config
-    static_assert(is_config_package<Config>::value, 
-      "The second argument must be 'config_package'."
-      " Try to use config_package<...> as the second argument.");
-
-    /// @tparam Signature
+    // Assert the `Signature` is well-formed.
     static_assert(unwrap_signature<Signature>::isSignature, 
-      "The 'Signature' argument of ebd::function must be a function type,"
-      " such as void(), void(int) const or int(char*, float).");
+      "The `Signature` of the function wrapper is invalid:\n\n"
+      "        FnWrapper<Signature, BufferSize> f = CallableObject;\n"
+      "                  ^^^^^^^^^\n"
+      "                      |\n"
+      " should be like `void()`, `int(int) const`, etc\n\n"
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
+    );
 
-    /// Check the "noexcept" is same.
+    // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
     static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
-      "This 'noexcept' qualifier is in conflict with the 'IsThrowing'"
-      " configuration option. (Use 'ebd::safe_fn' or 'ebd::fn_ref')");
+      "This `noexcept`-qualifier is in conflict with the `IsThrowing` configuration "
+      "option in `Config`. (Use 'ebd::safe_fn' or 'ebd::fn_ref')");
 
-    using MemberVariableBase = crtp_mixins::member_variable_impl<
-      BufferSize, Config, Signature>;
+    using Base_MemberVariable = crtp_mixins::member_variable_impl<BufferSize, Config, Signature>;
 
-    using CoreComponents = crtp_mixins::core_components_impl<
-      Config::isView, BufferSize, Config, Signature, function>;
+    using Base_CoreComponents =
+      crtp_mixins::core_components_impl<Config::isView, BufferSize, Config, Signature, function>;
 
-    using erasure_t = typename MemberVariableBase::erasure_t;
+    using erasure_t = typename Base_MemberVariable::erasure_t;
 
-    using command_t = typename MemberVariableBase::command_t;
+    using command_t = typename Base_MemberVariable::command_t;
 
     // The `m_erasure` contains the type-erased object.
-    using MemberVariableBase::m_erasure;
+    using Base_MemberVariable::m_erasure;
 
     // The `m_command` is responsible for managing and invoking the `m_erasure`.
-    using MemberVariableBase::m_command;
-
-    // The buffer size.
-    static constexpr std::size_t buffer_size = BufferSize;
+    using Base_MemberVariable::m_command;
 
     // `true` if self is copyable.
     static constexpr bool internal_is_copyable = Config::isCopyable || Config::isView;
@@ -2705,7 +2721,7 @@ namespace crtp_mixins {
 
     /// @brief Get the buffer size.
     EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
-    get_buffer_size() noexcept { return buffer_size; }
+    get_buffer_size() noexcept { return BufferSize; }
 
     /// @brief Return `true` if the function is copyable.
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
@@ -2737,32 +2753,32 @@ namespace crtp_mixins {
 # pragma GCC diagnostic pop
 #endif
 
-    /// @brief All following methods that begin with `CoreComponents` are implemented in 
+    /// @brief All following methods that begin with `Base_CoreComponents` are implemented in 
     /// the base class @e `crtp_mixins::core_components_impl`.
 
-    using CoreComponents::is_empty;
+    using Base_CoreComponents::is_empty;
 
-    using CoreComponents::operator bool;
+    using Base_CoreComponents::operator bool;
 
-    using CoreComponents::clear;
+    using Base_CoreComponents::clear;
 
-    using CoreComponents::swap;
+    using Base_CoreComponents::swap;
 
-    using CoreComponents::operator=;
+    using Base_CoreComponents::operator=;
 
     // Create an empty function wrapper.
     function() noexcept
 #if __cpp_concepts >= 202002L
-      requires requires { CoreComponents(nullptr); }
+      requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : CoreComponents(nullptr) {}
+    : Base_CoreComponents(nullptr) {}
 
     // Create an empty function wrapper.
     function(std::nullptr_t) noexcept
 #if __cpp_concepts >= 202002L
-      requires requires { CoreComponents(nullptr); }
+      requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : CoreComponents(nullptr) {}
+    : Base_CoreComponents(nullptr) {}
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -2834,7 +2850,7 @@ namespace crtp_mixins {
       std::is_function<Func>::value
       && is_invocable_using<Func>::value
       && Config::isView
-    ) function(Func* function_ptr) noexcept {
+    ) function(EMBED_DETAIL_NOT_NULL(Func*) function_ptr) noexcept {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Func*, Func*&&, erasure_t>::value,
@@ -2860,7 +2876,7 @@ namespace crtp_mixins {
       && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
       && Config::isView
     ) EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
-    : MemberVariableBase(nullptr) {
+    : Base_MemberVariable(nullptr) {
 
       static_assert(asserts_for_function<
           BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
@@ -2922,7 +2938,7 @@ namespace crtp_mixins {
       requires is_invocable_using<const Fn&>::value
         && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>) noexcept
-    : MemberVariableBase(nullptr) {
+    : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw>();
 
@@ -2938,7 +2954,7 @@ namespace crtp_mixins {
         && is_invocable_using<const Fn&, add_cv_like_sig_t<Tp>&>::value
         && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
-    : MemberVariableBase(nullptr) {
+    : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
 
@@ -2954,7 +2970,7 @@ namespace crtp_mixins {
         && is_invocable_using<const Fn&, Tp_cv*>::value
         && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept
-    : MemberVariableBase(nullptr) {
+    : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
 
@@ -2973,33 +2989,33 @@ namespace crtp_mixins {
   };
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
-  template <std::size_t Buf, typename Cfg, typename Sig,
-    EMBED_DETAIL_REQUIRES(Cfg::isView == false)
-  > EMBED_INLINE EMBED_CXX14_CONSTEXPR bool 
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
   operator==(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return fn.is_empty();
   }
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
-  template <std::size_t Buf, typename Cfg, typename Sig,
-    EMBED_DETAIL_REQUIRES(Cfg::isView == false)
-  > EMBED_INLINE EMBED_CXX14_CONSTEXPR bool 
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
   operator==(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
     return fn.is_empty();
   }
 
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
-  template <std::size_t Buf, typename Cfg, typename Sig,
-    EMBED_DETAIL_REQUIRES(Cfg::isView == false)
-  > EMBED_INLINE EMBED_CXX14_CONSTEXPR bool 
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
   operator!=(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return !fn.is_empty();
   }
 
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
-  template <std::size_t Buf, typename Cfg, typename Sig,
-    EMBED_DETAIL_REQUIRES(Cfg::isView == false)
-  > EMBED_INLINE EMBED_CXX14_CONSTEXPR bool 
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
   operator!=(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
     return !fn.is_empty();
   }
@@ -3482,12 +3498,17 @@ namespace detail {
 #undef EMBED_DETAIL_UNREACHABLE
 #undef EMBED_DETAIL_ASSERT_MESSAGE
 #undef EMBED_DETAIL_REPORT_IE
+#if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
+# pragma clang diagnostic pop
+#endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NOT_NULL
+#undef EMBED_DETAIL_NOT_NULL
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
 # undef EMBED_HAS_BUILTIN
 # undef EMBED_HAS_ATTRIBUTE
 # undef EMBED_HAS_CXX_ATTRIBUTE
+# undef EMBED_HAS_FEATURE
 # undef EMBED_ABI_VISIBILITY
 # undef EMBED_CXX14_CONSTEXPR
 # undef EMBED_CXX20_CONSTEXPR
