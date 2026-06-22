@@ -212,8 +212,7 @@
 
 /// @brief Similar to `requires` in C++20.
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES(...) \
-  ::ebd::detail::enable_if_t<(__VA_ARGS__), int> = 0
+#define EMBED_DETAIL_REQUIRES(...) ::ebd::detail::enable_if_t<__VA_ARGS__, int> = 0
 
 #if defined(_MSC_VER)
 # define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
@@ -1900,20 +1899,19 @@ namespace invocation {
                                                                                   \
     /* Using when Config::isView == true. */                                      \
     struct view {                                                                 \
-      /* Using when Functor::is_stored_origin == true. */                         \
-      template <typename Functor>                                                 \
-      static enable_if_t<is_stored_origin<Functor, true>::value, Ret>             \
-      invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
+      /* Using when the `Functor` is function pointer. */                         \
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)                               \
+        EMBED_DETAIL_REQUIRES_END(is_stored_origin<Functor, true>::value)         \
+      static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) {     \
         auto* fn = reinterpret_cast<Functor>(base.val.fill_func_ptr);             \
-        using Fn = remove_reference_t<decltype(fn)>&;                             \
-        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
+        return invoke_r<Ret>(fn, std::forward<Args>(args)...);                    \
       }                                                                           \
                                                                                   \
-      /* Using when Functor::is_stored_origin == false. */                        \
-      template <typename Functor>                                                 \
-      static enable_if_t<!is_stored_origin<Functor, true>::value, Ret>            \
-      invoke(erasure_pass_t base, smart_forward_t<Args>... args) {                \
-        auto& fn = *(static_cast<Functor C V*>(base.val.fill_ptr));               \
+      /* Using when the `Functor` is NOT function pointer. */                     \
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)                               \
+        EMBED_DETAIL_REQUIRES_END((!is_stored_origin<Functor, true>::value))      \
+      static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) {     \
+        auto& fn = *static_cast<Functor C V*>(base.val.fill_ptr);                 \
         using Fn = remove_reference_t<decltype(fn)>&;                             \
         return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);   \
       }                                                                           \
