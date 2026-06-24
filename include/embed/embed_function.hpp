@@ -2032,11 +2032,11 @@ namespace management {
 
     // Using when Config::isView == false.
     struct inplace {
-      // The `manage` function only call the copy-Ctor, move-Ctor and Dtor, so
-      // a functor is trivial-for-manager if all of them are trivial. This
-      // requirement is the same as `is_itanium_trivial_for_calls`.
+      /// @attention [basic.types.general]
+      /// Only trivially copyable objects can be copied or moved by
+      /// `std::memcpy`; otherwise, this would be undefined behaviour.
       template <typename T>
-      using is_trivial_for_manager = is_itanium_trivial_for_calls<T>;
+      using is_trivial_for_manager = std::is_trivially_copyable<T>;
 
       // Using when the Functor is copyable and not trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
