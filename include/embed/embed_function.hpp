@@ -1868,9 +1868,9 @@ namespace invocation {
     typename Ret, typename... Args>                                               \
   struct InvokerImpl<Size, Config, Ret(Args...) C V REF NOEXCEPT> {               \
   public:                                                                         \
-    using erasure_base_t = erasure_type::ErasureBase C V;                         \
+    using erasure_base_t = erasure_type::ErasureBase;                             \
+    using erasure_t = erasure_type::Erasure<Size>;                                \
     using erasure_pass_t = erasure_type::ErasurePass C;                           \
-    using erasure_t = erasure_type::Erasure<Size> C V;                            \
     static constexpr bool is_rvalue_ref =                                         \
       std::is_rvalue_reference<int REF>::value;                                   \
     using invoker_type =                                                          \
@@ -1960,20 +1960,11 @@ namespace management {
     using manager_type = void (*) (
       OperatorCode op, erasure_base_t* dst, erasure_base_t* src);
 
-    // Get functor pointer without any qualifier.
-    template <typename Functor>
-    static Functor* get_pointer(erasure_base_t* src) noexcept {
-      auto* src_ = static_cast<erasure_t*>(src);
-      auto& fn = src_->template access<Functor>();
-      return const_cast<Functor*>(std::addressof(fn));
-    }
-
     // Use placement new to create a type-erased object.
     template <typename Functor, typename Object>
     static void create(erasure_base_t* target, Object&& obj)
     noexcept(std::is_nothrow_constructible<Functor, Object&&>::value) {
-      ::new (const_cast<void*>(static_cast<erasure_t*>(target)->access()))
-          Functor(std::forward<Object>(obj));
+      ::new (static_cast<erasure_t*>(target)->access()) Functor(std::forward<Object>(obj));
     }
 
     /// @brief Store the object pointer from function reference without placement new.
@@ -1981,9 +1972,8 @@ namespace management {
     template <typename Object>
     static EMBED_CXX20_CONSTEXPR void 
     ref_create(erasure_base_t* target, Object* obj) noexcept {
-      using pure_erasure_t = remove_cv_t<erasure_t>;
-      const_cast<pure_erasure_t*>(static_cast<erasure_t*>(target))
-          ->m_core.ref_storage.fill_ptr = const_cast<remove_cv_t<Object>*>(obj);
+      auto* pure_ptr = const_cast<remove_cv_t<Object>*>(obj);
+      static_cast<erasure_t*>(target)->m_core.ref_storage.fill_ptr = pure_ptr;
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -1992,8 +1982,7 @@ namespace management {
     template <typename Functor, typename... CArgs>
     static void emplace_create(erasure_base_t* target, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
-      ::new (const_cast<void*>(static_cast<erasure_t*>(target)->access()))
-          Functor(std::forward<CArgs>(args)...);
+      ::new (static_cast<erasure_t*>(target)->access()) Functor(std::forward<CArgs>(args)...);
     }
 
 #endif
@@ -2009,9 +1998,10 @@ namespace management {
     // Clone type-erased object from `src` to `dst`.
     /// @attention `clone` will never change @a src.
     template <typename Functor>
-    static void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    static void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
-      const auto& src_obj = *get_pointer<Functor>(src);
+      auto* src_erasure = static_cast<erasure_t const*>(src);
+      auto& src_obj = src_erasure->template access<Functor>();
       create<Functor>(dst, src_obj);
     }
 
@@ -2019,7 +2009,8 @@ namespace management {
     template <typename Functor>
     static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_move_constructible<Functor>::value) {
-      auto& src_obj = *get_pointer<Functor>(src);
+      auto* src_erasure = static_cast<erasure_t*>(src);
+      auto& src_obj = src_erasure->template access<Functor>();
       create<Functor>(dst, std::move(src_obj));
     }
 
@@ -2133,9 +2124,13 @@ namespace command {
       return m_invoker(erased, std::forward<Args>(args)...);
     }
 
-    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
+    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
-      m_manager(management::OperatorCode::clone, dst, src);
+      // Clones the source object into the destination. The const_cast is used to
+      // bridge the internal manager's non-const interface; the manager ensures
+      // the source remains logically unmodified during clone.
+      auto* src_non_const = const_cast<erasure_base_t*>(src);
+      m_manager(management::OperatorCode::clone, dst, src_non_const);
     }
 
     void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
@@ -2216,15 +2211,11 @@ namespace command {
       return m_invoker(erased, std::forward<Args>(args)...);
     }
 
-    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
     const noexcept {
       auto* destination = static_cast<erasure_t*>(dst);
-      auto* source = static_cast<erasure_t*>(src);
-      std::memcpy(
-        const_cast<void*>(destination->access()), 
-        const_cast<const void*>(source->access()), 
-        sizeof(erasure_t)
-      );
+      auto* source = static_cast<erasure_t const*>(src);
+      std::memcpy(destination->access(), source->access(), sizeof(erasure_t));
     }
 
     void move(erasure_base_t*, erasure_base_t*) = delete;
@@ -2407,24 +2398,22 @@ namespace crtp_mixins {
       // Get the real `self` and `other`.
       auto& self = static_cast<Self&>(*this);
       auto& other = static_cast<const Self&>(other_raw);
-      using erasure_t = typename Self::erasure_t;
       using command_t = typename Self::command_t;
 
       // Copy from `other` to `self`.
-      other.m_command.clone(&self.m_erasure, const_cast<erasure_t*>(&other.m_erasure));
+      other.m_command.clone(&self.m_erasure, &other.m_erasure);
       std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
     }
 
     copy_impl& operator=(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
       auto& self = static_cast<Self&>(*this);
       auto& other = static_cast<const Self&>(other_raw);
-      using erasure_t = typename Self::erasure_t;
       using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
         self.m_command.destroy(&self.m_erasure);
 
-        other.m_command.clone(&self.m_erasure, const_cast<erasure_t*>(&other.m_erasure));
+        other.m_command.clone(&self.m_erasure, &other.m_erasure);
         std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
       }
       return *this;
@@ -2788,13 +2777,10 @@ namespace crtp_mixins {
       && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
     ) function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
-      using other_fn_t = function<OtherSize, OtherCfg, OtherSig>;
-      using other_erasure_t = typename other_fn_t::erasure_t;
-
       // Suppress GCC warning: "-Wmaybe-uninitialized".
       std::memset(&m_erasure, 0, sizeof(void*));
 
-      other.m_command.clone(&m_erasure, const_cast<other_erasure_t*>(&other.m_erasure));
+      other.m_command.clone(&m_erasure, &other.m_erasure);
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
