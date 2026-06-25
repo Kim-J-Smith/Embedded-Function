@@ -2032,14 +2032,13 @@ namespace management {
 
     // Using when Config::isView == false.
     struct inplace {
-      // TODO: @performance @optimize @enhancement
-      // Maybe `is_traditional_trivial` is too restrictive.
-      // `is_itanium_trivial_for_calls` can be better?
-      // or just `is_trivially_copyable` ?
+      /// @attention [basic.types.general]
+      /// Only trivially copyable objects can be copied or moved by
+      /// `std::memcpy`; otherwise, this would be undefined behaviour.
 
       // Using when the Functor is copyable and not trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!is_traditional_trivial<Functor>::value))
+        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
       /* copyable */ static void manage(
         OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
@@ -2061,7 +2060,7 @@ namespace management {
 
       // Using when the Functor is move only and not trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!is_traditional_trivial<Functor>::value))
+        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
       /* move-only */ static void manage(
         OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
@@ -2083,7 +2082,7 @@ namespace management {
 
       // Used when the Functor is trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(is_traditional_trivial<Functor>::value)
+        EMBED_DETAIL_REQUIRES_END(std::is_trivially_copyable<Functor>::value)
       /* trivial */ static void manage(
         OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
@@ -2095,7 +2094,7 @@ namespace management {
           std::memcpy(
             const_cast<void*>(static_cast<erasure_t*>(dst)->access()),
             const_cast<const void*>(static_cast<erasure_t*>(src)->access()),
-            sizeof(erasure_t)
+            sizeof(Functor) // Copy the whole `m_erasure` is unnecessary.
           );
           break;
         case OperatorCode::destroy: /* Do nothing */ break;
