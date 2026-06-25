@@ -2083,8 +2083,8 @@ namespace management {
         case OperatorCode::clone: EMBED_FALLTHROUGH(); /* fallthrough */
         case OperatorCode::move:
           std::memcpy(
-            const_cast<void*>(static_cast<erasure_t*>(dst)->access()),
-            const_cast<const void*>(static_cast<erasure_t*>(src)->access()),
+            static_cast<erasure_t*>(dst)->access(),
+            static_cast<erasure_t const*>(src)->access(),
             sizeof(Functor) // Copy the whole `m_erasure` is unnecessary.
           );
           break;
