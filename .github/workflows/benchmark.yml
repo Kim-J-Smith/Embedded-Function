@@ -71,6 +71,7 @@ jobs:
       # Config CMake for compilers
       - name: Config CMake
         working-directory: benchmark
+        shell: bash
         run: |
           cmake -B build -S . \
             -G "Visual Studio 18 2026" \
