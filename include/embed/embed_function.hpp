@@ -2307,6 +2307,7 @@ namespace crtp_mixins {
       auto* self_q = static_cast<Self C V*>(this);                          \
       auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
     /* Pass the `m_erasure` by pointer (reference) in owning mode. */       \
+    /* Because the usage size of `m_erasure` is uncertain. */               \
       erased.ptr = &const_cast<erasure_t&>(self_q->m_erasure);              \
       return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
@@ -2329,6 +2330,7 @@ namespace crtp_mixins {
       auto& erasure = const_cast<erasure_t&>(self_q->m_erasure);            \
       auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
     /* Pass the `m_erasure` by value in non-owning mode to avoid ODR use. */\
+    /* Because the ODR use force compilers to reserve stack memory. */      \
       erased.val = erasure.m_core.ref_storage;                              \
       return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
