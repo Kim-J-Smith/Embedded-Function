@@ -90,7 +90,7 @@ static void non_trivial_functor_fu2(picobench::state& s) {
     }
 }
 
-BENCHMARK_UNIT(CreateBenchmark.CaptureLambda);
+BENCHMARK_UNIT(CreateBenchmark.NonTrivialFunctor);
 BENCHMARK_BASELINE(non_trivial_functor_std);
 BENCHMARK_NOTBASE(non_trivial_functor_ebd);
 BENCHMARK_NOTBASE(non_trivial_functor_fu2);
