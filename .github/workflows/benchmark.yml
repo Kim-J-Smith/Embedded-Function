@@ -31,7 +31,7 @@ jobs:
         working-directory: benchmark
         run: |
           cmake -B build -S . \
-            -DCMAKE_CXX_STANDARD=14 \
+            -DCMAKE_CXX_STANDARD=23 \
             -DCMAKE_C_COMPILER=gcc-14 \
             -DCMAKE_CXX_COMPILER=g++-14
 
