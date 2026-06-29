@@ -31,12 +31,12 @@ jobs:
         working-directory: benchmark
         run: |
           cmake -B build -S . \
-            -DCMAKE_CXX_STANDARD=14 \
+            -DCMAKE_CXX_STANDARD=23 \
             -DCMAKE_C_COMPILER=gcc-14 \
             -DCMAKE_CXX_COMPILER=g++-14
 
-      # Run tests
-      - name: Run tests with C++
+      # Run benchmark
+      - name: Run benchmark with C++
         working-directory: benchmark
         run: |
           cmake --build build --config Release --target benchmark -j$(nproc)
@@ -51,8 +51,47 @@ jobs:
       - name: Save the benchmark result
         uses: actions/upload-artifact@v7
         with:
-          name: benchmark-reports
+          name: benchmark-ubuntu-gcc-reports
           path: |
             benchmark/runtime/runtime-report.md
             benchmark/compiletime/benchmark_report.md
+          retention-days: 60
+
+
+  # Windows check
+  benchmark-on-windows:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: windows-2025-vs2026
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Config CMake for compilers
+      - name: Config CMake
+        working-directory: benchmark
+        shell: bash
+        run: |
+          cmake -B build -S . \
+            -G "Visual Studio 18 2026" \
+            -A x64 \
+            -DCMAKE_CXX_STANDARD=23
+
+      # Run benchmark
+      - name: Run benchmark with C++
+        working-directory: benchmark
+        shell: bash
+        run: |
+          cmake --build build --config Release --target benchmark -j100
+          mkdir -p runtime
+          cp build/runtime-report.md runtime
+
+      # Output the report
+      - name: Save the benchmark result
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-windows-vs2026-reports
+          path: |
+            benchmark/runtime/runtime-report.md
           retention-days: 60
