@@ -2382,7 +2382,7 @@ namespace crtp_mixins {
       using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
-        /* Self clear has been done in `crtp_mixins::assignment_self_clear`. */
+        // Self-clear already done in `crtp_mixins::assignment_self_clear`.
 
         other.m_command.move(&self.m_erasure, &other.m_erasure);
         std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
@@ -2417,7 +2417,7 @@ namespace crtp_mixins {
       using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
-        /* Self clear has been done in `crtp_mixins::assignment_self_clear`. */
+        // Self-clear already done in `crtp_mixins::assignment_self_clear`.
 
         other.m_command.clone(&self.m_erasure, &other.m_erasure);
         std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
@@ -2489,9 +2489,10 @@ namespace crtp_mixins {
     }
   };
 
-  // The self-clear must be done before the default copy/move assignment
-  // in `member_variable_impl`, because the `self.m_command` will be
-  // covered by `other.m_command` after that.
+  // The self-clear must happen before the default copy/move assignment in
+  // `member_variable_impl`; otherwise the assignment would overwrite
+  // `self.m_command` first, and the subsequent clear would destroy the
+  // newly assigned state.
   // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/75>.
   template <typename Self, typename Config, bool IsView /*= false*/>
   struct assignment_self_clear {
