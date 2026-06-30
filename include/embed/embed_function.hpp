@@ -31,7 +31,7 @@
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(push)
 # pragma warning(disable: 4514 4668 4710 26495)
 #endif
@@ -214,13 +214,13 @@
 /// Using SFINAE trait `enable_if_t` to require the template arguments.
 #define EMBED_DETAIL_REQUIRES(...) ::ebd::detail::enable_if_t<__VA_ARGS__, int> = 0
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 # define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
 #else
 # define EMBED_DETAIL_FORCE_EBO
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 # define EMBED_DETAIL_VIRTUAL_INHERITANCE __virtual_inheritance
 #else
 # define EMBED_DETAIL_VIRTUAL_INHERITANCE
@@ -281,13 +281,15 @@
 # define EMBED_DETAIL_FAIL_MESSAGE(message)
 # define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #else
-# define EMBED_DETAIL_FAIL_MESSAGE(message) do { EMBED_FN_HOOK_DEBUG(\
-  __FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); } while(0)
-# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message) \
-  do { if (!(expression)) { \
-    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message); \
-    std::terminate(); \
-  } } while(0)
+# define EMBED_DETAIL_FAIL_MESSAGE(message)                                   \
+  do {                                                                        \
+    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message);\
+  } while(0) /* Output message together with file name and line number. */
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)                     \
+  do { if (!(expression)) {                                                   \
+    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message);\
+    std::terminate();                                                         \
+  } } while(0) /* Output message and terminate procedure if expression is false. */
 #endif
 
 #if __cpp_lib_unreachable >= 202202L
@@ -296,7 +298,7 @@
 # define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
 #elif defined(__GNUC__) && (__GNUC__ >= 5)
 # define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) && !defined(__clang__)
 # define EMBED_DETAIL_UNREACHABLE() __assume(false)
 #else
 # define EMBED_DETAIL_UNREACHABLE()
@@ -3513,7 +3515,7 @@ namespace detail {
 # undef EMBED_FN_HOOK_DEBUG
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(pop)
 #endif
 
