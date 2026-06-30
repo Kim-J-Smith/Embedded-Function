@@ -2382,7 +2382,7 @@ namespace crtp_mixins {
       using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
-        self.m_command.destroy(&self.m_erasure);
+        /* Self clear has been done in `crtp_mixins::assignment_self_clear`. */
 
         other.m_command.move(&self.m_erasure, &other.m_erasure);
         std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
@@ -2417,7 +2417,7 @@ namespace crtp_mixins {
       using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
-        self.m_command.destroy(&self.m_erasure);
+        /* Self clear has been done in `crtp_mixins::assignment_self_clear`. */
 
         other.m_command.clone(&self.m_erasure, &other.m_erasure);
         std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
@@ -2489,12 +2489,43 @@ namespace crtp_mixins {
     }
   };
 
+  // The self-clear must be done before the default copy/move assignment
+  // in `member_variable_impl`, because the `self.m_command` will be
+  // covered by `other.m_command` after that.
+  // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/75>.
+  template <typename Self, typename Config, bool IsView /*= false*/>
+  struct assignment_self_clear {
+    assignment_self_clear()                             = default;
+    ~assignment_self_clear()                            = default;
+    assignment_self_clear(const assignment_self_clear&) = default;
+    assignment_self_clear(assignment_self_clear&&)      = default;
+
+    assignment_self_clear&
+    operator=(const assignment_self_clear& other_raw) noexcept(Config::assertNoThrow) {
+      auto& self = static_cast<Self&>(*this);
+      if (this != std::addressof(other_raw)) { self.m_command.destroy(&self.m_erasure); }
+      return *this;
+    }
+    assignment_self_clear&
+    operator=(assignment_self_clear&& other_raw) noexcept(Config::assertNoThrow) {
+      auto& self = static_cast<Self&>(*this);
+      if (this != std::addressof(other_raw)) { self.m_command.destroy(&self.m_erasure); }
+      return *this;
+    }
+  };
+
+  template <typename Self, typename Config>
+  struct assignment_self_clear<Self, Config, /*IsView =*/ true>
+  { EMBED_DETAIL_ALL_DEFAULT(assignment_self_clear) };
+
   // Implement the member variables. Transplant the member variables
   // to the base class to achieve greater flexibility.
   /// @attention This class must be placed first in the inheritance list; otherwise, there
   /// will be an out-of-order error when it comes to move constructors and move assignments.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  struct member_variable_impl {
+  struct member_variable_impl : public assignment_self_clear<
+    /* Self = */ function<BufferSize, Config, Signature>, Config, Config::isView
+  > {
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
 
     // Zero initialize the `m_erasure` and `m_command`.
@@ -2657,6 +2688,8 @@ namespace crtp_mixins {
     friend struct crtp_mixins::move_impl;
     template <typename, typename>
     friend struct crtp_mixins::destructor_impl;
+    template <typename, typename, bool>
+    friend struct crtp_mixins::assignment_self_clear;
 
     template <typename, typename, bool, typename>
     friend struct crtp_mixins::operator_dereference_impl;
