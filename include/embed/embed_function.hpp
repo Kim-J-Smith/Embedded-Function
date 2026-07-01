@@ -2359,8 +2359,8 @@ namespace crtp_mixins {
   // Implement the move constructor and move assignment.
   template <typename Config, typename Self>
   struct move_impl {
-    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(move_impl);
-    EMBED_DETAIL_COPY_FUNCTION(move_impl, default);
+    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(move_impl)
+    EMBED_DETAIL_COPY_FUNCTION(move_impl, default)
 
     move_impl(move_impl&& other_raw) noexcept(Config::assertNoThrow) {
       // Get the real `self` and `other`.
@@ -2397,8 +2397,8 @@ namespace crtp_mixins {
   // Implement the copy constructor and copy assignment.
   template <typename Config, typename Self>
   struct copy_impl {
-    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(copy_impl);
-    EMBED_DETAIL_MOVE_FUNCTION(copy_impl, default);
+    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(copy_impl)
+    EMBED_DETAIL_MOVE_FUNCTION(copy_impl, default)
 
     copy_impl(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
       // Get the real `self` and `other`.
