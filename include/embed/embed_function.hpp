@@ -2217,7 +2217,7 @@ namespace command {
     const noexcept {
       auto* destination = static_cast<erasure_t*>(dst);
       auto* source = static_cast<erasure_t const*>(src);
-      std::memcpy(destination->access(), source->access(), sizeof(erasure_t));
+      std::memcpy(destination->access(), source->access(), default_buffer_size::ref_buf);
     }
 
     void move(erasure_base_t*, erasure_base_t*) = delete;
@@ -2332,7 +2332,7 @@ namespace crtp_mixins {
       auto& erasure = const_cast<erasure_t&>(self_q->m_erasure);            \
       auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
     /* Pass the `m_erasure` by value in non-owning mode to avoid ODR use. */\
-    /* Because the ODR use force compilers to reserve stack memory. */      \
+    /* Because the ODR use forces compilers to reserve stack memory. */     \
       erased.val = erasure.m_core.ref_storage;                              \
       return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
@@ -2501,13 +2501,13 @@ namespace crtp_mixins {
     assignment_self_clear(const assignment_self_clear&) = default;
     assignment_self_clear(assignment_self_clear&&)      = default;
 
-    assignment_self_clear&
+    assignment_self_clear& // Destroy the callable object in `m_erasure` before copy assignment.
     operator=(const assignment_self_clear& other_raw) noexcept(Config::assertNoThrow) {
       auto& self = static_cast<Self&>(*this);
       if (this != std::addressof(other_raw)) { self.m_command.destroy(&self.m_erasure); }
       return *this;
     }
-    assignment_self_clear&
+    assignment_self_clear& // Destroy the callable object in `m_erasure` before move assignment.
     operator=(assignment_self_clear&& other_raw) noexcept(Config::assertNoThrow) {
       auto& self = static_cast<Self&>(*this);
       if (this != std::addressof(other_raw)) { self.m_command.destroy(&self.m_erasure); }
@@ -2698,6 +2698,9 @@ namespace crtp_mixins {
     template <bool, std::size_t, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
 
+    // Assert the `Config` is config_package.
+    static_assert(is_config_package<Config>::value, EMBED_DETAIL_REPORT_IE("Config is invalid."));
+
     // Assert the `Signature` is well-formed.
     static_assert(unwrap_signature<Signature>::isSignature, 
       "The `Signature` of the function wrapper is invalid:\n\n"
@@ -2810,6 +2813,7 @@ namespace crtp_mixins {
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
+    // Used in both OWNING mode and NON-OWNING mode.
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(

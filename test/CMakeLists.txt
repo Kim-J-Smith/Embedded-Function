@@ -110,6 +110,7 @@ if(MSVC)
     /wd5045
     /wd6326
     /analyze
+    /WX
   )
   target_link_options(
     ${PROJECT_NAME} PRIVATE
@@ -133,6 +134,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -O0
     -fmax-errors=50
     -fno-exceptions
+    -Werror
   )
   target_compile_options(
     gtest_lib PRIVATE
@@ -150,6 +152,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -fno-permissive
     -fno-exceptions
     -O0
+    -Werror
   )
   target_compile_options(
     gtest_lib PRIVATE

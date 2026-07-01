@@ -9,7 +9,7 @@
 - Improved static assertion messages for `make_fn()` and function signatures – they now provide more actionable hints when template deduction fails (#69).
 - Relaxed internal manager constraints: `std::is_trivially_copyable` is now used instead of a more restrictive "traditional trivial" check, allowing a wider set of functors to be stored in‑place (#70).
 - Refactored the type‑erasure invoker to remove unnecessary cv‑qualifiers and `const_cast` calls, simplifying the codebase without changing public behavior (#71).
-- Cleaned up macro formatting and added `!defined(__clang__)` guards for MSVC‑specific code paths (#72).
+- Cleaned up macro formatting and added `!defined(__clang__)` guards for MSVC‑specific code paths.
 
 ## Added
 

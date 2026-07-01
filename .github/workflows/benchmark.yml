@@ -83,7 +83,7 @@ jobs:
         working-directory: benchmark
         shell: bash
         run: |
-          cmake --build build --config Release --target benchmark -j100
+          cmake --build build --config Release --target benchmark --parallel
           mkdir -p runtime
           cp build/runtime-report.md runtime
 
