@@ -112,7 +112,7 @@ static void multi_trivial_params_std(picobench::state& s) {
                                   benchmark_call_trivial_struct, benchmark_call_trivial_struct)> fn = 
         [](benchmark_call_trivial_struct a, benchmark_call_trivial_struct b, 
            benchmark_call_trivial_struct c, benchmark_call_trivial_struct d) { 
-            volatile int unused = 1; (void)a; (void)b; (void)c; (void)d; 
+            volatile int unused = 1; (void)a; (void)b; (void)c; (void)d; (void)unused;
         };
     benchmark_call_trivial_struct obj{};
 
@@ -126,7 +126,7 @@ static void multi_trivial_params_ebd(picobench::state& s) {
                          benchmark_call_trivial_struct, benchmark_call_trivial_struct)> fn = 
         [](benchmark_call_trivial_struct a, benchmark_call_trivial_struct b, 
            benchmark_call_trivial_struct c, benchmark_call_trivial_struct d) { 
-            volatile int unused = 1; (void)a; (void)b; (void)c; (void)d; 
+            volatile int unused = 1; (void)a; (void)b; (void)c; (void)d; (void)unused;
         };
     benchmark_call_trivial_struct obj{};
 
@@ -140,7 +140,7 @@ static void multi_trivial_params_fu2(picobench::state& s) {
                               benchmark_call_trivial_struct, benchmark_call_trivial_struct)> fn = 
         [](benchmark_call_trivial_struct a, benchmark_call_trivial_struct b, 
            benchmark_call_trivial_struct c, benchmark_call_trivial_struct d) { 
-            volatile int unused = 1; (void)a; (void)b; (void)c; (void)d; 
+            volatile int unused = 1; (void)a; (void)b; (void)c; (void)d; (void)unused;
         };
     benchmark_call_trivial_struct obj{};
 
