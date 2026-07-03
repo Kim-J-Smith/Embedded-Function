@@ -2573,13 +2573,27 @@ namespace crtp_mixins {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
-#if !(defined(__OPTIMIZE__) || defined(NDEBUG))
-    static_assert(is_traditional_trivial<erasure_t>::value,
-      EMBED_DETAIL_REPORT_IE("erasure_t should be trivial."));
+    // Assert the `Config` is config_package.
+    static_assert(is_config_package<Config>::value, EMBED_DETAIL_REPORT_IE("Config is invalid."));
 
-    static_assert(is_traditional_trivial<command_t>::value,
-      EMBED_DETAIL_REPORT_IE("command_t should be trivial."));
-#endif
+    // Assert the `Signature` is well-formed.
+    static_assert(unwrap_signature<Signature>::isSignature, 
+      "The `Signature` of the function wrapper is invalid:\n\n"
+      "        FnWrapper<Signature, BufferSize> f = CallableObject;\n"
+      "                  ^^^^^^^^^\n"
+      "                      |\n"
+      " should be like `void()`, `int(int) const`, etc\n\n"
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
+    );
+
+    // Assert each parameter type is a complete class.
+    static_assert(
+      each_param_is_complete_or_unbounded_here(typename unwrap_signature<Signature>::args{}),
+      "each parameter type must be a complete class");
+
+    // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
+    static_assert(Config::isThrowing || !unwrap_signature<Signature>::isNoexcept,
+      "the `Signature` cannot be qualified with `noexcept` because it may throw exception");
 
     erasure_t m_erasure;
     command_t m_command;
@@ -2731,29 +2745,6 @@ namespace crtp_mixins {
 
     template <bool, std::size_t, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
-
-    // Assert the `Config` is config_package.
-    static_assert(is_config_package<Config>::value, EMBED_DETAIL_REPORT_IE("Config is invalid."));
-
-    // Assert the `Signature` is well-formed.
-    static_assert(unwrap_signature<Signature>::isSignature, 
-      "The `Signature` of the function wrapper is invalid:\n\n"
-      "        FnWrapper<Signature, BufferSize> f = CallableObject;\n"
-      "                  ^^^^^^^^^\n"
-      "                      |\n"
-      " should be like `void()`, `int(int) const`, etc\n\n"
-      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
-    );
-
-    // Assert each parameter type is a complete class.
-    static_assert(
-      each_param_is_complete_or_unbounded_here(typename unwrap_signature<Signature>::args{}),
-      "each parameter type must be a complete class");
-
-    // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
-    static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
-      "This `noexcept`-qualifier is in conflict with the `IsThrowing` configuration "
-      "option in `Config`. (Use 'ebd::safe_fn' or 'ebd::fn_ref')");
 
     using Base_MemberVariable = crtp_mixins::member_variable_impl<BufferSize, Config, Signature>;
 
