@@ -1783,8 +1783,8 @@ inline namespace fn_traits {
   struct logical_and<Val, VArgs...> { static constexpr bool value = Val && logical_and<VArgs...>::value; };
 #endif
 
-  template <typename... Args>
-  constexpr bool each_param_is_complete_or_unbounded_here(args_package<Args...>) noexcept {
+  template <template <class...> class T, typename... Args>
+  constexpr bool each_param_is_complete_or_unbounded_here(T<Args...>) noexcept {
     return logical_and<is_complete_or_unbounded_here<Args>()...>::value;
   }
 
