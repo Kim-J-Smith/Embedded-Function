@@ -1769,26 +1769,23 @@ inline namespace fn_traits {
   constexpr bool is_complete_here_impl(int) noexcept { return true; }
 
   template <typename T>
-  constexpr bool is_complete_here() noexcept { return is_complete_here_impl<T>(0); }
-
-  template <typename T>
   constexpr bool is_complete_or_unbounded_here() noexcept {
     return is_complete_here_impl<T>(0) || std::is_void<T>::value || is_unbounded_array<T>::value;
   }
 
 #if __cpp_fold_expressions >= 201603L && EMBED_CXX_VERSION >= 201703L
-  template <bool... Val>
-  struct and_val { static constexpr bool value = (Val && ...); };
+  template <bool... Vals>
+  struct logical_and { static constexpr bool value = (Vals && ...); };
 #else
-  template <bool... Val>
-  struct and_val { static constexpr bool value = true; };
+  template <bool...>
+  struct logical_and { static constexpr bool value = true; };
   template <bool Val, bool... VArgs>
-  struct and_val<Val, VArgs...> { static constexpr bool value = Val && and_val<VArgs...>::value; };
+  struct logical_and<Val, VArgs...> { static constexpr bool value = Val && logical_and<VArgs...>::value; };
 #endif
 
   template <typename... Args>
   constexpr bool each_param_is_complete_or_unbounded_here(args_package<Args...>) noexcept {
-    return and_val<is_complete_or_unbounded_here<Args>()...>::value;
+    return logical_and<is_complete_or_unbounded_here<Args>()...>::value;
   }
 
 } // end namespace fn_traits
