@@ -1526,10 +1526,10 @@ inline namespace fn_traits {
     static constexpr bool value = !Config::isView || no_ref_qualifier;
   };
 
-  // Asserts for functor.
+  // Assertions for functor.
   template <std::size_t BufferSize, typename Config, typename Signature,
             typename Functor, typename Object, typename ErasureT>
-  struct asserts_for_function : public std::true_type {
+  struct assertions_for_functor {
 
     static_assert(buffer_size_is_enough<Functor, Config, ErasureT>::value,
       "The `BufferSize` is smaller than the callable object. Please use bigger "
@@ -2890,9 +2890,7 @@ namespace crtp_mixins {
     ) function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Functor, Functor&&, erasure_t>{};
 
       if (check_not_empty::not_empty(functor)) {
         m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
@@ -2911,9 +2909,7 @@ namespace crtp_mixins {
       && Config::isView
     ) function(EMBED_DETAIL_NOT_NULL(Func*) function_ptr) noexcept {
 
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Func*, Func*&&, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Func*, Func*&&, erasure_t>{};
 
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, 
         "[Embedded Function]: The function pointer should not be a nullptr.");
@@ -2937,9 +2933,7 @@ namespace crtp_mixins {
     ) EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
     : Base_MemberVariable(nullptr) {
 
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Functor, Functor&&, erasure_t>{};
 
       m_command.template init</* IsStoredOrigin = */ false>(
         &m_erasure, std::forward<Functor>(functor));
@@ -2959,9 +2953,7 @@ namespace crtp_mixins {
 
       static_assert(std::is_same<Fn, decay_t<Fn>>::value,
         "decay_t<Fn> should be the same type as Fn.");
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Fn, Fn, erasure_t>{};
 
       m_command.template emplace_init<Fn>(&m_erasure, std::forward<CArgs>(args)...);
     }
@@ -2979,9 +2971,7 @@ namespace crtp_mixins {
 
       static_assert(std::is_same<Fn, decay_t<Fn>>::value,
         "decay_t<Fn> should be the same type as Fn.");
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Fn, Fn, erasure_t>{};
 
       m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
     }
