@@ -2592,7 +2592,7 @@ namespace crtp_mixins {
       "each parameter type must be a complete class");
 
     // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
-    static_assert(Config::isThrowing || !unwrap_signature<Signature>::isNoexcept,
+    static_assert(!Config::isThrowing || !unwrap_signature<Signature>::isNoexcept,
       "the `Signature` cannot be qualified with `noexcept` because it may throw exception");
 
     erasure_t m_erasure;
