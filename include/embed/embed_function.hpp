@@ -805,6 +805,12 @@ inline namespace cxx_traits {
 #undef EMBED_DETAIL__NEED_LAUNDER
 #endif
 
+  template <typename T>
+  struct is_unbounded_array : std::false_type {};
+
+  template <typename T>
+  struct is_unbounded_array<T[]> : std::true_type {};
+
 } // end namespace cxx_traits
 
   // Forward declaration.
@@ -871,9 +877,9 @@ inline namespace fn_traits {
     config_package<IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>>
   : public std::true_type {};
 
-  // Uses `std::tuple` as the package of arguments.
+  // Uses empty class as the package of arguments.
   template <typename... Args>
-  using args_package = std::tuple<Args...>;
+  struct args_package {};
 
   // Unwrap the function signature.
   template <typename T>
@@ -1754,6 +1760,37 @@ inline namespace fn_traits {
   template <typename Signature>
   using skip_first_arg_sig_t = typename skip_first_arg_sig<Signature>::type;
 
+  template <typename T, typename = void>
+  constexpr bool is_complete_here_impl(...) noexcept {
+    return std::is_reference<T>::value || std::is_function<T>::value;
+  }
+
+  template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
+  constexpr bool is_complete_here_impl(int) noexcept { return true; }
+
+  template <typename T>
+  constexpr bool is_complete_here() noexcept { return is_complete_here_impl<T>(0); }
+
+  template <typename T>
+  constexpr bool is_complete_or_unbounded_here() noexcept {
+    return is_complete_here_impl<T>(0) || std::is_void<T>::value || is_unbounded_array<T>::value;
+  }
+
+#if __cpp_fold_expressions >= 201603L && EMBED_CXX_VERSION >= 201703L
+  template <bool... Val>
+  struct and_val { static constexpr bool value = (Val && ...); };
+#else
+  template <bool... Val>
+  struct and_val { static constexpr bool value = true; };
+  template <bool Val, bool... VArgs>
+  struct and_val<Val, VArgs...> { static constexpr bool value = Val && and_val<VArgs...>::value; };
+#endif
+
+  template <typename... Args>
+  constexpr bool each_param_is_complete_or_unbounded_here(args_package<Args...>) noexcept {
+    return and_val<is_complete_or_unbounded_here<Args>()...>::value;
+  }
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of 
@@ -2524,7 +2561,7 @@ namespace crtp_mixins {
   /// @attention This class must be placed first in the inheritance list; otherwise, there
   /// will be an out-of-order error when it comes to move constructors and move assignments.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  struct member_variable_impl : public assignment_self_clear<
+  struct EMBED_DETAIL_FORCE_EBO member_variable_impl : public assignment_self_clear<
     /* Self = */ function<BufferSize, Config, Signature>, Config, Config::isView
   > {
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
@@ -2710,6 +2747,11 @@ namespace crtp_mixins {
       " should be like `void()`, `int(int) const`, etc\n\n"
       "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
     );
+
+    // Assert each parameter type is a complete class.
+    static_assert(
+      each_param_is_complete_or_unbounded_here(typename unwrap_signature<Signature>::args{}),
+      "each parameter type must be a complete class");
 
     // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
     static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
