@@ -8,7 +8,7 @@
 
 ## Added
 
-- Added an assertion for the completeness of parameter.
+- Added an assertion for the completeness of parameters.
 
 ## Notes
 
