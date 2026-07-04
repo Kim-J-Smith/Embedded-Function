@@ -1501,7 +1501,7 @@ inline namespace fn_traits {
     static constexpr bool size_is_ok = obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8;
     static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
 #else
-    static constexpr bool size_is_ok = sizeof(T) <= 2 * sizeof(void*);
+    static constexpr bool size_is_ok = obj_size <= 2 * sizeof(void*);
     static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
 #endif
   };
