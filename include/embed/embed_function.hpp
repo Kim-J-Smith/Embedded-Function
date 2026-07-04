@@ -2091,7 +2091,10 @@ namespace management {
 
     // Using when M_erasure is empty.
     struct empty {
-      struct manage { static constexpr VTable impl = {nullptr, nullptr, nullptr}; };
+      static VTable const* get_manager() noexcept {
+        static constexpr VTable vtable = {nullptr, nullptr, nullptr};
+        return &vtable;
+      };
     };
 
     // Using when Config::isView == false.
@@ -2101,41 +2104,31 @@ namespace management {
       /// `std::memcpy`; otherwise, this would be undefined behaviour.
 
       // Using when the Functor is copyable and not trivial.
-      template<typename Functor, bool IsCopyable, bool = std::is_trivially_copyable<Functor>::value>
-      struct manage
-      { static constexpr VTable impl = {&clone<Functor>, &move<Functor>, &destroy<Functor>}; };
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
+      static VTable const* get_manager() noexcept {
+        static constexpr VTable vtable = {&clone<Functor>, &move<Functor>, &destroy<Functor>};
+        return &vtable;
+      };
 
       // Using when the Functor is move only and not trivial.
-      template<typename Functor>
-      struct manage<Functor, /*IsCopyable =*/ false, /*IsTrivial =*/ false>
-      { static constexpr VTable impl = {nullptr, &move<Functor>, &destroy<Functor>}; };
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
+      static VTable const* get_manager() noexcept {
+        static constexpr VTable vtable = {nullptr, &move<Functor>, &destroy<Functor>};
+        return &vtable;
+      };
 
       // Using when the Functor is move only and not trivial.
-      template<typename Functor, bool IsCopyable>
-      struct manage<Functor, IsCopyable, /*IsTrivial =*/ true>
-      { static constexpr VTable impl = {&trivial_clone<Functor>, &trivial_move<Functor>, nullptr}; };
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END(std::is_trivially_copyable<Functor>::value)
+      static VTable const* get_manager() noexcept {
+        static constexpr VTable vtable = {&trivial_clone<Functor>, &trivial_move<Functor>, nullptr};
+        return &vtable;
+      };
 
     }; // end inplace
   };
-
-template <std::size_t Size, typename Config, typename Signature>
-constexpr typename ManagerImpl<Size, Config, Signature>::VTable
-ManagerImpl<Size, Config, Signature>::empty::manage::impl;
-
-template <std::size_t Size, typename Config, typename Signature>
-template<typename Functor, bool IsCopyable, bool IsTrivial>
-constexpr typename ManagerImpl<Size, Config, Signature>::VTable
-ManagerImpl<Size, Config, Signature>::inplace::manage<Functor, IsCopyable, IsTrivial>::impl;
-
-template <std::size_t Size, typename Config, typename Signature>
-template<typename Functor>
-constexpr typename ManagerImpl<Size, Config, Signature>::VTable
-ManagerImpl<Size, Config, Signature>::inplace::manage<Functor, false, false>::impl;
-
-template <std::size_t Size, typename Config, typename Signature>
-template<typename Functor, bool IsCopyable>
-constexpr typename ManagerImpl<Size, Config, Signature>::VTable
-ManagerImpl<Size, Config, Signature>::inplace::manage<Functor, IsCopyable, true>::impl;
 
 } // end namespace management
 
@@ -2187,9 +2180,9 @@ namespace command {
     }
 
     // Empty init.
-    EMBED_CXX14_CONSTEXPR void set_empty() noexcept {
+    void set_empty() noexcept {
       m_invoker = &invoker_impl_t::empty::invoke;
-      m_manager = &manager_impl_t::empty::manage::impl;
+      m_manager = manager_impl_t::empty::get_manager();
     }
 
     // Check the `m_invoker` is empty::invoke. (constexpr && noexcept)
@@ -2204,7 +2197,7 @@ namespace command {
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
-      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>::impl;
+      m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
     }
 
     // Initialize owning function wrapper. (Enable if Functor is stateless.)
@@ -2217,7 +2210,7 @@ namespace command {
         typename invoker_impl_t::empty_trivial_class
       >;
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
-      m_manager = &manager_impl_t::empty::manage::impl;
+      m_manager = manager_impl_t::empty::get_manager();
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -2229,7 +2222,7 @@ namespace command {
       manager_impl_t::template emplace_create<DecFunctor>(
         target, std::forward<CArgs>(args)...);
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
-      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>::impl;
+      m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
     }
 
 #endif
