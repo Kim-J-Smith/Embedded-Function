@@ -1998,21 +1998,20 @@ namespace invocation {
 // types for objects that implement the behaviour of management.
 namespace management {
 
-  enum class OperatorCode {
-    clone = 0,  // Indicates that the manager should clone the object.
-    move,       // Indicates that the manager should move the object.
-    destroy     // Indicates that the manager should destroy the object.
-  };
-
   template <std::size_t Size, typename Config, typename Signature>
   struct ManagerImpl {
   private:
     using invoke_impl_t = invocation::InvokerImpl<Size, Config, Signature>;
     using erasure_base_t  = typename invoke_impl_t::erasure_base_t;
     using erasure_t       = typename invoke_impl_t::erasure_t;
+
+    struct VTable {
+      void (*clone) (erasure_base_t*, erasure_base_t const*);
+      void (*move) (erasure_base_t*, erasure_base_t*);
+      void (*destroy) (erasure_base_t*);
+    };
   public:
-    using manager_type = void (*) (
-      OperatorCode op, erasure_base_t* dst, erasure_base_t* src);
+    using manager_type = VTable const*;
 
     // Use placement new to create a type-erased object.
     template <typename Functor, typename Object>
@@ -2068,11 +2067,31 @@ namespace management {
       create<Functor>(dst, std::move(src_obj));
     }
 
+    // Clone trivial type-erased object from `src` to `dst`.
+    template <typename Functor>
+    static void trivial_clone(erasure_base_t* dst, erasure_base_t const* src)
+    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
+      std::memcpy(
+        static_cast<erasure_t*>(dst)->access(),
+        static_cast<erasure_t const*>(src)->access(),
+        sizeof(Functor) // Copy the whole `m_erasure` is unnecessary.
+      );
+    }
+
+    // Move trivial type-erased object from `src` to `dst`.
+    template <typename Functor>
+    static void trivial_move(erasure_base_t* dst, erasure_base_t* src)
+    noexcept(std::is_nothrow_move_constructible<Functor>::value) {
+      std::memcpy(
+        static_cast<erasure_t*>(dst)->access(),
+        static_cast<erasure_t const*>(src)->access(),
+        sizeof(Functor) // Copy the whole `m_erasure` is unnecessary.
+      );
+    }
+
     // Using when M_erasure is empty.
     struct empty {
-      static void manage(OperatorCode, erasure_base_t*, erasure_base_t*) {
-        // Nothing here.
-      }
+      struct manage { static constexpr VTable impl = {nullptr, nullptr, nullptr}; };
     };
 
     // Using when Config::isView == false.
@@ -2082,73 +2101,41 @@ namespace management {
       /// `std::memcpy`; otherwise, this would be undefined behaviour.
 
       // Using when the Functor is copyable and not trivial.
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
-      /* copyable */ static void manage(
-        OperatorCode op,
-        erasure_base_t* EMBED_RESTRICT dst,
-        erasure_base_t* EMBED_RESTRICT src
-      ) {
-        switch (op) {
-        case OperatorCode::clone:
-          clone<Functor>(dst, src);
-          break;
-        case OperatorCode::move:
-          move<Functor>(dst, src);
-          break;
-        case OperatorCode::destroy:
-          destroy<Functor>(dst);
-          break;
-        default: EMBED_DETAIL_UNREACHABLE(); break;
-        }
-      }
+      template<typename Functor, bool IsCopyable, bool = std::is_trivially_copyable<Functor>::value>
+      struct manage
+      { static constexpr VTable impl = {&clone<Functor>, &move<Functor>, &destroy<Functor>}; };
 
       // Using when the Functor is move only and not trivial.
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
-      /* move-only */ static void manage(
-        OperatorCode op,
-        erasure_base_t* EMBED_RESTRICT dst,
-        erasure_base_t* EMBED_RESTRICT src
-      ) {
-        switch (op) {
-        case OperatorCode::clone:
-          EMBED_DETAIL_UNREACHABLE(); // move only
-          break;
-        case OperatorCode::move:
-          move<Functor>(dst, src);
-          break;
-        case OperatorCode::destroy:
-          destroy<Functor>(dst);
-          break;
-        default: EMBED_DETAIL_UNREACHABLE(); break;
-        }
-      }
+      template<typename Functor>
+      struct manage<Functor, /*IsCopyable =*/ false, /*IsTrivial =*/ false>
+      { static constexpr VTable impl = {nullptr, &move<Functor>, &destroy<Functor>}; };
 
-      // Used when the Functor is trivial.
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(std::is_trivially_copyable<Functor>::value)
-      /* trivial */ static void manage(
-        OperatorCode op,
-        erasure_base_t* EMBED_RESTRICT dst,
-        erasure_base_t* EMBED_RESTRICT src
-      ) {
-        switch (op) {
-        case OperatorCode::clone: EMBED_FALLTHROUGH(); /* fallthrough */
-        case OperatorCode::move:
-          std::memcpy(
-            static_cast<erasure_t*>(dst)->access(),
-            static_cast<erasure_t const*>(src)->access(),
-            sizeof(Functor) // Copy the whole `m_erasure` is unnecessary.
-          );
-          break;
-        case OperatorCode::destroy: /* Do nothing */ break;
-        default: EMBED_DETAIL_UNREACHABLE(); break;
-        }
-      }
+      // Using when the Functor is move only and not trivial.
+      template<typename Functor, bool IsCopyable>
+      struct manage<Functor, IsCopyable, /*IsTrivial =*/ true>
+      { static constexpr VTable impl = {&trivial_clone<Functor>, &trivial_move<Functor>, nullptr}; };
 
     }; // end inplace
   };
+
+template <std::size_t Size, typename Config, typename Signature>
+constexpr typename ManagerImpl<Size, Config, Signature>::VTable
+ManagerImpl<Size, Config, Signature>::empty::manage::impl;
+
+template <std::size_t Size, typename Config, typename Signature>
+template<typename Functor, bool IsCopyable, bool IsTrivial>
+constexpr typename ManagerImpl<Size, Config, Signature>::VTable
+ManagerImpl<Size, Config, Signature>::inplace::manage<Functor, IsCopyable, IsTrivial>::impl;
+
+template <std::size_t Size, typename Config, typename Signature>
+template<typename Functor>
+constexpr typename ManagerImpl<Size, Config, Signature>::VTable
+ManagerImpl<Size, Config, Signature>::inplace::manage<Functor, false, false>::impl;
+
+template <std::size_t Size, typename Config, typename Signature>
+template<typename Functor, bool IsCopyable>
+constexpr typename ManagerImpl<Size, Config, Signature>::VTable
+ManagerImpl<Size, Config, Signature>::inplace::manage<Functor, IsCopyable, true>::impl;
 
 } // end namespace management
 
@@ -2180,27 +2167,29 @@ namespace command {
 
     void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
-      // Clones the source object into the destination. The const_cast is used to
-      // bridge the internal manager's non-const interface; the manager ensures
-      // the source remains logically unmodified during clone.
-      auto* src_non_const = const_cast<erasure_base_t*>(src);
-      m_manager(management::OperatorCode::clone, dst, src_non_const);
+      if (m_manager->clone != nullptr) {
+        m_manager->clone(dst, src);
+      }
     }
 
     void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
-      m_manager(management::OperatorCode::move, dst, src);
+      if (m_manager->move != nullptr) {
+        m_manager->move(dst, src);
+      }
     }
 
     void destroy(erasure_base_t* dst) const
     noexcept(Config::assertNoThrow) {
-      m_manager(management::OperatorCode::destroy, dst, nullptr);
+      if (m_manager->destroy != nullptr) {
+        m_manager->destroy(dst);
+      }
     }
 
     // Empty init.
     EMBED_CXX14_CONSTEXPR void set_empty() noexcept {
       m_invoker = &invoker_impl_t::empty::invoke;
-      m_manager = &manager_impl_t::empty::manage;
+      m_manager = &manager_impl_t::empty::manage::impl;
     }
 
     // Check the `m_invoker` is empty::invoke. (constexpr && noexcept)
@@ -2215,7 +2204,7 @@ namespace command {
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
-      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
+      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>::impl;
     }
 
     // Initialize owning function wrapper. (Enable if Functor is stateless.)
@@ -2228,7 +2217,7 @@ namespace command {
         typename invoker_impl_t::empty_trivial_class
       >;
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
-      m_manager = &manager_impl_t::empty::manage;
+      m_manager = &manager_impl_t::empty::manage::impl;
     }
 
 #if EMBED_CXX_VERSION >= 201703L
@@ -2240,7 +2229,7 @@ namespace command {
       manager_impl_t::template emplace_create<DecFunctor>(
         target, std::forward<CArgs>(args)...);
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
-      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>;
+      m_manager = &manager_impl_t::inplace::template manage<DecFunctor, Config::isCopyable>::impl;
     }
 
 #endif
