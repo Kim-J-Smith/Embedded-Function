@@ -178,6 +178,9 @@
 # include <type_traits> // std::enable_if, ...
 # include <tuple>       // std::tuple
 # include <initializer_list>
+# if __cpp_impl_reflection >= 202506L && __has_include(<meta>)
+#  include <meta>       // std::meta::is_complete_type(C++26)
+# endif
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
@@ -1485,6 +1488,26 @@ inline namespace fn_traits {
   template <typename Signature>
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
+#if __cpp_lib_reflection >= 202506L
+  /// @todo experimental
+  template <typename T, bool Val = std::meta::is_complete_type(^^T)>
+  consteval bool is_complete_here_impl(int) noexcept { return Val; }
+#else
+  template <typename T, typename = void>
+  constexpr bool is_complete_here_impl(...) noexcept {
+    return std::is_reference<T>::value || std::is_function<T>::value;
+  }
+
+  template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
+  constexpr bool is_complete_here_impl(int) noexcept { return true; }
+#endif
+
+  // Use template parameter `IsCompleteHere` to avoid violating ODR.
+  template <typename T, bool IsCompleteHere = is_complete_here_impl<T>(0)>
+  constexpr bool is_complete_or_unbounded_here() noexcept {
+    return IsCompleteHere || std::is_void<T>::value || is_unbounded_array<T>::value;
+  }
+
   // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
   // in `conditional_t`. To work around this issue and facilitate targeted
   // optimization for each platform, we create `is_register_passable`.
@@ -1759,20 +1782,6 @@ inline namespace fn_traits {
 
   template <typename Signature>
   using skip_first_arg_sig_t = typename skip_first_arg_sig<Signature>::type;
-
-  template <typename T, typename = void>
-  constexpr bool is_complete_here_impl(...) noexcept {
-    return std::is_reference<T>::value || std::is_function<T>::value;
-  }
-
-  template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
-  constexpr bool is_complete_here_impl(int) noexcept { return true; }
-
-  // Use template parameter `IsCompleteHere` to avoid violating ODR.
-  template <typename T, bool IsCompleteHere = is_complete_here_impl<T>(0)>
-  constexpr bool is_complete_or_unbounded_here() noexcept {
-    return IsCompleteHere || std::is_void<T>::value || is_unbounded_array<T>::value;
-  }
 
 #if __cpp_fold_expressions >= 201603L && EMBED_CXX_VERSION >= 201703L
   template <bool... Vals>
