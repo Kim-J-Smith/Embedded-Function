@@ -178,6 +178,9 @@
 # include <type_traits> // std::enable_if, ...
 # include <tuple>       // std::tuple
 # include <initializer_list>
+# if __cpp_impl_reflection >= 202506L && __has_include(<meta>)
+#  include <meta>       // std::meta::is_complete_type(C++26)
+# endif
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
@@ -805,6 +808,12 @@ inline namespace cxx_traits {
 #undef EMBED_DETAIL__NEED_LAUNDER
 #endif
 
+  template <typename T>
+  struct is_unbounded_array : std::false_type {};
+
+  template <typename T>
+  struct is_unbounded_array<T[]> : std::true_type {};
+
 } // end namespace cxx_traits
 
   // Forward declaration.
@@ -871,9 +880,9 @@ inline namespace fn_traits {
     config_package<IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>>
   : public std::true_type {};
 
-  // Uses `std::tuple` as the package of arguments.
+  // Uses empty class as the package of arguments.
   template <typename... Args>
-  using args_package = std::tuple<Args...>;
+  struct args_package {};
 
   // Unwrap the function signature.
   template <typename T>
@@ -1479,10 +1488,30 @@ inline namespace fn_traits {
   template <typename Signature>
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
+#if __cpp_lib_reflection >= 202506L
+  /// @todo experimental
+  template <typename T, bool Val = std::meta::is_complete_type(^^T)>
+  consteval bool is_complete_here_impl(int) noexcept { return Val; }
+#else
+  template <typename T, typename = void>
+  constexpr bool is_complete_here_impl(...) noexcept {
+    return std::is_reference<T>::value || std::is_function<T>::value;
+  }
+
+  template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
+  constexpr bool is_complete_here_impl(int) noexcept { return true; }
+#endif
+
+  // Use template parameter `IsCompleteHere` to avoid violating ODR.
+  template <typename T, bool IsCompleteHere = is_complete_here_impl<T>(0)>
+  constexpr bool is_complete_or_unbounded_here() noexcept {
+    return IsCompleteHere || std::is_void<T>::value || is_unbounded_array<T>::value;
+  }
+
   // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
   // in `conditional_t`. To work around this issue and facilitate targeted
   // optimization for each platform, we create `is_register_passable`.
-  template <typename T>
+  template <typename T, typename = void>
   struct is_register_passable {
     static constexpr std::size_t obj_size = sizeof(T);
 
@@ -1495,10 +1524,15 @@ inline namespace fn_traits {
     static constexpr bool size_is_ok = obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8;
     static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
 #else
-    static constexpr bool size_is_ok = sizeof(T) <= 2 * sizeof(void*);
+    static constexpr bool size_is_ok = obj_size <= 2 * sizeof(void*);
     static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
 #endif
   };
+
+  // Avoid triggering repeated error messages caused by incompleteness.
+  template <typename T> // use `enable_if_t` as MSVC workaround
+  struct is_register_passable<T, enable_if_t<!is_complete_or_unbounded_here<T>()>>
+  : std::false_type {};
 
   // Used to choose either perfect forwarding or pass-by-value.
   // Pass-by-value is faster for scalar types because they can
@@ -1520,10 +1554,10 @@ inline namespace fn_traits {
     static constexpr bool value = !Config::isView || no_ref_qualifier;
   };
 
-  // Asserts for functor.
+  // Assertions for functor.
   template <std::size_t BufferSize, typename Config, typename Signature,
             typename Functor, typename Object, typename ErasureT>
-  struct asserts_for_function : public std::true_type {
+  struct assertions_for_functor {
 
     static_assert(buffer_size_is_enough<Functor, Config, ErasureT>::value,
       "The `BufferSize` is smaller than the callable object. Please use bigger "
@@ -1753,6 +1787,23 @@ inline namespace fn_traits {
 
   template <typename Signature>
   using skip_first_arg_sig_t = typename skip_first_arg_sig<Signature>::type;
+
+#if __cpp_fold_expressions >= 201603L && EMBED_CXX_VERSION >= 201703L
+  template <bool... Vals>
+  struct logical_and { static constexpr bool value = (Vals && ...); };
+#else
+  template <bool...>
+  struct logical_and { static constexpr bool value = true; };
+  template <bool Val, bool... VArgs>
+  struct logical_and<Val, VArgs...> { static constexpr bool value = Val && logical_and<VArgs...>::value; };
+#endif
+
+  template <template <class...> class T, typename... Args,
+    // Use template parameter `Val` to avoid violating ODR.
+    bool Val = logical_and<is_complete_or_unbounded_here<Args>()...>::value>
+  constexpr bool each_param_is_complete_or_unbounded_here(T<Args...>) noexcept {
+    return Val;
+  }
 
 } // end namespace fn_traits
 
@@ -2524,7 +2575,7 @@ namespace crtp_mixins {
   /// @attention This class must be placed first in the inheritance list; otherwise, there
   /// will be an out-of-order error when it comes to move constructors and move assignments.
   template <std::size_t BufferSize, typename Config, typename Signature>
-  struct member_variable_impl : public assignment_self_clear<
+  struct EMBED_DETAIL_FORCE_EBO member_variable_impl : public assignment_self_clear<
     /* Self = */ function<BufferSize, Config, Signature>, Config, Config::isView
   > {
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
@@ -2539,13 +2590,27 @@ namespace crtp_mixins {
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
-#if !(defined(__OPTIMIZE__) || defined(NDEBUG))
-    static_assert(is_traditional_trivial<erasure_t>::value,
-      EMBED_DETAIL_REPORT_IE("erasure_t should be trivial."));
+    // Assert the `Config` is config_package.
+    static_assert(is_config_package<Config>::value, EMBED_DETAIL_REPORT_IE("Config is invalid."));
 
-    static_assert(is_traditional_trivial<command_t>::value,
-      EMBED_DETAIL_REPORT_IE("command_t should be trivial."));
-#endif
+    // Assert the `Signature` is well-formed.
+    static_assert(unwrap_signature<Signature>::isSignature, 
+      "The `Signature` of the function wrapper is invalid:\n\n"
+      "        FnWrapper<Signature, BufferSize> f = CallableObject;\n"
+      "                  ^^^^^^^^^\n"
+      "                      |\n"
+      " should be like `void()`, `int(int) const`, etc\n\n"
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
+    );
+
+    // Assert each parameter type is a complete class.
+    static_assert(
+      each_param_is_complete_or_unbounded_here(typename unwrap_signature<Signature>::args{}),
+      "each parameter type must be a complete class");
+
+    // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
+    static_assert(!Config::isThrowing || !unwrap_signature<Signature>::isNoexcept,
+      "the `Signature` cannot be qualified with `noexcept` because it may throw exception");
 
     erasure_t m_erasure;
     command_t m_command;
@@ -2698,24 +2763,6 @@ namespace crtp_mixins {
     template <bool, std::size_t, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
 
-    // Assert the `Config` is config_package.
-    static_assert(is_config_package<Config>::value, EMBED_DETAIL_REPORT_IE("Config is invalid."));
-
-    // Assert the `Signature` is well-formed.
-    static_assert(unwrap_signature<Signature>::isSignature, 
-      "The `Signature` of the function wrapper is invalid:\n\n"
-      "        FnWrapper<Signature, BufferSize> f = CallableObject;\n"
-      "                  ^^^^^^^^^\n"
-      "                      |\n"
-      " should be like `void()`, `int(int) const`, etc\n\n"
-      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
-    );
-
-    // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
-    static_assert(!(Config::isThrowing && unwrap_signature<Signature>::isNoexcept),
-      "This `noexcept`-qualifier is in conflict with the `IsThrowing` configuration "
-      "option in `Config`. (Use 'ebd::safe_fn' or 'ebd::fn_ref')");
-
     using Base_MemberVariable = crtp_mixins::member_variable_impl<BufferSize, Config, Signature>;
 
     using Base_CoreComponents =
@@ -2860,9 +2907,7 @@ namespace crtp_mixins {
     ) function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Functor, Functor&&, erasure_t>{};
 
       if (check_not_empty::not_empty(functor)) {
         m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
@@ -2881,9 +2926,7 @@ namespace crtp_mixins {
       && Config::isView
     ) function(EMBED_DETAIL_NOT_NULL(Func*) function_ptr) noexcept {
 
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Func*, Func*&&, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Func*, Func*&&, erasure_t>{};
 
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, 
         "[Embedded Function]: The function pointer should not be a nullptr.");
@@ -2907,9 +2950,7 @@ namespace crtp_mixins {
     ) EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
     : Base_MemberVariable(nullptr) {
 
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Functor, Functor&&, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Functor, Functor&&, erasure_t>{};
 
       m_command.template init</* IsStoredOrigin = */ false>(
         &m_erasure, std::forward<Functor>(functor));
@@ -2929,9 +2970,7 @@ namespace crtp_mixins {
 
       static_assert(std::is_same<Fn, decay_t<Fn>>::value,
         "decay_t<Fn> should be the same type as Fn.");
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Fn, Fn, erasure_t>{};
 
       m_command.template emplace_init<Fn>(&m_erasure, std::forward<CArgs>(args)...);
     }
@@ -2949,9 +2988,7 @@ namespace crtp_mixins {
 
       static_assert(std::is_same<Fn, decay_t<Fn>>::value,
         "decay_t<Fn> should be the same type as Fn.");
-      static_assert(asserts_for_function<
-          BufferSize, Config, Signature, Fn, Fn, erasure_t>::value,
-        EMBED_DETAIL_REPORT_IE("asserts_for_function<...>::value should be always true."));
+      (void)assertions_for_functor<BufferSize, Config, Signature, Fn, Fn, erasure_t>{};
 
       m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
     }
