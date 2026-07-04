@@ -1768,9 +1768,10 @@ inline namespace fn_traits {
   template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
   constexpr bool is_complete_here_impl(int) noexcept { return true; }
 
-  template <typename T>
+  // Use template parameter `IsCompleteHere` to avoid violating ODR.
+  template <typename T, bool IsCompleteHere = is_complete_here_impl<T>(0)>
   constexpr bool is_complete_or_unbounded_here() noexcept {
-    return is_complete_here_impl<T>(0) || std::is_void<T>::value || is_unbounded_array<T>::value;
+    return IsCompleteHere || std::is_void<T>::value || is_unbounded_array<T>::value;
   }
 
 #if __cpp_fold_expressions >= 201603L && EMBED_CXX_VERSION >= 201703L
@@ -1783,9 +1784,11 @@ inline namespace fn_traits {
   struct logical_and<Val, VArgs...> { static constexpr bool value = Val && logical_and<VArgs...>::value; };
 #endif
 
-  template <template <class...> class T, typename... Args>
+  template <template <class...> class T, typename... Args,
+    // Use template parameter `Val` to avoid violating ODR.
+    bool Val = logical_and<is_complete_or_unbounded_here<Args>()...>::value>
   constexpr bool each_param_is_complete_or_unbounded_here(T<Args...>) noexcept {
-    return logical_and<is_complete_or_unbounded_here<Args>()...>::value;
+    return Val;
   }
 
 } // end namespace fn_traits
