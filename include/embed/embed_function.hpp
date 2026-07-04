@@ -1511,7 +1511,7 @@ inline namespace fn_traits {
   // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
   // in `conditional_t`. To work around this issue and facilitate targeted
   // optimization for each platform, we create `is_register_passable`.
-  template <typename T>
+  template <typename T, bool = is_complete_or_unbounded_here<T>()>
   struct is_register_passable {
     static constexpr std::size_t obj_size = sizeof(T);
 
@@ -1528,6 +1528,10 @@ inline namespace fn_traits {
     static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
 #endif
   };
+
+  // Avoid triggering repeated error messages caused by incompleteness.
+  template <typename T>
+  struct is_register_passable<T, /*IsCompleteOrUnboundedHere = */false> : std::false_type {};
 
   // Used to choose either perfect forwarding or pass-by-value.
   // Pass-by-value is faster for scalar types because they can
