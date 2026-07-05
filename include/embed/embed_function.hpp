@@ -3565,6 +3565,7 @@ namespace detail {
 #undef EMBED_DETAIL_ASSERT_MESSAGE
 #undef EMBED_DETAIL_REPORT_IE
 #if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
+# pragma clang diagnostic ignored "-Wunknown-pragmas" // suppress clangd warning
 # pragma clang diagnostic pop
 #endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NOT_NULL
 #undef EMBED_DETAIL_NOT_NULL
