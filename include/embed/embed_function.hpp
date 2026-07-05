@@ -2689,11 +2689,11 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(core_components_impl)
 
     // Empty state of function view is removed.
-    core_components_impl(std::nullptr_t)              = delete;
-    EMBED_CXX14_CONSTEXPR bool is_empty()             = delete;
-    EMBED_CXX14_CONSTEXPR explicit operator bool()    = delete;
-    void clear()                                      = delete;
-    core_components_impl& operator=(std::nullptr_t)   = delete;
+    core_components_impl(std::nullptr_t)            = delete; // no empty state in view mode
+    EMBED_CXX14_CONSTEXPR bool is_empty()           = delete; // no empty state in view mode
+    EMBED_CXX14_CONSTEXPR explicit operator bool()  = delete; // no empty state in view mode
+    void clear()                                    = delete; // no empty state in view mode
+    core_components_impl& operator=(std::nullptr_t) = delete; // no empty state in view mode
     EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
     EMBED_DETAIL_REQUIRES_END(
       (!fn_can_convert<Self, T>::value)
