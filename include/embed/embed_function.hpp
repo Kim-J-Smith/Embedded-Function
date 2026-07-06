@@ -1149,7 +1149,7 @@ inline namespace fn_traits {
 
   // The default buffer size. Usually is 2 * sizeof(void*).
   struct default_buffer_size {
-    // The buffer size for ebd::fn_ref. Stop supporting pointer-to-members
+    // The buffer size for ebd::fn_ref. Stop supporting pointer-to-members.
     static constexpr std::size_t ref_buf = sizeof(void (*) ());
     static constexpr std::size_t view_buf = ref_buf;
 #if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
@@ -1441,7 +1441,7 @@ inline namespace fn_traits {
     static constexpr bool value = const_match && volatile_match;
   };
 
-  // Implement the `get_member_fn_type`
+  // Implement the `get_member_fn_type`.
   template <typename Class, typename Signature,
     bool IsLRef, bool IsRRef,
     bool IsClass = std::is_class<remove_cvref_t<Class>>::value
@@ -1766,7 +1766,7 @@ inline namespace fn_traits {
     return true;
   }
 
-  // `true` if Cfg::assertNoThrow || Cfg::isView
+  // The trait is expression-equivalent to `Cfg::assertNoThrow || Cfg::isView`.
   template <typename Cfg>
   struct is_cfg_noexcept : bool_constant<Cfg::assertNoThrow || Cfg::isView> {};
 
