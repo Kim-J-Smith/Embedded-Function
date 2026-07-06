@@ -1047,10 +1047,9 @@ inline namespace fn_traits {
         && unwrap_to::isNoexcept < unwrap_from::isNoexcept
       );
 
-    /// TODO: Finalize the details of the conversion of the qualifiers
-    // Check the qualifiers.
-    static constexpr bool qualifier_ok = 
+    static constexpr bool qualifier_ok =
       (unwrap_to::hasConst <= unwrap_from::hasConst)
+      /// TODO: `volatile` -> non-`volatile` seems valid. Test and assembly analysis are needed.
       && (unwrap_to::hasVolatile == unwrap_from::hasVolatile)
       && (unwrap_to::hasRRef == unwrap_from::hasRRef)
       && (unwrap_to::hasLRef == unwrap_from::hasLRef)
@@ -1088,7 +1087,7 @@ inline namespace fn_traits {
   template <typename Fn, typename ArgsPackage>
   struct invoke_result_package {
     static_assert(always_false<Fn>::value,
-      "The input is not arguments package!");
+      EMBED_DETAIL_REPORT_IE("The input is not arguments package!"));
   };
 
   template <typename Fn, typename... Args>
