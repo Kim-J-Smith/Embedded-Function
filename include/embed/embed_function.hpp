@@ -1491,6 +1491,9 @@ inline namespace fn_traits {
   /// @todo experimental
   template <typename T, bool Val = std::meta::is_complete_type(^^T)>
   consteval bool is_complete_here_impl(int) noexcept { return Val; }
+#elif defined(__clang__) && EMBED_HAS_BUILTIN(__is_complete_type)
+  template <typename T, bool Val = __is_complete_type(T)>
+  constexpr bool is_complete_here_impl(int) noexcept { return Val; }
 #else
   template <typename T, typename = void>
   constexpr bool is_complete_here_impl(...) noexcept {
@@ -1502,10 +1505,8 @@ inline namespace fn_traits {
 #endif
 
   // Use template parameter `IsCompleteHere` to avoid violating ODR.
-  template <typename T, bool IsCompleteHere = is_complete_here_impl<T>(0)>
-  constexpr bool is_complete_or_unbounded_here() noexcept {
-    return IsCompleteHere || std::is_void<T>::value || is_unbounded_array<T>::value;
-  }
+  template <typename T, bool Val = is_complete_here_impl<T>(0)>
+  constexpr bool is_complete_here() noexcept { return Val; }
 
   // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
   // in `conditional_t`. To work around this issue and facilitate targeted
@@ -1529,8 +1530,9 @@ inline namespace fn_traits {
   };
 
   // Avoid triggering repeated error messages caused by incompleteness.
+  // According to [temp.point]/7, this specialization should only be used in error situations.
   template <typename T> // use `enable_if_t` as MSVC workaround
-  struct is_register_passable<T, enable_if_t<!is_complete_or_unbounded_here<T>()>>
+  struct is_register_passable<T, enable_if_t<!is_complete_here<T>()>>
   : std::false_type {};
 
   // Used to choose either perfect forwarding or pass-by-value.
@@ -1799,10 +1801,8 @@ inline namespace fn_traits {
 
   template <template <class...> class T, typename... Args,
     // Use template parameter `Val` to avoid violating ODR.
-    bool Val = logical_and<is_complete_or_unbounded_here<Args>()...>::value>
-  constexpr bool each_param_is_complete_or_unbounded_here(T<Args...>) noexcept {
-    return Val;
-  }
+    bool Val = logical_and<is_complete_here<Args>()...>::value>
+  constexpr bool each_param_is_complete_here(T<Args...>) noexcept { return Val; }
 
 } // end namespace fn_traits
 
@@ -2604,7 +2604,7 @@ namespace crtp_mixins {
 
     // Assert each parameter type is a complete class.
     static_assert(
-      each_param_is_complete_or_unbounded_here(typename unwrap_signature<Signature>::args{}),
+      each_param_is_complete_here(typename unwrap_signature<Signature>::args{}),
       "each parameter type must be a complete class");
 
     // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
