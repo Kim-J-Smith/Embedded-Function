@@ -2094,7 +2094,7 @@ namespace management {
       static VTable const* get_manager() noexcept {
         static constexpr VTable vtable = {nullptr, nullptr, nullptr};
         return &vtable;
-      };
+      }
     };
 
     // Using when Config::isView == false.
@@ -2109,7 +2109,7 @@ namespace management {
       static VTable const* get_manager() noexcept {
         static constexpr VTable vtable = {&clone<Functor>, &move<Functor>, &destroy<Functor>};
         return &vtable;
-      };
+      }
 
       // Using when the Functor is move only and not trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
@@ -2117,7 +2117,7 @@ namespace management {
       static VTable const* get_manager() noexcept {
         static constexpr VTable vtable = {nullptr, &move<Functor>, &destroy<Functor>};
         return &vtable;
-      };
+      }
 
       // Using when the Functor is move only and not trivial.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
@@ -2125,7 +2125,7 @@ namespace management {
       static VTable const* get_manager() noexcept {
         static constexpr VTable vtable = {&trivial_clone<Functor>, &trivial_move<Functor>, nullptr};
         return &vtable;
-      };
+      }
 
     }; // end inplace
   };
