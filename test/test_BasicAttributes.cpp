@@ -122,3 +122,36 @@ TEST(BasicAttributes, DefaultConfig) {
         >::value, 
         "The default config of ebd::fn_ref has been changed!");
 }
+
+// BasicAttributes[5]
+// The `void` and `int[]` are not really incomplete type.
+TEST(BasicAttributes, SeemsIncomplete) {
+    {
+        ebd::fn<int(void)> f1 = [] { return 42; };
+        ebd::fn<int(int[])> f2 = [](int[]) { return 43; };
+
+        ASSERT_EQ(f1(), 42);
+        ASSERT_EQ(f2(nullptr), 43);
+    }
+    {
+        ebd::unique_fn<int(void)> f1 = [] { return 42; };
+        ebd::unique_fn<int(int[])> f2 = [](int[]) { return 43; };
+
+        ASSERT_EQ(f1(), 42);
+        ASSERT_EQ(f2(nullptr), 43);
+    }
+    {
+        ebd::safe_fn<int(void)> f1 = [] { return 42; };
+        ebd::safe_fn<int(int[])> f2 = [](int[]) { return 43; };
+
+        ASSERT_EQ(f1(), 42);
+        ASSERT_EQ(f2(nullptr), 43);
+    }
+    {
+        ebd::fn_ref<int(void)> f1 = +[] { return 42; };
+        ebd::fn_ref<int(int[])> f2 = +[](int[]) { return 43; };
+
+        ASSERT_EQ(f1(), 42);
+        ASSERT_EQ(f2(nullptr), 43);
+    }
+}
