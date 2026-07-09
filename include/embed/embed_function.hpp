@@ -2584,13 +2584,13 @@ namespace crtp_mixins {
     // Zero initialize the `m_erasure` and `m_command`.
     constexpr member_variable_impl(std::nullptr_t) noexcept
     : m_erasure(erasure_t{}), m_command(command_t{}) {}
-  protected:
-    using erasure_t = erasure_type::Erasure<BufferSize>;
 
+    using erasure_t = erasure_type::Erasure<BufferSize>;
     using command_t = command::CommandTable<
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
+  protected:
     // Assert the `Config` is config_package.
     static_assert(is_config_package<Config>::value, EMBED_DETAIL_REPORT_IE("Config is invalid."));
 
@@ -2720,7 +2720,7 @@ namespace crtp_mixins {
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
   template <std::size_t BufferSize, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function final
-    : public crtp_mixins::member_variable_impl<
+    : protected crtp_mixins::member_variable_impl<
         /* Buf = */ BufferSize, /* Cfg = */ Config, /* Sig = */ Signature
       >,
       public crtp_mixins::operator_call_impl<
@@ -2832,17 +2832,7 @@ namespace crtp_mixins {
 # pragma GCC diagnostic pop
 #endif
 
-    /// @brief All following methods that begin with `Base_CoreComponents` are implemented in
-    /// the base class @e `crtp_mixins::core_components_impl`.
-
-    using Base_CoreComponents::is_empty;
-
-    using Base_CoreComponents::operator bool;
-
-    using Base_CoreComponents::clear;
-
-    using Base_CoreComponents::swap;
-
+    /// Implemented in the base class @e `crtp_mixins::core_components_impl`.
     using Base_CoreComponents::operator=;
 
     // Create an empty function wrapper.
