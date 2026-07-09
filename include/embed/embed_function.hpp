@@ -1488,12 +1488,14 @@ inline namespace fn_traits {
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
 #if __cpp_lib_reflection >= 202506L
-  /// @todo experimental
+  /// @todo experimental `std::meta::is_complete_type`
+  // Use template parameter `Val` to avoid violating ODR.
   template <typename T, bool Val = std::meta::is_complete_type(^^T)>
-  consteval bool is_complete_here_impl(int) noexcept { return Val; }
+  consteval bool is_complete_here() noexcept { return Val; }
 #elif defined(__clang__) && EMBED_HAS_BUILTIN(__is_complete_type)
+  // Use template parameter `Val` to avoid violating ODR.
   template <typename T, bool Val = __is_complete_type(T)>
-  constexpr bool is_complete_here_impl(int) noexcept { return Val; }
+  constexpr bool is_complete_here() noexcept { return Val; }
 #else
   template <typename T, typename = void>
   constexpr bool is_complete_here_impl(...) noexcept {
@@ -1502,11 +1504,11 @@ inline namespace fn_traits {
 
   template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
   constexpr bool is_complete_here_impl(int) noexcept { return true; }
-#endif
 
-  // Use template parameter `IsCompleteHere` to avoid violating ODR.
+  // Use template parameter `Val` to avoid violating ODR.
   template <typename T, bool Val = is_complete_here_impl<T>(0)>
   constexpr bool is_complete_here() noexcept { return Val; }
+#endif
 
   // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
   // in `conditional_t`. To work around this issue and facilitate targeted
