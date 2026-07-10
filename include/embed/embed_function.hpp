@@ -2085,7 +2085,7 @@ namespace management {
 
     // Using when M_erasure is empty.
     struct empty {
-      static VTable const* get_manager() noexcept {
+      static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {nullptr, nullptr, nullptr};
         return &vtable;
       }
@@ -2100,7 +2100,7 @@ namespace management {
       // Using when the Functor is copyable and not trivially copyable.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
-      static VTable const* get_manager() noexcept {
+      static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {&clone<Functor>, &move<Functor>, &destroy<Functor>};
         return &vtable;
       }
@@ -2108,7 +2108,7 @@ namespace management {
       // Using when the Functor is move-only and not trivially copyable.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
-      static VTable const* get_manager() noexcept {
+      static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {nullptr, &move<Functor>, &destroy<Functor>};
         return &vtable;
       }
@@ -2116,7 +2116,7 @@ namespace management {
       // Using when the Functor is copyable and trivially copyable.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END(IsCopyable && std::is_trivially_copyable<Functor>::value)
-      static VTable const* get_manager() noexcept {
+      static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {&trivially_clone<Functor>, &trivially_move<Functor>, nullptr};
         return &vtable;
       }
@@ -2124,7 +2124,7 @@ namespace management {
       // Using when the Functor is move-only and trivially copyable.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END((!IsCopyable) && std::is_trivially_copyable<Functor>::value)
-      static VTable const* get_manager() noexcept {
+      static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {nullptr, &trivially_move<Functor>, nullptr};
         return &vtable;
       }
