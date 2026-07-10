@@ -2069,7 +2069,7 @@ namespace management {
 
     // Clone trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static void trivial_clone(erasure_base_t* dst, erasure_base_t const* src)
+    static void trivially_clone(erasure_base_t* dst, erasure_base_t const* src)
     noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
       std::memcpy(
         static_cast<erasure_t*>(dst)->access(),
@@ -2080,7 +2080,7 @@ namespace management {
 
     // Move trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static void trivial_move(erasure_base_t* dst, erasure_base_t* src)
+    static void trivially_move(erasure_base_t* dst, erasure_base_t* src)
     noexcept(std::is_nothrow_move_constructible<Functor>::value) {
       std::memcpy(
         static_cast<erasure_t*>(dst)->access(),
@@ -2103,7 +2103,7 @@ namespace management {
       /// Only trivially copyable objects can be copied or moved by
       /// `std::memcpy`; otherwise, this would be undefined behaviour.
 
-      // Using when the Functor is copyable and not trivial.
+      // Using when the Functor is copyable and not trivially copyable.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
       static VTable const* get_manager() noexcept {
@@ -2111,7 +2111,7 @@ namespace management {
         return &vtable;
       }
 
-      // Using when the Functor is move only and not trivial.
+      // Using when the Functor is move-only and not trivially copyable.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
       static VTable const* get_manager() noexcept {
@@ -2119,11 +2119,19 @@ namespace management {
         return &vtable;
       }
 
-      // Using when the Functor is move only and not trivial.
+      // Using when the Functor is copyable and trivially copyable.
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(std::is_trivially_copyable<Functor>::value)
+        EMBED_DETAIL_REQUIRES_END(IsCopyable && std::is_trivially_copyable<Functor>::value)
       static VTable const* get_manager() noexcept {
-        static constexpr VTable vtable = {&trivial_clone<Functor>, &trivial_move<Functor>, nullptr};
+        static constexpr VTable vtable = {&trivially_clone<Functor>, &trivially_move<Functor>, nullptr};
+        return &vtable;
+      }
+
+      // Using when the Functor is move-only and trivially copyable.
+      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
+        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && std::is_trivially_copyable<Functor>::value)
+      static VTable const* get_manager() noexcept {
+        static constexpr VTable vtable = {nullptr, &trivially_move<Functor>, nullptr};
         return &vtable;
       }
 
