@@ -2011,8 +2011,7 @@ namespace management {
     using erasure_base_t  = typename invoke_impl_t::erasure_base_t;
     using erasure_t       = typename invoke_impl_t::erasure_t;
   public:
-    using manager_type = void (*) (
-      OperatorCode op, erasure_base_t* dst, erasure_base_t* src);
+    using manager_type = void (*) (erasure_base_t* dst, erasure_base_t* src, OperatorCode op);
 
     // Use placement new to create a type-erased object.
     template <typename Functor, typename Object>
@@ -2070,7 +2069,7 @@ namespace management {
 
     // Using when M_erasure is empty.
     struct empty {
-      static void manage(OperatorCode, erasure_base_t*, erasure_base_t*) {
+      static void manage(erasure_base_t*, erasure_base_t*, OperatorCode) {
         // Nothing here.
       }
     };
@@ -2085,9 +2084,9 @@ namespace management {
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
       /* copyable */ static void manage(
-        OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
-        erasure_base_t* EMBED_RESTRICT src
+        erasure_base_t* EMBED_RESTRICT src,
+        OperatorCode op
       ) {
         switch (op) {
         case OperatorCode::clone:
@@ -2107,9 +2106,9 @@ namespace management {
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
       /* move-only */ static void manage(
-        OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
-        erasure_base_t* EMBED_RESTRICT src
+        erasure_base_t* EMBED_RESTRICT src,
+        OperatorCode op
       ) {
         switch (op) {
         case OperatorCode::clone:
@@ -2129,9 +2128,9 @@ namespace management {
       EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
         EMBED_DETAIL_REQUIRES_END(std::is_trivially_copyable<Functor>::value)
       /* trivial */ static void manage(
-        OperatorCode op,
         erasure_base_t* EMBED_RESTRICT dst,
-        erasure_base_t* EMBED_RESTRICT src
+        erasure_base_t* EMBED_RESTRICT src,
+        OperatorCode op
       ) {
         switch (op) {
         case OperatorCode::clone: EMBED_FALLTHROUGH(); /* fallthrough */
@@ -2184,17 +2183,17 @@ namespace command {
       // bridge the internal manager's non-const interface; the manager ensures
       // the source remains logically unmodified during clone.
       auto* src_non_const = const_cast<erasure_base_t*>(src);
-      m_manager(management::OperatorCode::clone, dst, src_non_const);
+      m_manager(dst, src_non_const, management::OperatorCode::clone);
     }
 
     void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
-      m_manager(management::OperatorCode::move, dst, src);
+      m_manager(dst, src, management::OperatorCode::move);
     }
 
     void destroy(erasure_base_t* dst) const
     noexcept(Config::assertNoThrow) {
-      m_manager(management::OperatorCode::destroy, dst, nullptr);
+      m_manager(dst, nullptr, management::OperatorCode::destroy);
     }
 
     // Empty init.
