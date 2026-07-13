@@ -946,14 +946,14 @@ inline namespace fn_traits {
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<!IsThrowing>
   throw_or_terminate() noexcept {
-    EMBED_DETAIL_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
+    EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
     std::terminate();
   }
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
-    EMBED_DETAIL_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
+    EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
 #if EMBED_CXX_ENABLE_EXCEPTION != 0
     throw std::bad_function_call{};
 #else
@@ -2893,8 +2893,7 @@ namespace crtp_mixins {
 
       (void)assertions_for_functor<BufferSize, Config, Signature, Func*, Func*&&, erasure_t>{};
 
-      EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr,
-        "[Embedded Function]: The function pointer should not be a nullptr.");
+      EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, "function pointer cannot be nullptr.");
 
       m_command.template init</* IsStoredOrigin = */ true>(
         &m_erasure, std::forward<Func*>(function_ptr));
@@ -3010,8 +3009,7 @@ namespace crtp_mixins {
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
       if constexpr (std::is_member_pointer_v<Fn>) {
-        EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr,
-          "[Embedded Function]: The object pointer shouldn't be nullptr.");
+        EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, "object pointer cannot be nullptr.");
       }
     }
 
