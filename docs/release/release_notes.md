@@ -4,7 +4,7 @@
 
 ## Changed
 
-- 
+- Renamed `HOW-TO-*` documents to `README.md`.
 
 ## Added
 

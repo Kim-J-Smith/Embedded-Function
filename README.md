@@ -295,7 +295,7 @@ Every compiler with modern C++11 support should work.
 
 ## 🧪 Test
 
-Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
+Go to the `<root>/test/` directory, and follow the instructions in [`test/README.md`](./test/README.md) to run the tests.
 
 ## 🚀 Performance optimization
 
@@ -343,7 +343,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST
  `fu2::function_view`     | 1000000 |     3.420 |       3 |  0.344 |292392274.6
  **`ebd::fn_ref`**        | 1000000 |     3.249 |       3 |  0.326 |307826614.8
 
-> See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the benchmark in your platform.
+> See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
 
 ## 🧭 Future learning & evolution reference
 
