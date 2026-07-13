@@ -4,7 +4,7 @@
 
 ## Changed
 
-- 
+- Optimized internal type erasure management for improved performance.
 
 ## Added
 
