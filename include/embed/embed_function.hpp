@@ -152,18 +152,6 @@
 # endif
 #endif
 
-#ifndef EMBED_FALLTHROUGH
-# if (EMBED_CXX_VERSION >= 201703L && EMBED_HAS_CXX_ATTRIBUTE(fallthrough))
-#  define EMBED_FALLTHROUGH() [[fallthrough]]
-# elif EMBED_HAS_CXX_ATTRIBUTE(gnu::fallthrough)
-#  define EMBED_FALLTHROUGH() [[gnu::fallthrough]]
-# elif EMBED_HAS_ATTRIBUTE(fallthrough)
-#  define EMBED_FALLTHROUGH() __attribute__((fallthrough))
-# else
-#  define EMBED_FALLTHROUGH()
-# endif
-#endif
-
 #ifndef EMBED_DEPRECATED
 # if (EMBED_CXX_VERSION >= 201402L && EMBED_HAS_CXX_ATTRIBUTE(deprecated))
 #  define EMBED_DEPRECATED(msg) [[deprecated(msg)]]
@@ -3560,7 +3548,6 @@ namespace detail {
 # undef EMBED_INLINE
 # undef EMBED_RESTRICT
 # undef EMBED_NODISCARD
-# undef EMBED_FALLTHROUGH
 # undef EMBED_DEPRECATED
 
 # undef EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
