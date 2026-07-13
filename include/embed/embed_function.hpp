@@ -114,6 +114,14 @@
 # endif
 #endif
 
+#ifndef EMBED_CXX17_NOEXCEPT_
+# if (EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L)
+#  define EMBED_CXX17_NOEXCEPT_(...) noexcept(__VA_ARGS__)
+# else
+#  define EMBED_CXX17_NOEXCEPT_(...)
+# endif
+#endif
+
 #ifndef EMBED_INLINE
 # if EMBED_HAS_ATTRIBUTE(always_inline)
 #  define EMBED_INLINE inline __attribute__((always_inline))
@@ -2006,9 +2014,9 @@ namespace management {
     using erasure_t       = typename invoke_impl_t::erasure_t;
 
     struct VTable {
-      void (*clone) (erasure_base_t*, erasure_base_t const*);
-      void (*move) (erasure_base_t*, erasure_base_t*);
-      void (*destroy) (erasure_base_t*);
+      void (*clone) (erasure_base_t*, erasure_base_t const*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
+      void (*move) (erasure_base_t*, erasure_base_t*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
+      void (*destroy) (erasure_base_t*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
     };
   public:
     using manager_type = VTable const*;
@@ -3548,6 +3556,7 @@ namespace detail {
 # undef EMBED_ABI_VISIBILITY
 # undef EMBED_CXX14_CONSTEXPR
 # undef EMBED_CXX20_CONSTEXPR
+# undef EMBED_CXX17_NOEXCEPT_
 # undef EMBED_INLINE
 # undef EMBED_RESTRICT
 # undef EMBED_NODISCARD
