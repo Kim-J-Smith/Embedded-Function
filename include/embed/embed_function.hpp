@@ -1129,11 +1129,6 @@ inline namespace fn_traits {
     || (alignof(DecFn) <= alignof(Erasure) && (sizeof(DecFn) % alignof(DecFn) == 0))
   > {};
 
-  // Get aligned size. Rounds up to the nearest word.
-  template <std::size_t MinAlign = sizeof(void (*) ())>
-  constexpr std::size_t get_aligned_size(std::size_t size)
-  { return size == 0 ? MinAlign : ((size - 1) / MinAlign + 1) * MinAlign; }
-
   /// @brief Undefined class.
   /// @e EMBED_DETAIL_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC
   /// compiler that this is a declaration of a virtual inheritance class, in order
@@ -1148,6 +1143,11 @@ inline namespace fn_traits {
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
     static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
   };
+
+  // Get aligned size. Rounds up to the nearest MinAlign size.
+  template <std::size_t MinAlign = default_buffer_size::align_value>
+  constexpr std::size_t get_aligned_size(std::size_t size)
+  { return size == 0 ? MinAlign : ((size - 1) / MinAlign + 1) * MinAlign; }
 
   // Check whether throwing operations are acceptable.
   template <typename Functor, typename Object, typename Config,
