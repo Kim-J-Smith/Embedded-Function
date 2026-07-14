@@ -1559,12 +1559,12 @@ inline namespace fn_traits {
   struct assertions_for_functor {
 
     static_assert(buffer_size_is_enough<Functor, Config, ErasureT>::value,
-      "The `BufferSize` is smaller than the size of callable object. "\
+      "The `BufferSize` is smaller than the size of the callable object. "
       "Please use a larger `BufferSize` and try again:\n\n"
       "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
       "                             ^^^^^^^^^^^^^^^^^\n"
       "                                     |\n"
-      "             should be greater than `sizeof(CallableObject)`\n\n"
+      "         The value should be greater than `sizeof(CallableObject)`\n\n"
       "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, etc."
     );
 
