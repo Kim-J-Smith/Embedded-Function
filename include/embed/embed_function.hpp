@@ -1559,8 +1559,8 @@ inline namespace fn_traits {
   struct assertions_for_functor {
 
     static_assert(buffer_size_is_enough<Functor, Config, ErasureT>::value,
-      "The `BufferSize` is smaller than the callable object. Please use bigger "
-      "`BufferSize` and try again:\n\n"
+      "The `BufferSize` is smaller than the size of callable object. "\
+      "Please use a larger `BufferSize` and try again:\n\n"
       "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
       "                             ^^^^^^^^^^^^^^^^^\n"
       "                                     |\n"
@@ -1569,24 +1569,22 @@ inline namespace fn_traits {
     );
 
     static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
-      "The alignment of the callable object is too big to be wrapped into ebd::fn.");
+      "The alignment of the callable object is not supported by this function wrapper.");
 
     static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
-      "The 'Functor' may throw exceptions during construction and destruction,"
-      " which does not match the 'Config::assertNoThrow = true' setting.");
+      "The copy constructor and move constructor of the callable object must be noexcept.");
 
-    static_assert(copyable_is_ok<Functor, Config>::value,
-      "Functor cannot match the Config::isCopyable setting.");
+    static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
 
     static_assert(!move_constructor_is_deleted<Functor>::value || Config::isView,
-      "The move constructor of Functor shouldn't be deleted.");
+      "The move constructor of the callable object should not be deleted.");
 
     static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
-      "The qualifier 'const', '&' or '&&' of operator() of Functor"
-      " cannot match that of Signature.");
+      "The signature must have the same qualifier(`&`, `const`, etc.) "
+      "as the operator() method of the callable object.");
 
     static_assert(view_mode_qualifier_is_ok<Config, Signature>::value,
-      "'&' and '&&' are not allowed to qualify the function view.");
+      "The signature should not be qualified with `&` or `&&` in non-owning mode.");
   };
 
   // Is type std::in_place_type_t<T>.
