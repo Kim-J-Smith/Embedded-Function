@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.7-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.7">
+  <img src="https://img.shields.io/badge/Version-2.1.8-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.8">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
@@ -295,7 +295,7 @@ Every compiler with modern C++11 support should work.
 
 ## 🧪 Test
 
-Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST.md`](./test/HOW-TO-TEST.md) to run the tests.
+Go to the `<root>/test/` directory, and follow the instructions in [`test/README.md`](./test/README.md) to run the tests.
 
 ## 🚀 Performance optimization
 
@@ -343,7 +343,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`HOW-TO-TEST
  `fu2::function_view`     | 1000000 |     3.420 |       3 |  0.344 |292392274.6
  **`ebd::fn_ref`**        | 1000000 |     3.249 |       3 |  0.326 |307826614.8
 
-> See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`HOW-TO-BENCHMARK.md`](./benchmark/HOW-TO-BENCHMARK.md) to run the benchmark in your platform.
+> See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
 
 ## 🧭 Future learning & evolution reference
 

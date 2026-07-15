@@ -1,23 +1,16 @@
-## Fixed
+## 🔧 Fixed Bugs
+- None.
 
-- Fixed a double‑free bug in copy and move assignment operators for `ebd::fn`, `ebd::unique_fn`, and `ebd::safe_fn` (#75, #76).
-- Added a dedicated lifetime test suite to prevent regressions.
+## ⚠️ Breaking Changes
+- None.
 
-## Changed
+## ✨ New Features
+- Added a static assertion for the completeness of parameter types in the function wrappers. This helps to determine the cause of the error. (#80 #83)
 
-- Updated experimental `std::constant_wrapper` support to conform to P4206R0, which reverts the string support introduced in earlier drafts (#68).
-- Improved static assertion messages for `make_fn()` and function signatures – they now provide more actionable hints when template deduction fails (#69).
-- Relaxed internal manager constraints: `std::is_trivially_copyable` is now used instead of a more restrictive "traditional trivial" check, allowing a wider set of functors to be stored in‑place (#70).
-- Refactored the type‑erasure invoker to remove unnecessary cv‑qualifiers and `const_cast` calls, simplifying the codebase without changing public behavior (#71).
-- Cleaned up macro formatting and added `!defined(__clang__)` guards for MSVC‑specific code paths.
+## 🛠️ Optimizations and Improvements
+- Replaced the internal `switch-case` branch dispatch with a `VTable` mechanism for better lifetime management and reduced function‑call overhead, resulting in improved performance. (#74 #84)
+- Renamed all `HOW-TO-*` documentation files to `README.md` to provide better navigation on GitHub. (#86)
 
-## Added
-
-- Added a comprehensive set of runtime benchmarks covering creation, copy/move assignment, and various parameter types for `ebd::fn`, `std::function`, `fu2::function`, and `std::move_only_function` (#73, #77).
-- Introduced nullability annotations (`_Nonnull`/`_Notnull_`) on the `fn_ref` constructor from function pointers to aid static analysis (#69).
-- Enabled Windows CI for the benchmark suite (#73).
-
-## Notes
-
-- `std::constant_wrapper` support is experimental as of v2.1.7.
-- The experimental `constant_wrapper` support has been updated to align with P4206R0, removing the previously available string support. Users who were experimenting with that feature may need to adjust their code.
+## 📌 Notes
+- **The macro `EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER` will be removed in v2.0.0**. If you still rely on it, please inform us in the [issues](https://github.com/Kim-J-Smith/Embedded-Function/issues) section.
+- As of v2.1.8, the usage of `std::constant_wrapper` and `std::meta::is_complete_type` remains **experimental**. These features have been officially adopted in the C++26 standard (`ISO/IEC 14882:2026`) and will become fully stable starting from **v2.2.0**.
