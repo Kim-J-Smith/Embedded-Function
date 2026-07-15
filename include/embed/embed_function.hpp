@@ -16,6 +16,9 @@
 
 // Just like function pointers, it is quick and efficient.
 
+/// @deprecated @b EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
+/// If this macro is defined, bigger default buffer size will be used.
+
 /// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 /// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
 
@@ -1140,7 +1143,15 @@ inline namespace fn_traits {
     // The buffer size for ebd::fn_ref. Stop supporting pointer-to-members.
     static constexpr std::size_t ref_buf = sizeof(void (*) ());
     static constexpr std::size_t view_buf = ref_buf;
+#if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
+    /// @deprecated @todo TODO: Remove this in version-2.2.0.
+    static constexpr std::size_t value_c1 = 6 * sizeof(void*);
+    static constexpr std::size_t value_c2 = sizeof(::std::function<void()>);
+    static constexpr std::size_t value = value_c1 > value_c2 ? value_c1 : value_c2;
+#else
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
+#endif
+
     static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
   };
 
