@@ -16,7 +16,7 @@
 
 // Just like function pointers, it is quick and efficient.
 
-/// @b EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
+/// @deprecated @b EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
 /// If this macro is defined, bigger default buffer size will be used.
 
 /// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
@@ -946,14 +946,14 @@ inline namespace fn_traits {
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<!IsThrowing>
   throw_or_terminate() noexcept {
-    EMBED_DETAIL_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
+    EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
     std::terminate();
   }
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
-    EMBED_DETAIL_FAIL_MESSAGE("[Embedded Function]: Empty function has been called!");
+    EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
 #if EMBED_CXX_ENABLE_EXCEPTION != 0
     throw std::bad_function_call{};
 #else
@@ -1132,11 +1132,6 @@ inline namespace fn_traits {
     || (alignof(DecFn) <= alignof(Erasure) && (sizeof(DecFn) % alignof(DecFn) == 0))
   > {};
 
-  // Get aligned size. Rounds up to the nearest word.
-  template <std::size_t MinAlign = sizeof(void (*) ())>
-  constexpr std::size_t get_aligned_size(std::size_t size)
-  { return size == 0 ? MinAlign : ((size - 1) / MinAlign + 1) * MinAlign; }
-
   /// @brief Undefined class.
   /// @e EMBED_DETAIL_VIRTUAL_INHERITANCE - This macro is used to inform the MSVC
   /// compiler that this is a declaration of a virtual inheritance class, in order
@@ -1149,8 +1144,7 @@ inline namespace fn_traits {
     static constexpr std::size_t ref_buf = sizeof(void (*) ());
     static constexpr std::size_t view_buf = ref_buf;
 #if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
-    // The CommandTable size plus the buffer size is about 8 * sizeof(void*).
-    // TODO: The size of this buffer zone needs further examination.
+    /// @deprecated @todo TODO: Remove this in version-2.2.0.
     static constexpr std::size_t value_c1 = 6 * sizeof(void*);
     static constexpr std::size_t value_c2 = sizeof(::std::function<void()>);
     static constexpr std::size_t value = value_c1 > value_c2 ? value_c1 : value_c2;
@@ -1160,6 +1154,11 @@ inline namespace fn_traits {
 
     static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
   };
+
+  // Get aligned size. Rounds up to the nearest MinAlign size.
+  template <std::size_t MinAlign = default_buffer_size::align_value>
+  constexpr std::size_t get_aligned_size(std::size_t size)
+  { return size == 0 ? MinAlign : ((size - 1) / MinAlign + 1) * MinAlign; }
 
   // Check whether throwing operations are acceptable.
   template <typename Functor, typename Object, typename Config,
@@ -1559,34 +1558,32 @@ inline namespace fn_traits {
   struct assertions_for_functor {
 
     static_assert(buffer_size_is_enough<Functor, Config, ErasureT>::value,
-      "The `BufferSize` is smaller than the callable object. Please use bigger "
-      "`BufferSize` and try again:\n\n"
+      "The `BufferSize` is smaller than the size of the callable object. "
+      "Please use a larger `BufferSize` and try again:\n\n"
       "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
       "                             ^^^^^^^^^^^^^^^^^\n"
       "                                     |\n"
-      "             should be greater than `sizeof(CallableObject)`\n\n"
+      "         The value should be greater than `sizeof(CallableObject)`\n\n"
       "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, etc."
     );
 
     static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
-      "The alignment of the callable object is too big to be wrapped into ebd::fn.");
+      "The alignment of the callable object is not supported by this function wrapper.");
 
     static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
-      "The 'Functor' may throw exceptions during construction and destruction,"
-      " which does not match the 'Config::assertNoThrow = true' setting.");
+      "The copy constructor and move constructor of the callable object must be noexcept.");
 
-    static_assert(copyable_is_ok<Functor, Config>::value,
-      "Functor cannot match the Config::isCopyable setting.");
+    static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
 
     static_assert(!move_constructor_is_deleted<Functor>::value || Config::isView,
-      "The move constructor of Functor shouldn't be deleted.");
+      "The move constructor of the callable object should not be deleted.");
 
     static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
-      "The qualifier 'const', '&' or '&&' of operator() of Functor"
-      " cannot match that of Signature.");
+      "The signature must have the same qualifier(`&`, `const`, etc.) "
+      "as the operator() method of the callable object.");
 
     static_assert(view_mode_qualifier_is_ok<Config, Signature>::value,
-      "'&' and '&&' are not allowed to qualify the function view.");
+      "The signature should not be qualified with `&` or `&&` in non-owning mode.");
   };
 
   // Is type std::in_place_type_t<T>.
@@ -2893,8 +2890,7 @@ namespace crtp_mixins {
 
       (void)assertions_for_functor<BufferSize, Config, Signature, Func*, Func*&&, erasure_t>{};
 
-      EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr,
-        "[Embedded Function]: The function pointer should not be a nullptr.");
+      EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, "function pointer cannot be nullptr.");
 
       m_command.template init</* IsStoredOrigin = */ true>(
         &m_erasure, std::forward<Func*>(function_ptr));
@@ -3010,8 +3006,7 @@ namespace crtp_mixins {
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
       if constexpr (std::is_member_pointer_v<Fn>) {
-        EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr,
-          "[Embedded Function]: The object pointer shouldn't be nullptr.");
+        EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, "object pointer cannot be nullptr.");
       }
     }
 
