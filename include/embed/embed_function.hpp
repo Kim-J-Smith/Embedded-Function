@@ -2776,31 +2776,13 @@ namespace crtp_mixins {
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
     is_copyable() noexcept { return internal_is_copyable; }
 
-#if defined(__GNUC__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wuninitialized"
-#endif
     /// @brief All following methods that end with `= default` are implemented in
     /// the base class @e `crtp_mixins::lifetime_operations_impl`.
-
-    // The destructor of the function wrapper, is trivial if `Config::isView == true`.
-    ~function()                                   = default;
-    // The copy constructor of the function wrapper, `=delete` if `(Config::isView ||
-    // Config::isCopyable) == true`, and is trivial if `Config::isView == true`.
-    function(const function& other)               = default;
-    // The move constructor of the function wrapper, is trivial if
-    // `(Config::isView || Config::isCopyable) == true`.
-    function(function&& other)                    = default;
-    // The copy assignment of the function wrapper, `=delete` if `(Config::isView ||
-    // Config::isCopyable) == true`, and is trivial if `Config::isView == true`.
-    function& operator=(const function& other)    = default;
-    // The move assignment of the function wrapper, is trivial if
-    // `(Config::isView || Config::isCopyable) == true`.
-    function& operator=(function&& other)         = default;
-
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
+    ~function()                                 = default;
+    function(const function& other)             = default;
+    function(function&& other)                  = default;
+    function& operator=(const function& other)  = default;
+    function& operator=(function&& other)       = default;
 
     /// Implemented in the base class @e `crtp_mixins::core_components_impl`.
     using Base_CoreComponents::operator=;
