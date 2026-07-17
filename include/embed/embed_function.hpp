@@ -1034,13 +1034,8 @@ inline namespace fn_traits {
 
     // In view mode, the requires is special.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html>.
-    static constexpr bool noexcept_qualifier_ok =
-      (unwrap_to::isNoexcept == unwrap_from::isNoexcept)
-      || (
-        CfgTo::isView == true
-        && CfgFrom::isView == true
-        && unwrap_to::isNoexcept < unwrap_from::isNoexcept
-      );
+    static constexpr bool noexcept_qualifier_ok = unwrap_to::isNoexcept == unwrap_from::isNoexcept
+      || (CfgTo::isView && CfgFrom::isView && unwrap_to::isNoexcept < unwrap_from::isNoexcept);
 
     static constexpr bool qualifier_ok =
       (unwrap_to::hasConst <= unwrap_from::hasConst)
@@ -1075,7 +1070,7 @@ inline namespace fn_traits {
   struct is_nothrow_construct_from_functor<
     Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
   : public bool_constant<
-    noexcept(::new (static_cast<void*>(0)) Class(std::declval<Functor>()))
+    noexcept(::new (static_cast<void*>(nullptr)) Class(std::declval<Functor>()))
   > {};
 
   // Get invoke result with arguments package.
