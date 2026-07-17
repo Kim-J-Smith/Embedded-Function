@@ -172,7 +172,6 @@
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
-# include <tuple>       // std::tuple
 # include <initializer_list>
 # if __cpp_impl_reflection >= 202506L && __has_include(<meta>)
 #  include <meta>       // std::meta::is_complete_type(C++26)
@@ -626,17 +625,21 @@ inline namespace cxx_traits {
       ((*std::declval<Arg>()).*std::declval<Memfunc>()) (std::declval<Args>()...));
   };
 
+  // Uses empty class as the package of arguments.
+  template <typename... Args>
+  struct args_package {};
+
   template <typename Func, typename ArgsTuple, typename = void>
   struct call_is_nothrow_helper : std::false_type {};
 
   template <typename Func, typename... Args>
-  struct call_is_nothrow_helper<Func, std::tuple<Args...>,
+  struct call_is_nothrow_helper<Func, args_package<Args...>,
     void_t<typename invoke_result<Func, Args...>::tag>>
   : call_is_nothrow_impl<typename invoke_result<Func, Args...>::tag, Func, Args...>
   {};
 
   template <typename Func, typename... Args>
-  using call_is_nothrow = call_is_nothrow_helper<Func, std::tuple<Args...>>;
+  using call_is_nothrow = call_is_nothrow_helper<Func, args_package<Args...>>;
 
   // See <https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
   template <typename To, typename From>
@@ -875,10 +878,6 @@ inline namespace fn_traits {
   struct is_config_package<
     config_package<IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>>
   : public std::true_type {};
-
-  // Uses empty class as the package of arguments.
-  template <typename... Args>
-  struct args_package {};
 
   // Unwrap the function signature.
   template <typename T>
@@ -1603,7 +1602,7 @@ inline namespace fn_traits {
     typename PureSig = typename unwrap_signature<Sig>::pure_sig>
   struct is_invocable_using_impl;
   template <typename Sig, typename... TArgs, typename Ret, typename... Args>
-  struct is_invocable_using_impl<Sig, std::tuple<TArgs...>, Ret(Args...)>
+  struct is_invocable_using_impl<Sig, args_package<TArgs...>, Ret(Args...)>
   : conditional_t<
       unwrap_signature<Sig>::isNoexcept,
       is_nothrow_invocable_r<Ret, TArgs..., Args...>,
@@ -2759,7 +2758,7 @@ namespace crtp_mixins {
 
     // [func.wrap.ref.ctor]/1 is-invocable-using
     template <typename... T>
-    using is_invocable_using = is_invocable_using_impl<Signature, std::tuple<T...>>;
+    using is_invocable_using = is_invocable_using_impl<Signature, args_package<T...>>;
 
     template <typename T>
     using add_cv_like_sig_t = typename unwrap_signature<Signature>::template add_cv_like<T>;
