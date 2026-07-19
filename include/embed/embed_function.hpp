@@ -2772,7 +2772,8 @@ namespace crtp_mixins {
     is_copyable() noexcept { return internal_is_copyable; }
 
     /// @brief All following methods that end with `= default` are implemented in
-    /// the base class @e `crtp_mixins::lifetime_operations_impl`.
+    /// the base class @e `crtp_mixins::lifetime_operations_impl`. They are trivial
+    /// if `Config::isView` equals `true`.
     ~function()                                 = default;
     function(const function& other)             = default;
     function(function&& other)                  = default;
