@@ -1034,13 +1034,8 @@ inline namespace fn_traits {
 
     // In view mode, the requires is special.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html>.
-    static constexpr bool noexcept_qualifier_ok =
-      (unwrap_to::isNoexcept == unwrap_from::isNoexcept)
-      || (
-        CfgTo::isView == true
-        && CfgFrom::isView == true
-        && unwrap_to::isNoexcept < unwrap_from::isNoexcept
-      );
+    static constexpr bool noexcept_qualifier_ok = unwrap_to::isNoexcept == unwrap_from::isNoexcept
+      || (CfgTo::isView && CfgFrom::isView && unwrap_to::isNoexcept < unwrap_from::isNoexcept);
 
     static constexpr bool qualifier_ok =
       (unwrap_to::hasConst <= unwrap_from::hasConst)
@@ -1075,7 +1070,7 @@ inline namespace fn_traits {
   struct is_nothrow_construct_from_functor<
     Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
   : public bool_constant<
-    noexcept(::new (static_cast<void*>(0)) Class(std::declval<Functor>()))
+    noexcept(::new (static_cast<void*>(nullptr)) Class(std::declval<Functor>()))
   > {};
 
   // Get invoke result with arguments package.
@@ -2776,31 +2771,14 @@ namespace crtp_mixins {
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
     is_copyable() noexcept { return internal_is_copyable; }
 
-#if defined(__GNUC__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wuninitialized"
-#endif
     /// @brief All following methods that end with `= default` are implemented in
-    /// the base class @e `crtp_mixins::lifetime_operations_impl`.
-
-    // The destructor of the function wrapper, is trivial if `Config::isView == true`.
-    ~function()                                   = default;
-    // The copy constructor of the function wrapper, `=delete` if `(Config::isView ||
-    // Config::isCopyable) == true`, and is trivial if `Config::isView == true`.
-    function(const function& other)               = default;
-    // The move constructor of the function wrapper, is trivial if
-    // `(Config::isView || Config::isCopyable) == true`.
-    function(function&& other)                    = default;
-    // The copy assignment of the function wrapper, `=delete` if `(Config::isView ||
-    // Config::isCopyable) == true`, and is trivial if `Config::isView == true`.
-    function& operator=(const function& other)    = default;
-    // The move assignment of the function wrapper, is trivial if
-    // `(Config::isView || Config::isCopyable) == true`.
-    function& operator=(function&& other)         = default;
-
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
+    /// the base class @e `crtp_mixins::lifetime_operations_impl`. They are trivial
+    /// if `Config::isView` equals `true`.
+    ~function()                                 = default;
+    function(const function& other)             = default;
+    function(function&& other)                  = default;
+    function& operator=(const function& other)  = default;
+    function& operator=(function&& other)       = default;
 
     /// Implemented in the base class @e `crtp_mixins::core_components_impl`.
     using Base_CoreComponents::operator=;
