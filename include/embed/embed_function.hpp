@@ -173,6 +173,7 @@
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
 # include <initializer_list>
+// TODO: __has_include() triggers warning in MSVC
 # if __cpp_impl_reflection >= 202506L && __has_include(<meta>)
 #  include <meta>       // std::meta::is_complete_type(C++26)
 # endif
@@ -259,15 +260,6 @@
 
 #define EMBED_DETAIL_TEXT(text) EMBED_DETAIL_TEXT_IMPL(text)
 #define EMBED_DETAIL_TEXT_IMPL(text) #text
-
-#if __cpp_lib_launder >= 201606L
-# define EMBED_DETAIL_LAUNDER(x) ( ::std::launder(x) )
-#elif EMBED_HAS_BUILTIN(__builtin_launder)
-# define EMBED_DETAIL_LAUNDER(x) ( ::ebd::detail::launder(x) )
-# define EMBED_DETAIL__NEED_LAUNDER
-#else
-# define EMBED_DETAIL_LAUNDER(x) ( x )
-#endif
 
 #if EMBED_HAS_ATTRIBUTE(may_alias)
 # define EMBED_DETAIL_ALIAS __attribute__((may_alias))
@@ -798,14 +790,26 @@ inline namespace cxx_traits {
       std::forward<Args>(args)...);
   }
 
-#ifdef EMBED_DETAIL__NEED_LAUNDER
-
   // [ptr.launder]
-  template <typename T> EMBED_NODISCARD EMBED_INLINE constexpr
-  T* launder(T* ptr) noexcept { return __builtin_launder(ptr); }
-
-#undef EMBED_DETAIL__NEED_LAUNDER
+  template <typename T>
+  EMBED_NODISCARD EMBED_INLINE T* launder(T* ptr) noexcept {
+#if __cpp_lib_launder >= 201606L
+    return std::launder(ptr);
+#elif EMBED_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 5
+    // `__builtin_launder` in MSVC is only accessible since C++17.
+    return __builtin_launder(ptr);
+#elif defined(__GNUC__) || defined(__clang__)
+    __asm__("": "+r"(ptr)); // Cannot use `__asm__` in `noexcept` function.
+    return ptr;
+#else
+# if defined(_MSC_VER) && !defined(__clang__)
+#  pragma message("WARNING: `launder` is not implemented for this environment.")
+# else
+#  warning "`launder` is not implemented for this environment."
+# endif
+    return ptr;
 #endif
+  }
 
   template <typename T>
   struct is_unbounded_array : std::false_type {};
@@ -1837,19 +1841,19 @@ namespace erasure_type {
 
     template <typename T>
     T& access() noexcept
-    { return *EMBED_DETAIL_LAUNDER(static_cast<T*>(access())); }
+    { return *::ebd::detail::launder(static_cast<T*>(access())); }
 
     template <typename T>
     const T& access() const noexcept
-    { return *EMBED_DETAIL_LAUNDER(static_cast<const T*>(access())); }
+    { return *::ebd::detail::launder(static_cast<const T*>(access())); }
 
     template <typename T>
     volatile T& access() volatile noexcept
-    { return *EMBED_DETAIL_LAUNDER(static_cast<volatile T*>(access())); }
+    { return *::ebd::detail::launder(static_cast<volatile T*>(access())); }
 
     template <typename T>
     const volatile T& access() const volatile noexcept
-    { return *EMBED_DETAIL_LAUNDER(static_cast<const volatile T*>(access())); }
+    { return *::ebd::detail::launder(static_cast<const volatile T*>(access())); }
   };
 
   // ABI for passing either pointer or value.
@@ -3495,7 +3499,6 @@ namespace detail {
 #undef EMBED_DETAIL_REQUIRES_END
 #undef EMBED_DETAIL_TEXT
 #undef EMBED_DETAIL_TEXT_IMPL
-#undef EMBED_DETAIL_LAUNDER
 #undef EMBED_DETAIL_ALIAS
 #undef EMBED_DETAIL_FAIL_MESSAGE
 #undef EMBED_DETAIL_UNREACHABLE
