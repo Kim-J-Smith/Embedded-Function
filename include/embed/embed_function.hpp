@@ -1003,6 +1003,37 @@ inline namespace fn_traits {
   template <typename T, bool IsView = true>
   using get_stored_type_t = typename get_stored_type<T, IsView>::type;
 
+  // [func.wrap.move.ctor]/1
+  template <typename Signature, typename Fn, typename Ret, typename ArgsPackage>
+  struct is_callable_from_pkg;
+
+  template <typename Signature, typename Fn, typename Ret, typename... Args>
+  struct is_callable_from_pkg<Signature, Fn, Ret, args_package<Args...>> {
+    using unwrap_sig  = unwrap_signature<Signature>;
+    using f_cv        = typename unwrap_sig::template add_cv_like<Fn>;
+    using f_cvref     = typename unwrap_sig::template add_cvref_like<Fn>;
+    using f_inv_quals = conditional_t<unwrap_sig::hasRRef, f_cv&&, f_cv&>;
+
+    static constexpr bool value = unwrap_sig::isNoexcept
+      ? is_nothrow_invocable_r<Ret, f_cvref, Args...>::value
+        && is_nothrow_invocable_r<Ret, f_inv_quals, Args...>::value
+      : is_invocable_r<Ret, f_cvref, Args...>::value
+        && is_invocable_r<Ret, f_inv_quals, Args...>::value;
+  };
+
+  // Check the functor is callable with given arguments.
+  // [func.wrap.move.ctor]/1
+  template <typename Functor, typename Signature>
+  struct is_callable_from_impl {
+    using unwrap_sig = unwrap_signature<Signature>;
+    using ret       = typename unwrap_sig::ret;
+    using args_pack = typename unwrap_sig::args;
+    using dec_func  = decay_t<Functor>;
+
+    static constexpr bool value =
+      is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
+  };
+
   // Implement the `fn_can_convert`.
   template <typename To, typename From>
   struct fn_can_convert_impl : public std::false_type {};
@@ -1041,13 +1072,8 @@ inline namespace fn_traits {
     static constexpr bool noexcept_qualifier_ok = unwrap_to::isNoexcept == unwrap_from::isNoexcept
       || (CfgTo::isView && CfgFrom::isView && unwrap_to::isNoexcept < unwrap_from::isNoexcept);
 
-    static constexpr bool qualifier_ok =
-      (unwrap_to::hasConst <= unwrap_from::hasConst)
-      /// TODO: `volatile` -> non-`volatile` seems valid. Test and assembly analysis are needed.
-      && (unwrap_to::hasVolatile == unwrap_from::hasVolatile)
-      && (unwrap_to::hasRRef == unwrap_from::hasRRef)
-      && (unwrap_to::hasLRef == unwrap_from::hasLRef)
-      && noexcept_qualifier_ok;
+    static constexpr bool qualifier_ok = unwrap_to::hasConst <= unwrap_from::hasConst // view
+      && is_callable_from_impl<function<BufFrom, CfgFrom, SigFrom>, SigTo>::value;
 
     static constexpr bool value =
       buf_ok && cfg_ok && sig_ret_ok && sig_args_ok && qualifier_ok;
@@ -1087,37 +1113,6 @@ inline namespace fn_traits {
   template <typename Fn, typename... Args>
   struct invoke_result_package<Fn, args_package<Args...>>
   : public invoke_result<Fn, Args...> {};
-
-  // [func.wrap.move.ctor]/1
-  template <typename Signature, typename Fn, typename Ret, typename ArgsPackage>
-  struct is_callable_from_pkg;
-
-  template <typename Signature, typename Fn, typename Ret, typename... Args>
-  struct is_callable_from_pkg<Signature, Fn, Ret, args_package<Args...>> {
-    using unwrap_sig  = unwrap_signature<Signature>;
-    using f_cv        = typename unwrap_sig::template add_cv_like<Fn>;
-    using f_cvref     = typename unwrap_sig::template add_cvref_like<Fn>;
-    using f_inv_quals = conditional_t<unwrap_sig::hasRRef, f_cv&&, f_cv&>;
-
-    static constexpr bool value = unwrap_sig::isNoexcept
-      ? is_nothrow_invocable_r<Ret, f_cvref, Args...>::value
-        && is_nothrow_invocable_r<Ret, f_inv_quals, Args...>::value
-      : is_invocable_r<Ret, f_cvref, Args...>::value
-        && is_invocable_r<Ret, f_inv_quals, Args...>::value;
-  };
-
-  // Check the functor is callable with given arguments.
-  // [func.wrap.move.ctor]/1
-  template <typename Functor, typename Signature>
-  struct is_callable_from_impl {
-    using unwrap_sig = unwrap_signature<Signature>;
-    using ret       = typename unwrap_sig::ret;
-    using args_pack = typename unwrap_sig::args;
-    using dec_func  = decay_t<Functor>;
-
-    static constexpr bool value =
-      is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
-  };
 
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_size_is_enough : bool_constant<
