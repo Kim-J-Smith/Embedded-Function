@@ -4,9 +4,9 @@
 #include "test_function.hpp"
 
 int main() {
-  ebd::fn_ref<int(int, int)> f1 = ebd_test_free_func_iii_add;
-  ebd::fn_ref<int(int, int) const> f2 = ebd_test_free_func_iii_add;
+  ebd::fn_ref<int(int, int)> f_non_const = ebd_test_free_func_iii_add;
+  ebd::fn_ref<int(int, int) const> f_const = ebd_test_free_func_iii_add;
 
-  // const -> non-const is not allowed.
-  f2 = f1; // FAIL
+  // fn_ref<Sig> -> fn_ref<Sig const> is invalid.
+  f_const = f_non_const; // FAIL
 }

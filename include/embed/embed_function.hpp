@@ -1003,13 +1003,44 @@ inline namespace fn_traits {
   template <typename T, bool IsView = true>
   using get_stored_type_t = typename get_stored_type<T, IsView>::type;
 
-  // Implement the `fn_can_convert`.
+  // [func.wrap.move.ctor]/1
+  template <typename Signature, typename Fn, typename Ret, typename ArgsPackage>
+  struct is_callable_from_pkg;
+
+  template <typename Signature, typename Fn, typename Ret, typename... Args>
+  struct is_callable_from_pkg<Signature, Fn, Ret, args_package<Args...>> {
+    using unwrap_sig  = unwrap_signature<Signature>;
+    using f_cv        = typename unwrap_sig::template add_cv_like<Fn>;
+    using f_cvref     = typename unwrap_sig::template add_cvref_like<Fn>;
+    using f_inv_quals = conditional_t<unwrap_sig::hasRRef, f_cv&&, f_cv&>;
+
+    static constexpr bool value = unwrap_sig::isNoexcept
+      ? is_nothrow_invocable_r<Ret, f_cvref, Args...>::value
+        && is_nothrow_invocable_r<Ret, f_inv_quals, Args...>::value
+      : is_invocable_r<Ret, f_cvref, Args...>::value
+        && is_invocable_r<Ret, f_inv_quals, Args...>::value;
+  };
+
+  // Check the functor is callable with given arguments.
+  // [func.wrap.move.ctor]/1
+  template <typename Functor, typename Signature>
+  struct is_callable_from_impl {
+    using unwrap_sig = unwrap_signature<Signature>;
+    using ret       = typename unwrap_sig::ret;
+    using args_pack = typename unwrap_sig::args;
+    using dec_func  = decay_t<Functor>;
+
+    static constexpr bool value =
+      is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
+  };
+
+  // Implement `is_convertible_from_specialization`.
   template <typename To, typename From>
-  struct fn_can_convert_impl : public std::false_type {};
+  struct is_convertible_from_specialization_impl : public std::false_type {};
 
   template <std::size_t BufTo, typename CfgTo, typename SigTo,
     std::size_t BufFrom, typename CfgFrom, typename SigFrom>
-  struct fn_can_convert_impl<
+  struct is_convertible_from_specialization_impl<
     function<BufTo, CfgTo, SigTo>, function<BufFrom, CfgFrom, SigFrom>
   > {
     // Get the unwrap trait.
@@ -1042,23 +1073,18 @@ inline namespace fn_traits {
       || (CfgTo::isView && CfgFrom::isView && unwrap_to::isNoexcept < unwrap_from::isNoexcept);
 
     static constexpr bool qualifier_ok =
-      (unwrap_to::hasConst <= unwrap_from::hasConst)
-      /// TODO: `volatile` -> non-`volatile` seems valid. Test and assembly analysis are needed.
-      && (unwrap_to::hasVolatile == unwrap_from::hasVolatile)
-      && (unwrap_to::hasRRef == unwrap_from::hasRRef)
-      && (unwrap_to::hasLRef == unwrap_from::hasLRef)
-      && noexcept_qualifier_ok;
+      // The `const` and `noexcept` checks in the Non-owning context have certain peculiarities.
+      noexcept_qualifier_ok && unwrap_to::hasConst <= unwrap_from::hasConst
+      && is_callable_from_impl<function<BufFrom, CfgFrom, SigFrom>, SigTo>::value;
 
     static constexpr bool value =
       buf_ok && cfg_ok && sig_ret_ok && sig_args_ok && qualifier_ok;
   };
 
-  // Check ebd::detail::function are similar or not.
+  // If the `From` type can be converted to the `To` type, then the value is `true`.
   template <typename To, typename From>
-  struct fn_can_convert : public bool_constant<
-    fn_can_convert_impl<
-      remove_reference_t<To>, remove_reference_t<From>
-    >::value
+  struct is_convertible_from_specialization : public bool_constant<
+    is_convertible_from_specialization_impl<remove_reference_t<To>, remove_reference_t<From>>::value
   >::type {};
 
   // Check whether Functor can be constructed as decay_t<Functor>
@@ -1087,37 +1113,6 @@ inline namespace fn_traits {
   template <typename Fn, typename... Args>
   struct invoke_result_package<Fn, args_package<Args...>>
   : public invoke_result<Fn, Args...> {};
-
-  // [func.wrap.move.ctor]/1
-  template <typename Signature, typename Fn, typename Ret, typename ArgsPackage>
-  struct is_callable_from_pkg;
-
-  template <typename Signature, typename Fn, typename Ret, typename... Args>
-  struct is_callable_from_pkg<Signature, Fn, Ret, args_package<Args...>> {
-    using unwrap_sig  = unwrap_signature<Signature>;
-    using f_cv        = typename unwrap_sig::template add_cv_like<Fn>;
-    using f_cvref     = typename unwrap_sig::template add_cvref_like<Fn>;
-    using f_inv_quals = conditional_t<unwrap_sig::hasRRef, f_cv&&, f_cv&>;
-
-    static constexpr bool value = unwrap_sig::isNoexcept
-      ? is_nothrow_invocable_r<Ret, f_cvref, Args...>::value
-        && is_nothrow_invocable_r<Ret, f_inv_quals, Args...>::value
-      : is_invocable_r<Ret, f_cvref, Args...>::value
-        && is_invocable_r<Ret, f_inv_quals, Args...>::value;
-  };
-
-  // Check the functor is callable with given arguments.
-  // [func.wrap.move.ctor]/1
-  template <typename Functor, typename Signature>
-  struct is_callable_from_impl {
-    using unwrap_sig = unwrap_signature<Signature>;
-    using ret       = typename unwrap_sig::ret;
-    using args_pack = typename unwrap_sig::args;
-    using dec_func  = decay_t<Functor>;
-
-    static constexpr bool value =
-      is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
-  };
 
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_size_is_enough : bool_constant<
@@ -2666,10 +2661,10 @@ namespace crtp_mixins {
     core_components_impl& operator=(std::nullptr_t) = delete; // no empty state in view mode
     EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
     EMBED_DETAIL_REQUIRES_END(
-      (!fn_can_convert<Self, T>::value)
+      (!is_convertible_from_specialization<Self, T>::value)
       && (!std::is_pointer<T>::value)
       && (!is_constant_wrapper<T>::value)
-    ) core_components_impl& operator=(T)              = delete;
+    ) core_components_impl& operator=(T)            = delete;
 
     // Swap the contents of two function objects. (View mode)
     void swap(core_components_impl& fn_raw) noexcept {
@@ -2807,7 +2802,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
+      is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
       && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
     ) function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
@@ -2823,7 +2818,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
+      is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
       && (!Config::isView)
     ) function(function<OtherSize, OtherCfg, OtherSig>&& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
@@ -2842,7 +2837,7 @@ namespace crtp_mixins {
     /// @note Used for function wrapper only. (OWNING)
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
     EMBED_DETAIL_REQUIRES_END(
-      (!fn_can_convert<function, Functor>::value)
+      (!is_convertible_from_specialization<function, Functor>::value)
       && (!is_self<Functor, function>::value)
       && (!is_in_place_type<decay_t<Functor>>::value)
       && is_callable_from<Functor>::value
@@ -2885,7 +2880,7 @@ namespace crtp_mixins {
       typename Tp = remove_reference_t<Functor>)
     EMBED_DETAIL_REQUIRES_END(
       (!is_self<Functor, function>::value)
-      && (!fn_can_convert<function, Functor>::value)
+      && (!is_convertible_from_specialization<function, Functor>::value)
       && (!std::is_member_pointer<Tp>::value)
       && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
       && Config::isView

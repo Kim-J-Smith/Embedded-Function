@@ -124,3 +124,85 @@ TEST(AssignAndConvert, StatelessAssign) {
         ASSERT_EQ(f2(2, 1), false);
     }
 }
+
+// AssignAndConvert[6]
+TEST(AssignAndConvert, VolatileToNonVolatile) {
+    {
+        ebd::fn<void()> f_non_volatile;
+        ebd::fn<void() volatile> f_volatile;
+
+        f_non_volatile = f_volatile; // OK
+        // f_volatile = f_non_volatile; // Error
+    }
+    {
+        ebd::unique_fn<void()> f_non_volatile;
+        ebd::unique_fn<void() volatile> f_volatile;
+
+        f_non_volatile = std::move(f_volatile); // OK
+        // f_volatile = f_non_volatile; // Error
+    }
+    {
+        ebd::safe_fn<void()> f_non_volatile;
+        ebd::safe_fn<void() volatile> f_volatile;
+
+        f_non_volatile = f_volatile; // OK
+        // f_volatile = f_non_volatile; // Error
+    }
+    {
+        ebd::fn_ref<void()> f_non_volatile = +[]{};
+        ebd::fn_ref<void() volatile> f_volatile = +[]{};
+
+        f_non_volatile = f_volatile; // OK
+        // f_volatile = f_non_volatile; // Error
+    }
+}
+
+// AssignAndConvert[7]
+TEST(AssignAndConvert, NonRefToLeftValueRef) {
+    {
+        ebd::fn<void()> f_non_ref;
+        ebd::fn<void() &> f_ref;
+
+        f_ref = f_non_ref; // OK
+        // f_non_ref = f_ref; // Error
+    }
+    {
+        ebd::unique_fn<void()> f_non_ref;
+        ebd::unique_fn<void() &> f_ref;
+
+        f_ref = std::move(f_non_ref); // OK
+        // f_non_ref = f_ref; // Error
+    }
+    {
+        ebd::safe_fn<void()> f_non_ref;
+        ebd::safe_fn<void() &> f_ref;
+
+        f_ref = f_non_ref; // OK
+        // f_non_ref = f_ref; // Error
+    }
+}
+
+// AssignAndConvert[8]
+TEST(AssignAndConvert, NonRefToRightValueRef) {
+    {
+        ebd::fn<void()> f_non_ref;
+        ebd::fn<void() &&> f_ref;
+
+        f_ref = f_non_ref; // OK
+        // f_non_ref = f_ref; // Error
+    }
+    {
+        ebd::unique_fn<void()> f_non_ref;
+        ebd::unique_fn<void() &&> f_ref;
+
+        f_ref = std::move(f_non_ref); // OK
+        // f_non_ref = f_ref; // Error
+    }
+    {
+        ebd::safe_fn<void()> f_non_ref;
+        ebd::safe_fn<void() &&> f_ref;
+
+        f_ref = f_non_ref; // OK
+        // f_non_ref = f_ref; // Error
+    }
+}
