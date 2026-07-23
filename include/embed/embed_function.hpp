@@ -1034,13 +1034,13 @@ inline namespace fn_traits {
       is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
   };
 
-  // Implement the `fn_can_convert`.
+  // Implement `is_convertible_from_specialization`.
   template <typename To, typename From>
-  struct fn_can_convert_impl : public std::false_type {};
+  struct is_convertible_from_specialization_impl : public std::false_type {};
 
   template <std::size_t BufTo, typename CfgTo, typename SigTo,
     std::size_t BufFrom, typename CfgFrom, typename SigFrom>
-  struct fn_can_convert_impl<
+  struct is_convertible_from_specialization_impl<
     function<BufTo, CfgTo, SigTo>, function<BufFrom, CfgFrom, SigFrom>
   > {
     // Get the unwrap trait.
@@ -1081,12 +1081,10 @@ inline namespace fn_traits {
       buf_ok && cfg_ok && sig_ret_ok && sig_args_ok && qualifier_ok;
   };
 
-  // Check ebd::detail::function are similar or not.
+  // If the `From` type can be converted to the `To` type, then the value is `true`.
   template <typename To, typename From>
-  struct fn_can_convert : public bool_constant<
-    fn_can_convert_impl<
-      remove_reference_t<To>, remove_reference_t<From>
-    >::value
+  struct is_convertible_from_specialization : public bool_constant<
+    is_convertible_from_specialization_impl<remove_reference_t<To>, remove_reference_t<From>>::value
   >::type {};
 
   // Check whether Functor can be constructed as decay_t<Functor>
@@ -2663,10 +2661,10 @@ namespace crtp_mixins {
     core_components_impl& operator=(std::nullptr_t) = delete; // no empty state in view mode
     EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
     EMBED_DETAIL_REQUIRES_END(
-      (!fn_can_convert<Self, T>::value)
+      (!is_convertible_from_specialization<Self, T>::value)
       && (!std::is_pointer<T>::value)
       && (!is_constant_wrapper<T>::value)
-    ) core_components_impl& operator=(T)              = delete;
+    ) core_components_impl& operator=(T)            = delete;
 
     // Swap the contents of two function objects. (View mode)
     void swap(core_components_impl& fn_raw) noexcept {
@@ -2804,7 +2802,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
+      is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
       && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
     ) function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
@@ -2820,7 +2818,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      fn_can_convert<function, function<OtherSize, OtherCfg, OtherSig>>::value
+      is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
       && (!Config::isView)
     ) function(function<OtherSize, OtherCfg, OtherSig>&& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
@@ -2839,7 +2837,7 @@ namespace crtp_mixins {
     /// @note Used for function wrapper only. (OWNING)
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
     EMBED_DETAIL_REQUIRES_END(
-      (!fn_can_convert<function, Functor>::value)
+      (!is_convertible_from_specialization<function, Functor>::value)
       && (!is_self<Functor, function>::value)
       && (!is_in_place_type<decay_t<Functor>>::value)
       && is_callable_from<Functor>::value
@@ -2882,7 +2880,7 @@ namespace crtp_mixins {
       typename Tp = remove_reference_t<Functor>)
     EMBED_DETAIL_REQUIRES_END(
       (!is_self<Functor, function>::value)
-      && (!fn_can_convert<function, Functor>::value)
+      && (!is_convertible_from_specialization<function, Functor>::value)
       && (!std::is_member_pointer<Tp>::value)
       && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
       && Config::isView
