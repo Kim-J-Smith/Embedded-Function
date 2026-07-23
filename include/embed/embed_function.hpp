@@ -1072,7 +1072,9 @@ inline namespace fn_traits {
     static constexpr bool noexcept_qualifier_ok = unwrap_to::isNoexcept == unwrap_from::isNoexcept
       || (CfgTo::isView && CfgFrom::isView && unwrap_to::isNoexcept < unwrap_from::isNoexcept);
 
-    static constexpr bool qualifier_ok = unwrap_to::hasConst <= unwrap_from::hasConst // view
+    static constexpr bool qualifier_ok =
+      // The `const` and `noexcept` checks in the Non-owning context have certain peculiarities.
+      noexcept_qualifier_ok && unwrap_to::hasConst <= unwrap_from::hasConst
       && is_callable_from_impl<function<BufFrom, CfgFrom, SigFrom>, SigTo>::value;
 
     static constexpr bool value =
