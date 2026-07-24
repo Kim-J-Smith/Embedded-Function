@@ -706,3 +706,24 @@ TEST(InitFunction, from_copyable_function) {
     ASSERT_EQ(f3.is_empty(), true);
 }
 #endif
+
+// InitFunction[38]
+TEST(InitFunction, from_large_alignment) {
+    {
+        ebd::fn<int() const> f = ebd_test_large_alignment{};
+        ASSERT_EQ(f(), 42);
+    }
+    {
+        ebd::unique_fn<int() const> f = ebd_test_large_alignment{};
+        ASSERT_EQ(f(), 42);
+    }
+    {
+        ebd::safe_fn<int() const> f = ebd_test_large_alignment{};
+        ASSERT_EQ(f(), 42);
+    }
+    {
+        ebd_test_large_alignment obj{};
+        ebd::fn_ref<int() const> f = obj;
+        ASSERT_EQ(f(), 42);
+    }
+}

@@ -1145,7 +1145,13 @@ inline namespace fn_traits {
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
 #endif
 
-    static constexpr std::size_t align_value = alignof(void (UndefinedClass::*) ());
+    // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::safe_fn).
+    // Using alignof(std::max_align_t) ensures that objects with the maximum
+    // fundamental alignment can be stored in the internal buffer.
+    static constexpr std::size_t align_value = alignof(std::max_align_t);
+
+    // The alignment for non-owning wrapper (ebd::fn_ref).
+    static constexpr std::size_t view_align_value = alignof(void (*) ());
   };
 
   // Get aligned size. Rounds up to the nearest MinAlign size.
@@ -1809,7 +1815,7 @@ namespace erasure_type {
   union EMBED_DETAIL_ALIAS ErasureCore {
     // An array of `unsigned char` can be used to hold other objects.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0137r1.html>.
-    unsigned char pod[get_aligned_size(Size)];
+    unsigned char pod[get_aligned_size<alignof(void*)>(Size)];
     ErasureRefStorage ref_storage; // alignas(ref_storage)
   };
 
@@ -1822,32 +1828,35 @@ namespace erasure_type {
   // placement new. After that, using `access` to obtain the address or reference
   // (rather than the content) is also in accordance with the C++ standard.
   // See <https://eel.is/c++draft/basic.life#7>.
-  template <std::size_t Size>
+  template <bool IsView, std::size_t Size>
   struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
-    alignas(default_buffer_size::align_value) ErasureCore<Size> m_core;
+    alignas(IsView
+            ? default_buffer_size::view_align_value
+            : default_buffer_size::align_value)
+    ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
-    void* access() noexcept { return &m_core.pod[0]; }
-    const void* access() const noexcept { return &m_core.pod[0]; }
+    EMBED_NODISCARD void* access() noexcept { return &m_core.pod[0]; }
+    EMBED_NODISCARD const void* access() const noexcept { return &m_core.pod[0]; }
 
     // Access the pointer of erasureCore that qualified with volatile or const volatile.
-    volatile void* access() volatile noexcept { return &m_core.pod[0]; }
-    const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
+    EMBED_NODISCARD volatile void* access() volatile noexcept { return &m_core.pod[0]; }
+    EMBED_NODISCARD const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
 
     template <typename T>
-    T& access() noexcept
+    EMBED_NODISCARD T& access() noexcept
     { return *::ebd::detail::launder(static_cast<T*>(access())); }
 
     template <typename T>
-    const T& access() const noexcept
+    EMBED_NODISCARD const T& access() const noexcept
     { return *::ebd::detail::launder(static_cast<const T*>(access())); }
 
     template <typename T>
-    volatile T& access() volatile noexcept
+    EMBED_NODISCARD volatile T& access() volatile noexcept
     { return *::ebd::detail::launder(static_cast<volatile T*>(access())); }
 
     template <typename T>
-    const volatile T& access() const volatile noexcept
+    EMBED_NODISCARD const volatile T& access() const volatile noexcept
     { return *::ebd::detail::launder(static_cast<const volatile T*>(access())); }
   };
 
@@ -1904,12 +1913,11 @@ namespace invocation {
   struct InvokerImpl;
 
 #define EMBED_DETAIL_INVOKER_IMPL_DEFINE(C, V, REF, NOEXCEPT)                     \
-  template <std::size_t Size, typename Config,                                    \
-    typename Ret, typename... Args>                                               \
+  template <std::size_t Size, typename Config, typename Ret, typename... Args>    \
   struct InvokerImpl<Size, Config, Ret(Args...) C V REF NOEXCEPT> {               \
   public:                                                                         \
     using erasure_base_t = erasure_type::ErasureBase;                             \
-    using erasure_t = erasure_type::Erasure<Size>;                                \
+    using erasure_t = erasure_type::Erasure<Config::isView, Size>;                \
     using erasure_pass_t = erasure_type::ErasurePass C;                           \
     static constexpr bool is_rvalue_ref =                                         \
       std::is_rvalue_reference<int REF>::value;                                   \
@@ -2549,7 +2557,7 @@ namespace crtp_mixins {
     constexpr member_variable_impl(std::nullptr_t) noexcept
     : m_erasure(erasure_t{}), m_command(command_t{}) {}
 
-    using erasure_t = erasure_type::Erasure<BufferSize>;
+    using erasure_t = erasure_type::Erasure<Config::isView, BufferSize>;
     using command_t = command::CommandTable<
       Config::isView, BufferSize, Config, Signature,
       typename unwrap_signature<Signature>::args>;
