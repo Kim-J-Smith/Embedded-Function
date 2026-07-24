@@ -6,15 +6,16 @@
 #include <vector>
 #include <queue>
 #include <condition_variable>
-#include <memory>
 #include <functional>
 #include <type_traits>
 #include <embed/embed_function.hpp>
 
 class ThreadPool {
 private:
+    using Task_t = decltype(ebd::make_fn<void()>(std::packaged_task<void()>{}));
+
     std::vector<std::thread> m_wokers;
-    std::queue<ebd::unique_fn<void()>> m_tasks;
+    std::queue<Task_t> m_tasks;
     std::mutex m_mutex;
     std::condition_variable m_cond_var;
     bool m_stop_flag;
@@ -25,13 +26,6 @@ private:
     template <class F, class... Ts> using Result_t = typename ebd::detail::invoke_result<F, Ts...>::type;
 #endif
 
-    template<typename Thunk>
-    struct lambda_like_thunk {
-        Thunk thunk;
-        lambda_like_thunk(Thunk&& thunk) : thunk(std::move(thunk)) {}
-        void operator()() const { (*thunk) (); }
-    };
-
     template <typename Callable, typename... Args>
     using SubmitResult_t = typename std::conditional<
         std::is_void<Result_t<Callable&&, Args&&...>>::value,
@@ -40,7 +34,7 @@ private:
 
     void thread_work() {
         while (true) {
-            ebd::unique_fn<void()> task;
+            Task_t task;
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_cond_var.wait(lock, [this] { return m_stop_flag || !m_tasks.empty(); });
@@ -77,13 +71,13 @@ public:
     SubmitResult_t<Callable, Args...> submit(Callable&& callable_obj, Args&&... args) {
         using future_res_t = SubmitResult_t<Callable, Args...>;
         using task_t = std::packaged_task<Result_t<Callable&&, Args&&...>()>;
-        // ebd::unique_fn wraps move-only object - no std::shared_ptr needed
-        auto new_task = std::unique_ptr<task_t>(new task_t(
-            std::bind(std::forward<Callable>(callable_obj), std::forward<Args>(args)...)));
-        auto result = new_task->get_future();
+        // ebd::unique_fn wraps move-only packaged_task - no std::shared_ptr needed
+        auto new_task = std::packaged_task<Result_t<Callable&&, Args&&...>()>(
+            std::bind(std::forward<Callable>(callable_obj), std::forward<Args>(args)...));
+        auto result = new_task.get_future();
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_tasks.emplace(lambda_like_thunk<std::unique_ptr<task_t>>(std::move(new_task)));
+            m_tasks.emplace(std::move(new_task));
         }
         m_cond_var.notify_one();
         return static_cast<future_res_t>(std::move(result));
