@@ -225,3 +225,8 @@ struct ebd_test_static_call_operator {
 #endif
 
 inline int ebd_test_safe_tmp_fn(ebd::fn_ref<int()> f) { return f(); }
+
+struct ebd_test_large_alignment {
+    alignas(std::max_align_t) int m_var;
+    int operator()() const { return 42; }
+};

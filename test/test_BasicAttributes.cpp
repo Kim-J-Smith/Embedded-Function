@@ -18,10 +18,10 @@ TEST(BasicAttributes, SizeAndAlign) {
     ASSERT_EQ(sf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
     ASSERT_EQ(fv_t::get_buffer_size() == ebd::detail::default_buffer_size::view_buf, true);
 
-    ASSERT_EQ(alignof(f_t) >= alignof(void*), true);
-    ASSERT_EQ(alignof(uf_t) >= alignof(void*), true);
-    ASSERT_EQ(alignof(sf_t) >= alignof(void*), true);
-    ASSERT_EQ(alignof(fv_t) >= alignof(void*), true);
+    ASSERT_EQ(alignof(f_t) == ebd::detail::default_buffer_size::align_value, true);
+    ASSERT_EQ(alignof(uf_t) == ebd::detail::default_buffer_size::align_value, true);
+    ASSERT_EQ(alignof(sf_t) == ebd::detail::default_buffer_size::align_value, true);
+    ASSERT_EQ(alignof(fv_t) == alignof(void(*)()), true);
 
     ASSERT_EQ(sizeof(f_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
     ASSERT_EQ(sizeof(uf_t) - uf_t::get_buffer_size(), 2 * sizeof(void*));
@@ -100,19 +100,19 @@ TEST(BasicAttributes, DefaultConfig) {
     static_assert(
         std::is_same<
             ebd::fn<void(), 0>, 
-            ebd::basic_fn<void(), sizeof(void(*)()), true, false, true, false>
+            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), true, false, true, false>
         >::value, 
         "The default config of ebd::fn has been changed!");
     static_assert(
         std::is_same<
             ebd::unique_fn<void(), 0>, 
-            ebd::basic_fn<void(), sizeof(void(*)()), false, false, true, false>
+            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), false, false, true, false>
         >::value, 
         "The default config of ebd::unique_fn has been changed!");
     static_assert(
         std::is_same<
             ebd::safe_fn<void(), 0>, 
-            ebd::basic_fn<void(), sizeof(void(*)()), true, false, false, true>
+            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), true, false, false, true>
         >::value, 
         "The default config of ebd::safe_fn has been changed!");
     static_assert(
