@@ -1145,7 +1145,13 @@ inline namespace fn_traits {
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
 #endif
 
+    // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::safe_fn).
+    // Using alignof(std::max_align_t) ensures that objects with the maximum
+    // fundamental alignment can be stored in the internal buffer.
     static constexpr std::size_t align_value = alignof(std::max_align_t);
+
+    // The alignment for non-owning wrapper (ebd::fn_ref).
+    static constexpr std::size_t view_align_value = alignof(void (*) ());
   };
 
   // Get aligned size. Rounds up to the nearest MinAlign size.
@@ -1824,7 +1830,9 @@ namespace erasure_type {
   // See <https://eel.is/c++draft/basic.life#7>.
   template <bool IsView, std::size_t Size>
   struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
-    alignas(IsView ? alignof(void(*)()) : default_buffer_size::align_value)
+    alignas(IsView
+            ? default_buffer_size::view_align_value
+            : default_buffer_size::align_value)
     ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
