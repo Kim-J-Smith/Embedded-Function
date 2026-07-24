@@ -1836,27 +1836,27 @@ namespace erasure_type {
     ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
-    void* access() noexcept { return &m_core.pod[0]; }
-    const void* access() const noexcept { return &m_core.pod[0]; }
+    EMBED_NODISCARD void* access() noexcept { return &m_core.pod[0]; }
+    EMBED_NODISCARD const void* access() const noexcept { return &m_core.pod[0]; }
 
     // Access the pointer of erasureCore that qualified with volatile or const volatile.
-    volatile void* access() volatile noexcept { return &m_core.pod[0]; }
-    const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
+    EMBED_NODISCARD volatile void* access() volatile noexcept { return &m_core.pod[0]; }
+    EMBED_NODISCARD const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
 
     template <typename T>
-    T& access() noexcept
+    EMBED_NODISCARD T& access() noexcept
     { return *::ebd::detail::launder(static_cast<T*>(access())); }
 
     template <typename T>
-    const T& access() const noexcept
+    EMBED_NODISCARD const T& access() const noexcept
     { return *::ebd::detail::launder(static_cast<const T*>(access())); }
 
     template <typename T>
-    volatile T& access() volatile noexcept
+    EMBED_NODISCARD volatile T& access() volatile noexcept
     { return *::ebd::detail::launder(static_cast<volatile T*>(access())); }
 
     template <typename T>
-    const volatile T& access() const volatile noexcept
+    EMBED_NODISCARD const volatile T& access() const volatile noexcept
     { return *::ebd::detail::launder(static_cast<const volatile T*>(access())); }
   };
 
