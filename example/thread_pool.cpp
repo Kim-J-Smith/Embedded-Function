@@ -63,7 +63,6 @@ public:
 
     template <typename Callable, typename... Args>
     std::future<Result_t<Callable, Args...>> submit(Callable&& callable_obj, Args&&... args) {
-        using task_t = std::packaged_task<Result_t<Callable, Args...>()>;
         // ebd::unique_fn wraps move-only packaged_task - no std::shared_ptr needed
         auto new_task = std::packaged_task<Result_t<Callable, Args...>()>(
             std::bind(std::forward<Callable>(callable_obj), std::forward<Args>(args)...));
