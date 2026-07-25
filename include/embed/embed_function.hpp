@@ -27,6 +27,7 @@
 
 /// @b EMBED_FN_HOOK_DEBUG(message)
 /// If this macro is defined, it will be called to print debug message in debug mode.
+/// @example `fputs(message, stderr)`
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
@@ -271,14 +272,14 @@
 # define EMBED_DETAIL_FAIL_MESSAGE(message)
 # define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #else
-# define EMBED_DETAIL_FAIL_MESSAGE(message)                                   \
-  do {                                                                        \
-    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message);\
+# define EMBED_DETAIL_FAIL_MESSAGE(message)                                             \
+  do {                                                                                  \
+    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) ":\n\t" message "\n"); \
   } while(0) /* Output message together with file name and line number. */
-# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)                     \
-  do { if (!(expression)) {                                                   \
-    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) " " message);\
-    std::terminate();                                                         \
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)                               \
+  do { if (!(expression)) {                                                             \
+    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) ":\n\t" message "\n"); \
+    std::terminate();                                                                   \
   } } while(0) /* Output message and terminate procedure if expression is false. */
 #endif
 
