@@ -26,12 +26,6 @@ private:
     template <class F, class... Ts> using Result_t = typename ebd::detail::invoke_result<F, Ts...>::type;
 #endif
 
-    template <typename Callable, typename... Args>
-    using SubmitResult_t = typename std::conditional<
-        std::is_void<Result_t<Callable&&, Args&&...>>::value,
-        void, std::future<Result_t<Callable&&, Args&&...>>
-    >::type;
-
     void thread_work() {
         while (true) {
             Task_t task;
@@ -68,11 +62,10 @@ public:
     }
 
     template <typename Callable, typename... Args>
-    SubmitResult_t<Callable, Args...> submit(Callable&& callable_obj, Args&&... args) {
-        using future_res_t = SubmitResult_t<Callable, Args...>;
-        using task_t = std::packaged_task<Result_t<Callable&&, Args&&...>()>;
+    std::future<Result_t<Callable, Args...>> submit(Callable&& callable_obj, Args&&... args) {
+        using task_t = std::packaged_task<Result_t<Callable, Args...>()>;
         // ebd::unique_fn wraps move-only packaged_task - no std::shared_ptr needed
-        auto new_task = std::packaged_task<Result_t<Callable&&, Args&&...>()>(
+        auto new_task = std::packaged_task<Result_t<Callable, Args...>()>(
             std::bind(std::forward<Callable>(callable_obj), std::forward<Args>(args)...));
         auto result = new_task.get_future();
         {
@@ -80,7 +73,7 @@ public:
             m_tasks.emplace(std::move(new_task));
         }
         m_cond_var.notify_one();
-        return static_cast<future_res_t>(std::move(result));
+        return result;
     }
 };
 
