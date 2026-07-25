@@ -1,14 +1,14 @@
 ## 🔧 Fixed Bugs
-- Fixed a bug where `ebd::fn`, `ebd::unique_fn` and `ebd::safe_fn` could not wrap callable objects that was aligned to `alignof(std::max_align_t)` on some platforms.
+- Fixed a bug where `ebd::fn`, `ebd::unique_fn` and `ebd::safe_fn` could not wrap callable objects that were aligned to `alignof(std::max_align_t)` on some platforms.
 
 ## ⚠️ Breaking Changes
-- `ebd::fn`, `ebd::unique_fn` and `ebd::safe_fn` are now aligned to `alignof(std::max_align_t)`.
+- The alignment of `ebd::fn`, `ebd::unique_fn` and `ebd::safe_fn` has been changed to `alignof(std::max_align_t)`.
 
 ## ✨ New Features
 - Added some code examples in `example/`.
 
 ## 🛠️ Optimizations and Improvements
-- None.
+- Optimized debug information to provide better diagnostics.
 
 ## 📌 Notes
 - **The macro `EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER` will be removed in v2.2.0**. If you still rely on it, please inform us in the [issues](https://github.com/Kim-J-Smith/Embedded-Function/issues) section.
