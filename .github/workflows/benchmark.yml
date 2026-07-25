@@ -3,9 +3,17 @@ name: "Benchmark"
 on:
   push:
     branches: [ main, version-* ]
+    paths:
+      - 'include/**'
+      - 'benchmark/**'
+      - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [ main, version-* ]
     types: [ opened, synchronize, reopened ]
+    paths:
+      - 'include/**'
+      - 'benchmark/**'
+      - '.github/workflows/benchmark.yml'
 
 jobs:
   # Ubuntu check
