@@ -27,12 +27,7 @@
 
 /// @b EMBED_FN_HOOK_DEBUG(message)
 /// If this macro is defined, it will be called to print debug message in debug mode.
-/// @example
-// ```cpp
-//  #include <cstdio>
-//  #define EMBED_FN_HOOK_DEBUG(message) fputs(message, stderr)
-//  #include <embed/embed_function.hpp>
-// ```
+/// @example `fputs(message, stderr)`
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
