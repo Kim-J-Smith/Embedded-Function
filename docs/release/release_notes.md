@@ -1,11 +1,11 @@
 ## 🔧 Fixed Bugs
-- None.
+- Fixed a bug where `ebd::fn`, `ebd::unique_fn` and `ebd::safe_fn` could not wrap callable objects that was aligned to `alignof(std::max_align_t)` on some platforms.
 
 ## ⚠️ Breaking Changes
-- None.
+- `ebd::fn`, `ebd::unique_fn` and `ebd::safe_fn` are now aligned to `alignof(std::max_align_t)`.
 
 ## ✨ New Features
-- None.
+- Added some code examples in `example/`.
 
 ## 🛠️ Optimizations and Improvements
 - None.
