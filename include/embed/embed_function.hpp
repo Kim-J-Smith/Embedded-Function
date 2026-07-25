@@ -79,6 +79,14 @@
 # endif
 #endif
 
+#ifndef EMBED_HAS_INCLUDE
+# if defined(__has_include)
+#  define EMBED_HAS_INCLUDE(x) __has_include(x)
+# else
+#  define EMBED_HAS_INCLUDE(x) 0
+# endif
+#endif
+
 #ifndef EMBED_CXX_ENABLE_EXCEPTION
 # if defined(__cpp_exceptions)
 #  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions != 0)
@@ -174,8 +182,7 @@
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
 # include <initializer_list>
-// TODO: __has_include() triggers warning in MSVC
-# if __cpp_impl_reflection >= 202506L && __has_include(<meta>)
+# if __cpp_impl_reflection >= 202506L && EMBED_HAS_INCLUDE(<meta>)
 #  include <meta>       // std::meta::is_complete_type(C++26)
 # endif
 #else
@@ -3520,6 +3527,7 @@ namespace detail {
 # undef EMBED_HAS_ATTRIBUTE
 # undef EMBED_HAS_CXX_ATTRIBUTE
 # undef EMBED_HAS_FEATURE
+# undef EMBED_HAS_INCLUDE
 # undef EMBED_ABI_VISIBILITY
 # undef EMBED_CXX14_CONSTEXPR
 # undef EMBED_CXX20_CONSTEXPR
