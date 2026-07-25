@@ -68,7 +68,7 @@ fn(100);
 ## Notes
 
 - `ebd::safe_fn` is copyable and owns the callable object it wraps.
-- The buffer size is automatically aligned to the nearest word size.
+- The buffer size is automatically aligned to the nearest alignment boundary.
 - The callable object must be noexcept in all operations (construction, destruction, copy, move).
 - If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.
 - When called in an empty state, `ebd::safe_fn` will call `std::terminate()` instead of throwing an exception.
