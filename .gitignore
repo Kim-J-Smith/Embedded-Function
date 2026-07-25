@@ -7,6 +7,17 @@
 *CMakeFiles*
 
 .clang-tidy
+.clangd
 
 *.idea*
 *.cache*
+
+/build/
+CMakeCache.txt
+Makefile
+*.pdb
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*~

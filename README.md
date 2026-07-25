@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.8-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.8">
+  <img src="https://img.shields.io/badge/Version-2.1.9-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.9">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
 </p>
@@ -9,8 +9,6 @@
 <p align="center">
   <a href="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml">
     <img src="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml/badge.svg">
-  </a>
-  <a>
     <img src="https://img.shields.io/badge/GCC_C++11~23-support-B46F1B?style=flat&logo=gnu" alt="gcc-C++11~23 - support">
     <img src="https://img.shields.io/badge/Clang_C++11~23-support-045891?style=flat&logo=llvm" alt="clang-C++11~23 - support">
     <img src="https://img.shields.io/badge/MSVC_C++14~23-support-5C2D91?style=flat" alt="msvc-C++14~23 - support">
@@ -74,6 +72,8 @@ auto main() -> int {
 }
 ```
 
+> More examples are available in the [`example/`](./example/) directory.
+
 ## 🔧 Wrapper definition syntax
 
 ```cpp
@@ -122,7 +122,7 @@ auto main() -> int {
     - Allow the application of qualifiers, such as `const`, `volatile`, `&` and `&&`, to the function signature.
     - Ensure that the qualifier of the underlying object is consistent or more restrictive than that of the function signature.
 
-  - Learn and refer to the optimization experience of `std::function` in [libstdc++](https://gcc.gnu.org/cgit/gcc/commit/?id=d38d26be33aba5d4c12429478375a47c474124d2), [libc++](https://reviews.llvm.org/D55045) and [Microsoft C++ Standard Library](https://github.com/microsoft/STL/issues/969).
+  - Learn and refer to the optimization experience of `std::function` in libc++, libstdc++, MSVC STL.
 
   - Provide a view or reference to the callable object, referring to the [`std::function_ref` P0792](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html).
 
@@ -346,8 +346,6 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 > See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
 
 ## 🧭 Future learning & evolution reference
-
-- [`llvm::function_ref`](https://reviews.llvm.org/D106784?id=361604).
 
 - [C++26-`std::function_ref`-P0792](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html).
 
