@@ -1,0 +1,40 @@
+name: "Example Build"
+
+on:
+  pull_request:
+    branches: [ main, version-* ]
+    types: [ opened, synchronize, reopened ]
+    paths:
+      - 'example/**'
+      - 'include/**'
+      - '.github/workflows/example-pass.yml'
+
+jobs:
+  build-examples:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++ clang
+
+      - name: Build with g++ (C++11)
+        run: |
+          g++ -std=c++11 -I include -o /dev/null example/basic_usage.cpp
+          g++ -std=c++11 -I include -o /dev/null example/callback_abstraction.cpp
+          g++ -std=c++11 -I include -o /dev/null example/make_fn_deduction.cpp
+          g++ -std=c++11 -I include -o /dev/null example/member_binding.cpp
+          g++ -std=c++11 -I include -o /dev/null example/thread_pool.cpp
+
+      - name: Build with clang++ (C++11)
+        run: |
+          clang++ -std=c++11 -I include -o /dev/null example/basic_usage.cpp
+          clang++ -std=c++11 -I include -o /dev/null example/callback_abstraction.cpp
+          clang++ -std=c++11 -I include -o /dev/null example/make_fn_deduction.cpp
+          clang++ -std=c++11 -I include -o /dev/null example/member_binding.cpp
+          clang++ -std=c++11 -I include -o /dev/null example/thread_pool.cpp
