@@ -74,7 +74,7 @@ fn(100);
 ## Notes
 
 - `ebd::unique_fn` is move-only and owns the callable object it wraps.
-- The buffer size is automatically aligned to the nearest word size.
+- The buffer size is automatically aligned to the nearest alignment boundary.
 - If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.
 - When called in an empty state, `ebd::unique_fn` will throw `std::bad_function_call` (if exceptions are enabled).
 

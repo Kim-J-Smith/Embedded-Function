@@ -72,6 +72,8 @@ auto main() -> int {
 }
 ```
 
+> More examples are available in the [`example/`](./example/) directory.
+
 ## 🔧 Wrapper definition syntax
 
 ```cpp

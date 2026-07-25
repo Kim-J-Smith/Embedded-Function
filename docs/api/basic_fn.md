@@ -69,7 +69,7 @@ view(42);
 ## Notes
 
 - Prefer using the predefined aliases (`ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_view`) unless you need a combination not covered by them.
-- The buffer size is automatically aligned to the nearest word size.
+- The buffer size is automatically aligned to the nearest alignment boundary.
 - If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.
 
 ## See Also

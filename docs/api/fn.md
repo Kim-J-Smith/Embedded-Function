@@ -68,7 +68,7 @@ fn(100);
 ## Notes
 
 - `ebd::fn` is copyable and owns the callable object it wraps.
-- The buffer size is automatically aligned to the nearest word size.
+- The buffer size is automatically aligned to the nearest alignment boundary.
 - If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.
 - When called in an empty state, `ebd::fn` will throw `std::bad_function_call` (if exceptions are enabled).
 
