@@ -53,7 +53,7 @@ jobs:
           ./run_benchmark.sh
           cd ..
           mkdir -p runtime
-          cp build/runtime-report.md runtime
+          mv build/runtime-report.md runtime/gcc-runtime-report.md
 
       # Output the report
       - name: Save the benchmark result
@@ -61,7 +61,7 @@ jobs:
         with:
           name: benchmark-ubuntu-gcc-reports
           path: |
-            benchmark/runtime/runtime-report.md
+            benchmark/runtime/gcc-runtime-report.md
             benchmark/compiletime/benchmark_report.md
           retention-days: 60
 
@@ -93,7 +93,7 @@ jobs:
         run: |
           cmake --build build --config Release --target benchmark --parallel
           mkdir -p runtime
-          cp build/runtime-report.md runtime
+          mv build/runtime-report.md runtime/msvc-runtime-report.md
 
       # Output the report
       - name: Save the benchmark result
@@ -101,5 +101,5 @@ jobs:
         with:
           name: benchmark-windows-vs2026-reports
           path: |
-            benchmark/runtime/runtime-report.md
+            benchmark/runtime/msvc-runtime-report.md
           retention-days: 60

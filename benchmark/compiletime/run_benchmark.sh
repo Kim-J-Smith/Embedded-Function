@@ -114,7 +114,7 @@ fi
     echo "| \`${BENCH_TESTSOURCE_1}\` | ${avg_compile} |"
     echo "| \`${BENCH_BASELINE_FILE}\`     | ${avg_baseline} |"
     echo ""
-    echo "**Ratio (compile / baseline)**: ${ratio}"
+    echo "**Ratio (compile / baseline)**: ${ratio} (The reference value is 45 ~ 55)"
     echo ""
     echo "> The baseline represents the cost of some \`make_integer_sequence\` instantiations."
 } > "${REPORT_FILE}"
