@@ -1621,7 +1621,7 @@ inline namespace fn_traits {
   template <typename T>
   struct is_constant_wrapper : std::false_type {};
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
   template <auto Val, typename T>
   struct is_constant_wrapper<std::constant_wrapper<Val, T>> : std::true_type {};
 #endif
@@ -1895,7 +1895,7 @@ namespace invocation {
 #endif
 
 // Implement invocation for constant_wrapper.
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                            \
   struct view_cw {                                                                    \
     template <typename Cw>                                                            \
@@ -2288,7 +2288,7 @@ namespace command {
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
     }
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 
     /// @brief Initialize the m_invoker from given std::constant_wrapper.
 
@@ -2948,7 +2948,7 @@ namespace crtp_mixins {
 
 #endif
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 
     /// @todo experimental
 
@@ -3469,7 +3469,7 @@ constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { retur
 template <template <class, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 namespace detail {
 
   /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
@@ -3493,7 +3493,7 @@ namespace detail {
   >;
 
 } // end namespace detail
-#endif // ^^^ __cpp_lib_constant_wrapper >= 202606L
+#endif // ^^^ __cpp_lib_constant_wrapper >= 202603L
 
 } // end namespace ebd
 
