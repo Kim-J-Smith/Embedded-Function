@@ -2300,11 +2300,10 @@ namespace command {
       if constexpr (sizeof...(Args) > 0 && (requires {
           typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
         static_assert(!requires { typename std::constant_wrapper<
-              std::invoke(Cw::value, remove_cvref_t<Args>::value...)>;
-          }, "The argument types of fn_ref are all constexpr-param, and the"
-          " INVOKE result can be wrapped into std::constant_wrapper. This"
-          " means that you can simply use std::invoke(f, args...) instead"
-          " of fn_ref to avoid indirect INVOKE."
+              std::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
+          "[ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to `fn(args...)`, "
+          "otherwise the intended behavior for a non-owning function wrapper (fn_ref) "
+          "constructed from `cw<fn>` would be ambiguous."
         );
       }
     }
