@@ -1,4 +1,4 @@
-# Embedded Function
+﻿# Embedded Function
 
 <p align="center">
   <img src="https://img.shields.io/badge/Version-2.1.10-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.10">
@@ -23,15 +23,15 @@
 
 The library is [freestanding](https://en.cppreference.com/w/cpp/freestanding), making it feasible for embedded development or kernel design of an operating system.
 
-In a [single header file](./include/embed/embed_function.hpp), **four** function wrappers are provided as follows:
+In a [single header file](./include/embed/embed_function.hpp), **five** function wrappers are provided as follows (the customizable [`ebd::basic_fn`](./docs/api/basic_fn.md) is the fifth):
 
 ```cpp
 namespace ebd {
-template <class Signature, size_t BufferSize = DefaultSize>
+template <class Signature, size_t BufferSize = /*DefaultSize*/>
   class fn; // Wrapper for copyable callable objects.
-template <class Signature, size_t BufferSize = DefaultSize>
+template <class Signature, size_t BufferSize = /*DefaultSize*/>
   class unique_fn; // Wrapper for movable, especially move-only callable objects.
-template <class Signature, size_t BufferSize = DefaultSize>
+template <class Signature, size_t BufferSize = /*DefaultSize*/>
   class safe_fn; // Wrapper for copyable callable objects which assert no-throw in Ctor and Dtor.
 template <class Signature, size_t Unused = 0>
   class fn_ref; // View (non-owning wrapper) for callable objects.
@@ -97,7 +97,7 @@ auto main() -> int {
 
 - *`Qualifier`*: Applies to the wrapper's `operator()` (e.g., `const`, `noexcept`, `&`, `&&`), restricting which callable objects can be stored.
 
-- *`Buffer size`*: Size (in bytes) of the internal storage. Defaults to `DefaultSize`. Triggers `static_assert` if insufficient - no heap allocation.
+- *`Buffer size`*: Size (in bytes) of the internal storage. Triggers `static_assert` if insufficient - no heap allocation.
 
 - *`Callable object`*: Any entity callable with the target signature (function pointer, lambda, function object, `std::reference_wrapper`). Copied or moved into the buffer depending on wrapper type.
 
