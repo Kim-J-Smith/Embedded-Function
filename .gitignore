@@ -21,3 +21,8 @@ Thumbs.db
 *.log
 *.swp
 *~
+
+skills-lock.json
+.agents/
+.codex/
+.trae/
