@@ -1621,7 +1621,7 @@ inline namespace fn_traits {
   template <typename T>
   struct is_constant_wrapper : std::false_type {};
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
   template <auto Val, typename T>
   struct is_constant_wrapper<std::constant_wrapper<Val, T>> : std::true_type {};
 #endif
@@ -1895,7 +1895,7 @@ namespace invocation {
 #endif
 
 // Implement invocation for constant_wrapper.
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                            \
   struct view_cw {                                                                    \
     template <typename Cw>                                                            \
@@ -2288,7 +2288,7 @@ namespace command {
       m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
     }
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 
     /// @brief Initialize the m_invoker from given std::constant_wrapper.
 
@@ -2300,11 +2300,10 @@ namespace command {
       if constexpr (sizeof...(Args) > 0 && (requires {
           typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
         static_assert(!requires { typename std::constant_wrapper<
-              std::invoke(Cw::value, remove_cvref_t<Args>::value...)>;
-          }, "The argument types of fn_ref are all constexpr-param, and the"
-          " INVOKE result can be wrapped into std::constant_wrapper. This"
-          " means that you can simply use std::invoke(f, args...) instead"
-          " of fn_ref to avoid indirect INVOKE."
+              std::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
+          "[ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to `fn(args...)`, "
+          "otherwise the intended behavior for a non-owning function wrapper (fn_ref) "
+          "constructed from `cw<fn>` would be ambiguous."
         );
       }
     }
@@ -2948,7 +2947,7 @@ namespace crtp_mixins {
 
 #endif
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 
     /// @todo experimental
 
@@ -3469,7 +3468,7 @@ constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { retur
 template <template <class, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 namespace detail {
 
   /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
@@ -3493,7 +3492,7 @@ namespace detail {
   >;
 
 } // end namespace detail
-#endif // ^^^ __cpp_lib_constant_wrapper >= 202606L
+#endif // ^^^ __cpp_lib_constant_wrapper >= 202603L
 
 } // end namespace ebd
 
