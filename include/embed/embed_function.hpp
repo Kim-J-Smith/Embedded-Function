@@ -1170,26 +1170,25 @@ inline namespace fn_traits {
   { return size == 0 ? MinAlign : ((size - 1) / MinAlign + 1) * MinAlign; }
 
   // Check whether throwing operations are acceptable.
-  template <typename Functor, typename Object, typename Config,
+  template <typename Functor, typename Object,
+    bool IsViewOrMayThrow /*= Config::isView || !Config::assertNoThrow = true*/,
     typename DecFunctor = decay_t<Functor>>
-  struct assert_throwing_is_ok {
-    // The `is_ok` means the `DecFunctor` is nothrow-destructible and
+    // If `Config::isView` is true or `Config::assertNoThrow` is false,
+    // then all restrictions are ignored.
+  struct assert_throwing_is_ok : std::true_type {};
+
+  template <typename Functor, typename Object, typename DecFunctor>
+  struct assert_throwing_is_ok<Functor, Object, /*IsViewOrMayThrow=*/false, DecFunctor> {
+    // The `value` means the `DecFunctor` is nothrow-destructible and
     // nothrow-constructible from `Object`. If it is copy-constructible,
     // it should be nothrow-copy-constructible. And if it is move
     // -constructible, it should be nothrow-move-constructible.
-    static constexpr bool is_ok = std::is_nothrow_destructible<DecFunctor>::value
+    static constexpr bool value = std::is_nothrow_destructible<DecFunctor>::value
       && (std::is_nothrow_copy_constructible<DecFunctor>::value ||
         !std::is_copy_constructible<DecFunctor>::value)
       && (std::is_nothrow_move_constructible<DecFunctor>::value ||
         !std::is_move_constructible<DecFunctor>::value)
       && std::is_nothrow_constructible<DecFunctor, Object>::value;
-
-    // If `Config::isView` is true, then all restrictions are ignored.
-    // Otherwise, if the `Config::assertNoThrow` is true as well
-    // as the `is_ok` is false, then the `value` will be false to
-    // trigger the static_assert.
-    static constexpr bool value =
-      Config::isView || !(Config::assertNoThrow && !is_ok);
   };
 
   // Utility struct to check if a callable object is not empty.
@@ -1230,12 +1229,14 @@ inline namespace fn_traits {
 
   // Trait to check if a functor's copy/move capabilities match the configuration.
   template <typename Functor, typename Config,
-    typename DecFunctor = decay_t<Functor>>
-  struct copyable_is_ok {
+    bool IsView = Config::isView, typename DecFunctor = decay_t<Functor>>
+  struct copyable_is_ok : std::true_type {};
+
+  template <typename Functor, typename Config, typename DecFunctor>
+  struct copyable_is_ok<Functor, Config, /*IsView=*/false, DecFunctor> {
     static constexpr bool copy_ok = std::is_copy_constructible<DecFunctor>::value;
     static constexpr bool move_ok = std::is_move_constructible<DecFunctor>::value;
-    static constexpr bool no_view_ok = Config::isCopyable ? copy_ok : move_ok;
-    static constexpr bool value = Config::isView ? true : no_view_ok;
+    static constexpr bool value = Config::isCopyable ? copy_ok : move_ok;
   };
 
   // Check the move-constructor be deleted or not.
@@ -1579,7 +1580,7 @@ inline namespace fn_traits {
     static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
       "The alignment of the callable object is not supported by this function wrapper.");
 
-    static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
+    static_assert(assert_throwing_is_ok<Functor, Object, Config::isView || !Config::assertNoThrow>::value,
       "The copy constructor and move constructor of the callable object must be noexcept.");
 
     static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
