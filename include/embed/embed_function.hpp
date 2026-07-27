@@ -2686,9 +2686,9 @@ namespace crtp_mixins {
     core_components_impl& operator=(std::nullptr_t) = delete; // no empty state in view mode
     EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
     EMBED_DETAIL_REQUIRES_END(
-      (!is_convertible_from_specialization<Self, T>::value)
-      && (!std::is_pointer<T>::value)
+      (!std::is_pointer<T>::value)
       && (!is_constant_wrapper<T>::value)
+      && (!is_convertible_from_specialization<Self, T>::value)
     ) core_components_impl& operator=(T)            = delete;
 
     // Swap the contents of two function objects. (View mode)
@@ -2827,8 +2827,8 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
-      && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
+      function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
+      && is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
     ) function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
@@ -3207,12 +3207,12 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value
 )
 EMBED_DETAIL_REQUIRES_END(
+  // [Require] Functor cannot be the function pointer or pointer to member function.
+  std::is_class<Class>::value
   // [Require] Functor must be copyable.
-  std::is_copy_constructible<Functor>::value
+  && std::is_copy_constructible<Functor>::value
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
-  // [Require] Functor cannot be the function pointer or pointer to member function.
-  && std::is_class<Class>::value
 )
 EMBED_NODISCARD inline Fn make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
