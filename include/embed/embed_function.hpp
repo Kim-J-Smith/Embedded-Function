@@ -1170,15 +1170,15 @@ inline namespace fn_traits {
   { return size == 0 ? MinAlign : ((size - 1) / MinAlign + 1) * MinAlign; }
 
   // Check whether throwing operations are acceptable.
-  template <typename Functor, typename Object,
-    bool IsViewOrMayThrow /*= Config::isView || !Config::assertNoThrow = true*/,
+  template <typename Functor, typename Object, typename Config,
+    bool IsViewOrMayThrow = Config::isView || !Config::assertNoThrow /*=true*/,
     typename DecFunctor = decay_t<Functor>>
     // If `Config::isView` is true or `Config::assertNoThrow` is false,
     // then all restrictions are ignored.
   struct assert_throwing_is_ok : std::true_type {};
 
-  template <typename Functor, typename Object, typename DecFunctor>
-  struct assert_throwing_is_ok<Functor, Object, /*IsViewOrMayThrow=*/false, DecFunctor> {
+  template <typename Functor, typename Object, typename Config, typename DecFunctor>
+  struct assert_throwing_is_ok<Functor, Object, Config, /*IsViewOrMayThrow=*/false, DecFunctor> {
     // The `value` means the `DecFunctor` is nothrow-destructible and
     // nothrow-constructible from `Object`. If it is copy-constructible,
     // it should be nothrow-copy-constructible. And if it is move
@@ -1527,7 +1527,7 @@ inline namespace fn_traits {
     static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
       "The alignment of the callable object is not supported by this function wrapper.");
 
-    static_assert(assert_throwing_is_ok<Functor, Object, Config::isView || !Config::assertNoThrow>::value,
+    static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
       "The copy constructor and move constructor of the callable object must be noexcept.");
 
     static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
