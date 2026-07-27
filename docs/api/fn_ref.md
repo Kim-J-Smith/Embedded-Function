@@ -1,4 +1,4 @@
-# `ebd::fn_ref`
+﻿# `ebd::fn_ref`
 
 ## Overview
 
@@ -21,7 +21,7 @@ It is an alias of `ebd::detail::function` with specific configuration parameters
 |---------------|-------|-------------|
 | `IsCopyable` | `true` | The view is copyable (but it doesn't copy the underlying callable). |
 | `IsView` | `true` | This is a non-owning view of the callable object. |
-| `IsThrowing` | `false` | ~~The wrapper will not throw `std::bad_function_call` when called in an empty state; instead, it will call `std::terminate()`.~~ `ebd::fn_ref` has removed empty state. |
+| `IsThrowing` | `false` | `ebd::fn_ref` has removed empty state. |
 | `AssertObjectNoThrow` | `false` | The callable object does not need to be nothrow-constructible or nothrow-destructible. |
 
 ## Member Functions
@@ -99,8 +99,7 @@ process_data(100, &handle_result);
 
 - `ebd::fn_ref` is a non-owning view, so the underlying callable object must outlive the view.
 - `ebd::fn_ref` is trivially copyable and has minimal overhead.
-- The buffer size is fixed to `detail::default_buffer_size::view_buf`, which is sufficient to store function pointers and member pointers.
-- When called in an empty state, `ebd::fn_ref` will call `std::terminate()` instead of throwing an exception.
+- The buffer size is fixed to `detail::default_buffer_size::ref_buf`, which is sufficient to store function pointers and member pointers.
 - `ebd::fn_ref` cannot be initialized with rvalue references, as it would create a dangling reference.
 
 ## Compare `ebd::fn_ref` with `std::function_ref`
