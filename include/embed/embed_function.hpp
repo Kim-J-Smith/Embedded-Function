@@ -2843,8 +2843,8 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
-      && (!Config::isView)
+      (!Config::isView)
+      && is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
     ) function(function<OtherSize, OtherCfg, OtherSig>&& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
@@ -2862,11 +2862,11 @@ namespace crtp_mixins {
     /// @note Used for function wrapper only. (OWNING)
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
     EMBED_DETAIL_REQUIRES_END(
-      (!is_convertible_from_specialization<function, Functor>::value)
+      (!Config::isView)
+      && (!is_convertible_from_specialization<function, Functor>::value)
       && (!is_self<Functor, function>::value)
       && (!is_in_place_type<decay_t<Functor>>::value)
       && is_callable_from<Functor>::value
-      && (!Config::isView)
     ) function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
@@ -2884,9 +2884,9 @@ namespace crtp_mixins {
     /// @note Used for function reference only. (NON-OWNING)
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Func)
     EMBED_DETAIL_REQUIRES_END(
-      std::is_function<Func>::value
+      Config::isView
+      && std::is_function<Func>::value
       && is_invocable_using<Func>::value
-      && Config::isView
     ) function(EMBED_DETAIL_NOT_NULL(Func*) function_ptr) noexcept {
 
       (void)assertions_for_functor<BufferSize, Config, Signature, Func*, Func*&&, erasure_t>{};
@@ -2904,11 +2904,11 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor,
       typename Tp = remove_reference_t<Functor>)
     EMBED_DETAIL_REQUIRES_END(
-      (!is_self<Functor, function>::value)
+      Config::isView
+      && (!is_self<Functor, function>::value)
       && (!is_convertible_from_specialization<function, Functor>::value)
       && (!std::is_member_pointer<Tp>::value)
       && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
-      && Config::isView
     ) EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
     : Base_MemberVariable(nullptr) {
 
@@ -2924,9 +2924,9 @@ namespace crtp_mixins {
     /// @param args - The arguments for constructing the Fn.
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename... CArgs)
     EMBED_DETAIL_REQUIRES_END(
-      std::is_constructible<Fn, CArgs...>::value
+      (!Config::isView)
+      && std::is_constructible<Fn, CArgs...>::value
       && is_callable_from<Fn>::value
-      && (!Config::isView)
     ) explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
 
@@ -2942,9 +2942,9 @@ namespace crtp_mixins {
     /// @param args - The arguments for constructing the Fn.
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename U, typename... CArgs)
     EMBED_DETAIL_REQUIRES_END(
-      std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
+      (!Config::isView)
+      && std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
       && is_callable_from<Fn>::value
-      && (!Config::isView)
     ) explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
 
@@ -2963,8 +2963,8 @@ namespace crtp_mixins {
 
     // Create function reference with given `std::constant_wrapper` param.
     template <auto Val, typename Fn>
-      requires is_invocable_using<const Fn&>::value
-        && Config::isView
+      requires Config::isView
+        && is_invocable_using<const Fn&>::value
     constexpr function(std::constant_wrapper<Val, Fn>) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
@@ -2978,9 +2978,9 @@ namespace crtp_mixins {
 
     // Create function reference with given `std::constant_wrapper` and object params.
     template <auto Val, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
-      requires (!std::is_rvalue_reference_v<Up&&>)
+      requires Config::isView
+        && (!std::is_rvalue_reference_v<Up&&>)
         && is_invocable_using<const Fn&, add_cv_like_sig_t<Tp>&>::value
-        && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
@@ -2994,9 +2994,9 @@ namespace crtp_mixins {
 
     // Create function reference with given `std::constant_wrapper` and pointer params.
     template <auto Val, typename Fn, typename Tp, typename Tp_cv = add_cv_like_sig_t<Tp>>
-      requires std::is_convertible_v<Tp*, Tp_cv*>
+      requires Config::isView
+        && std::is_convertible_v<Tp*, Tp_cv*>
         && is_invocable_using<const Fn&, Tp_cv*>::value
-        && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
