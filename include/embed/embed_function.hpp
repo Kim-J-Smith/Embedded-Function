@@ -1554,12 +1554,14 @@ inline namespace fn_traits {
   using smart_forward_t = T&&;
 #endif
 
-  // If the Config::isView is true, it cannot be qualified with '&' or '&&'. [P0792]
-  template <typename Config, typename Signature>
-  struct view_mode_qualifier_is_ok {
-    static constexpr bool no_ref_qualifier =
+  // If IsView is true, it cannot be qualified with '&' or '&&'. [P0792]
+  template <bool IsView, typename Signature>
+  struct view_mode_qualifier_is_ok : std::true_type {};
+
+  template <typename Signature>
+  struct view_mode_qualifier_is_ok</*IsView=*/ true, Signature> {
+    static constexpr bool value =
       !(unwrap_signature<Signature>::hasRRef || unwrap_signature<Signature>::hasLRef);
-    static constexpr bool value = !Config::isView || no_ref_qualifier;
   };
 
   // Assertions for functor.
@@ -1587,13 +1589,6 @@ inline namespace fn_traits {
 
     static_assert(!move_constructor_is_deleted<Functor>::value || Config::isView,
       "The move constructor of the callable object should not be deleted.");
-
-    static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
-      "The signature must have the same qualifier(`&`, `const`, etc.) "
-      "as the operator() method of the callable object.");
-
-    static_assert(view_mode_qualifier_is_ok<Config, Signature>::value,
-      "The signature should not be qualified with `&` or `&&` in non-owning mode.");
   };
 
   // Is type std::in_place_type_t<T>.
@@ -2602,6 +2597,10 @@ namespace crtp_mixins {
     // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
     static_assert(!Config::isThrowing || !unwrap_signature<Signature>::isNoexcept,
       "the `Signature` cannot be qualified with `noexcept` because it may throw exception");
+
+    // Assert the `Signature` is valid in non-owning mode.
+    static_assert(view_mode_qualifier_is_ok<Config::isView, Signature>::value,
+      "The signature should not be qualified with `&` or `&&` in non-owning mode.");
 
     erasure_t m_erasure;
     command_t m_command;
