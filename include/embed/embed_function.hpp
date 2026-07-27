@@ -1391,61 +1391,6 @@ inline namespace fn_traits {
   template <typename With, typename T>
   using get_qualified_with_t = typename get_qualified_with<With, T>::type;
 
-  // Check is class and qualifier of call operator.
-  template <typename Package, typename Fn,
-    bool IsClass = std::is_class<decay_t<Fn>>::value>
-  struct is_class_call_operator {
-    static constexpr bool sigCannotBeConst = false;
-    static constexpr bool sigCannotBeVolatile = false;
-  };
-
-  template <typename Package, typename Fn>
-  struct is_class_call_operator<Package, Fn, /* IsClass = */ true> {
-    using call_const_res = invoke_result_package<const Fn, Package>;
-    using call_volatile_res = invoke_result_package<volatile Fn, Package>;
-    using call_lref_res = invoke_result_package<Fn&, Package>;
-    using call_rref_res = invoke_result_package<Fn&&, Package>;
-
-    // When const call is ill-formed, but one of rref_call,
-    // lref_call is valid, then the signature cannot be const.
-    static constexpr bool sigCannotBeConst =
-      !is_invocable_impl<call_const_res, void>::type::value
-      && (
-        is_invocable_impl<call_rref_res, void>::type::value
-        || is_invocable_impl<call_lref_res, void>::type::value
-      );
-
-    // When volatile call is ill-formed, but one of rref_call,
-    // lref_call is valid, then the signature cannot be volatile.
-    static constexpr bool sigCannotBeVolatile =
-      !is_invocable_impl<call_volatile_res, void>::type::value
-      && (
-        is_invocable_impl<call_rref_res, void>::type::value
-        || is_invocable_impl<call_lref_res, void>::type::value
-      );
-  };
-
-  // Check the qualifier of signature and functor is matching.
-  // The verification of the "&" and "&&" qualifier is in trait `is_callable_from`.
-  // Here is the verification of "const" and "volatile" qualifier.
-  template <typename Signature, typename Functor>
-  struct qualifier_of_signature_match_functor {
-    using base_fn = remove_cvref_t<Functor>;
-    using unwrap_sig = unwrap_signature<Signature>;
-    using call_op = is_class_call_operator<typename unwrap_sig::args, base_fn>;
-
-    // The qualifier information of `Signature`.
-    static constexpr bool sig_has_const = unwrap_sig::hasConst;
-    static constexpr bool sig_has_volatile = unwrap_sig::hasVolatile;
-
-    static constexpr bool const_match =
-      !(sig_has_const && call_op::sigCannotBeConst);
-    static constexpr bool volatile_match =
-      !(sig_has_volatile && call_op::sigCannotBeVolatile);
-
-    static constexpr bool value = const_match && volatile_match;
-  };
-
   // Implement the `get_member_fn_type`.
   template <typename Class, typename Signature,
     bool IsLRef, bool IsRRef,
