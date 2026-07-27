@@ -1171,25 +1171,24 @@ inline namespace fn_traits {
 
   // Check whether throwing operations are acceptable.
   template <typename Functor, typename Object, typename Config,
+    bool IsViewOrMayThrow = Config::isView || !Config::assertNoThrow /*=true*/,
     typename DecFunctor = decay_t<Functor>>
-  struct assert_throwing_is_ok {
-    // The `is_ok` means the `DecFunctor` is nothrow-destructible and
+    // If `Config::isView` is true or `Config::assertNoThrow` is false,
+    // then all restrictions are ignored.
+  struct assert_throwing_is_ok : std::true_type {};
+
+  template <typename Functor, typename Object, typename Config, typename DecFunctor>
+  struct assert_throwing_is_ok<Functor, Object, Config, /*IsViewOrMayThrow=*/false, DecFunctor> {
+    // The `value` means the `DecFunctor` is nothrow-destructible and
     // nothrow-constructible from `Object`. If it is copy-constructible,
     // it should be nothrow-copy-constructible. And if it is move
     // -constructible, it should be nothrow-move-constructible.
-    static constexpr bool is_ok = std::is_nothrow_destructible<DecFunctor>::value
+    static constexpr bool value = std::is_nothrow_destructible<DecFunctor>::value
       && (std::is_nothrow_copy_constructible<DecFunctor>::value ||
         !std::is_copy_constructible<DecFunctor>::value)
       && (std::is_nothrow_move_constructible<DecFunctor>::value ||
         !std::is_move_constructible<DecFunctor>::value)
       && std::is_nothrow_constructible<DecFunctor, Object>::value;
-
-    // If `Config::isView` is true, then all restrictions are ignored.
-    // Otherwise, if the `Config::assertNoThrow` is true as well
-    // as the `is_ok` is false, then the `value` will be false to
-    // trigger the static_assert.
-    static constexpr bool value =
-      Config::isView || !(Config::assertNoThrow && !is_ok);
   };
 
   // Utility struct to check if a callable object is not empty.
@@ -1230,12 +1229,14 @@ inline namespace fn_traits {
 
   // Trait to check if a functor's copy/move capabilities match the configuration.
   template <typename Functor, typename Config,
-    typename DecFunctor = decay_t<Functor>>
-  struct copyable_is_ok {
+    bool IsView = Config::isView, typename DecFunctor = decay_t<Functor>>
+  struct copyable_is_ok : std::true_type {};
+
+  template <typename Functor, typename Config, typename DecFunctor>
+  struct copyable_is_ok<Functor, Config, /*IsView=*/false, DecFunctor> {
     static constexpr bool copy_ok = std::is_copy_constructible<DecFunctor>::value;
     static constexpr bool move_ok = std::is_move_constructible<DecFunctor>::value;
-    static constexpr bool no_view_ok = Config::isCopyable ? copy_ok : move_ok;
-    static constexpr bool value = Config::isView ? true : no_view_ok;
+    static constexpr bool value = Config::isCopyable ? copy_ok : move_ok;
   };
 
   // Check the move-constructor be deleted or not.
@@ -1390,61 +1391,6 @@ inline namespace fn_traits {
   template <typename With, typename T>
   using get_qualified_with_t = typename get_qualified_with<With, T>::type;
 
-  // Check is class and qualifier of call operator.
-  template <typename Package, typename Fn,
-    bool IsClass = std::is_class<decay_t<Fn>>::value>
-  struct is_class_call_operator {
-    static constexpr bool sigCannotBeConst = false;
-    static constexpr bool sigCannotBeVolatile = false;
-  };
-
-  template <typename Package, typename Fn>
-  struct is_class_call_operator<Package, Fn, /* IsClass = */ true> {
-    using call_const_res = invoke_result_package<const Fn, Package>;
-    using call_volatile_res = invoke_result_package<volatile Fn, Package>;
-    using call_lref_res = invoke_result_package<Fn&, Package>;
-    using call_rref_res = invoke_result_package<Fn&&, Package>;
-
-    // When const call is ill-formed, but one of rref_call,
-    // lref_call is valid, then the signature cannot be const.
-    static constexpr bool sigCannotBeConst =
-      !is_invocable_impl<call_const_res, void>::type::value
-      && (
-        is_invocable_impl<call_rref_res, void>::type::value
-        || is_invocable_impl<call_lref_res, void>::type::value
-      );
-
-    // When volatile call is ill-formed, but one of rref_call,
-    // lref_call is valid, then the signature cannot be volatile.
-    static constexpr bool sigCannotBeVolatile =
-      !is_invocable_impl<call_volatile_res, void>::type::value
-      && (
-        is_invocable_impl<call_rref_res, void>::type::value
-        || is_invocable_impl<call_lref_res, void>::type::value
-      );
-  };
-
-  // Check the qualifier of signature and functor is matching.
-  // The verification of the "&" and "&&" qualifier is in trait `is_callable_from`.
-  // Here is the verification of "const" and "volatile" qualifier.
-  template <typename Signature, typename Functor>
-  struct qualifier_of_signature_match_functor {
-    using base_fn = remove_cvref_t<Functor>;
-    using unwrap_sig = unwrap_signature<Signature>;
-    using call_op = is_class_call_operator<typename unwrap_sig::args, base_fn>;
-
-    // The qualifier information of `Signature`.
-    static constexpr bool sig_has_const = unwrap_sig::hasConst;
-    static constexpr bool sig_has_volatile = unwrap_sig::hasVolatile;
-
-    static constexpr bool const_match =
-      !(sig_has_const && call_op::sigCannotBeConst);
-    static constexpr bool volatile_match =
-      !(sig_has_volatile && call_op::sigCannotBeVolatile);
-
-    static constexpr bool value = const_match && volatile_match;
-  };
-
   // Implement the `get_member_fn_type`.
   template <typename Class, typename Signature,
     bool IsLRef, bool IsRRef,
@@ -1553,12 +1499,14 @@ inline namespace fn_traits {
   using smart_forward_t = T&&;
 #endif
 
-  // If the Config::isView is true, it cannot be qualified with '&' or '&&'. [P0792]
-  template <typename Config, typename Signature>
-  struct view_mode_qualifier_is_ok {
-    static constexpr bool no_ref_qualifier =
+  // If IsView is true, it cannot be qualified with '&' or '&&'. [P0792]
+  template <bool IsView, typename Signature>
+  struct view_mode_qualifier_is_ok : std::true_type {};
+
+  template <typename Signature>
+  struct view_mode_qualifier_is_ok</*IsView=*/ true, Signature> {
+    static constexpr bool value =
       !(unwrap_signature<Signature>::hasRRef || unwrap_signature<Signature>::hasLRef);
-    static constexpr bool value = !Config::isView || no_ref_qualifier;
   };
 
   // Assertions for functor.
@@ -1586,13 +1534,6 @@ inline namespace fn_traits {
 
     static_assert(!move_constructor_is_deleted<Functor>::value || Config::isView,
       "The move constructor of the callable object should not be deleted.");
-
-    static_assert(qualifier_of_signature_match_functor<Signature, Functor>::value,
-      "The signature must have the same qualifier(`&`, `const`, etc.) "
-      "as the operator() method of the callable object.");
-
-    static_assert(view_mode_qualifier_is_ok<Config, Signature>::value,
-      "The signature should not be qualified with `&` or `&&` in non-owning mode.");
   };
 
   // Is type std::in_place_type_t<T>.
@@ -2604,6 +2545,10 @@ namespace crtp_mixins {
     static_assert(!Config::isThrowing || !unwrap_signature<Signature>::isNoexcept,
       "the `Signature` cannot be qualified with `noexcept` because it may throw exception");
 
+    // Assert the `Signature` is valid in non-owning mode.
+    static_assert(view_mode_qualifier_is_ok<Config::isView, Signature>::value,
+      "The signature should not be qualified with `&` or `&&` in non-owning mode.");
+
     erasure_t m_erasure;
     command_t m_command;
   };
@@ -2698,9 +2643,9 @@ namespace crtp_mixins {
     core_components_impl& operator=(std::nullptr_t) = delete; // no empty state in view mode
     EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
     EMBED_DETAIL_REQUIRES_END(
-      (!is_convertible_from_specialization<Self, T>::value)
-      && (!std::is_pointer<T>::value)
+      (!std::is_pointer<T>::value)
       && (!is_constant_wrapper<T>::value)
+      && (!is_convertible_from_specialization<Self, T>::value)
     ) core_components_impl& operator=(T)            = delete;
 
     // Swap the contents of two function objects. (View mode)
@@ -2839,8 +2784,8 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
-      && function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
+      function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
+      && is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
     ) function(const function<OtherSize, OtherCfg, OtherSig>& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
@@ -2855,8 +2800,8 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(
       std::size_t OtherSize, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
-      && (!Config::isView)
+      (!Config::isView)
+      && is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
     ) function(function<OtherSize, OtherCfg, OtherSig>&& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
@@ -2874,11 +2819,11 @@ namespace crtp_mixins {
     /// @note Used for function wrapper only. (OWNING)
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
     EMBED_DETAIL_REQUIRES_END(
-      (!is_convertible_from_specialization<function, Functor>::value)
+      (!Config::isView)
+      && (!is_convertible_from_specialization<function, Functor>::value)
       && (!is_self<Functor, function>::value)
       && (!is_in_place_type<decay_t<Functor>>::value)
       && is_callable_from<Functor>::value
-      && (!Config::isView)
     ) function(Functor&& functor)
     noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
 
@@ -2896,9 +2841,9 @@ namespace crtp_mixins {
     /// @note Used for function reference only. (NON-OWNING)
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Func)
     EMBED_DETAIL_REQUIRES_END(
-      std::is_function<Func>::value
+      Config::isView
+      && std::is_function<Func>::value
       && is_invocable_using<Func>::value
-      && Config::isView
     ) function(EMBED_DETAIL_NOT_NULL(Func*) function_ptr) noexcept {
 
       (void)assertions_for_functor<BufferSize, Config, Signature, Func*, Func*&&, erasure_t>{};
@@ -2916,11 +2861,11 @@ namespace crtp_mixins {
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor,
       typename Tp = remove_reference_t<Functor>)
     EMBED_DETAIL_REQUIRES_END(
-      (!is_self<Functor, function>::value)
+      Config::isView
+      && (!is_self<Functor, function>::value)
       && (!is_convertible_from_specialization<function, Functor>::value)
       && (!std::is_member_pointer<Tp>::value)
       && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
-      && Config::isView
     ) EMBED_CXX20_CONSTEXPR function(Functor&& functor) noexcept
     : Base_MemberVariable(nullptr) {
 
@@ -2936,9 +2881,9 @@ namespace crtp_mixins {
     /// @param args - The arguments for constructing the Fn.
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename... CArgs)
     EMBED_DETAIL_REQUIRES_END(
-      std::is_constructible<Fn, CArgs...>::value
+      (!Config::isView)
+      && std::is_constructible<Fn, CArgs...>::value
       && is_callable_from<Fn>::value
-      && (!Config::isView)
     ) explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
 
@@ -2954,9 +2899,9 @@ namespace crtp_mixins {
     /// @param args - The arguments for constructing the Fn.
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename U, typename... CArgs)
     EMBED_DETAIL_REQUIRES_END(
-      std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
+      (!Config::isView)
+      && std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
       && is_callable_from<Fn>::value
-      && (!Config::isView)
     ) explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
     noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value) {
 
@@ -2975,8 +2920,8 @@ namespace crtp_mixins {
 
     // Create function reference with given `std::constant_wrapper` param.
     template <auto Val, typename Fn>
-      requires is_invocable_using<const Fn&>::value
-        && Config::isView
+      requires Config::isView
+        && is_invocable_using<const Fn&>::value
     constexpr function(std::constant_wrapper<Val, Fn>) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
@@ -2990,9 +2935,9 @@ namespace crtp_mixins {
 
     // Create function reference with given `std::constant_wrapper` and object params.
     template <auto Val, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
-      requires (!std::is_rvalue_reference_v<Up&&>)
+      requires Config::isView
+        && (!std::is_rvalue_reference_v<Up&&>)
         && is_invocable_using<const Fn&, add_cv_like_sig_t<Tp>&>::value
-        && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
@@ -3006,9 +2951,9 @@ namespace crtp_mixins {
 
     // Create function reference with given `std::constant_wrapper` and pointer params.
     template <auto Val, typename Fn, typename Tp, typename Tp_cv = add_cv_like_sig_t<Tp>>
-      requires std::is_convertible_v<Tp*, Tp_cv*>
+      requires Config::isView
+        && std::is_convertible_v<Tp*, Tp_cv*>
         && is_invocable_using<const Fn&, Tp_cv*>::value
-        && Config::isView
     constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
@@ -3219,12 +3164,12 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value
 )
 EMBED_DETAIL_REQUIRES_END(
+  // [Require] Functor cannot be the function pointer or pointer to member function.
+  std::is_class<Class>::value
   // [Require] Functor must be copyable.
-  std::is_copy_constructible<Functor>::value
+  && std::is_copy_constructible<Functor>::value
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
-  // [Require] Functor cannot be the function pointer or pointer to member function.
-  && std::is_class<Class>::value
 )
 EMBED_NODISCARD inline Fn make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
