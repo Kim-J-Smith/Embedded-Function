@@ -8,7 +8,10 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Improved compile-time performance.
+  - Reordered requires-clause constraints for early short-circuit evaluation.
+  - Converted constraint traits to `std::true_type`-based specializations with `IsView` flag.
+  - Removed redundant per-functor static assertions (`qualifier_of_signature_match_functor`, `is_class_call_operator`).
 
 **📌 Notes**
 - **The macro `EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER` will be removed in v2.2.0**. If you still rely on it, please inform us in the [issues](https://github.com/Kim-J-Smith/Embedded-Function/issues) section.
