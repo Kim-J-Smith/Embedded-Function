@@ -181,10 +181,12 @@
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...
-# include <initializer_list>
+# if EMBED_CXX_VERSION >= 201703L
+#  include <initializer_list>
+# endif // >= C++17
 # if __cpp_impl_reflection >= 202506L && EMBED_HAS_INCLUDE(<meta>)
 #  include <meta>       // std::meta::is_complete_type(C++26)
-# endif
+# endif // >= C++26
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
@@ -994,9 +996,9 @@ inline namespace fn_traits {
   struct is_stored_origin
   : public bool_constant<IsStoredOrigin> {
     static constexpr bool isTrivial = is_traditional_trivial<DecT>::value;
-    static_assert(!(IsView && IsStoredOrigin && !isTrivial),
+    static_assert(!IsView || !IsStoredOrigin || isTrivial,
       EMBED_DETAIL_REPORT_IE(
-        "Stored origin type in view mode must be trivially"
+        "Stored origin type in non-owning mode must be trivially"
         " copyable/destructible. Here Functor is stored originally,"
         " but it is NOT trivial."));
   };
@@ -2572,6 +2574,14 @@ namespace crtp_mixins {
   protected:
     // Assert the `Config` is config_package.
     static_assert(is_config_package<Config>::value, EMBED_DETAIL_REPORT_IE("Config is invalid."));
+
+    // Assert the `erasure_t` is trivial.
+    static_assert(is_traditional_trivial<erasure_t>::value,
+      EMBED_DETAIL_REPORT_IE("erasure_t should be trivial."));
+
+    // Assert the `command_t` is trivial.
+    static_assert(is_traditional_trivial<command_t>::value,
+      EMBED_DETAIL_REPORT_IE("command_t should be trivial."));
 
     // Assert the `Signature` is well-formed.
     static_assert(unwrap_signature<Signature>::isSignature,
