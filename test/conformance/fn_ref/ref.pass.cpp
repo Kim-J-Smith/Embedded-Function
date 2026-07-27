@@ -207,7 +207,7 @@ int fn() { return 5; }
 #if __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
   constexpr auto fn_noexcept = []() noexcept { return 6; };
 
-#if 1 && __cpp_lib_constant_wrapper >= 202606L
+#if 1 && __cpp_lib_constant_wrapper >= 202603L
   const auto one = []() noexcept { return 1; };
   const auto two = []() noexcept { return 2; };
 # endif
@@ -359,7 +359,7 @@ TEST(Conformance_fn_ref, ref_pass) {
     }
   }
 #endif
-#if 1 && __cpp_lib_constant_wrapper >= 202606L
+#if 1 && __cpp_lib_constant_wrapper >= 202603L
   {
     // P3961R1 Less double indirection in function_ref
     // double unwrapping

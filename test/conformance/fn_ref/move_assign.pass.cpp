@@ -66,7 +66,7 @@ TEST(Conformance_fn_ref, move_assign_pass) {
   SUCCEED();
 }
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 
 TEST(Conformance_fn_ref, move_assign_pass_0) {
   ebd::fn_ref<void()> f(std::cw<[] {}>);
