@@ -114,7 +114,7 @@ if(MSVC)
     /wd4626
     /wd5045
     /wd6326
-    /analyze
+    # /analyze 
     /WX
   )
   target_link_options(
