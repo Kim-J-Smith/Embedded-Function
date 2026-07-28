@@ -114,4 +114,7 @@ jobs:
       # Run GCC tests
       - name: Run GCC tests
         working-directory: test
-        run: ./script/test-gcc.sh
+        shell: bash
+        run: |
+          chmod +x ./script/test-gcc.sh ./script/common.sh
+          bash ./script/test-gcc.sh
