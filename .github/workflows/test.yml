@@ -102,7 +102,7 @@ jobs:
   #       run: cmake --build build --config Debug --target test
 
   # Ubuntu check
-  test-on-ubuntu-gcc-beta:
+  ubuntu-gcc-13:
     if: github.repository_owner == 'Kim-J-Smith'
     runs-on: ubuntu-latest
 
@@ -116,4 +116,4 @@ jobs:
         working-directory: test
         shell: bash
         run: |
-          bash ./script/test-clang.sh
+          bash ./script/test-gcc.sh 13

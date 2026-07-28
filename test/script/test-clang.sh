@@ -7,7 +7,7 @@ SCRIPT_CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_CURRENT_DIR"/common.sh
 
 BUILD_TYPE="Debug"
-COMPILER_VERSIONS=("18" "19")
+COMPILER_VERSIONS=("$@")
 CXX_STANDARDS=("11" "14" "17" "20" "23")
 
 environment_setup() {
