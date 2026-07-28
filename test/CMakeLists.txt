@@ -36,7 +36,6 @@ set(
   # "EBD_TEST_TRY_BUG__Clang_SameNameStaticFunction" # Clang20 - C++23/26; Fixed in Clang22
   # "EBD_TEST_TRY_BUG__MSVC_1944_1" # MSVC 19.44; Fixed in MSVC 19.50
 )
-add_compile_definitions(${TEST_USE_MACROS})
 
 # Include header search path
 include_directories(
@@ -76,6 +75,12 @@ file(
 add_executable(
     ${PROJECT_NAME}
     ${EMBED_FUNCTION_TEST_FILES}
+)
+
+# macro definitions
+target_compile_definitions(
+    ${PROJECT_NAME} PRIVATE
+    ${TEST_USE_MACROS}
 )
 
 # Link GTest library.
