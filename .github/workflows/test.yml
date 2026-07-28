@@ -100,3 +100,18 @@ jobs:
       - name: Build and test
         working-directory: test
         run: cmake --build build --config Debug --target test
+
+  # Ubuntu check
+  test-on-ubuntu-gcc-beta:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run GCC tests
+      - name: Run GCC tests
+        working-directory: test
+        run: ./script/test-gcc.sh
