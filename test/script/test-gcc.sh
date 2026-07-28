@@ -13,8 +13,8 @@ CXX_STANDARDS=("11" "14" "17" "20" "23")
 environment_setup() {
     sudo apt-get update -y
     sudo apt-get install -y --no-install-recommends cmake ninja-build
-    sudo apt-get install -y --no-install-recommends "g++-${COMPILER_VERSIONS[@]}"
-    sudo apt-get install -y --no-install-recommends "gcc-${COMPILER_VERSIONS[@]}"
+    sudo apt-get install -y --no-install-recommends "${COMPILER_VERSIONS[@]/#/g++-}"
+    sudo apt-get install -y --no-install-recommends "${COMPILER_VERSIONS[@]/#/gcc-}"
 }
 
 # $1: C++ standard version
