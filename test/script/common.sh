@@ -1,0 +1,16 @@
+#!/bin/bash
+# Common functions for test scripts
+
+set -e
+
+TEST_USE_MACROS_ARRAY=(
+    "EBD_TEST_USE_FALLBACK"
+    "EMBED_FN_CONFIG_DISABLE_SMART_FORWARD"
+)
+
+TEST_USE_MACROS_HELPER=(
+    ""
+    "${TEST_USE_MACROS_ARRAY[0]}"
+    # "${TEST_USE_MACROS_ARRAY[1]}"
+    # "${TEST_USE_MACROS_ARRAY[0]};${TEST_USE_MACROS_ARRAY[1]}"
+)
