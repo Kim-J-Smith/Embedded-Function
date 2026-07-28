@@ -10,10 +10,6 @@ BUILD_TYPE="Debug"
 COMPILER_MSVC_G=("$@")
 CXX_STANDARDS=("14" "17" "20" "23")
 
-environment_setup() {
-
-}
-
 # $1: C++ standard version
 # $2: C/C++ compiler generator (-G)
 # $3: Test use macros
@@ -34,8 +30,6 @@ config_cmake_and_run_test() {
 }
 
 test_msvc() {
-    environment_setup
-    echo; echo "-- FINISH ENVIRONMENT SETUP --"; echo;
     for compiler_generator in "${COMPILER_MSVC_G[@]}"; do
         for cxx_standard in "${CXX_STANDARDS[@]}"; do
             for test_use_macros in "${TEST_USE_MACROS_HELPER[@]}"; do
