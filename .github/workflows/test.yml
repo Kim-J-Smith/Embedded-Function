@@ -116,5 +116,4 @@ jobs:
         working-directory: test
         shell: bash
         run: |
-          chmod +x ./script/test-gcc.sh ./script/common.sh
-          bash ./script/test-gcc.sh
+          bash ./script/test-clang.sh
