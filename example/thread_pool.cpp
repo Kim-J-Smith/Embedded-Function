@@ -12,6 +12,7 @@
 
 class ThreadPool {
 private:
+    // Task_t = ebd::unique_fn<void(), Auto-Deducing>
     using Task_t = decltype(ebd::make_fn<void()>(std::packaged_task<void()>{}));
 
     std::vector<std::thread> m_wokers;
