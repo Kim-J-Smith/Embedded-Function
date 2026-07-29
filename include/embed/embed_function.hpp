@@ -2047,7 +2047,8 @@ namespace management {
     static void destroy(erasure_base_t* victim)
     noexcept(std::is_nothrow_destructible<Functor>::value) {
       auto* victim_ = static_cast<erasure_t*>(victim);
-      victim_->template access<Functor>().~Functor();
+      auto& fn = victim_->template access<Functor>();
+      fn.~Functor();
     }
 
     // Clone type-erased object from `src` to `dst`.
