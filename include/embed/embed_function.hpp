@@ -306,7 +306,7 @@
 
 // Guidelines for reporting internal errors.
 #define EMBED_DETAIL_REPORT_IE(error) \
-  "An internal library error has occurred: " error " This is unexpected.\n" \
+  "An internal library error has occurred: [" error "] This is unexpected.\n" \
   "PLEASE report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
 
 #if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
