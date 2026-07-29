@@ -2541,13 +2541,11 @@ namespace crtp_mixins {
     }
 
     // Return `true` if the object is empty.
-    EMBED_NODISCARD EMBED_CXX14_CONSTEXPR bool is_empty() const noexcept {
-      auto const& self = static_cast<const Self&>(*this);
-      return self.m_command.is_empty();
-    }
+    EMBED_NODISCARD constexpr bool is_empty() const noexcept
+    { return static_cast<const Self&>(*this).m_command.is_empty(); }
 
     // Return `true` if the object is NOT empty.
-    EMBED_CXX14_CONSTEXPR explicit operator bool() const noexcept { return !is_empty(); }
+    constexpr explicit operator bool() const noexcept { return !is_empty(); }
 
     // Clear the object.
     void clear() noexcept(Config::assertNoThrow) {
@@ -2936,7 +2934,7 @@ namespace crtp_mixins {
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
   EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
     EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
-  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
+  EMBED_NODISCARD constexpr bool
   operator==(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return fn.is_empty();
   }
@@ -2944,7 +2942,7 @@ namespace crtp_mixins {
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
   EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
     EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
-  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
+  EMBED_NODISCARD constexpr bool
   operator==(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
     return fn.is_empty();
   }
@@ -2952,7 +2950,7 @@ namespace crtp_mixins {
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
   EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
     EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
-  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
+  EMBED_NODISCARD constexpr bool
   operator!=(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return !fn.is_empty();
   }
@@ -2960,7 +2958,7 @@ namespace crtp_mixins {
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
   EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
     EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
-  EMBED_INLINE EMBED_CXX14_CONSTEXPR bool
+  EMBED_NODISCARD constexpr bool
   operator!=(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
     return !fn.is_empty();
   }
