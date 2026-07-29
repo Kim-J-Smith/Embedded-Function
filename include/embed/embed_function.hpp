@@ -724,7 +724,7 @@ inline namespace cxx_traits {
   // Invokes the callable object directly with the given arguments.
   // Used for free function, static member function, and functors (classes that overload operator()).
   template <typename RetT, typename Func, typename... Args>
-  inline EMBED_CXX14_CONSTEXPR RetT
+  EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_normal, Func&& fn, Args&&... args)
     noexcept(is_nothrow_invocable_r<RetT, Func, Args...>::value)
   { return std::forward<Func>(fn)(std::forward<Args>(args)...); }
@@ -732,7 +732,7 @@ inline namespace cxx_traits {
   // Invokes the pointer to member object by the given "reference" of class object.
   // Note: The `std::reference_wrapper` is also regarded as "reference".
   template <typename RetT, typename MemObj, typename Arg>
-  inline EMBED_CXX14_CONSTEXPR RetT
+  EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_memobj_ref_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
   { return unwrap_forward<Arg>(arg).*std::forward<MemObj>(obj); }
@@ -740,7 +740,7 @@ inline namespace cxx_traits {
   // Invokes the pointer to member object by the given "pointer" of class object.
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
   template <typename RetT, typename MemObj, typename Arg>
-  inline EMBED_CXX14_CONSTEXPR RetT
+  EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_memobj_pointer_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
   { return (*std::forward<Arg>(arg)).*std::forward<MemObj>(obj); }
@@ -748,7 +748,7 @@ inline namespace cxx_traits {
   // Invokes the pointer to member function by the given "reference" of class object.
   // Note: The `std::reference_wrapper` is also regarded as "reference".
   template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
-  inline EMBED_CXX14_CONSTEXPR RetT
+  EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
     return (unwrap_forward<Arg>(arg).*std::forward<MemFunc>(memfn))(
@@ -759,7 +759,7 @@ inline namespace cxx_traits {
   // Invokes the pointer to member function by the given "pointer" of class object.
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
   template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
-  inline EMBED_CXX14_CONSTEXPR RetT
+  EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(invoke_tag_memfn_pointer_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
     return ((*std::forward<Arg>(arg)).*std::forward<MemFunc>(memfn))(
@@ -769,7 +769,7 @@ inline namespace cxx_traits {
 
   // See <https://en.cppreference.com/w/cpp/utility/functional/invoke.html>.
   template <typename Result, typename Callee, typename... Args>
-  inline EMBED_CXX14_CONSTEXPR enable_if_t<
+  EMBED_CXX14_CONSTEXPR enable_if_t<
     is_invocable_r<Result, Callee, Args...>::value
     && std::is_void<Result>::value>
   invoke_r(Callee&& fn, Args&&... args)
@@ -783,7 +783,7 @@ inline namespace cxx_traits {
   }
 
   template <typename Result, typename Callee, typename... Args>
-  inline EMBED_CXX14_CONSTEXPR enable_if_t<
+  EMBED_CXX14_CONSTEXPR enable_if_t<
     is_invocable_r<Result, Callee, Args...>::value
     && !std::is_void<Result>::value, Result>
   invoke_r(Callee&& fn, Args&&... args)
