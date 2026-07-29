@@ -821,12 +821,6 @@ inline namespace cxx_traits {
 #endif
   }
 
-  template <typename T>
-  struct is_unbounded_array : std::false_type {};
-
-  template <typename T>
-  struct is_unbounded_array<T[]> : std::true_type {};
-
 } // end namespace cxx_traits
 
   // Forward declaration.
@@ -1003,16 +997,6 @@ inline namespace fn_traits {
         " but it is NOT trivial."));
   };
 
-  // Get the really stored type.
-  template <typename T, bool IsView>
-  struct get_stored_type {
-    using type = conditional_t<is_stored_origin<T, IsView>::value,
-      decay_t<T>, typename std::add_pointer<decay_t<T>>::type>;
-  };
-
-  template <typename T, bool IsView = true>
-  using get_stored_type_t = typename get_stored_type<T, IsView>::type;
-
   // [func.wrap.move.ctor]/1
   template <typename Signature, typename Fn, typename Ret, typename ArgsPackage>
   struct is_callable_from_pkg;
@@ -1112,17 +1096,6 @@ inline namespace fn_traits {
   : public bool_constant<
     noexcept(::new (static_cast<void*>(nullptr)) Class(std::declval<Functor>()))
   > {};
-
-  // Get invoke result with arguments package.
-  template <typename Fn, typename ArgsPackage>
-  struct invoke_result_package {
-    static_assert(always_false<Fn>::value,
-      EMBED_DETAIL_REPORT_IE("The input is not arguments package!"));
-  };
-
-  template <typename Fn, typename... Args>
-  struct invoke_result_package<Fn, args_package<Args...>>
-  : public invoke_result<Fn, Args...> {};
 
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_size_is_enough : bool_constant<
