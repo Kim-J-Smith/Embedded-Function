@@ -2650,8 +2650,7 @@ namespace crtp_mixins {
       // In this case the VTable's destroy slot is nullptr, meaning the
       // erasures are plain byte blobs that can be swapped directly
       // without construction or destruction.
-      if (self.m_command.m_manager->destroy == nullptr
-          && fn.m_command.m_manager->destroy == nullptr) {
+      if (self.m_command.m_manager->destroy == nullptr && fn.m_command.m_manager->destroy == nullptr) {
         std::swap(self.m_erasure, fn.m_erasure);
         std::swap(self.m_command, fn.m_command);
         return;
@@ -3560,4 +3559,3 @@ namespace detail {
 #endif
 
 #endif // EMBED_INCLUDED_EMBED_FUNCTION_HPP_
-
