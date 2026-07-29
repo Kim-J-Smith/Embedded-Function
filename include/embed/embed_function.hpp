@@ -2637,10 +2637,10 @@ namespace crtp_mixins {
       return *this;
     }
 
-   // Swap the contents of two function objects. (Inplace mode)
-   void swap(core_components_impl& fn_raw) noexcept(Config::assertNoThrow) {
-     // Avoid self swap.
-     if (this == std::addressof(fn_raw)) { return; }
+    // Swap the contents of two function objects. (Inplace mode)
+    void swap(core_components_impl& fn_raw) noexcept(Config::assertNoThrow) {
+      // Avoid self swap.
+      if (this == std::addressof(fn_raw)) { return; }
 
       auto& self = static_cast<Self&>(*this);
       auto& fn = static_cast<Self&>(fn_raw);
@@ -2649,8 +2649,7 @@ namespace crtp_mixins {
       // In this case the VTable's destroy slot is nullptr, meaning the
       // erasures are plain byte blobs that can be swapped directly
       // without construction or destruction.
-      if (self.m_command.m_manager->destroy == nullptr
-          && fn.m_command.m_manager->destroy == nullptr) {
+      if (self.m_command.m_manager->destroy == nullptr && fn.m_command.m_manager->destroy == nullptr) {
         std::swap(self.m_erasure, fn.m_erasure);
         std::swap(self.m_command, fn.m_command);
         return;
@@ -3559,5 +3558,4 @@ namespace detail {
 #endif
 
 #endif // EMBED_INCLUDED_EMBED_FUNCTION_HPP_
-
 

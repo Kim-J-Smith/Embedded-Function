@@ -45,3 +45,61 @@ TEST(TestSwap, unique_fn_swap) {
     ASSERT_EQ(f2 == nullptr, false);
     ASSERT_EQ(f2(3, 4), 3 + 4);
 }
+
+static int TestSwap_NonTrivialSwap_Flag = 0;
+
+struct TestSwap_NonTrivialSwap_Functor {
+    int m_var;
+    TestSwap_NonTrivialSwap_Functor() noexcept : m_var(0) {}
+    TestSwap_NonTrivialSwap_Functor(const TestSwap_NonTrivialSwap_Functor& other) noexcept {
+        TestSwap_NonTrivialSwap_Flag++;
+        m_var = other.m_var;
+    }
+    int operator()() const { return m_var; }
+};
+
+TEST(TestSwap, NonTrivialSwap) {
+    using Test_t = TestSwap_NonTrivialSwap_Functor;
+    {
+        Test_t t{};
+        t.m_var = 42;
+        ebd::fn<int() const> f1 = t;
+        t.m_var = 43;
+        ebd::fn<int() const> f2 = t;
+
+        TestSwap_NonTrivialSwap_Flag = 0;
+        f1.swap(f2);
+
+        ASSERT_EQ(TestSwap_NonTrivialSwap_Flag, 3);
+        ASSERT_EQ(f1(), 43);
+        ASSERT_EQ(f2(), 42);
+    }
+    {
+        Test_t t{};
+        t.m_var = 42;
+        ebd::unique_fn<int() const> f1 = t;
+        t.m_var = 43;
+        ebd::unique_fn<int() const> f2 = t;
+
+        TestSwap_NonTrivialSwap_Flag = 0;
+        f1.swap(f2);
+
+        ASSERT_EQ(TestSwap_NonTrivialSwap_Flag, 3);
+        ASSERT_EQ(f1(), 43);
+        ASSERT_EQ(f2(), 42);
+    }
+    {
+        Test_t t{};
+        t.m_var = 42;
+        ebd::safe_fn<int() const> f1 = t;
+        t.m_var = 43;
+        ebd::safe_fn<int() const> f2 = t;
+
+        TestSwap_NonTrivialSwap_Flag = 0;
+        f1.swap(f2);
+
+        ASSERT_EQ(TestSwap_NonTrivialSwap_Flag, 3);
+        ASSERT_EQ(f1(), 43);
+        ASSERT_EQ(f2(), 42);
+    }
+}
