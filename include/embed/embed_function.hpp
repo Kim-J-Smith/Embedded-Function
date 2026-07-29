@@ -2047,6 +2047,7 @@ namespace management {
     static void destroy(erasure_base_t* victim)
     noexcept(std::is_nothrow_destructible<Functor>::value) {
       auto* victim_ = static_cast<erasure_t*>(victim);
+      // Workaround for MSVC /analyze bug "warning C6031: Return value ignored".
       auto& fn = victim_->template access<Functor>();
       fn.~Functor();
     }
