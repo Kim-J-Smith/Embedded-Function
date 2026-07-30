@@ -19,7 +19,7 @@
 |---------------|-------|-------------|
 | `IsCopyable` | `false` | The callable object can be move-only (copyable objects are also accepted but only move operations will be used). |
 | `IsView` | `false` | This is not a view; the wrapper owns the callable object. |
-| `IsThrowing` | `true` | The wrapper will throw `std::bad_function_call` when called in an empty state. |
+| `IsThrowing` | `false` | The wrapper will call `std::terminate()` when called in an empty state. |
 | `AssertObjectNoThrow` | `false` | The callable object does not need to be nothrow-constructible or nothrow-destructible. |
 
 ## Member Functions
@@ -76,11 +76,11 @@ fn(100);
 - `ebd::unique_fn` is move-only and owns the callable object it wraps.
 - The buffer size is automatically aligned to the nearest alignment boundary.
 - If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.
-- When called in an empty state, `ebd::unique_fn` will throw `std::bad_function_call` (if exceptions are enabled).
+- When called in an empty state, `ebd::unique_fn` will call `std::terminate()`.
 
 ## See Also
 
 - [`ebd::detail::function`](./detail/function.md) - The underlying implementation
 - [`ebd::fn`](./fn.md) - For copyable callables
-- [`ebd::safe_fn`](./safe_fn.md) - For exception-safe callables
+- [`ebd::classic_fn`](./classic_fn.md) - For callables with `std::bad_function_call` on empty
 - [`ebd::fn_ref`](./fn_ref.md) - For non-owning views of callables

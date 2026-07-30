@@ -170,7 +170,6 @@ file(
   GLOB EMBED_FUNCTION_FAIL_TEST_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn_ref/fail/*.fail.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn/fail/*.fail.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/conformance/safe_fn/fail/*.fail.cpp"
 )
 
 get_property(PATH_INCLUDES DIRECTORY PROPERTY INCLUDE_DIRECTORIES)

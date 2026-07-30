@@ -10,22 +10,22 @@
 TEST(BasicAttributes, SizeAndAlign) {
     using f_t = ebd::fn<void()>;
     using uf_t = ebd::unique_fn<void()>;
-    using sf_t = ebd::safe_fn<void()>;
+    using cf_t = ebd::classic_fn<void()>;
     using fv_t = ebd::fn_ref<void()>;
 
     ASSERT_EQ(f_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
     ASSERT_EQ(uf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(sf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
+    ASSERT_EQ(cf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
     ASSERT_EQ(fv_t::get_buffer_size() == ebd::detail::default_buffer_size::view_buf, true);
 
     ASSERT_EQ(alignof(f_t) == ebd::detail::default_buffer_size::align_value, true);
     ASSERT_EQ(alignof(uf_t) == ebd::detail::default_buffer_size::align_value, true);
-    ASSERT_EQ(alignof(sf_t) == ebd::detail::default_buffer_size::align_value, true);
+    ASSERT_EQ(alignof(cf_t) == ebd::detail::default_buffer_size::align_value, true);
     ASSERT_EQ(alignof(fv_t) == alignof(void(*)()), true);
 
     ASSERT_EQ(sizeof(f_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
     ASSERT_EQ(sizeof(uf_t) - uf_t::get_buffer_size(), 2 * sizeof(void*));
-    ASSERT_EQ(sizeof(sf_t) - sf_t::get_buffer_size(), 2 * sizeof(void*));
+    ASSERT_EQ(sizeof(cf_t) - cf_t::get_buffer_size(), 2 * sizeof(void*));
     ASSERT_EQ(sizeof(fv_t) - fv_t::get_buffer_size(), sizeof(void*));
 }
 
@@ -33,7 +33,7 @@ TEST(BasicAttributes, SizeAndAlign) {
 TEST(BasicAttributes, AbilityAndNoexcept) {
     using f_t = ebd::fn<void()>;
     using uf_t = ebd::unique_fn<void()>;
-    using sf_t = ebd::safe_fn<void()>;
+    using cf_t = ebd::classic_fn<void()>;
     using fv_t = ebd::fn_ref<void()>;
 
     // f_t
@@ -54,16 +54,14 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     ASSERT_EQ(std::is_nothrow_move_assignable<uf_t>::value == false, true);
     ASSERT_EQ(std::is_nothrow_destructible<uf_t>::value == false, true);
 
-    // sf_t
-    ASSERT_EQ(std::is_move_constructible<sf_t>::value == true, true);
-    ASSERT_EQ(std::is_move_assignable<sf_t>::value == true, true);
-    ASSERT_EQ(std::is_copy_constructible<sf_t>::value == true, true);
-    ASSERT_EQ(std::is_copy_assignable<sf_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_copy_constructible<sf_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_copy_assignable<sf_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_move_constructible<sf_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_move_assignable<sf_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_destructible<sf_t>::value == true, true);
+    // cf_t (classic_fn is copyable, like fn)
+    ASSERT_EQ(std::is_move_constructible<cf_t>::value == true, true);
+    ASSERT_EQ(std::is_move_assignable<cf_t>::value == true, true);
+    ASSERT_EQ(std::is_copy_constructible<cf_t>::value == true, true);
+    ASSERT_EQ(std::is_copy_assignable<cf_t>::value == true, true);
+    ASSERT_EQ(std::is_nothrow_copy_constructible<cf_t>::value == false, true);
+    ASSERT_EQ(std::is_nothrow_copy_assignable<cf_t>::value == false, true);
+    ASSERT_EQ(std::is_nothrow_destructible<cf_t>::value == false, true);
 
     // fv_t
     ASSERT_EQ(std::is_move_constructible<fv_t>::value == true, true);
@@ -100,21 +98,21 @@ TEST(BasicAttributes, DefaultConfig) {
     static_assert(
         std::is_same<
             ebd::fn<void(), 0>, 
-            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), true, false, true, false>
+            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), true, false, false, false>
         >::value, 
         "The default config of ebd::fn has been changed!");
     static_assert(
         std::is_same<
             ebd::unique_fn<void(), 0>, 
-            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), false, false, true, false>
+            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), false, false, false, false>
         >::value, 
         "The default config of ebd::unique_fn has been changed!");
     static_assert(
         std::is_same<
-            ebd::safe_fn<void(), 0>, 
-            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), true, false, false, true>
+            ebd::classic_fn<void(), 0>, 
+            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), true, false, true, false>
         >::value, 
-        "The default config of ebd::safe_fn has been changed!");
+        "The default config of ebd::classic_fn has been changed!");
     static_assert(
         std::is_same<
             ebd::fn_ref<void(), 0>, 
@@ -141,8 +139,8 @@ TEST(BasicAttributes, SeemsIncomplete) {
         ASSERT_EQ(f2(nullptr), 43);
     }
     {
-        ebd::safe_fn<int(void)> f1 = [] { return 42; };
-        ebd::safe_fn<int(int[])> f2 = [](int[]) { return 43; };
+        ebd::classic_fn<int(void)> f1 = [] { return 42; };
+        ebd::classic_fn<int(int[])> f2 = [](int[]) { return 43; };
 
         ASSERT_EQ(f1(), 42);
         ASSERT_EQ(f2(nullptr), 43);

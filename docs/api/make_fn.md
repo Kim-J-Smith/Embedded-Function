@@ -9,7 +9,7 @@ It can:
 - deduce the signature of a lambda or other uniquely callable functor,
 - choose `ebd::fn` or `ebd::unique_fn` automatically,
 - build an empty wrapper with an explicit signature,
-- create a wrapper with a specific wrapper type such as `ebd::safe_fn` or `ebd::fn_ref`.
+- create a wrapper with a specific wrapper type such as `ebd::classic_fn` or `ebd::fn_ref`.
 
 ## Overloads
 
@@ -182,7 +182,7 @@ template <template <class, std::size_t> class Fn,
 EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow);
 ```
 
-Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_ref`. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(functor)`.
+Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(functor)`.
 
 ## Usage Examples
 
@@ -228,7 +228,7 @@ int value = mem_obj(obj);
 ### Explicit Wrapper Type
 
 ```cpp
-auto safe = ebd::make_fn<ebd::safe_fn>([]() noexcept { /* ... */ });
+auto safe = ebd::make_fn<ebd::classic_fn>([]() { /* ... */ });
 
 void bar() {}
 auto ref = ebd::make_fn<ebd::fn_ref>(&bar);
@@ -253,7 +253,7 @@ int value = fn();
 
 - `ebd::make_fn` returns `ebd::fn` for copyable deduced callables and `ebd::unique_fn` for move-only deduced callables.
 - When the callable is ambiguous, such as an overloaded function, specify the signature explicitly.
-- The explicit-wrapper overload accepts `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, and `ebd::fn_ref`.
+- The explicit-wrapper overload accepts `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`.
 - `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.
 - When deduction fails, the fallback overload triggers a static assertion with guidance.
 
@@ -261,5 +261,5 @@ int value = fn();
 
 - [`ebd::fn`](./fn.md) - Copyable owning wrapper
 - [`ebd::unique_fn`](./unique_fn.md) - Move-only owning wrapper
-- [`ebd::safe_fn`](./safe_fn.md) - Non-throwing wrapper
+- [`ebd::classic_fn`](./classic_fn.md) - Classic wrapper with `std::bad_function_call` on empty
 - [`ebd::fn_ref`](./fn_ref.md) - Non-owning wrapper

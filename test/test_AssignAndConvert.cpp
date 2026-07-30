@@ -25,12 +25,11 @@ TEST(AssignAndConvert, small_to_big) {
     ASSERT_EQ(uf_big == nullptr, false);
     ASSERT_EQ(uf_big(23665, 666), 23665 + 666);
 
-    ebd::safe_fn<int() const EBD_TEST_NOEXCEPT, s_buf> sf_small = 
-        ebd_test_free_func_noexcept;
-    ASSERT_EQ(sf_small != nullptr, true);
-    ebd::safe_fn<int() const EBD_TEST_NOEXCEPT, b_buf> sf_big = sf_small;
-    ASSERT_EQ(sf_big != nullptr, true);
-    ASSERT_EQ(sf_big(), 0);
+    ebd::classic_fn<int(int, int) const, s_buf> cf_small = ebd_test_free_func_iii_add;
+    ASSERT_EQ(cf_small != nullptr, true);
+    ebd::classic_fn<int(int, int) const, b_buf> cf_big = cf_small;
+    ASSERT_EQ(cf_big != nullptr, true);
+    ASSERT_EQ(cf_big(23665, 8427), 23665 + 8427);
 
     auto small = ebd::make_fn<int(int)>([](int v){ return v * 2; });
     using Big = ebd::fn<int(int), 8 * sizeof(void*)>;
@@ -65,9 +64,9 @@ TEST(AssignAndConvert, SameTypeAssign) {
 }
 
 // AssignAndConvert[3]
-TEST(AssignAndConvert, SafeFnAssign) {
-    ebd::safe_fn<int(int)> f1 = [](int x) noexcept { return x + 7; };
-    ebd::safe_fn<int(int)> f2 = [](int x) noexcept { return x + 9; };
+TEST(AssignAndConvert, ClassicFnAssign) {
+    ebd::classic_fn<int(int)> f1 = [](int x) { return x + 7; };
+    ebd::classic_fn<int(int)> f2 = [](int x) { return x + 9; };
     ASSERT_EQ(f1(1), 8);
     f1 = f2;
     ASSERT_EQ(f1(1), 10);
@@ -96,7 +95,7 @@ TEST(AssignAndConvert, StatelessAssign) {
         ASSERT_EQ(f3(2, 1), false);
     }
     {
-        ebd::safe_fn<bool(int, int)> f1 = std::less<int>{};
+        ebd::classic_fn<bool(int, int)> f1 = std::less<int>{};
         auto f2 = f1;
         ASSERT_EQ(f1(1, 2), true);
         ASSERT_EQ(f1(2, 1), false);
@@ -142,8 +141,8 @@ TEST(AssignAndConvert, VolatileToNonVolatile) {
         // f_volatile = f_non_volatile; // Error
     }
     {
-        ebd::safe_fn<void()> f_non_volatile;
-        ebd::safe_fn<void() volatile> f_volatile;
+        ebd::classic_fn<void()> f_non_volatile;
+        ebd::classic_fn<void() volatile> f_volatile;
 
         f_non_volatile = f_volatile; // OK
         // f_volatile = f_non_volatile; // Error
@@ -174,8 +173,8 @@ TEST(AssignAndConvert, NonRefToLeftValueRef) {
         // f_non_ref = f_ref; // Error
     }
     {
-        ebd::safe_fn<void()> f_non_ref;
-        ebd::safe_fn<void() &> f_ref;
+        ebd::classic_fn<void()> f_non_ref;
+        ebd::classic_fn<void() &> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
@@ -199,8 +198,8 @@ TEST(AssignAndConvert, NonRefToRightValueRef) {
         // f_non_ref = f_ref; // Error
     }
     {
-        ebd::safe_fn<void()> f_non_ref;
-        ebd::safe_fn<void() &&> f_ref;
+        ebd::classic_fn<void()> f_non_ref;
+        ebd::classic_fn<void() &&> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error

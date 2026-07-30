@@ -8,36 +8,36 @@
 
 // ThrowDeath[0]
 TEST(ThrowDeath, throw_bad_function_call) {
-    ebd::fn<void()> f1;
+    ebd::classic_fn<void()> f1;
     ASSERT_EQ(f1.is_empty(), true);
     ASSERT_EQ(static_cast<bool>(f1), false);
     EBD_EXPECT_THROW(f1(), std::bad_function_call);
+}
+
+// ThrowDeath[0.5]
+TEST(ThrowDeath, terminate_on_empty_call) {
+    ebd::fn<void()> f1;
+    ASSERT_EQ(f1.is_empty(), true);
+    ASSERT_EQ(static_cast<bool>(f1), false);
+    EXPECT_DEATH(f1(), "");
 
     ebd::unique_fn<void()> f2;
     ASSERT_EQ(f2.is_empty(), true);
     ASSERT_EQ(static_cast<bool>(f2), false);
-    EBD_EXPECT_THROW(f2(), std::bad_function_call);
+    EXPECT_DEATH(f2(), "");
 
     auto f3 = ebd::make_fn<void()>();
     ASSERT_EQ(f3.is_empty(), true);
     ASSERT_EQ(static_cast<bool>(f3), false);
-    EBD_EXPECT_THROW(f3(), std::bad_function_call);
+    EXPECT_DEATH(f3(), "");
 
     auto f4 = ebd::make_fn<void()>(nullptr);
     ASSERT_EQ(f4.is_empty(), true);
     ASSERT_EQ(static_cast<bool>(f4), false);
-    EBD_EXPECT_THROW(f4(), std::bad_function_call);
+    EXPECT_DEATH(f4(), "");
 }
 
-// ThrowDeath[1]
-TEST(ThrowDeath, dead_when_empty_call) {
-    ebd::safe_fn<void()> f1;
-    ASSERT_EQ(f1.is_empty(), true);
-    ASSERT_EQ(static_cast<bool>(f1), false);
-    EXPECT_DEATH(f1(), "");
-}
-
-// ThrowDeath[2]
+// ThrowDeath[1] — fn/unique_fn terminate on empty; safe_fn (deprecated) also terminates
 TEST(ThrowDeath, mix_throw_and_death) {
     auto f1 = ebd::make_fn(ebd_test_free_func_iii_add);
     ASSERT_EQ(f1 != nullptr, true);
@@ -45,7 +45,7 @@ TEST(ThrowDeath, mix_throw_and_death) {
 
     f1.clear();
     ASSERT_EQ(f1 == nullptr, true);
-    EBD_EXPECT_THROW(f1(1, 2), std::bad_function_call);
+    EXPECT_DEATH(f1(1, 2), "");
 
     auto f2 = ebd::make_fn(ebd_test_operator_unambiguous{});
     ASSERT_EQ(f2 != nullptr, true);
@@ -56,15 +56,7 @@ TEST(ThrowDeath, mix_throw_and_death) {
     ASSERT_EQ(f2(3), 3);
 
     f2 = nullptr;
-    EBD_EXPECT_THROW(f2(2), std::bad_function_call);
-
-    ebd::safe_fn<int(char) const> f3 = 
-        static_cast<int(*)(char)>(&ebd_test_member_fn::static_mem_fn_overload);
-    ASSERT_EQ(f3 == nullptr, false);
-    ASSERT_EQ(f3('W'), OVL_CHAR);
-
-    f3.clear();
-    EXPECT_DEATH(f3('D'), "");
+    EXPECT_DEATH(f2(2), "");
 }
 
 #if !defined(_MSC_VER)

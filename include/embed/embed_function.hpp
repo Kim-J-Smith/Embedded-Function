@@ -1118,7 +1118,7 @@ inline namespace fn_traits {
     static constexpr std::size_t view_buf = ref_buf;
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
 
-    // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::safe_fn).
+    // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::classic_fn).
     // Using alignof(std::max_align_t) ensures that objects with the maximum
     // fundamental alignment can be stored in the internal buffer.
     static constexpr std::size_t align_value = alignof(std::max_align_t);
@@ -1483,7 +1483,7 @@ inline namespace fn_traits {
       "                             ^^^^^^^^^^^^^^^^^\n"
       "                                     |\n"
       "         The value should be greater than `sizeof(CallableObject)`\n\n"
-      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, etc."
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, etc."
     );
 
     static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
@@ -1668,7 +1668,7 @@ inline namespace fn_traits {
       "The `Signature` is like `void()`, `float(int,int) const`;\n"
       "The `BufferSize` is the size (in bytes) of the internal storage;\n"
       "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
-      "as a template argument list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc. If omitted, "
+      "as a template argument list, such as `ebd::fn_ref`, `ebd::classic_fn`, etc. If omitted, "
       "the `FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` is copyable, "
       "and `ebd::unique_fn` otherwise."
     );
@@ -2495,7 +2495,7 @@ namespace crtp_mixins {
       "                  ^^^^^^^^^\n"
       "                      |\n"
       " should be like `void()`, `int(int) const`, etc\n\n"
-      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, `ebd::fn_ref`, etc."
     );
 
     // Assert each parameter type is a complete class.
@@ -2980,7 +2980,7 @@ namespace crtp_mixins {
  * This alias provides the most flexible way to instantiate a function wrapper
  * by directly specifying all configuration parameters. It is intended for
  * advanced use cases where none of the predefined aliases (`fn`, `unique_fn`,
- * `safe_fn`, `fn_ref`) satisfy the required combination of copyability,
+ * `classic_fn`, `fn_ref`) satisfy the required combination of copyability,
  * view semantics, exception behavior, and no‑throw assertions.
  *
  * @tparam Signature              Function signature, e.g., `void(int, char)`,
@@ -3013,7 +3013,7 @@ namespace crtp_mixins {
  *                                Violations trigger a `static_assert`.
  *
  * @note                          Prefer using the predefined aliases (`fn`,
- *                                `unique_fn`, `safe_fn`, `fn_ref`) unless you
+ *                                `unique_fn`, `classic_fn`, `fn_ref`) unless you
  *                                need a combination not covered by them.
  *
  * @example                       A move-only, non‑throwing wrapper:
@@ -3045,6 +3045,7 @@ using basic_fn = detail::function<
 >;
 
 /// @brief A function object wrapper for copyable and callable objects.
+/// @throws Calls `std::terminate` when it is called in empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
@@ -3054,11 +3055,12 @@ using fn = basic_fn<
   /* BufferSize = */          detail::get_aligned_size(BufferSize),
   /* IsCopyable = */          true,
   /* IsView = */              false,
-  /* IsThrowing = */          true,
+  /* IsThrowing = */          false,
   /* AssertObjectNoThrow = */ false
 >;
 
 /// @brief A function object wrapper for movable and callable objects.
+/// @throws Calls `std::terminate` when it is called in empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
@@ -3068,23 +3070,23 @@ using unique_fn = basic_fn<
   /* BufferSize = */          detail::get_aligned_size(BufferSize),
   /* IsCopyable = */          false,
   /* IsView = */              false,
-  /* IsThrowing = */          true,
+  /* IsThrowing = */          false,
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A SAFE function object wrapper for copyable and callable objects.
-/// @throws Strong noexcept guarantee. (ASSERT-NO-THROW)
+/// @brief A function object wrapper for copyable and callable objects.
+/// @throws Throws `std::bad_function_call` when it is called in empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using safe_fn = basic_fn<
+using classic_fn = basic_fn<
   /* Signature = */           Signature,
   /* BufferSize = */          detail::get_aligned_size(BufferSize),
   /* IsCopyable = */          true,
   /* IsView = */              false,
-  /* IsThrowing = */          false,
-  /* AssertObjectNoThrow = */ true
+  /* IsThrowing = */          true,
+  /* AssertObjectNoThrow = */ false
 >;
 
 /// @brief A non-owning polymorphic function wrapper.
@@ -3103,6 +3105,11 @@ using fn_ref = basic_fn<
 /// @deprecated Use `fn_ref` instead.
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
+
+/// @deprecated Use `fn` instead.
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using safe_fn EMBED_DEPRECATED("Use fn instead") = basic_fn<
+  Signature, detail::get_aligned_size(BufferSize), true, false, false, true>;
 
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
@@ -3357,7 +3364,7 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 #endif
 
 /// @brief make_fn[12]: Make function with specified wrapper.
-/// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_ref`.
+/// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, sizeof(functor)>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
