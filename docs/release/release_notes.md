@@ -13,11 +13,10 @@
   - Reordered requires-clause constraints for early short-circuit evaluation.
   - Converted constraint traits to `std::true_type`-based specializations with `IsView` flag.
   - Removed redundant per-functor static assertions (`qualifier_of_signature_match_functor`, `is_class_call_operator`).
-- Made `is_empty()` and `operator bool()` fully `constexpr`. (#112)
 - Removed unused traits (`is_unbounded_array`, `get_stored_type`, `invoke_result_package`). (#112)
 - Removed redundant `inline` specifiers from invoke functions and comparison operators. (#112)
 - Guarded `<initializer_list>` include behind C++17 version check. (#107)
-- Simplified internal error report format. (#112)
+- Optimized internal error report format. (#112)
 
 **📌 Notes**
 - **The macro `EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER` will be removed in v2.2.0**. If you still rely on it, please inform us in the [issues](https://github.com/Kim-J-Smith/Embedded-Function/issues) section.
