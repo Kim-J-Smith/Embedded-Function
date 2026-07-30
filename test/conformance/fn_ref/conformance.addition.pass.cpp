@@ -128,7 +128,7 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     static_cast<void>(&get_ref); // unused
   }
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 
   {
     auto rx = get_ref();

@@ -8,95 +8,104 @@ on:
     types: [ opened, synchronize, reopened ]
 
 jobs:
-  # Ubuntu check
-  test-on-ubuntu:
+  # GCC 13
+  ubuntu-gcc-13:
     if: github.repository_owner == 'Kim-J-Smith'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        cpp_standards: [11, 14, 17, 20, 23]
-        compiler: [
-          { name: "GCC-13", cc: "gcc-13", cxx: "g++-13", pkg: "g++-13" },
-          { name: "GCC-14", cc: "gcc-14", cxx: "g++-14", pkg: "g++-14" },
-          { name: "Clang-18", cc: "clang-18", cxx: "clang++-18", pkg: "clang-18" },
-          { name: "Clang-19", cc: "clang-19", cxx: "clang++-19", pkg: "clang-19" },
-        ]
-      fail-fast: false
 
     steps:
       # Get the code
       - name: Checkout code
         uses: actions/checkout@v6
 
-      # Install cmake and compilers
-      - name: Install compilers
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends cmake ninja-build
-          sudo apt-get install -y --no-install-recommends ${{ matrix.compiler.pkg }}
-
-      # Config CMake for compilers
-      - name: Config with C++${{ matrix.cpp_standards }}
-        working-directory: test
-        run: |
-          cmake -B build -S . \
-            -DCMAKE_CXX_STANDARD=${{ matrix.cpp_standards }} \
-            -DCMAKE_C_COMPILER=${{ matrix.compiler.cc }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.compiler.cxx }}
-
-      # Run tests
-      - name: Run tests with C++${{ matrix.cpp_standards }}
-        working-directory: test
-        run: cmake --build build --config Debug --target test -j100
-
-  # Windows-vs2026 check
-  test-on-windows-vs2026:
-    if: github.repository_owner == 'Kim-J-Smith'
-    runs-on: windows-2025-vs2026
-    strategy:
-      matrix:
-        cpp_standards: [14, 17, 20, 23]
-        arch: [x64]
-      fail-fast: false
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Config with C++${{ matrix.cpp_standards }}
+      # Run GCC tests
+      - name: Run GCC tests
         working-directory: test
         shell: bash
         run: |
-          cmake -B build -S . \
-            -G "Visual Studio 18 2026" \
-            -A ${{ matrix.arch }} \
-            -DCMAKE_CXX_STANDARD=${{ matrix.cpp_standards }}
+          bash ./script/test-gcc.sh 13
 
-      - name: Build and test
+  # GCC 14
+  ubuntu-gcc-14:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run GCC tests
+      - name: Run GCC tests
         working-directory: test
-        run: cmake --build build --config Debug --target test
+        shell: bash
+        run: |
+          bash ./script/test-gcc.sh 14
 
-  # Windows-vs2022 check
-  test-on-windows-vs2022:
+  # Clang 18
+  ubuntu-clang-18:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run Clang tests
+      - name: Run Clang tests
+        working-directory: test
+        shell: bash
+        run: |
+          bash ./script/test-clang.sh 18
+
+  # Clang 19
+  ubuntu-clang-19:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run Clang tests
+      - name: Run Clang tests
+        working-directory: test
+        shell: bash
+        run: |
+          bash ./script/test-clang.sh 19
+
+  # VS 2022
+  windows-vs-2022:
     if: github.repository_owner == 'Kim-J-Smith'
     runs-on: windows-2022
-    strategy:
-      matrix:
-        cpp_standards: [14, 17, 20, 23]
-        arch: [x64]
-      fail-fast: false
+
     steps:
+      # Get the code
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Config with C++${{ matrix.cpp_standards }}
+      # Run MSVC tests
+      - name: Run MSVC tests
         working-directory: test
         shell: bash
         run: |
-          cmake -B build -S . \
-            -G "Visual Studio 17 2022" \
-            -A ${{ matrix.arch }} \
-            -DCMAKE_CXX_STANDARD=${{ matrix.cpp_standards }}
+          bash ./script/test-msvc.sh "Visual Studio 17 2022"
 
-      - name: Build and test
+  # VS 2026
+  windows-vs-2026:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: windows-2025-vs2026
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run MSVC tests
+      - name: Run MSVC tests
         working-directory: test
-        run: cmake --build build --config Debug --target test
+        shell: bash
+        run: |
+          bash ./script/test-msvc.sh "Visual Studio 18 2026"

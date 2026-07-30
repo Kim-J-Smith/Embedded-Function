@@ -27,7 +27,7 @@
 
 #include "test_function.hpp"
 
-#if __cpp_lib_constant_wrapper >= 202606L
+#if __cpp_lib_constant_wrapper >= 202603L
 
 #define ASSERT_(...) ASSERT_EQ((__VA_ARGS__) == true, true)
 #ifndef TEST_IS_CONSTANT_EVALUATED
@@ -195,4 +195,4 @@ TEST(Conformance_fn_ref, constant_wrapper_pass) {
 
 }
 
-#endif // __cpp_lib_constant_wrapper >= 202606L
+#endif // __cpp_lib_constant_wrapper >= 202603L
