@@ -1401,7 +1401,6 @@ inline namespace fn_traits {
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
 #if __cpp_lib_reflection >= 202506L
-  /// @todo experimental `std::meta::is_complete_type`
   // Use template parameter `Val` to avoid violating ODR.
   template <typename T, bool Val = std::meta::is_complete_type(^^T)>
   consteval bool is_complete_here() noexcept { return Val; }
@@ -2876,8 +2875,6 @@ namespace crtp_mixins {
 #endif
 
 #if __cpp_lib_constant_wrapper >= 202603L
-
-    /// @todo experimental
 
     // Create function reference with given `std::constant_wrapper` param.
     template <auto Val, typename Fn>
