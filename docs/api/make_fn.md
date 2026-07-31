@@ -18,16 +18,12 @@ It can:
 ```cpp
 template <typename Signature, typename Functor,
           typename Class = detail::remove_cvref_t<Functor>,
-          std::size_t BufferSize = sizeof(Class),
-          typename Fn = detail::conditional_t<
-              std::is_copy_constructible<Class>::value,
-              fn<Signature, BufferSize>,
-              unique_fn<Signature, BufferSize>>,
           bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value>
-EMBED_NODISCARD inline Fn make_fn(Functor&& functor) noexcept(NoThrow);
+EMBED_NODISCARD inline fn<Signature, sizeof(Class)>
+make_fn(Functor&& functor) noexcept(NoThrow);
 ```
 
-Creates a wrapper for a class-type callable when the signature is specified explicitly. For copyable functors, the resulting type is `ebd::fn<Signature, BufferSize>`.
+Creates an `ebd::fn` for a class-type callable when the signature is specified explicitly. The buffer size is automatically deduced as `sizeof(Class)`.
 
 ### 2. Move-only functor with explicit signature
 
@@ -61,11 +57,21 @@ make_fn(Ret (*func_ptr)(Args...)) noexcept;
 
 Creates an `ebd::fn` from a free-function pointer and deduces both signature and buffer size.
 
+### 4b. noexcept function pointer with deduced signature (C++17+)
+
+```cpp
+template <typename Ret, typename... Args>
+EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...))>
+make_fn(Ret (*func_ptr)(Args...) noexcept) noexcept;
+```
+
+Creates an `ebd::fn` from a noexcept free-function pointer. The noexcept qualifier is preserved in the signature. Only available when noexcept is part of the type system (C++17 or `__cpp_noexcept_function_type >= 201510L`).
+
 ### 5. Function pointer with explicit signature
 
 ```cpp
 template <typename Signature,
-          typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*>
+          typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig_noex*>
 EMBED_NODISCARD inline fn<Signature, sizeof(FunctionPtr)>
 make_fn(FunctionPtr func_ptr) noexcept;
 ```
@@ -118,7 +124,7 @@ template <typename Class, typename Ret, typename... Args>
 EMBED_NODISCARD inline auto
 make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept
 -> fn<
-    Ret(detail::get_qualified_with_t<int REF, C V Class>, Args...) const,
+    Ret(detail::get_qualified_with_t<int REF, C V Class>, Args...) const NOEXCEPT,
     sizeof(memfunc)
    >;
 ```
@@ -143,10 +149,11 @@ Creates an `ebd::fn` from a pointer to member function using the specified signa
 template <typename Class, typename T,
           typename Ret = typename detail::invoke_result<T Class::*, Class&>::type>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
--> fn<Ret(Class&) const, sizeof(ptr_memobj)>;
+-> fn<Ret(Class&) const noexcept(detail::is_nothrow_invocable_r<Ret, T Class::*, Class&>::value),
+     sizeof(ptr_memobj)>;
 ```
 
-Creates an `ebd::fn` that reads a member object from an instance.
+Creates an `ebd::fn` that reads a member object from an instance. The noexcept qualifier is deduced from the member access expression.
 
 ### 12. In-place construction (C++17+)
 
@@ -174,7 +181,7 @@ template <template <class, std::size_t> class Fn,
           typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
           typename Signature = detail::conditional_t<
               std::is_void<SpecifiedSig>::value,
-              detail::noexcept_qualify_like_t<Functor, Fn, RawSig>,
+              detail::noexcept_qualify_like_t<Fn, RawSig>,
               SpecifiedSig>,
           std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
           typename FnWrapper = Fn<Signature, BufferSize>,

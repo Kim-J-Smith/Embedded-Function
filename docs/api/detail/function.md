@@ -276,7 +276,7 @@ int result = add(10, 20); // result = 30
 
 ## Notes
 
-- The `ebd::detail::function` class is not intended for direct use. Instead, use the predefined aliases such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_view`.
+- The `ebd::detail::function` class is not intended for direct use. Instead, use the predefined aliases such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`.
 - The buffer size is automatically aligned to the nearest alignment boundary.
 - The function wrapper supports all callable objects, including free functions, lambdas, functors, static member functions, and member functions.
 - When `Config::isView` is `true`, the wrapper acts as a non-owning view, similar to `std::function_ref`.
