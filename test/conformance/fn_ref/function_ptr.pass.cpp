@@ -168,8 +168,8 @@ TEST(Conformance_fn_ref, function_ptr_pass) {
     ASSERT_(f4(1, 2, 3).i == 6);
 
     {
-      auto r1 = ebd::make_fn(foo);
-      auto r2 = ebd::make_fn(bar);
+      auto r1 = ebd::make_fn<ebd::fn_ref>(foo);
+      auto r2 = ebd::make_fn<ebd::fn_ref>(bar);
       r1                   = r2; // ok
     }
   }

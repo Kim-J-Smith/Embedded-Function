@@ -914,6 +914,7 @@ inline namespace fn_traits {
     using ret   = Ret;                                                        \
     using args  = args_package<Args...>;                                      \
     using pure_sig = Ret(Args...);                                            \
+    using pure_sig_noex = Ret(Args...) NOEXCEPT;                              \
     static constexpr bool hasConst = std::is_const<int C>::value;             \
     static constexpr bool hasVolatile = std::is_volatile<int V>::value;       \
     static constexpr bool hasRRef = std::is_rvalue_reference<int REF>::value; \
@@ -1239,8 +1240,7 @@ inline namespace fn_traits {
 #define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT)  \
   template <typename This, typename Ret, typename... Args>                \
   struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {        \
-    using type = Ret(Args...) C V REF;                                    \
-    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;              \
+    using type = Ret(Args...) C V REF NOEXCEPT;                           \
     using sig_without_ref = Ret(Args...) C V NOEXCEPT;                    \
   };
 
@@ -1260,8 +1260,7 @@ inline namespace fn_traits {
 #define EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE(C, V, REF, NOEXCEPT)        \
   template <typename Fn, typename Class, typename Ret, typename... Args>          \
   struct get_unique_signature_impl<Fn, Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
-    using type = Ret(Args...) C V REF;                                            \
-    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;                      \
+    using type = Ret(Args...) C V REF NOEXCEPT;                                   \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE)
@@ -1305,15 +1304,13 @@ inline namespace fn_traits {
     requires is_statically_callable<Fn, Args...>::value
   struct get_unique_signature_impl<Fn, Ret(*)(Args...)> {
     using type = Ret(Args...) const;
-    using sig_with_noexcept = Ret(Args...) const;
   };
 
   // noexcept(true)
   template <typename Fn, typename Ret, typename... Args>
     requires is_statically_callable<Fn, Args...>::value
   struct get_unique_signature_impl<Fn, Ret(*)(Args...) noexcept> {
-    using type = Ret(Args...) const;
-    using sig_with_noexcept = Ret(Args...) const noexcept;
+    using type = Ret(Args...) const noexcept;
   };
 
 #endif
@@ -1323,14 +1320,12 @@ inline namespace fn_traits {
     bool Unique = is_unique_callable<Functor>::value>
   struct get_unique_signature {
     using type = void;
-    using sig_with_noexcept = void;
   };
 
   template <typename Functor>
   struct get_unique_signature<Functor, /* Unique = */ true> {
     using impl_t = get_unique_signature_impl<Functor, decltype(&Functor::operator())>;
     using type = typename impl_t::type;
-    using sig_with_noexcept = typename impl_t::sig_with_noexcept;
   };
 
   template <typename T>
@@ -1531,68 +1526,31 @@ inline namespace fn_traits {
   struct is_constant_wrapper<std::constant_wrapper<Val, T>> : std::true_type {};
 #endif
 
-  template <typename Functor, typename FnSample, typename Sig, typename = void>
-  struct noexcept_qualify_like { using type = Sig; };
+  template <typename Function, typename Signature>
+  struct noexcept_qualify_like; // Undefined
 
-#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
-
-  template <typename T, typename = void>
-  struct noexcept_qualify_like_helper : std::false_type {};
-
-  template <typename Ret, typename... Args>
-  struct noexcept_qualify_like_helper<Ret(*)(Args...) noexcept, void>
-  : std::true_type {};
-
-  template <typename Mp, typename Class>
-  struct noexcept_qualify_like_helper<Mp Class::*> : std::true_type {};
-
-  template <typename Functor>
-  struct noexcept_qualify_like_helper<
-    Functor, enable_if_t<is_unique_callable<Functor>::value>>
-  : bool_constant<unwrap_signature<
-    typename get_unique_signature<Functor>::sig_with_noexcept
-  >::isNoexcept> {};
-
-# define EMBED_DETAIL_HELPER_MEMPTR_DEFINE(C, V, REF, NOEXCEPT)               \
-  template <typename Ret, typename Class, typename... Args>                   \
-  struct noexcept_qualify_like_helper<Ret(Class::*)(Args...) C V REF NOEXCEPT>\
-  : bool_constant<unwrap_signature<void() NOEXCEPT>::isNoexcept> {};
-
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_HELPER_MEMPTR_DEFINE)
-
-# undef EMBED_DETAIL_HELPER_MEMPTR_DEFINE
-
-# define EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE(C, V, REF, NOEXCEPT)     \
-  template <typename Functor, typename Ret, typename... Args,               \
-    std::size_t Buf, typename Sig,                                          \
-    bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow \
-  > struct noexcept_qualify_like<                                           \
-    /* Functor = */ Functor,                                                \
-    /* FnSample = */ function<Buf, config_package<                          \
-      IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>,           \
-    /* Sig = */ Ret(Args...) C V REF NOEXCEPT,                              \
-    enable_if_t<IsView || !IsThrowing>                                      \
-  > {                                                                       \
-    using is_nothrow = typename noexcept_qualify_like_helper<Functor>::type;\
-/* MSVC 14.36~14.44 regression: noexcept(is_nothrow::value) trigger ICE. */ \
-    using sig_normal = conditional_t<is_nothrow::value,                     \
-      Ret(Args...) C V REF noexcept, Ret(Args...) C V REF>;                 \
-    using sig_view = conditional_t<is_nothrow::value,                       \
-      Ret(Args...) C V noexcept, Ret(Args...) C V>;                         \
-    using type = conditional_t<IsView, sig_view, sig_normal>;               \
+# define EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE(C, V, REF, NOEXCEPT)                 \
+  template <std::size_t Buf, typename Cfg, typename Sig, typename Ret, typename... Args>\
+  struct noexcept_qualify_like<function<Buf, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> {\
+    static constexpr bool is_noexcept = (Cfg::isView || !Cfg::isThrowing)               \
+      && unwrap_signature<int() NOEXCEPT>::isNoexcept;                                  \
+    /* MSVC 14.36~14.44 regression: noexcept(is_nothrow::value) trigger ICE. */         \
+    using sig_normal = conditional_t<is_noexcept,                                       \
+      Ret(Args...) C V REF noexcept, Ret(Args...) C V REF>;                             \
+    using sig_view = conditional_t<is_noexcept,                                         \
+      Ret(Args...) C V noexcept, Ret(Args...) C V>;                                     \
+    using type = conditional_t<Cfg::isView, sig_view, sig_normal>;                      \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE)
 
 # undef EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE
 
-#endif
-
   // Add noexcept qualifier if the Functor is noexcept free function,
   // and the function wrapper or reference support `noexcept`.
-  template <typename Functor, template <class, std::size_t> class Fn, typename Sig>
+  template <template <class, std::size_t> class Fn, typename Sig>
   using noexcept_qualify_like_t =
-    typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, Sig>::type;
+    typename noexcept_qualify_like<Fn<Sig, sizeof(void(*)())>, Sig>::type;
 
   // Check if `T` is the stateless standard operator wrapper.
   template <typename T> struct is_std_op_wrapper : std::false_type {};
@@ -2406,7 +2364,7 @@ namespace crtp_mixins {
   template <typename Signature, typename Self, bool IsView, typename... Args>
   struct operator_dereference_impl<Signature, Self, IsView, args_package<Args...>> {
   private:
-    using function_ptr_t = typename unwrap_signature<Signature>::pure_sig*;
+    using function_ptr_t = typename unwrap_signature<Signature>::pure_sig_noex*;
 
   public:
     // If the value stored in m_erasure is a pointer to a free function,
@@ -3118,13 +3076,6 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   typename Class = detail::remove_cvref_t<Functor>,
-  // [Auto] The buffer size of functor.
-  std::size_t BufferSize = sizeof(Class),
-  // [Auto] The function type. (fn or unique_fn)
-  typename Fn = detail::conditional_t<
-    std::is_copy_constructible<Class>::value,
-    fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
-  >,
   // [Auto] Get the nothrow guarantee in construction of functor.
   bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value
 )
@@ -3136,9 +3087,10 @@ EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline Fn make_fn(Functor&& functor) noexcept(NoThrow) {
+EMBED_NODISCARD inline fn<Signature, sizeof(Class)>
+make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
-    Fn, /* NoThrow = */ NoThrow
+    fn<Signature, sizeof(Class)>, /* NoThrow = */ NoThrow
   >(std::forward<Functor>(functor));
 }
 
@@ -3192,13 +3144,25 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
     /* NoThrow = */ true
   >(func_ptr);
 }
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+
+template <typename Ret, typename... Args>
+EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...))>
+make_fn(Ret (*func_ptr) (Args...) noexcept) noexcept {
+  return detail::make_function_impl<
+    fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...))>,
+    /* NoThrow = */ true
+  >(func_ptr);
+}
+
+#endif
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   // [Auto] The type of the function pointer.
-  typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*
+  typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig_noex*
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
@@ -3268,18 +3232,18 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
   return detail::make_function_impl<Fn, NoThrow>(std::forward<Lambda>(fn));
 }
 
-#define EMBED_DETAIL_MAKE_FN_DEFINE(C, V, REF, NOEXCEPT)                        \
-  template <typename Class, typename Ret, typename... Args>                     \
-  EMBED_NODISCARD inline auto                                                   \
-  make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept             \
-  -> fn<                                                                        \
-    Ret(detail::get_qualified_with_t<int REF, C V Class>, Args...) const,       \
-    sizeof(memfunc)                                                             \
-  > {                                                                           \
-    using qualified_class_t = detail::get_qualified_with_t<int REF, C V Class>; \
-    using signature_t = Ret (qualified_class_t, Args...) const;                 \
-    using fn_t = fn<signature_t, sizeof(memfunc)>;                              \
-    return detail::make_function_impl<fn_t, /* NoThrow = */ true>(memfunc);     \
+#define EMBED_DETAIL_MAKE_FN_DEFINE(C, V, REF, NOEXCEPT)                          \
+  template <typename Class, typename Ret, typename... Args>                       \
+  EMBED_NODISCARD inline auto                                                     \
+  make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept               \
+  -> fn<                                                                          \
+    Ret(detail::get_qualified_with_t<int REF, C V Class>, Args...) const NOEXCEPT,\
+    sizeof(memfunc)                                                               \
+  > {                                                                             \
+    using qualified_class_t = detail::get_qualified_with_t<int REF, C V Class>;   \
+    using signature_t = Ret (qualified_class_t, Args...) const NOEXCEPT;          \
+    using fn_t = fn<signature_t, sizeof(memfunc)>;                                \
+    return detail::make_function_impl<fn_t, /* NoThrow = */ true>(memfunc);       \
   }
 
 /// @brief make_fn[8]: Make function for pointer to member function.
@@ -3317,9 +3281,11 @@ make_fn(MemFuncPtr memfunc_ptr) noexcept {
 template <typename Class, typename T,
   typename Ret = typename detail::invoke_result<T Class::*, Class&>::type>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
--> fn<Ret(Class&) const, sizeof(ptr_memobj)> {
+-> fn<Ret(Class&) const EMBED_CXX17_NOEXCEPT_(
+    detail::is_nothrow_invocable_r<Ret, T Class::*, Class&>::value), sizeof(ptr_memobj)> {
   return detail::make_function_impl<
-    fn<Ret(Class&) const, sizeof(ptr_memobj)>,
+    fn<Ret(Class&) const EMBED_CXX17_NOEXCEPT_(
+      detail::is_nothrow_invocable_r<Ret, T Class::*, Class&>::value), sizeof(ptr_memobj)>,
     /* NoThrow = */ true
   >(ptr_memobj);
 }
@@ -3374,7 +3340,7 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
   typename Signature = detail::conditional_t<
     std::is_void<SpecifiedSig>::value,
-    detail::noexcept_qualify_like_t<Functor, Fn, RawSig>, SpecifiedSig
+    detail::noexcept_qualify_like_t<Fn, RawSig>, SpecifiedSig
   >,
   std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
   typename FnWrapper = Fn<Signature, BufferSize>,
@@ -3407,7 +3373,7 @@ namespace detail {
 
   template <typename Fn>
   using make_fn_ref_deduction_sig_t = noexcept_qualify_like_t<
-    Fn, fn_ref, typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature>;
+    fn_ref, typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature>;
 
   template <auto Cw, typename Fn>
   function(std::constant_wrapper<Cw, Fn>) -> function<

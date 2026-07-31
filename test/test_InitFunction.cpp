@@ -727,3 +727,29 @@ TEST(InitFunction, from_large_alignment) {
         ASSERT_EQ(f(), 42);
     }
 }
+
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+
+// InitFunction[39]
+TEST(InitFunction, noexcept_qualifier_tests) {
+    {
+        auto f1 = ebd::make_fn(ebd_test_free_func_iii_add_noexcept);
+        static_assert(
+            std::is_same_v<decltype(f1),
+            ebd::fn<int(int&,int&) const noexcept, sizeof(void(*)())>>,
+            "");
+        auto f2 = ebd::make_fn<int(int,int,int) const>(ebd_test_free_func_overload);
+        static_assert(
+            std::is_same_v<decltype(f2),
+            ebd::fn<int(int,int,int) const, sizeof(void(*)())>>,
+            "");
+        auto f3 = ebd::make_fn<int(int,int,int) const noexcept>(ebd_test_free_func_overload);
+        static_assert(
+            std::is_same_v<decltype(f3),
+            ebd::fn<int(int,int,int) const noexcept, sizeof(void(*)())>>,
+            "");
+    }
+}
+
+#endif // ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+
