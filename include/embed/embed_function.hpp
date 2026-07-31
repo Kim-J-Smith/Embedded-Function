@@ -3,7 +3,7 @@
  *
  * @date        2026-2-7
  *
- * @version     2.1.10
+ * @version     2.1.11
  *
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -3124,13 +3124,6 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   typename Class = detail::remove_cvref_t<Functor>,
-  // [Auto] The buffer size of functor.
-  std::size_t BufferSize = sizeof(Class),
-  // [Auto] The function type. (fn or unique_fn)
-  typename Fn = detail::conditional_t<
-    std::is_copy_constructible<Class>::value,
-    fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
-  >,
   // [Auto] Get the nothrow guarantee in construction of functor.
   bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value
 )
@@ -3142,9 +3135,10 @@ EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline Fn make_fn(Functor&& functor) noexcept(NoThrow) {
+EMBED_NODISCARD inline fn<Signature, sizeof(Class)>
+make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
-    Fn, /* NoThrow = */ NoThrow
+    fn<Signature, sizeof(Class)>, /* NoThrow = */ NoThrow
   >(std::forward<Functor>(functor));
 }
 
