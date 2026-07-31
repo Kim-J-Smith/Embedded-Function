@@ -1254,8 +1254,6 @@ inline namespace fn_traits {
       "T must be a function pointer or pointer to member function.");
   };
 
-  // The Config::isThrowing of ebd::fn and ebd::unique_fn is true.
-  // So `get_unique_signature_impl` will ignore the `noexcept` specifier.
 #define EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE(C, V, REF, NOEXCEPT)        \
   template <typename Fn, typename Class, typename Ret, typename... Args>          \
   struct get_unique_signature_impl<Fn, Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
@@ -1528,7 +1526,7 @@ inline namespace fn_traits {
   template <typename Function, typename Signature>
   struct noexcept_qualify_like; // Undefined
 
-# define EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE(C, V, REF, NOEXCEPT)                 \
+#define EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE(C, V, REF, NOEXCEPT)                  \
   template <std::size_t Buf, typename Cfg, typename Sig, typename Ret, typename... Args>\
   struct noexcept_qualify_like<function<Buf, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> {\
     static constexpr bool is_noexcept = (Cfg::isView || !Cfg::isThrowing)               \
@@ -1543,7 +1541,7 @@ inline namespace fn_traits {
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE)
 
-# undef EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE
+#undef EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE
 
   // Add noexcept qualifier if the Functor is noexcept free function,
   // and the function wrapper or reference support `noexcept`.
@@ -3002,7 +3000,7 @@ using basic_fn = detail::function<
 >;
 
 /// @brief A function object wrapper for copyable and callable objects.
-/// @throws Calls `std::terminate` when it is called in empty state.
+/// @note Calls `std::terminate` when it is called in empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
@@ -3017,7 +3015,7 @@ using fn = basic_fn<
 >;
 
 /// @brief A function object wrapper for movable and callable objects.
-/// @throws Calls `std::terminate` when it is called in empty state.
+/// @note Calls `std::terminate` when it is called in empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
