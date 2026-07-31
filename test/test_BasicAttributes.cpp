@@ -11,22 +11,22 @@ TEST(BasicAttributes, SizeAndAlign) {
     using f_t = ebd::fn<void()>;
     using uf_t = ebd::unique_fn<void()>;
     using cf_t = ebd::classic_fn<void()>;
-    using fv_t = ebd::fn_ref<void()>;
+    using fr_t = ebd::fn_ref<void()>;
 
     ASSERT_EQ(f_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
     ASSERT_EQ(uf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
     ASSERT_EQ(cf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(fv_t::get_buffer_size() == ebd::detail::default_buffer_size::view_buf, true);
+    ASSERT_EQ(fr_t::get_buffer_size() == ebd::detail::default_buffer_size::ref_buf, true);
 
     ASSERT_EQ(alignof(f_t) == ebd::detail::default_buffer_size::align_value, true);
     ASSERT_EQ(alignof(uf_t) == ebd::detail::default_buffer_size::align_value, true);
     ASSERT_EQ(alignof(cf_t) == ebd::detail::default_buffer_size::align_value, true);
-    ASSERT_EQ(alignof(fv_t) == alignof(void(*)()), true);
+    ASSERT_EQ(alignof(fr_t) == alignof(void(*)()), true);
 
     ASSERT_EQ(sizeof(f_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
     ASSERT_EQ(sizeof(uf_t) - uf_t::get_buffer_size(), 2 * sizeof(void*));
     ASSERT_EQ(sizeof(cf_t) - cf_t::get_buffer_size(), 2 * sizeof(void*));
-    ASSERT_EQ(sizeof(fv_t) - fv_t::get_buffer_size(), sizeof(void*));
+    ASSERT_EQ(sizeof(fr_t) - fr_t::get_buffer_size(), sizeof(void*));
 }
 
 // BasicAttributes[1]
@@ -34,7 +34,7 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     using f_t = ebd::fn<void()>;
     using uf_t = ebd::unique_fn<void()>;
     using cf_t = ebd::classic_fn<void()>;
-    using fv_t = ebd::fn_ref<void()>;
+    using fr_t = ebd::fn_ref<void()>;
 
     // f_t
     ASSERT_EQ(std::is_move_constructible<f_t>::value == true, true);
@@ -63,16 +63,16 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     ASSERT_EQ(std::is_nothrow_copy_assignable<cf_t>::value == false, true);
     ASSERT_EQ(std::is_nothrow_destructible<cf_t>::value == false, true);
 
-    // fv_t
-    ASSERT_EQ(std::is_move_constructible<fv_t>::value == true, true);
-    ASSERT_EQ(std::is_move_assignable<fv_t>::value == true, true);
-    ASSERT_EQ(std::is_copy_constructible<fv_t>::value == true, true);
-    ASSERT_EQ(std::is_copy_assignable<fv_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_copy_constructible<fv_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_copy_assignable<fv_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_move_constructible<fv_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_move_assignable<fv_t>::value == true, true);
-    ASSERT_EQ(std::is_nothrow_destructible<fv_t>::value == true, true);
+    // fr_t
+    ASSERT_EQ(std::is_move_constructible<fr_t>::value == true, true);
+    ASSERT_EQ(std::is_move_assignable<fr_t>::value == true, true);
+    ASSERT_EQ(std::is_copy_constructible<fr_t>::value == true, true);
+    ASSERT_EQ(std::is_copy_assignable<fr_t>::value == true, true);
+    ASSERT_EQ(std::is_nothrow_copy_constructible<fr_t>::value == true, true);
+    ASSERT_EQ(std::is_nothrow_copy_assignable<fr_t>::value == true, true);
+    ASSERT_EQ(std::is_nothrow_move_constructible<fr_t>::value == true, true);
+    ASSERT_EQ(std::is_nothrow_move_assignable<fr_t>::value == true, true);
+    ASSERT_EQ(std::is_nothrow_destructible<fr_t>::value == true, true);
 }
 
 // BasicAttributes[2]

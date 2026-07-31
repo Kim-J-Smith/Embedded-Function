@@ -2,7 +2,7 @@
 
 ## Overview
 
-`ebd::classic_fn` is a function object wrapper for copyable and callable objects. It is an alias of `ebd::detail::function` with specific configuration parameters that match the traditional `std::function` behavior: calling an empty wrapper throws `std::bad_function_call`.
+`ebd::classic_fn` is a function object wrapper for copyable and callable objects. It is an alias of `ebd::detail::function` with specific configuration parameters that match the traditional `std::function` behavior: calling an empty wrapper throws `std::bad_function_call`. (if exceptions are enabled)
 
 ## Template Parameters
 

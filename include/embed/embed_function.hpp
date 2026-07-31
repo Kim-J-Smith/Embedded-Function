@@ -1116,7 +1116,6 @@ inline namespace fn_traits {
   struct default_buffer_size {
     // The buffer size for ebd::fn_ref. Stop supporting pointer-to-members.
     static constexpr std::size_t ref_buf = sizeof(void (*) ());
-    static constexpr std::size_t view_buf = ref_buf;
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
 
     // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::classic_fn).

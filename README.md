@@ -144,7 +144,7 @@ auto main() -> int {
 
 1. **Ownership & Copy**: `fn`/`classic_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_ref` is non-owning (view).
 
-2. **Exception Behavior**: `fn`/`unique_fn`/`fn_ref` terminate on empty calls (no exceptions); `classic_fn` throws `std::bad_function_call` (like `std::function`).
+2. **Exception Behavior**: `fn`/`unique_fn` terminate on empty calls (no exceptions); `classic_fn` throws `std::bad_function_call` (like `std::function`).
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`classic_fn` support configurable buffer sizes (aligned), while `fn_ref` uses a fixed buffer (unused template param).
 
