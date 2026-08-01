@@ -1524,11 +1524,11 @@ inline namespace fn_traits {
 #endif
 
   template <typename Function, typename Signature>
-  struct noexcept_qualify_like; // Undefined
+  struct get_correct_signature; // Undefined
 
-#define EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE(C, V, REF, NOEXCEPT)                  \
+#define EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE(C, V, REF, NOEXCEPT)                  \
   template <std::size_t Buf, typename Cfg, typename Sig, typename Ret, typename... Args>\
-  struct noexcept_qualify_like<function<Buf, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> {\
+  struct get_correct_signature<function<Buf, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> {\
     static constexpr bool is_noexcept = (Cfg::isView || !Cfg::isThrowing)               \
       && unwrap_signature<int() NOEXCEPT>::isNoexcept;                                  \
     /* MSVC 14.36~14.44 regression: noexcept(is_noexcept) trigger ICE. */               \
@@ -1539,15 +1539,15 @@ inline namespace fn_traits {
     using type = conditional_t<Cfg::isView, sig_view, sig_normal>;                      \
   };
 
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE)
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE)
 
-#undef EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE
+#undef EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE
 
-  // Add noexcept qualifier if the Functor is noexcept free function,
-  // and the function wrapper or reference support `noexcept`.
+  // Remove `noexcept` qualifier if the `Fn` is configured to `IsThrowing = true`,
+  // and remove `&` or `&&` qualifier if the `Fn` is configured to `IsView = true`.
   template <template <class, std::size_t> class Fn, typename Sig>
-  using noexcept_qualify_like_t =
-    typename noexcept_qualify_like<Fn<Sig, sizeof(void(*)())>, Sig>::type;
+  using get_correct_signature_t =
+    typename get_correct_signature<Fn<Sig, sizeof(void(*)())>, Sig>::type;
 
   // Check if `T` is the stateless standard operator wrapper.
   template <typename T> struct is_std_op_wrapper : std::false_type {};
@@ -3337,7 +3337,7 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
   typename Signature = detail::conditional_t<
     std::is_void<SpecifiedSig>::value,
-    detail::noexcept_qualify_like_t<Fn, RawSig>, SpecifiedSig
+    detail::get_correct_signature_t<Fn, RawSig>, SpecifiedSig
   >,
   std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
   typename FnWrapper = Fn<Signature, BufferSize>,
@@ -3369,7 +3369,7 @@ namespace detail {
   /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
 
   template <typename Fn>
-  using make_fn_ref_deduction_sig_t = noexcept_qualify_like_t<
+  using make_fn_ref_deduction_sig_t = get_correct_signature_t<
     fn_ref, typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature>;
 
   template <auto Cw, typename Fn>

@@ -181,7 +181,7 @@ template <template <class, std::size_t> class Fn,
           typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
           typename Signature = detail::conditional_t<
               std::is_void<SpecifiedSig>::value,
-              detail::noexcept_qualify_like_t<Fn, RawSig>,
+              detail::get_correct_signature_t<Fn, RawSig>,
               SpecifiedSig>,
           std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
           typename FnWrapper = Fn<Signature, BufferSize>,
