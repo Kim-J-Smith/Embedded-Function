@@ -1531,11 +1531,11 @@ inline namespace fn_traits {
   struct noexcept_qualify_like<function<Buf, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> {\
     static constexpr bool is_noexcept = (Cfg::isView || !Cfg::isThrowing)               \
       && unwrap_signature<int() NOEXCEPT>::isNoexcept;                                  \
-    /* MSVC 14.36~14.44 regression: noexcept(is_nothrow::value) trigger ICE. */         \
+    /* MSVC 14.36~14.44 regression: noexcept(is_noexcept) trigger ICE. */               \
     using sig_normal = conditional_t<is_noexcept,                                       \
-      Ret(Args...) C V REF noexcept, Ret(Args...) C V REF>;                             \
+      Ret(Args...) C V REF EMBED_CXX17_NOEXCEPT_(true), Ret(Args...) C V REF>;          \
     using sig_view = conditional_t<is_noexcept,                                         \
-      Ret(Args...) C V noexcept, Ret(Args...) C V>;                                     \
+      Ret(Args...) C V EMBED_CXX17_NOEXCEPT_(true), Ret(Args...) C V>;                  \
     using type = conditional_t<Cfg::isView, sig_view, sig_normal>;                      \
   };
 
