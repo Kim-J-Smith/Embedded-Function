@@ -46,6 +46,7 @@ enum OverloadRes {
     OVL_DOUBLE,
     OVL_INT_INT,
     OVL_INT_FLOAT,
+    OVL_INT_INT_INT,
 };
 inline int ebd_test_free_func_overload() { return OVL_VOID; }
 inline int ebd_test_free_func_overload(int) { return OVL_INT; }
@@ -54,6 +55,7 @@ inline int ebd_test_free_func_overload(float) { return OVL_FLOAT; }
 inline int ebd_test_free_func_overload(double) { return OVL_DOUBLE; }
 inline int ebd_test_free_func_overload(int, int) { return OVL_INT_INT; }
 inline int ebd_test_free_func_overload(int, float) { return OVL_INT_FLOAT; }
+inline int ebd_test_free_func_overload(int, int, int) noexcept { return OVL_INT_INT_INT; }
 
 namespace ebd_test {
 

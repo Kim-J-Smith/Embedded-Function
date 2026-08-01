@@ -125,4 +125,4 @@ process_data(100, &handle_result);
 - [`ebd::detail::function`](./detail/function.md) - The underlying implementation
 - [`ebd::fn`](./fn.md) - For copyable callables
 - [`ebd::unique_fn`](./unique_fn.md) - For move-only callables
-- [`ebd::safe_fn`](./safe_fn.md) - For exception-safe callables
+- [`ebd::classic_fn`](./classic_fn.md) - For callables with `std::bad_function_call` on empty
