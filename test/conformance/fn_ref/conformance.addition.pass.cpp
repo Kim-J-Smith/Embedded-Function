@@ -16,12 +16,6 @@
 template <class Sig, std::size_t Buf>
 using nothrow_fn = ebd::basic_fn<Sig, ebd::detail::get_aligned_size(Buf), true, false, false, false>;
 
-static std::reference_wrapper<ebd_test_member_fn> get_ref() {
-  static ebd_test_member_fn x;
-  x.member_var = 0;
-  return x;
-}
-
 struct empty_trivial_but_state {
   std::uintptr_t operator()() const { return reinterpret_cast<std::uintptr_t>(this); }
 };
@@ -124,14 +118,12 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     ASSERT_EQ(f2(0), OVL_VOLATILE);
   }
 
-  {
-    static_cast<void>(&get_ref); // unused
-  }
-
 #if __cpp_lib_constant_wrapper >= 202603L
 
   {
-    auto rx = get_ref();
+    ebd_test_member_fn obj;
+    obj.member_var = 0;
+    auto rx = std::ref(obj);
     ebd::fn_ref<int(int)> f1(std::cw<&ebd_test_member_fn::get_var_and_increase>, rx);
 
     // Should this be allowed? `get_var_and_increase` is a non-const member function,
@@ -139,9 +131,10 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     // See P3961r1 (Why stop at function_ref as opposed to extending to reference_wrapper).
     // <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html#Why-stop-at-function_ref-as-opposed-to-extending-to-reference_wrapper>
     //
-    // In embed_function.hpp line 1568: `C V auto& obj = *erased->template access<Obj*>()`.
+    // In embed_function.hpp namespace `invocation`:
+    //    `auto& obj = *static_cast<Obj C V*>(base.val.fill_ptr);`.
     // Here `Obj` is `std::reference_wrapper<ebd_test_member_fn>`, so the underlying
-    // `ebd_test_member_fn` is not const-qualified. This would allow calling a non-const
+    // `ebd_test_member_fn` will not be qualified with const. This would allow calling a non-const
     // member function through a const-qualified function_ref, which violates const-correctness.
     // Therefore, P3961r1 recommends that such construction be disallowed.
     //
