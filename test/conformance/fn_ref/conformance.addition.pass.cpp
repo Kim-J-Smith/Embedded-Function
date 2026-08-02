@@ -145,10 +145,14 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
 
   {
 #if !defined(NDEBUG)
-    ASSERT_DEATH({ 
+    ASSERT_DEATH({
       ebd::fn_ref<int(int)> f1(
         std::cw<&ebd_test_member_fn::get_var_and_increase>, 
         static_cast<ebd_test_member_fn*>(nullptr));
+    }, "");
+
+    ASSERT_DEATH({
+      ebd::fn_ref<void()> f2(static_cast<void (*)()>(nullptr));
     }, "");
 #endif
   }
