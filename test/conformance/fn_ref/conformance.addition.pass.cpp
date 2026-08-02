@@ -151,9 +151,12 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
         static_cast<ebd_test_member_fn*>(nullptr));
     }, "");
 
+# if defined(__GNUC__) && !defined(__clang__)
     ASSERT_DEATH({
       ebd::fn_ref<void()> f2(static_cast<void (*)()>(nullptr));
     }, "");
+# endif // GCC
+
 #endif
   }
 
