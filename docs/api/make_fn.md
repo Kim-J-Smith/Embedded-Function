@@ -61,7 +61,7 @@ Creates an `ebd::fn` from a free-function pointer and deduces both signature and
 
 ```cpp
 template <typename Ret, typename... Args>
-EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...))>
+EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) noexcept)>
 make_fn(Ret (*func_ptr)(Args...) noexcept) noexcept;
 ```
 

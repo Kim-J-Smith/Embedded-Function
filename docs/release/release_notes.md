@@ -3,6 +3,7 @@
 
 **⚠️ Breaking Changes**
 - `ebd::fn` and `ebd::unique_fn` now call `std::terminate()` on empty call instead of throwing `std::bad_function_call`. If you need `std::bad_function_call` on empty call, use the new `ebd::classic_fn`.
+- `make_fn` now preserves the `noexcept` qualifier when deducing signatures for lambdas and functors (it was previously stripped for `ebd::fn`/`ebd::unique_fn`). For example, `make_fn([]() noexcept {})` now yields `fn<void() const noexcept>` instead of `fn<void() const>` (Since C++17).
 - `ebd::safe_fn` is deprecated. Use `ebd::fn` for terminate-on-empty, or `ebd::basic_fn` directly if you need the `AssertObjectNoThrow` guarantee.
 - The macro `EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER` has been removed.
 

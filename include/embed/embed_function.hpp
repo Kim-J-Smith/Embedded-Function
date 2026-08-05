@@ -1529,13 +1529,10 @@ inline namespace fn_traits {
 #define EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE(C, V, REF, NOEXCEPT)                  \
   template <std::size_t Buf, typename Cfg, typename Sig, typename Ret, typename... Args>\
   struct get_correct_signature<function<Buf, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> {\
-    static constexpr bool is_noexcept = (Cfg::isView || !Cfg::isThrowing)               \
-      && unwrap_signature<int() NOEXCEPT>::isNoexcept;                                  \
-    /* MSVC 14.36~14.44 regression: noexcept(is_noexcept) trigger ICE. */               \
-    using sig_normal = conditional_t<is_noexcept,                                       \
-      Ret(Args...) C V REF EMBED_CXX17_NOEXCEPT_(true), Ret(Args...) C V REF>;          \
-    using sig_view = conditional_t<is_noexcept,                                         \
-      Ret(Args...) C V EMBED_CXX17_NOEXCEPT_(true), Ret(Args...) C V>;                  \
+    /* MSVC 14.36~14.44 regression: noexcept(!Cfg::isThrowing) trigger ICE. */          \
+    using sig_normal = conditional_t<!Cfg::isThrowing,                                  \
+      Ret(Args...) C V REF NOEXCEPT, Ret(Args...) C V REF>;                             \
+    using sig_view = Ret(Args...) C V NOEXCEPT;                                         \
     using type = conditional_t<Cfg::isView, sig_view, sig_normal>;                      \
   };
 
@@ -3145,6 +3142,9 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
 }
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 
+/// @brief make_fn[3.5]: Make function for noexcept function pointer.
+/// (auto deduce signature and buffer size; the `noexcept` qualifier is preserved)
+/// @return `fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) noexcept)>`
 template <typename Ret, typename... Args>
 EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) noexcept)>
 make_fn(Ret (*func_ptr) (Args...) noexcept) noexcept {
@@ -3248,6 +3248,8 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 /// @brief make_fn[8]: Make function for pointer to member function.
 /// (auto deduce signature and buffer size)
 /// @return `fn<Ret(Class, Args...) const, sizeof(Ret(Class::*)(Args...))>`
+///         The deduced signature preserves the `noexcept` qualifier of the
+///         member function when noexcept is part of the type system (C++17+).
 EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 #undef EMBED_DETAIL_MAKE_FN_DEFINE
@@ -3276,7 +3278,10 @@ make_fn(MemFuncPtr memfunc_ptr) noexcept {
 }
 
 /// @brief make_fn[10]: Make function for pointer to member object.
-/// @return `fn<T(Class&) const, sizeof(ptr_memobj)>`
+/// @return `fn<Ret(Class&) const, sizeof(ptr_memobj)>`, where `Ret` is deduced
+///         from invoking the member pointer with `Class&`. A `noexcept`
+///         qualifier is added when the member access and the conversion to
+///         `Ret` cannot throw (C++17+).
 template <typename Class, typename T,
   typename Ret = typename detail::invoke_result<T Class::*, Class&>::type>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
