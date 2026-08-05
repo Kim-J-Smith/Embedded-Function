@@ -1543,8 +1543,9 @@ inline namespace fn_traits {
 
 #undef EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE
 
-  // Remove `noexcept` qualifier if the `Fn` is configured to `IsThrowing = true`,
-  // and remove `&` or `&&` qualifier if the `Fn` is configured to `IsView = true`.
+  // Remove `noexcept` qualifier if the `Fn` is configured to `IsThrowing = true`
+  // as well as `IsView = false`, and remove `&` or `&&` qualifier if the `Fn` is
+  // configured to `IsView = true`.
   template <template <class, std::size_t> class Fn, typename Sig>
   using get_correct_signature_t =
     typename get_correct_signature<Fn<Sig, sizeof(void(*)())>, Sig>::type;
@@ -3000,7 +3001,7 @@ using basic_fn = detail::function<
 >;
 
 /// @brief A function object wrapper for copyable and callable objects.
-/// @note Calls `std::terminate` when it is called in empty state.
+/// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
@@ -3015,7 +3016,7 @@ using fn = basic_fn<
 >;
 
 /// @brief A function object wrapper for movable and callable objects.
-/// @note Calls `std::terminate` when it is called in empty state.
+/// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
@@ -3030,7 +3031,7 @@ using unique_fn = basic_fn<
 >;
 
 /// @brief A function object wrapper for copyable and callable objects.
-/// @throws Throws `std::bad_function_call` when it is called in empty state.
+/// @throws `std::bad_function_call` if invoked in an empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
@@ -3045,6 +3046,7 @@ using classic_fn = basic_fn<
 >;
 
 /// @brief A non-owning polymorphic function wrapper.
+/// @note Empty state of this wrapper has been removed.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam Unused - Unused.
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
@@ -3144,10 +3146,10 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 
 template <typename Ret, typename... Args>
-EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...))>
+EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) noexcept)>
 make_fn(Ret (*func_ptr) (Args...) noexcept) noexcept {
   return detail::make_function_impl<
-    fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...))>,
+    fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) noexcept)>,
     /* NoThrow = */ true
   >(func_ptr);
 }
