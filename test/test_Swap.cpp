@@ -46,6 +46,17 @@ TEST(TestSwap, classic_fn_swap) {
     ASSERT_EQ(f2(3, 4), 3 + 4);
 }
 
+TEST(TestSwap, __safe_fn_swap) {
+    auto f1 = ebd::__safe_fn<int(int, int)>(ebd_test_free_func_iii_add);
+    decltype(f1) f2;
+
+    f2.swap(f1);
+
+    ASSERT_EQ(f1 == nullptr, true);
+    ASSERT_EQ(f2 == nullptr, false);
+    ASSERT_EQ(f2(3, 4), 3 + 4);
+}
+
 static int TestSwap_NonTrivialSwap_Flag = 0;
 
 struct TestSwap_NonTrivialSwap_Functor {

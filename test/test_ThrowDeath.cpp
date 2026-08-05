@@ -26,6 +26,11 @@ TEST(ThrowDeath, terminate_on_empty_call) {
     ASSERT_EQ(static_cast<bool>(f2), false);
     EXPECT_DEATH(f2(), "");
 
+    ebd::__safe_fn<void()> sf;
+    ASSERT_EQ(sf.is_empty(), true);
+    ASSERT_EQ(static_cast<bool>(sf), false);
+    EXPECT_DEATH(sf(), "");
+
     auto f3 = ebd::make_fn<void()>();
     ASSERT_EQ(f3.is_empty(), true);
     ASSERT_EQ(static_cast<bool>(f3), false);

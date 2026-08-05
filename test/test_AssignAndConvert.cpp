@@ -31,6 +31,12 @@ TEST(AssignAndConvert, small_to_big) {
     ASSERT_EQ(cf_big != nullptr, true);
     ASSERT_EQ(cf_big(23665, 8427), 23665 + 8427);
 
+    ebd::__safe_fn<int(int, int) const, s_buf> sf_small = ebd_test_free_func_iii_add;
+    ASSERT_EQ(sf_small != nullptr, true);
+    ebd::__safe_fn<int(int, int) const, b_buf> sf_big = sf_small;
+    ASSERT_EQ(sf_big != nullptr, true);
+    ASSERT_EQ(sf_big(23665, 8427), 23665 + 8427);
+
     auto small = ebd::make_fn<int(int)>([](int v){ return v * 2; });
     using Big = ebd::fn<int(int), 8 * sizeof(void*)>;
     Big big = small;
@@ -72,6 +78,15 @@ TEST(AssignAndConvert, ClassicFnAssign) {
     ASSERT_EQ(f1(1), 10);
 }
 
+// AssignAndConvert[3.5]
+TEST(AssignAndConvert, __SafeFnAssign) {
+    ebd::__safe_fn<int(int)> f1 = [](int x) noexcept { return x + 7; };
+    ebd::__safe_fn<int(int)> f2 = [](int x) noexcept { return x + 9; };
+    ASSERT_EQ(f1(1), 8);
+    f1 = f2;
+    ASSERT_EQ(f1(1), 10);
+}
+
 // AssignAndConvert[4]
 TEST(AssignAndConvert, ConstToNonConst) {
     ebd::fn<void()> f_non_const;
@@ -96,6 +111,17 @@ TEST(AssignAndConvert, StatelessAssign) {
     }
     {
         ebd::classic_fn<bool(int, int)> f1 = std::less<int>{};
+        auto f2 = f1;
+        ASSERT_EQ(f1(1, 2), true);
+        ASSERT_EQ(f1(2, 1), false);
+        ASSERT_EQ(f2(1, 2), true);
+        ASSERT_EQ(f2(2, 1), false);
+        auto f3 = std::move(f2);
+        ASSERT_EQ(f3(1, 2), true);
+        ASSERT_EQ(f3(2, 1), false);
+    }
+    {
+        ebd::__safe_fn<bool(int, int)> f1 = std::less<int>{};
         auto f2 = f1;
         ASSERT_EQ(f1(1, 2), true);
         ASSERT_EQ(f1(2, 1), false);

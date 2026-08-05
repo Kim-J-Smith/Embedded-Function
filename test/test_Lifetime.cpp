@@ -61,6 +61,25 @@ TEST(LifetimeTest, no_double_free_in_assignment) {
     }
     ASSERT_EQ(free_count, 4);
 
+    // __safe_fn
+    free_count = 0;
+    {
+        no_double_free_checker checker; // 1
+        ebd::__safe_fn<int()> f1 = [checker]() { return checker.m_var; }; // 2
+        ebd::__safe_fn<int()> f2;
+        f2 = f1; // 1
+    }
+    ASSERT_EQ(free_count, 4);
+
+    free_count = 0;
+    {
+        no_double_free_checker checker; // 1
+        ebd::__safe_fn<int()> f1 = [checker]() { return checker.m_var; }; // 2
+        ebd::__safe_fn<int()> f2;
+        f2 = std::move(f1); // 1
+    }
+    ASSERT_EQ(free_count, 4);
+
     // fn -> unique_fn
     free_count = 0;
     {

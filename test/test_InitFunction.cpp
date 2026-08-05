@@ -82,6 +82,10 @@ TEST(InitFunction, fn_freeFunction_noexcept) {
     ASSERT_EQ(f.is_empty(), false);
     ASSERT_EQ(f(), 0);
 
+    ebd::__safe_fn<int() EBD_TEST_NOEXCEPT> sf = ebd_test_free_func_noexcept;
+    ASSERT_EQ(sf.is_empty(), false);
+    ASSERT_EQ(sf(), 0);
+
     auto f2 = ebd::make_fn(ebd_test_free_func_noexcept);
     ASSERT_EQ(f2.is_empty(), false);
     ASSERT_EQ(f2(), 0);
@@ -178,6 +182,10 @@ TEST(InitFunction, fn_memberFunction_static_noexcept) {
     ebd::fn<int() EBD_TEST_NOEXCEPT> f = ebd_test_member_fn::static_mem_fn_noexcept;
     ASSERT_EQ(f.is_empty(), false);
     ASSERT_EQ(f(), 0);
+
+    ebd::__safe_fn<int() EBD_TEST_NOEXCEPT> sf = ebd_test_member_fn::static_mem_fn_noexcept;
+    ASSERT_EQ(sf.is_empty(), false);
+    ASSERT_EQ(sf(), 0);
 
     auto f2 = ebd::make_fn(ebd_test_member_fn::static_mem_fn_noexcept);
     ASSERT_EQ(f2.is_empty(), false);
@@ -286,6 +294,10 @@ TEST(InitFunction, fn_memberFunction_noexcept) {
     ebd::fn<int(C_t&) EBD_TEST_NOEXCEPT> f = &C_t::mem_fn_noexcept;
     ASSERT_EQ(f.is_empty(), false);
     ASSERT_EQ(f(c), 0);
+
+    ebd::__safe_fn<int(C_t&) EBD_TEST_NOEXCEPT> sf = &C_t::mem_fn_noexcept;
+    ASSERT_EQ(sf.is_empty(), false);
+    ASSERT_EQ(sf(c), 0);
 
     auto f2 = ebd::make_fn(&C_t::mem_fn_noexcept);
     ASSERT_EQ(f2.is_empty(), false);
@@ -546,6 +558,7 @@ TEST(InitFunction, make_fn_SpecifiedWrapper) {
     auto f2 = ebd::make_fn<ebd::unique_fn>(&ebd_test_member_fn::static_mem_fn_ii_add);
     auto f3 = ebd::make_fn<ebd::classic_fn>(&ebd_test_member_fn::static_mem_fn_ii_add);
     auto f4 = ebd::make_fn<ebd::fn_ref>(&ebd_test_member_fn::static_mem_fn_ii_add);
+    auto f6 = ebd::make_fn<ebd::__safe_fn>(&ebd_test_member_fn::static_mem_fn_ii_add);
 
     auto f5 = ebd::make_fn<ebd::fn_ref>(&ebd_test_free_func_iii_add);
 
@@ -556,6 +569,8 @@ TEST(InitFunction, make_fn_SpecifiedWrapper) {
     ASSERT_EQ(f3 != nullptr, true);
     ASSERT_EQ(f3(3, 9), 3 + 9);
     ASSERT_EQ(f4(3, 9), 3 + 9);
+    ASSERT_EQ(f6 != nullptr, true);
+    ASSERT_EQ(f6(3, 9), 3 + 9);
 
     ASSERT_EQ(f5(23, 45), 23 + 45);
 }
@@ -719,6 +734,10 @@ TEST(InitFunction, from_large_alignment) {
     }
     {
         ebd::classic_fn<int() const> f = ebd_test_large_alignment{};
+        ASSERT_EQ(f(), 42);
+    }
+    {
+        ebd::__safe_fn<int() const> f = ebd_test_large_alignment{};
         ASSERT_EQ(f(), 42);
     }
     {
