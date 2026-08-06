@@ -241,8 +241,10 @@ int ebd_test_counter::m_delete_times = 0;
 TEST(AssignAndConvert, SelfAssign) {
 #if defined(__GNUC__) || defined(__clang__)
 # pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wself-assign-overloaded"
 # pragma GCC diagnostic ignored "-Wself-move"
+# ifdef __clang__
+#  pragma GCC diagnostic ignored "-Wself-assign-overloaded" // only clang
+# endif
 #elif defined(_MSC_VER)
 # pragma warning(push)
 # pragma warning(disable : 26800) // for /analyze
