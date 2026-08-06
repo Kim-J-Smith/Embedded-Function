@@ -10,5 +10,5 @@ struct not_assert_nothrowing {
 
 int main() {
   not_assert_nothrowing not_assert_nothrow{};
-  ebd::safe_fn<int(int, int)> f = not_assert_nothrow; // FAIL
+  ebd::__safe_fn<int(int, int)> f = not_assert_nothrow; // FAIL
 }

@@ -4,6 +4,18 @@
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 
+namespace ebd {
+
+/// @attention TEST USE ONLY!
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using __safe_fn = basic_fn<Signature, detail::get_aligned_size(BufferSize),
+                           true,    // Is Copyable
+                           false,   // Not View
+                           false,   // Not Throwing on empty calls
+                           true>;   // Assert Ctor/Dtor Nothrow
+
+} // namespace ebd
+
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 # define EBD_TEST_NOEXCEPT noexcept
 #else
@@ -46,6 +58,7 @@ enum OverloadRes {
     OVL_DOUBLE,
     OVL_INT_INT,
     OVL_INT_FLOAT,
+    OVL_INT_INT_INT,
 };
 inline int ebd_test_free_func_overload() { return OVL_VOID; }
 inline int ebd_test_free_func_overload(int) { return OVL_INT; }
@@ -54,6 +67,7 @@ inline int ebd_test_free_func_overload(float) { return OVL_FLOAT; }
 inline int ebd_test_free_func_overload(double) { return OVL_DOUBLE; }
 inline int ebd_test_free_func_overload(int, int) { return OVL_INT_INT; }
 inline int ebd_test_free_func_overload(int, float) { return OVL_INT_FLOAT; }
+inline int ebd_test_free_func_overload(int, int, int) noexcept { return OVL_INT_INT_INT; }
 
 namespace ebd_test {
 

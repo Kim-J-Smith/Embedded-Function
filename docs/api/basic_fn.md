@@ -68,7 +68,7 @@ view(42);
 
 ## Notes
 
-- Prefer using the predefined aliases (`ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_view`) unless you need a combination not covered by them.
+- Prefer using the predefined aliases (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, `ebd::fn_ref`) unless you need a combination not covered by them.
 - The buffer size is automatically aligned to the nearest alignment boundary.
 - If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.
 
@@ -77,5 +77,5 @@ view(42);
 - [`ebd::detail::function`](./detail/function.md) - The underlying implementation
 - [`ebd::fn`](./fn.md) - For copyable callables
 - [`ebd::unique_fn`](./unique_fn.md) - For move-only callables
-- [`ebd::safe_fn`](./safe_fn.md) - For exception-safe callables
+- [`ebd::classic_fn`](./classic_fn.md) - For callables with `std::bad_function_call` on empty
 - [`ebd::fn_ref`](./fn_ref.md) - For non-owning views of callables

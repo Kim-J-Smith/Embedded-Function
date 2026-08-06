@@ -24,8 +24,8 @@ TEST(TestSwap, fn_ref_swap) {
     ASSERT_EQ(f2(3, 4), 3 + 4);
 }
 
-TEST(TestSwap, safe_fn_swap) {
-    auto f1 = ebd::safe_fn<int(int, int)>(ebd_test_free_func_iii_add);
+TEST(TestSwap, unique_fn_swap) {
+    auto f1 = ebd::unique_fn<int(int, int)>(ebd_test_free_func_iii_add);
     decltype(f1) f2;
 
     f2.swap(f1);
@@ -35,8 +35,19 @@ TEST(TestSwap, safe_fn_swap) {
     ASSERT_EQ(f2(3, 4), 3 + 4);
 }
 
-TEST(TestSwap, unique_fn_swap) {
-    auto f1 = ebd::unique_fn<int(int, int)>(ebd_test_free_func_iii_add);
+TEST(TestSwap, classic_fn_swap) {
+    auto f1 = ebd::classic_fn<int(int, int)>(ebd_test_free_func_iii_add);
+    decltype(f1) f2;
+
+    f2.swap(f1);
+
+    ASSERT_EQ(f1 == nullptr, true);
+    ASSERT_EQ(f2 == nullptr, false);
+    ASSERT_EQ(f2(3, 4), 3 + 4);
+}
+
+TEST(TestSwap, __safe_fn_swap) {
+    auto f1 = ebd::__safe_fn<int(int, int)>(ebd_test_free_func_iii_add);
     decltype(f1) f2;
 
     f2.swap(f1);
@@ -91,9 +102,9 @@ TEST(TestSwap, NonTrivialSwap) {
     {
         Test_t t{};
         t.m_var = 42;
-        ebd::safe_fn<int() const> f1 = t;
+        ebd::classic_fn<int() const> f1 = t;
         t.m_var = 43;
-        ebd::safe_fn<int() const> f2 = t;
+        ebd::classic_fn<int() const> f2 = t;
 
         TestSwap_NonTrivialSwap_Flag = 0;
         f1.swap(f2);

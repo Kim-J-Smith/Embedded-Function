@@ -1,4 +1,4 @@
-/// basic_usage.cpp — four wrapper types: fn, unique_fn, safe_fn, fn_ref
+/// basic_usage.cpp — four wrapper types: fn, unique_fn, classic_fn, fn_ref
 #include <iostream>
 #include <memory>
 #include <embed/embed_function.hpp>
@@ -26,7 +26,7 @@ fn  mul: 12
 fn2 mul: 30
 ufn  : 101
 ufn2 : 102
-Printer: Hello safe_fn!
+Printer: Hello classic_fn!
 ref  : 70
 empty_fn is empty
 ===
@@ -52,10 +52,10 @@ int main() {
     ebd::unique_fn<int(int)> ufn2 = std::move(ufn);  // move
     std::cout << "ufn2 : " << ufn2(2) << '\n';
 
-    // ebd::safe_fn — copyable, requires noexcept callable
-    ebd::safe_fn<void(const char*)> sfn;
-    sfn = Printer{};
-    sfn("Hello safe_fn!");
+    // ebd::classic_fn — copyable, throws on empty (like std::function)
+    ebd::classic_fn<void(const char*)> cfn;
+    cfn = Printer{};
+    cfn("Hello classic_fn!");
 
     // ebd::fn_ref — non-owning view (zero overhead)
     int factor = 10;
