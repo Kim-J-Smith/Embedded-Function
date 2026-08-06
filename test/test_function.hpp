@@ -244,3 +244,23 @@ struct ebd_test_large_alignment {
     alignas(std::max_align_t) int m_var;
     int operator()() const { return 42; }
 };
+
+struct ebd_test_counter {
+    static int m_create_times;
+    static int m_copy_times;
+    static int m_move_times;
+    static int m_delete_times;
+    ebd_test_counter() noexcept { m_create_times++; }
+    ebd_test_counter(const ebd_test_counter&) noexcept { m_copy_times++; }
+    ebd_test_counter(ebd_test_counter&&) noexcept { m_move_times++; }
+    ~ebd_test_counter() noexcept { m_delete_times++; }
+
+    static void clear() noexcept {
+        m_create_times = 0;
+        m_copy_times = 0;
+        m_move_times = 0;
+        m_delete_times = 0;
+    }
+
+    int operator()(int n) const noexcept { return n + 42; }
+};
