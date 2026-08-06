@@ -2168,9 +2168,9 @@ namespace command {
           typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
         static_assert(!requires { typename std::constant_wrapper<
               std::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
-          "[ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to `fn(args...)`, "
-          "otherwise the intended behavior for a non-owning function wrapper (fn_ref) "
-          "constructed from `cw<fn>` would be ambiguous."
+          "[func.wrap.ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to "
+          "`fn(args...)`, otherwise the intended behavior for a non-owning "
+          "function wrapper (fn_ref) constructed from `cw<fn>` would be ambiguous."
         );
       }
     }
