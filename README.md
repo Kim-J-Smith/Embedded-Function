@@ -1,7 +1,7 @@
 ﻿# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.11-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.11">
+  <img src="https://img.shields.io/badge/Version-2.2.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.2.0">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -283,6 +283,34 @@ auto main() -> int {
     fn1(); fn2(); fn3(); fn4(); fn5();
 }
 ```
+
+## 🛠️ Debug diagnostics hook
+
+`EMBED_FN_HOOK_DEBUG(message)` is a user-defined macro hook for capturing diagnostic output in debug builds. Define it **before** including the header:
+
+```cpp
+#include <cstdio>
+#define EMBED_FN_HOOK_DEBUG(message) fputs(message, stderr)
+#include "embed/embed_function.hpp"
+```
+
+The library invokes the hook with a pre-formatted message that contains the source location:
+
+```
+<file>:<line>:
+	<message>
+```
+
+The hook is called when:
+
+- An empty wrapper is invoked (e.g., `ebd::fn` / `ebd::unique_fn` holding no target) with message: `"Empty function has been called!"`.
+- An internal assertion fails (e.g., constructing `ebd::fn_ref` from a `nullptr` function or object pointer). For assertions, the message also appends the failed expression, e.g., `[(function_ptr != nullptr) == false]`, and `std::terminate()` is called afterwards.
+
+Notes:
+
+- All diagnostics are **compiled out entirely** in optimized builds (when `__OPTIMIZE__` or `NDEBUG` is defined), which means zero runtime overhead.
+- If the hook is not defined, the library substitutes a no-op. The checks still run in debug builds, and failed internal assertions still call `std::terminate()` regardless of the hook.
+- When `EMBED_FN_CONFIG_UNDEF_MACROS` is defined, `EMBED_FN_HOOK_DEBUG` is undefined at the end of the header.
 
 ## ✅ Compatibility
 

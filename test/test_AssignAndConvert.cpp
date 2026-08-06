@@ -231,3 +231,135 @@ TEST(AssignAndConvert, NonRefToRightValueRef) {
         // f_non_ref = f_ref; // Error
     }
 }
+
+int ebd_test_counter::m_create_times = 0;
+int ebd_test_counter::m_copy_times = 0;
+int ebd_test_counter::m_move_times = 0;
+int ebd_test_counter::m_delete_times = 0;
+
+// AssignAndConvert[9]
+TEST(AssignAndConvert, SelfAssign) {
+#if defined(__GNUC__) || defined(__clang__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wself-move"
+# ifdef __clang__
+#  pragma GCC diagnostic ignored "-Wself-assign-overloaded" // only clang
+# endif
+#elif defined(_MSC_VER)
+# pragma warning(push)
+# pragma warning(disable : 26800) // for /analyze
+#endif
+    {
+        ebd::fn<int(int, int) const> f1 = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f1(42, 0), 42);
+        f1 = f1;
+        ASSERT_EQ(f1(42, 1), 43);
+        f1 = std::move(f1);
+        ASSERT_EQ(f1(42, 2), 44);
+
+        ebd_test_counter::clear();
+        auto f2 = ebd::make_fn<ebd::fn>(ebd_test_counter{});
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 1);
+
+        ebd_test_counter::clear();
+        f2 = f2;
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        f2 = std::move(f2);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
+    {
+        ebd::unique_fn<int(int, int) const> f1 = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f1(42, 0), 42);
+        f1 = std::move(f1);
+        ASSERT_EQ(f1(42, 2), 44);
+
+        ebd_test_counter::clear();
+        auto f2 = ebd::make_fn<ebd::unique_fn>(ebd_test_counter{});
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 1);
+
+        ebd_test_counter::clear();
+        f2 = std::move(f2);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
+    {
+        ebd::fn_ref<int(int, int) const> f1 = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f1(42, 0), 42);
+        f1 = f1;
+        ASSERT_EQ(f1(42, 1), 43);
+        f1 = std::move(f1);
+        ASSERT_EQ(f1(42, 2), 44);
+
+        ebd_test_counter::clear();
+        auto obj = ebd_test_counter{};
+        auto f2 = ebd::make_fn<ebd::fn_ref>(obj);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        f2 = f2;
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        f2 = std::move(f2);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
+    {
+        ebd::__safe_fn<int(int, int) const> f1 = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f1(42, 0), 42);
+        f1 = f1;
+        ASSERT_EQ(f1(42, 1), 43);
+        f1 = std::move(f1);
+        ASSERT_EQ(f1(42, 2), 44);
+
+        ebd_test_counter::clear();
+        auto f2 = ebd::make_fn<ebd::__safe_fn>(ebd_test_counter{});
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 1);
+
+        ebd_test_counter::clear();
+        f2 = f2;
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        f2 = std::move(f2);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
+#if defined(__GNUC__) || defined(__clang__)
+# pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+# pragma warning(pop)
+#endif
+}

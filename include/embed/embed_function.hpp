@@ -1,9 +1,9 @@
 /**
  * @file        embed_function.hpp
  *
- * @date        2026-2-7
+ * @date        2026-8-6
  *
- * @version     2.1.11
+ * @version     2.2.0
  *
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -274,19 +274,26 @@
 # define EMBED_DETAIL_ALIAS
 #endif
 
-#if defined(__OPTIMIZE__) || defined(NDEBUG) || !defined(EMBED_FN_HOOK_DEBUG)
+#if defined(__OPTIMIZE__) || defined(NDEBUG)
 # define EMBED_DETAIL_FAIL_MESSAGE(message)
 # define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #else
-# define EMBED_DETAIL_FAIL_MESSAGE(message)                                             \
-  do {                                                                                  \
-    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) ":\n\t" message "\n"); \
-  } while(0) /* Output message together with file name and line number. */
-# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)                               \
-  do { if (!(expression)) {                                                             \
-    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) ":\n\t" message "\n"); \
-    std::terminate();                                                                   \
-  } } while(0) /* Output message and terminate procedure if expression is false. */
+# ifndef EMBED_FN_HOOK_DEBUG
+#  define EMBED_FN_HOOK_DEBUG(message) // NOP
+# endif
+
+// Output message together with file name and line number.
+# define EMBED_DETAIL_FAIL_MESSAGE(message) \
+  do { EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) ":\n\t" message "\n"); } while(false)
+
+// Output message and terminate procedure if expression is false.
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)                 \
+  do {                                                                    \
+    if (!(expression)) {                                                  \
+      EMBED_DETAIL_FAIL_MESSAGE(message " [(" #expression ") == false]"); \
+      std::terminate();                                                   \
+    }                                                                     \
+  } while(false)
 #endif
 
 #if __cpp_lib_unreachable >= 202202L
@@ -2161,9 +2168,9 @@ namespace command {
           typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
         static_assert(!requires { typename std::constant_wrapper<
               std::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
-          "[ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to `fn(args...)`, "
-          "otherwise the intended behavior for a non-owning function wrapper (fn_ref) "
-          "constructed from `cw<fn>` would be ambiguous."
+          "[func.wrap.ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to "
+          "`fn(args...)`, otherwise the intended behavior for a non-owning "
+          "function wrapper (fn_ref) constructed from `cw<fn>` would be ambiguous."
         );
       }
     }
