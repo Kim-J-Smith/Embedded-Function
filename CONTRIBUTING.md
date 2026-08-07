@@ -4,7 +4,7 @@ Thank you for contributing to *Embedded-Function*!
 
 To make sure the process of accepting patches goes smoothly for everyone (especially for the maintainer), you should try to follow these few simple guidelines when you contribute:
 
-0. Before contributing, please open an issue to discuss significant changes.
+0. Before contributing, please open an [issue](https://github.com/Kim-J-Smith/Embedded-Function/issues) to discuss significant changes.
 
 1. Fork the repository.
 
