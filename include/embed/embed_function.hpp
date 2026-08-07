@@ -2935,7 +2935,7 @@ namespace crtp_mixins {
 
 
 /**
- * @brief A basic function wrapper that users can customize.
+ * @brief Basic polymorphic function wrapper.
  *
  * This alias provides the most flexible way to instantiate a function wrapper
  * by directly specifying all configuration parameters. It is intended for
@@ -3004,7 +3004,7 @@ using basic_fn = detail::function<
   /* Signature = */   Signature
 >;
 
-/// @brief A function object wrapper for copyable and callable objects.
+/// @brief Owning polymorphic copyable function wrapper.
 /// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
@@ -3019,7 +3019,7 @@ using fn = basic_fn<
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A function object wrapper for movable and callable objects.
+/// @brief Owning polymorphic function wrapper.
 /// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
@@ -3034,7 +3034,7 @@ using unique_fn = basic_fn<
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A function object wrapper for copyable and callable objects.
+/// @brief Classic owning polymorphic function wrapper. (like `std::function`)
 /// @throws `std::bad_function_call` if invoked in an empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
@@ -3049,7 +3049,7 @@ using classic_fn = basic_fn<
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A non-owning polymorphic function wrapper.
+/// @brief Non-owning polymorphic function wrapper.
 /// @note Empty state of this wrapper has been removed.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam Unused - Unused.
