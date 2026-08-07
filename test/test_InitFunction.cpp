@@ -772,3 +772,23 @@ TEST(InitFunction, noexcept_qualifier_tests) {
 
 #endif // ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 
+// InitFunction[40]
+TEST(InitFunction, from_implicit_func_ptr) {
+    {
+        ebd::fn<int(int) const> f = ebd_test_implicit_func_ptr{};
+        ASSERT_EQ(f(0), 42);
+    }
+    {
+        ebd::unique_fn<int(int) const> f = ebd_test_implicit_func_ptr{};
+        ASSERT_EQ(f(0), 42);
+    }
+    {
+        ebd::__safe_fn<int(int) const> f = ebd_test_implicit_func_ptr{};
+        ASSERT_EQ(f(0), 42);
+    }
+    {
+        auto obj = ebd_test_implicit_func_ptr{};
+        ebd::fn_ref<int(int) const> f = obj;
+        ASSERT_EQ(f(0), 42);
+    }
+}

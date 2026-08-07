@@ -264,3 +264,11 @@ struct ebd_test_counter {
 
     int operator()(int n) const noexcept { return n + 42; }
 };
+
+struct ebd_test_implicit_func_ptr {
+    using func_ptr = int (*) (int);
+
+    operator func_ptr() const {
+        return [](int n) { return n + 42; };
+    }
+};
