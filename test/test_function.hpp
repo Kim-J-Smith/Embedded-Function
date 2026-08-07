@@ -250,6 +250,8 @@ struct ebd_test_counter {
     static int m_copy_times;
     static int m_move_times;
     static int m_delete_times;
+
+    ebd_test_counter(int) noexcept { m_create_times++; }
     ebd_test_counter() noexcept { m_create_times++; }
     ebd_test_counter(const ebd_test_counter&) noexcept { m_copy_times++; }
     ebd_test_counter(ebd_test_counter&&) noexcept { m_move_times++; }
@@ -263,4 +265,12 @@ struct ebd_test_counter {
     }
 
     int operator()(int n) const noexcept { return n + 42; }
+};
+
+struct ebd_test_implicit_func_ptr {
+    using func_ptr = int (*) (int);
+
+    operator func_ptr() const {
+        return [](int n) { return n + 42; };
+    }
 };

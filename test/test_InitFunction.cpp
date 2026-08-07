@@ -770,5 +770,93 @@ TEST(InitFunction, noexcept_qualifier_tests) {
     }
 }
 
+// InitFunction[40]
+TEST(InitFunction, inplace_create) {
+    {
+        ebd_test_counter::clear();
+        ebd::fn<int(int) const noexcept> f1(std::in_place_type<ebd_test_counter>);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        auto f2 = ebd::make_fn<ebd::fn>(std::in_place_type<ebd_test_counter>);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
+    {
+        ebd_test_counter::clear();
+        ebd::unique_fn<int(int) const noexcept> f1(std::in_place_type<ebd_test_counter>);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        auto f2 = ebd::make_fn<ebd::unique_fn>(std::in_place_type<ebd_test_counter>);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
+    {
+        ebd_test_counter::clear();
+        ebd::classic_fn<int(int) const> f1(std::in_place_type<ebd_test_counter>);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        auto f2 = ebd::make_fn<ebd::classic_fn>(std::in_place_type<ebd_test_counter>);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
+    {
+        ebd_test_counter::clear();
+        ebd::__safe_fn<int(int) const noexcept> f1(std::in_place_type<ebd_test_counter>);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        auto f2 = ebd::make_fn<ebd::__safe_fn>(std::in_place_type<ebd_test_counter>);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
+}
+
 #endif // ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 
+// InitFunction[41]
+TEST(InitFunction, from_implicit_func_ptr) {
+    {
+        ebd::fn<int(int) const> f = ebd_test_implicit_func_ptr{};
+        ASSERT_EQ(f(0), 42);
+    }
+    {
+        ebd::unique_fn<int(int) const> f = ebd_test_implicit_func_ptr{};
+        ASSERT_EQ(f(0), 42);
+    }
+    {
+        ebd::classic_fn<int(int) const> f = ebd_test_implicit_func_ptr{};
+        ASSERT_EQ(f(0), 42);
+    }
+    {
+        ebd::__safe_fn<int(int) const> f = ebd_test_implicit_func_ptr{};
+        ASSERT_EQ(f(0), 42);
+    }
+    {
+        auto obj = ebd_test_implicit_func_ptr{};
+        ebd::fn_ref<int(int) const> f = obj;
+        ASSERT_EQ(f(0), 42);
+    }
+}

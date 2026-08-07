@@ -2369,11 +2369,18 @@ namespace crtp_mixins {
     using function_ptr_t = typename unwrap_signature<Signature>::pure_sig_noex*;
 
   public:
-    // If the value stored in m_erasure is a pointer to a free function,
-    // return that pointer. Otherwise, return `nullptr`.
-    /// @warning If the addresses of different functions may be the same
-    /// (which is not in accordance with the C++ standard), then this function
-    /// has undefined behavior. For MSVC in release mode, `/OPT:NOICF` is needed.
+    /**
+     * @brief   If the value stored in m_erasure is a pointer to a free function,
+     *          return that pointer. Otherwise, return `nullptr`.
+     * 
+     * @note    [expr.eq]/4 Two function pointers compare equal, if and only if
+     *          both of them point to the same function.
+     *          See <https://eel.is/c++draft/expr.eq#4.2>.
+     * 
+     * @warning Some implementations do not comply with the standard.
+     *          For example, in MSVC release mode, `/OPT:NOICF` is needed to
+     *          avoid unexpected behaviour.
+     */
     function_ptr_t operator*() const noexcept {
       using invoker_impl_t = typename Self::command_t::invoker_impl_t;
       using invoker_t = conditional_t<IsView,
@@ -2935,7 +2942,7 @@ namespace crtp_mixins {
 
 
 /**
- * @brief A basic function wrapper that users can customize.
+ * @brief Basic polymorphic function wrapper.
  *
  * This alias provides the most flexible way to instantiate a function wrapper
  * by directly specifying all configuration parameters. It is intended for
@@ -3004,7 +3011,7 @@ using basic_fn = detail::function<
   /* Signature = */   Signature
 >;
 
-/// @brief A function object wrapper for copyable and callable objects.
+/// @brief Owning polymorphic copyable function wrapper.
 /// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
@@ -3019,7 +3026,7 @@ using fn = basic_fn<
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A function object wrapper for movable and callable objects.
+/// @brief Owning polymorphic function wrapper.
 /// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
@@ -3034,7 +3041,7 @@ using unique_fn = basic_fn<
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A function object wrapper for copyable and callable objects.
+/// @brief Classic owning polymorphic function wrapper. (like `std::function`)
 /// @throws `std::bad_function_call` if invoked in an empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
@@ -3049,7 +3056,7 @@ using classic_fn = basic_fn<
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A non-owning polymorphic function wrapper.
+/// @brief Non-owning polymorphic function wrapper.
 /// @note Empty state of this wrapper has been removed.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam Unused - Unused.
@@ -3343,6 +3350,7 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 /// @brief make_fn[12]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, sizeof(functor)>`
+/// TODO: support muti-params.
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
   typename SpecifiedSig = void,

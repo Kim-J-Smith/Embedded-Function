@@ -6,11 +6,12 @@
 # define EMBED_HAS_BUILTIN(x) 0
 # define EMBED_HAS_ATTRIBUTE(x) 0
 # define EMBED_HAS_CXX_ATTRIBUTE(x) 0
+# define EMBED_HAS_FEATURE(x) 0
+# define EMBED_HAS_INCLUDE(x) 0
 # define EMBED_ABI_VISIBILITY(x)
 # define EMBED_INLINE inline
 # define EMBED_RESTRICT
 # define EMBED_NODISCARD
-# define EMBED_FALLTHROUGH()
 # define EMBED_DEPRECATED(x)
 
 #endif // defined(EBD_TEST_USE_FALLBACK)

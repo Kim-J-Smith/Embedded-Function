@@ -8,7 +8,7 @@ endif()
 
 # Project name.
 project(
-    "embed_function_2.0.x-GoogleTest"
+    "embed_function_2.2.x-GoogleTest"
     LANGUAGES CXX
 )
 
@@ -68,6 +68,9 @@ file(
     GLOB EMBED_FUNCTION_TEST_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/test_*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn_ref/*.pass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn/*.pass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/conformance/__safe_fn/*.pass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/conformance/unique_fn/*.pass.cpp"
 )
 
 # Target executable file.
@@ -170,6 +173,7 @@ file(
   "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn_ref/fail/*.fail.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn/fail/*.fail.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/conformance/__safe_fn/fail/*.fail.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/conformance/unique_fn/fail/*.fail.cpp"
 )
 
 get_property(PATH_INCLUDES DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
@@ -206,12 +210,20 @@ message(STATUS "===---------------------- FAIL TEST BEGIN ----------------------
 message(STATUS "Flags: ${FAIL_TEST_CMAKE_FLAGS}")
 
 foreach(FAIL_TEST_SRC ${EMBED_FUNCTION_FAIL_TEST_FILES})
-  get_filename_component(FAIL_TEST_NAME ${FAIL_TEST_SRC} NAME_WE)
-  get_filename_component(FAIL_TEST_FILE ${FAIL_TEST_SRC} NAME)
+  file(
+    RELATIVE_PATH FAIL_TEST_REL_PATH 
+    ${CMAKE_CURRENT_SOURCE_DIR}/conformance 
+    ${FAIL_TEST_SRC}
+  )
+
+  # Use a unique bindir per test so that tests sharing a file name do not
+  # reuse the same try_compile binary directory.
+  string(REPLACE "/" "_" FAIL_TEST_UNIQUE_NAME "${FAIL_TEST_REL_PATH}")
+  string(REPLACE ".fail.cpp" "" FAIL_TEST_UNIQUE_NAME "${FAIL_TEST_UNIQUE_NAME}")
 
   try_compile(
     COMPILE_RESULT
-    ${CMAKE_CURRENT_BINARY_DIR}/fail_test/${FAIL_TEST_NAME}
+    ${CMAKE_CURRENT_BINARY_DIR}/fail_test/${FAIL_TEST_UNIQUE_NAME}
     SOURCES ${FAIL_TEST_SRC}
     CMAKE_FLAGS "${FAIL_TEST_CMAKE_FLAGS}"
     COMPILE_DEFINITIONS "${CMAKE_CXX_FLAGS} ${FAIL_TEST_INCLUDE_PATH_CMD}"
@@ -220,13 +232,13 @@ foreach(FAIL_TEST_SRC ${EMBED_FUNCTION_FAIL_TEST_FILES})
   if(${COMPILE_RESULT})
     message(
       FATAL_ERROR
-      "[  ERROR   ]: ${FAIL_TEST_FILE} passed but it should be rejected!"
+      "[  ERROR   ]: \"${FAIL_TEST_REL_PATH}\" passed but it should be rejected!"
       " See ${FAIL_TEST_SRC}"
     )
   else()
     message(
       STATUS
-      "[  PASSED  ]: ${FAIL_TEST_FILE} correctly rejected"
+      "[  PASSED  ]: \"${FAIL_TEST_REL_PATH}\" correctly rejected"
     )
   endif()
 endforeach()
