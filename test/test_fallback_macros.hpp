@@ -10,7 +10,6 @@
 # define EMBED_INLINE inline
 # define EMBED_RESTRICT
 # define EMBED_NODISCARD
-# define EMBED_FALLTHROUGH()
 # define EMBED_DEPRECATED(x)
 
 #endif // defined(EBD_TEST_USE_FALLBACK)
