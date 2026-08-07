@@ -2369,11 +2369,18 @@ namespace crtp_mixins {
     using function_ptr_t = typename unwrap_signature<Signature>::pure_sig_noex*;
 
   public:
-    // If the value stored in m_erasure is a pointer to a free function,
-    // return that pointer. Otherwise, return `nullptr`.
-    /// @warning If the addresses of different functions may be the same
-    /// (which is not in accordance with the C++ standard), then this function
-    /// has undefined behavior. For MSVC in release mode, `/OPT:NOICF` is needed.
+    /**
+     * @brief   If the value stored in m_erasure is a pointer to a free function,
+     *          return that pointer. Otherwise, return `nullptr`.
+     * 
+     * @note    [expr.eq]/4 Two function pointers compare equal, if and only if
+     *          both of them point to the same function.
+     *          See <https://eel.is/c++draft/expr.eq#4.2>.
+     * 
+     * @warning Some implementations do not comply with the standard.
+     *          For example, in MSVC release mode, `/OPT:NOICF` is needed to
+     *          avoid unexpected behaviour.
+     */
     function_ptr_t operator*() const noexcept {
       using invoker_impl_t = typename Self::command_t::invoker_impl_t;
       using invoker_t = conditional_t<IsView,
