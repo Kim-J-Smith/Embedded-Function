@@ -7,12 +7,14 @@
 - `ebd::safe_fn` is deprecated. Use `ebd::fn` for terminate-on-empty, or `ebd::basic_fn` directly if you need the `AssertObjectNoThrow` guarantee.
 - The macro `EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER` has been removed.
 - If the user creates the `fn_ref` object from `nullptr` in the **debugging mode**, then regardless of whether the user has defined the macro `EMBED_FN_HOOK_DEBUG` or not, the `std::terminate()` function will be called.
+- The `ebd::fn_ref` CTAD deduction guides for `std::constant_wrapper` (C++26) have been removed. Use `ebd::make_fn(std::cw<...>)` instead.
 
 **✨ New Features**
 - Added `ebd::classic_fn`, a copyable wrapper that throws `std::bad_function_call` on empty call (like `std::function`).
 - Added a `make_fn` overload for `noexcept` function pointers (C++17+), which preserves the `noexcept` qualifier in the wrapper's signature.
 - noexcept qualifiers are now propagated through `make_fn` for member function pointers and member object pointers.
 - `make_fn<FnWrapper>` now accepts multiple arguments, enabling in-place construction with a specific wrapper type, e.g. `make_fn<ebd::classic_fn>(std::in_place_type<Functor>, args...)`.
+- Added `make_fn` overloads for `std::constant_wrapper` (C++26+), which deduce and return an `ebd::fn_ref` from `std::cw<fn>` or `std::cw<member_fn>` + object.
 
 **🛠️ Optimizations and Improvements**
 - Refactored noexcept propagation: replaced the complex `noexcept_qualify_like` trait with a simpler `get_correct_signature` trait that decides based on wrapper config (`IsView || !IsThrowing`).

@@ -182,16 +182,12 @@ TEST(Conformance_fn_ref, constant_wrapper_pass) {
     }
   }
 
-#if __cpp_deduction_guides >= 201907L
-
   {
-    // constexpr and CTAD
-    constexpr ebd::fn_ref f = std::cw<&ebd_test_free_func_iii_add>;
+    // constexpr and make_fn
+    constexpr auto f = ebd::make_fn(std::cw<&ebd_test_free_func_iii_add>);
     static_assert(std::is_same_v<decltype(f), const ebd::fn_ref<int(int, int) const>>);
     ASSERT_EQ(f(42, 42), 42 + 42);
   }
-
-#endif // ^^^ __cpp_deduction_guides >= 201907L
 
 }
 
