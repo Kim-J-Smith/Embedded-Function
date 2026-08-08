@@ -3383,6 +3383,7 @@ constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { retur
 template <template <class, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
 
+/// TODO: @deprecated Use make_fn instead.
 #if __cpp_lib_constant_wrapper >= 202603L
 namespace detail {
 
