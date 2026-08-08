@@ -168,7 +168,7 @@ auto main() -> int {
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type.)
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn`, `ebd::unique_fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type. Return `ebd::fn_ref` only when the callable object is `std::cw`.)
 
 > __NOTE__: 
 > The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
@@ -213,6 +213,14 @@ auto f = ebd::make_fn<ebd::fn_ref[, Signature]>(Callable_Object);
 auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, CArgs...);
 auto f = ebd::make_fn[<FnWrapper[, Signature]>](
   std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...);
+```
+
+```cpp
+// Create ebd::fn_ref from std::constant_wrapper. 
+// Since C++26
+auto f = ebd::make_fn(std::cw<&free_function>);
+auto f = ebd::make_fn(std::cw<&Class::member_function>, obj);
+auto f = ebd::make_fn(std::cw<&Class::member_function>, &obj);
 ```
 
 ## 🔗 Back to function pointer

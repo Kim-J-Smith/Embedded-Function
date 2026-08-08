@@ -180,10 +180,10 @@
 # include <type_traits> // std::enable_if, ...
 # if EMBED_CXX_VERSION >= 201703L
 #  include <initializer_list>
-# endif // >= C++17
+# endif // C++ >= 17
 # if __cpp_impl_reflection >= 202506L && EMBED_HAS_INCLUDE(<meta>)
 #  include <meta>       // std::meta::is_complete_type(C++26)
-# endif // >= C++26
+# endif // C++ >= 26
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
@@ -2839,7 +2839,7 @@ namespace crtp_mixins {
       m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
     }
 
-#endif
+#endif // C++ >= 17
 
 #if __cpp_lib_constant_wrapper >= 202603L
 
@@ -2893,7 +2893,7 @@ namespace crtp_mixins {
       }
     }
 
-#endif
+#endif // C++ >= 26
 
   };
 
@@ -3168,7 +3168,7 @@ make_fn(Ret (*func_ptr) (Args...) noexcept) noexcept {
   >(func_ptr);
 }
 
-#endif
+#endif // C++ >= 17
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
@@ -3345,9 +3345,38 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
   >(std::in_place_type<Functor>, il, std::forward<CArgs>(args)...);
 }
 
-#endif
+#endif // C++ >= 17
 
-/// @brief make_fn[12]: Make function with specified wrapper.
+#if __cpp_lib_constant_wrapper >= 202603L
+
+/// @brief make_fn[12]: Make function from `std::cw<fn>`.
+/// @return `fn_ref<Auto-Deduction>`
+template <auto Cw, typename Fn>
+EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept {
+  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using sig_correct = detail::get_correct_signature_t<fn_ref, sig_raw>;
+
+  return detail::make_function_impl<
+    /* Fn = */ fn_ref<sig_correct>, /* NoThrow = */ true
+  >(std::constant_wrapper<Cw, Fn>{});
+}
+
+/// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
+/// @return `fn_ref<Auto-Deduction>`
+template <auto Cw, typename Fn, typename Tp>
+EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) noexcept {
+  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using sig_wip = detail::get_correct_signature_t<fn_ref, sig_raw>;
+  using sig_correct = detail::skip_first_arg_sig_t<sig_wip>;
+
+  return detail::make_function_impl<
+    /* Fn = */ fn_ref<sig_correct>, /* NoThrow = */ true
+  >(std::constant_wrapper<Cw, Fn>{}, std::forward<Tp>(obj));
+}
+
+#endif // C++ >= 26
+
+/// @brief make_fn[14]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, sizeof(functor)>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
@@ -3382,33 +3411,6 @@ template <typename Unused = void,
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
 template <template <class, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
-
-/// TODO: @deprecated Use make_fn instead.
-#if __cpp_lib_constant_wrapper >= 202603L
-namespace detail {
-
-  /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
-
-  template <typename Fn>
-  using make_fn_ref_deduction_sig_t = get_correct_signature_t<
-    fn_ref, typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature>;
-
-  template <auto Cw, typename Fn>
-  function(std::constant_wrapper<Cw, Fn>) -> function<
-    default_buffer_size::ref_buf,
-    config_package<true, true, false, false>, // fn_ref
-    make_fn_ref_deduction_sig_t<Fn>
-  >;
-
-  template <auto Cw, typename Fn, typename Tp>
-  function(std::constant_wrapper<Cw, Fn>, Tp&&) -> function<
-    default_buffer_size::ref_buf,
-    config_package<true, true, false, false>, // fn_ref
-    skip_first_arg_sig_t<make_fn_ref_deduction_sig_t<Fn>>
-  >;
-
-} // end namespace detail
-#endif // ^^^ __cpp_lib_constant_wrapper >= 202603L
 
 } // end namespace ebd
 

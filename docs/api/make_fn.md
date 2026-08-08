@@ -171,7 +171,25 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 
 Constructs the callable directly inside the wrapper buffer. The returned wrapper type is deduced from the functor.
 
-### 13. Explicit wrapper type
+### 13. From `std::constant_wrapper` (C++26+)
+
+```cpp
+template <auto Cw, typename Fn>
+EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept;
+```
+
+Creates an `ebd::fn_ref` from a `std::constant_wrapper` (P3007) of a free function or other callable. The signature is deduced automatically. Only available when `__cpp_lib_constant_wrapper >= 202603L`.
+
+### 14. From `std::constant_wrapper` of a member pointer and an object (C++26+)
+
+```cpp
+template <auto Cw, typename Fn, typename Tp>
+EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) noexcept;
+```
+
+Creates an `ebd::fn_ref` from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature.
+
+### 15. Explicit wrapper type
 
 ```cpp
 template <template <class, std::size_t> class Fn,
@@ -265,6 +283,26 @@ auto fn = ebd::make_fn(std::in_place_type<Functor>, 42);
 int value = fn();
 ```
 
+### `std::constant_wrapper` (C++26+)
+
+```cpp
+void free_func(int a, int b) { /* ... */ }
+struct MyClass {
+    void method(int a, int b) { /* ... */ }
+    int value;
+};
+
+// From a constant_wrapper of a free function.
+auto cw_fn = ebd::make_fn(std::cw<&free_func>);
+
+// From a constant_wrapper of a member function + instance.
+MyClass obj;
+auto cw_mem = ebd::make_fn(std::cw<&MyClass::method>, obj);
+
+// From a constant_wrapper of a member object + instance.
+auto cw_mem_obj = ebd::make_fn(std::cw<&MyClass::value>, &obj);
+```
+
 ## Notes
 
 - `ebd::make_fn` returns `ebd::fn` for copyable deduced callables and `ebd::unique_fn` for move-only deduced callables.
@@ -272,6 +310,7 @@ int value = fn();
 - The explicit-wrapper overload accepts multiple arguments and works with `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`. The buffer size is deduced from the `make_fn(args...)` result instead of `sizeof(Functor)`.
 - `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.
 - When deduction fails, the fallback overload triggers a static assertion with guidance.
+- The `std::constant_wrapper` overloads (C++26+) return `ebd::fn_ref` and are `constexpr`. They replace the removed `ebd::fn_ref` CTAD deduction guides for `std::constant_wrapper`.
 
 ## See Also
 
