@@ -21,7 +21,7 @@
 
 *Embedded Function* is a **lightweight** and **no-heap-allocation** function wrapper collection implemented based on the C++11 standard, optimized([see below](#-performance-optimization)) for resource-constrained or high-performance environments.
 
-The library is [freestanding](https://en.cppreference.com/w/cpp/freestanding), making it feasible for embedded development or kernel design of an operating system.
+The library is [freestanding](https://cppreference.com/w/cpp/freestanding), making it feasible for embedded development or kernel design of an operating system.
 
 In a [single header file](./include/embed/embed_function.hpp), **five** function wrappers are provided as follows (the customizable [`ebd::basic_fn`](./docs/api/basic_fn.md) is the fifth):
 
@@ -171,7 +171,7 @@ auto main() -> int {
 In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn`, `ebd::unique_fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type. Return `ebd::fn_ref` only when the callable object is `std::cw`.)
 
 > __NOTE__: 
-> The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
+> The [Concepts](https://cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
 
 ### Usage
 
@@ -392,7 +392,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 ## 📚 Similar implementations
 
-- [std::function](http://en.cppreference.com/w/cpp/utility/functional/function)
+- [std::function](https://cppreference.com/w/cpp/utility/functional/function)
 
 - [Naios/function2](https://github.com/Naios/function2)
 

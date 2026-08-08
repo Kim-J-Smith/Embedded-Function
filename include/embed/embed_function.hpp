@@ -207,7 +207,7 @@
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 // The noexcept-specification is a part of the function type and
 // may appear as part of any function declarator. (Since C++17)
-// See <https://en.cppreference.com/w/cpp/language/noexcept_spec>.
+// See <https://cppreference.com/w/cpp/language/noexcept_spec>.
 
 # define EMBED_DETAIL_FN_EXPAND(F) \
   EMBED_DETAIL_FN_EXPAND_IMPL(F, ) EMBED_DETAIL_FN_EXPAND_IMPL(F, noexcept)
@@ -336,7 +336,7 @@ inline namespace cxx_traits {
 
   /// @brief Types from <type_traits> have been implemented,
   /// consistent with the standard behavior (C++14 ~ C++23).
-  /// See <https://en.cppreference.com/w/cpp/header/type_traits.html>.
+  /// See <https://cppreference.com/w/cpp/header/type_traits.html>.
 
   template <typename... Args> using void_t = typename make_void<Args...>::type;
 
@@ -579,7 +579,7 @@ inline namespace cxx_traits {
   };
 
   // Get the invoke result and invoke tag.
-  // See <https://en.cppreference.com/w/cpp/types/result_of.html>.
+  // See <https://cppreference.com/w/cpp/types/result_of.html>.
   template <typename Func, typename... ArgsT>
   struct invoke_result : public invoke_result_impl<
     std::is_member_function_pointer<
@@ -647,7 +647,7 @@ inline namespace cxx_traits {
   template <typename Func, typename... Args>
   using call_is_nothrow = call_is_nothrow_helper<Func, args_package<Args...>>;
 
-  // See <https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
+  // See <https://cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
   template <typename To, typename From>
   struct reference_converts_from_temporary
   : public bool_constant<
@@ -708,7 +708,7 @@ inline namespace cxx_traits {
 # pragma GCC diagnostic pop
 #endif
 
-  // See <https://en.cppreference.com/w/cpp/types/is_invocable.html>.
+  // See <https://cppreference.com/w/cpp/types/is_invocable.html>.
   template <typename Ret, typename Func, typename... Args>
   struct is_invocable_r : public bool_constant<
     is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
@@ -771,7 +771,7 @@ inline namespace cxx_traits {
     );
   }
 
-  // See <https://en.cppreference.com/w/cpp/utility/functional/invoke.html>.
+  // See <https://cppreference.com/w/cpp/utility/functional/invoke.html>.
   template <typename Result, typename Callee, typename... Args>
   EMBED_CXX14_CONSTEXPR enable_if_t<
     is_invocable_r<Result, Callee, Args...>::value
