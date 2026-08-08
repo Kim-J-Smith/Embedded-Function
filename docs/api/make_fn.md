@@ -176,20 +176,20 @@ Constructs the callable directly inside the wrapper buffer. The returned wrapper
 ```cpp
 template <template <class, std::size_t> class Fn,
           typename SpecifiedSig = void,
-          typename Functor,
-          typename Deduction = decltype(make_fn(std::declval<Functor>())),
+          typename... Args,
+          typename Deduction = decltype(make_fn(std::declval<Args>()...)),
           typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
           typename Signature = detail::conditional_t<
               std::is_void<SpecifiedSig>::value,
               detail::get_correct_signature_t<Fn, RawSig>,
               SpecifiedSig>,
-          std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
+          std::size_t BufferSize = Deduction::get_buffer_size(),
           typename FnWrapper = Fn<Signature, BufferSize>,
-          bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))>
-EMBED_NODISCARD inline FnWrapper make_fn(Functor&& functor) noexcept(NoThrow);
+          bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))>
+EMBED_NODISCARD inline FnWrapper make_fn(Args&&... args) noexcept(NoThrow);
 ```
 
-Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(functor)`.
+Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. Accepts multiple arguments: the wrapper type and signature are deduced from `make_fn(args...)`, and the buffer size is taken from the deduced result. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(args...)`. This also enables in-place construction with a specific wrapper, e.g. `make_fn<ebd::fn>(std::in_place_type<Functor>, 0)`.
 
 ## Usage Examples
 
@@ -241,6 +241,15 @@ void bar() {}
 auto ref = ebd::make_fn<ebd::fn_ref>(&bar);
 
 auto ref2 = ebd::make_fn<ebd::fn_ref, void()>(bar);
+
+// Multiple arguments, e.g. in-place construction with a specific wrapper.
+struct Counter {
+    explicit Counter(int v) : value(v) {}
+    int operator()() const { return value; }
+    int value;
+};
+auto fn = ebd::make_fn<ebd::fn>(std::in_place_type<Counter>, 42);
+int value = fn();
 ```
 
 ### In-place Construction
@@ -260,7 +269,7 @@ int value = fn();
 
 - `ebd::make_fn` returns `ebd::fn` for copyable deduced callables and `ebd::unique_fn` for move-only deduced callables.
 - When the callable is ambiguous, such as an overloaded function, specify the signature explicitly.
-- The explicit-wrapper overload accepts `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`.
+- The explicit-wrapper overload accepts multiple arguments and works with `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`. The buffer size is deduced from the `make_fn(args...)` result instead of `sizeof(Functor)`.
 - `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.
 - When deduction fails, the fallback overload triggers a static assertion with guidance.
 
