@@ -781,7 +781,7 @@ TEST(InitFunction, inplace_create) {
         ASSERT_EQ(ebd_test_counter::m_move_times, 0);
 
         ebd_test_counter::clear();
-        auto f2 = ebd::make_fn<ebd::fn>(std::in_place_type<ebd_test_counter>);
+        auto f2 = ebd::make_fn<ebd::fn>(std::in_place_type<ebd_test_counter>, 0);
         ASSERT_EQ(ebd_test_counter::m_create_times, 1);
         ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
         ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
@@ -796,7 +796,7 @@ TEST(InitFunction, inplace_create) {
         ASSERT_EQ(ebd_test_counter::m_move_times, 0);
 
         ebd_test_counter::clear();
-        auto f2 = ebd::make_fn<ebd::unique_fn>(std::in_place_type<ebd_test_counter>);
+        auto f2 = ebd::make_fn<ebd::unique_fn>(std::in_place_type<ebd_test_counter>, 0);
         ASSERT_EQ(ebd_test_counter::m_create_times, 1);
         ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
         ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
@@ -811,7 +811,7 @@ TEST(InitFunction, inplace_create) {
         ASSERT_EQ(ebd_test_counter::m_move_times, 0);
 
         ebd_test_counter::clear();
-        auto f2 = ebd::make_fn<ebd::classic_fn>(std::in_place_type<ebd_test_counter>);
+        auto f2 = ebd::make_fn<ebd::classic_fn>(std::in_place_type<ebd_test_counter>, 0);
         ASSERT_EQ(ebd_test_counter::m_create_times, 1);
         ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
         ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
@@ -826,7 +826,7 @@ TEST(InitFunction, inplace_create) {
         ASSERT_EQ(ebd_test_counter::m_move_times, 0);
 
         ebd_test_counter::clear();
-        auto f2 = ebd::make_fn<ebd::__safe_fn>(std::in_place_type<ebd_test_counter>);
+        auto f2 = ebd::make_fn<ebd::__safe_fn>(std::in_place_type<ebd_test_counter>, 0);
         ASSERT_EQ(ebd_test_counter::m_create_times, 1);
         ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
         ASSERT_EQ(ebd_test_counter::m_copy_times, 0);

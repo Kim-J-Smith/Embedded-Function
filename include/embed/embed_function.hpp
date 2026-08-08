@@ -3350,30 +3350,28 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 /// @brief make_fn[12]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, sizeof(functor)>`
-/// TODO: support muti-params.
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
   typename SpecifiedSig = void,
-  typename Functor,
-  typename Deduction = decltype(make_fn(std::declval<Functor>())),
+  typename... Args,
+  typename Deduction = decltype(make_fn(std::declval<Args>()...)),
   typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
-  typename Signature = detail::conditional_t<
-    std::is_void<SpecifiedSig>::value,
-    detail::get_correct_signature_t<Fn, RawSig>, SpecifiedSig
-  >,
-  std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
+  typename Signature = detail::conditional_t<std::is_void<SpecifiedSig>::value,
+                           /* Auto deduce */ detail::get_correct_signature_t<Fn, RawSig>,
+          /* Use user specified signature */ SpecifiedSig>,
+  std::size_t BufferSize = Deduction::get_buffer_size(),
   typename FnWrapper = Fn<Signature, BufferSize>,
-  bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))
+  bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))
 )
 EMBED_DETAIL_REQUIRES_END(
   detail::is_ebd_fn<FnWrapper>::value
   && detail::unwrap_signature<Signature>::isSignature
 )
 EMBED_NODISCARD EMBED_CXX20_CONSTEXPR inline
-FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
+FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
   return detail::make_function_impl<
     /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
-  >(std::forward<Functor>(functor));
+  >(std::forward<Args>(args)...);
 }
 
 // When all other make_fn() fail to match the input parameters,
@@ -3385,6 +3383,7 @@ constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { retur
 template <template <class, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
 
+/// TODO: @deprecated Use make_fn instead.
 #if __cpp_lib_constant_wrapper >= 202603L
 namespace detail {
 

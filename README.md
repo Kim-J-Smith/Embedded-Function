@@ -137,7 +137,7 @@ auto main() -> int {
 | [`ebd::fn`](./docs/api/fn.md)    |  Yes  |   No  | No (`std::terminate()`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
 | [`ebd::unique_fn`](./docs/api/unique_fn.md)    |  No  |   No  | No (`std::terminate()`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
 | [`ebd::classic_fn`](./docs/api/classic_fn.md)    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Classic wrapper (like `std::function`) |
-| [`ebd::fn_ref`](./docs/api/fn_ref.md)    |  Yes  |   Yes  | No (*NO EMPTY STATE*) | No | Fixed | Lightweight non-owning  reference(view) of callables |
+| [`ebd::fn_ref`](./docs/api/fn_ref.md)    |  Yes  |   Yes  | No (**NO EMPTY STATE**) | No | Fixed | Lightweight non-owning  reference(view) of callables |
 | [`ebd::basic_fn`](./docs/api/basic_fn.md) | - | - | - | - | - | Customized by the user |
 
 ### Key takeaways
@@ -175,9 +175,10 @@ In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided
 
 ### Usage
 
-- `[]` means optional.
+- **`[]` means optional**.
 - `Signature`: The signature of the callable object. (such as `void(int)`)
 - `BufferSize`: The buffer size of the callable object. (such as `2*sizeof(void*)`)
+- `FnWrapper`: One of `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn` and `ebd::fn_ref`.
 
 ```cpp
 // Create empty ebd::fn with specified signature and buffer size.
@@ -208,8 +209,10 @@ auto f = ebd::make_fn<ebd::fn_ref[, Signature]>(Callable_Object);
 
 ```cpp
 // In place build functor within buffer. Functor should be unambiguously callable (non-overload).
-auto f = ebd::make_fn(std::in_place_type<Functor>, CArgs...); // Since C++17
-auto f = ebd::make_fn(std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...); // Since C++17
+// Since C++17.
+auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, CArgs...);
+auto f = ebd::make_fn[<FnWrapper[, Signature]>](
+  std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...);
 ```
 
 ## 🔗 Back to function pointer

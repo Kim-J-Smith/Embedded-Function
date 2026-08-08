@@ -12,6 +12,7 @@
 - Added `ebd::classic_fn`, a copyable wrapper that throws `std::bad_function_call` on empty call (like `std::function`).
 - Added a `make_fn` overload for `noexcept` function pointers (C++17+), which preserves the `noexcept` qualifier in the wrapper's signature.
 - noexcept qualifiers are now propagated through `make_fn` for member function pointers and member object pointers.
+- `make_fn<FnWrapper>` now accepts multiple arguments, enabling in-place construction with a specific wrapper type, e.g. `make_fn<ebd::classic_fn>(std::in_place_type<Functor>, args...)`.
 
 **🛠️ Optimizations and Improvements**
 - Refactored noexcept propagation: replaced the complex `noexcept_qualify_like` trait with a simpler `get_correct_signature` trait that decides based on wrapper config (`IsView || !IsThrowing`).
