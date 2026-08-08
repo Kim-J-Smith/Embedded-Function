@@ -28,7 +28,7 @@ TEST(CompilerBugs, GCC_Bug_106067) {
 }
 
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=51452
-// https://en.cppreference.com/w/cpp/types/is_constructible.html#Notes
+// https://cppreference.com/w/cpp/types/is_constructible.html#Notes
 // GCC 5.1 ~ 15.2 has this "bug".
 // Clang 3.3 ~ 20.2 has this "bug".
 // MSVC v19.20 ~ v19.50 has this "bug".
