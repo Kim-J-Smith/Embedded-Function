@@ -1,5 +1,7 @@
 **🔧 Fixed Bugs**
 - `operator*` now returns a `noexcept` function pointer when the stored signature includes `noexcept`, instead of returning `nullptr`. (#117)
+- `make_fn(wrapper)` no longer matches the lambda/functor overload; it now correctly takes the copy/move path, so the deduced `BufferSize` is not enlarged unnecessarily. (#127)
+- `make_fn<FnWrapper>(wrapper)` now computes the correct `BufferSize`: it uses the deduced size when the wrapper configs are directly convertible, otherwise it sizes the buffer to fit the wrapper object for indirect wrapping. (#127)
 
 **⚠️ Breaking Changes**
 - `ebd::fn` and `ebd::unique_fn` now call `std::terminate()` on empty call instead of throwing `std::bad_function_call`. If you need `std::bad_function_call` on empty call, use the new `ebd::classic_fn`. (#117)

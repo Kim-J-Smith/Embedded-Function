@@ -201,13 +201,14 @@ template <template <class, std::size_t> class Fn,
               std::is_void<SpecifiedSig>::value,
               detail::get_correct_signature_t<Fn, RawSig>,
               SpecifiedSig>,
-          std::size_t BufferSize = Deduction::get_buffer_size(),
+          std::size_t BufferSize =
+              detail::get_correct_buffer_size<Fn<int(), 0>, Deduction::get_buffer_size(), Args...>::value,
           typename FnWrapper = Fn<Signature, BufferSize>,
           bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))>
 EMBED_NODISCARD inline FnWrapper make_fn(Args&&... args) noexcept(NoThrow);
 ```
 
-Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. Accepts multiple arguments: the wrapper type and signature are deduced from `make_fn(args...)`, and the buffer size is taken from the deduced result. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(args...)`. This also enables in-place construction with a specific wrapper, e.g. `make_fn<ebd::fn>(std::in_place_type<Functor>, 0)`.
+Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. Accepts multiple arguments: the wrapper type and signature are deduced from `make_fn(args...)`, and the buffer size is taken from the deduced result (when an argument is another ebd wrapper that is not directly config-convertible, the buffer is sized to fit that wrapper object for indirect wrapping). If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(args...)`. This also enables in-place construction with a specific wrapper, e.g. `make_fn<ebd::fn>(std::in_place_type<Functor>, 0)`.
 
 ## Usage Examples
 
