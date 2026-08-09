@@ -1981,7 +1981,8 @@ namespace management {
     // Move trivial type-erased object from `src` to `dst`.
     template <typename Functor>
     static void trivially_move(erasure_base_t* dst, erasure_base_t* src)
-    noexcept(noexcept(trivially_clone<Functor>(dst, src))) { trivially_clone<Functor>(dst, src); }
+      noexcept(noexcept(trivially_clone<Functor>(dst, src)))
+    { trivially_clone<Functor>(dst, src); }
 
     // Using when M_erasure is empty.
     struct empty {
