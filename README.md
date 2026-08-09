@@ -1,17 +1,17 @@
 ﻿# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.11-yellow?style=for-the-badge&logo=github" alt="Version - 2.1.11">
+  <img src="https://img.shields.io/badge/Version-2.2.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.2.0">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
-  <img src="https://img.shields.io/badge/C++-11/14/17/20/23-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23">
+  <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
 
 <p align="center">
   <a href="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml">
     <img src="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml/badge.svg">
-    <img src="https://img.shields.io/badge/GCC_C++11~23-support-B46F1B?style=flat&logo=gnu" alt="gcc-C++11~23 - support">
-    <img src="https://img.shields.io/badge/Clang_C++11~23-support-045891?style=flat&logo=llvm" alt="clang-C++11~23 - support">
-    <img src="https://img.shields.io/badge/MSVC_C++14~23-support-5C2D91?style=flat" alt="msvc-C++14~23 - support">
+    <img src="https://img.shields.io/badge/GCC_5.1~16.1-support-B46F1B?style=flat&logo=gnu" alt="gcc-5.1~16.1 - support">
+    <img src="https://img.shields.io/badge/Clang_3.7~22.1-support-045891?style=flat&logo=llvm" alt="clang-3.7~22.1 - support">
+    <img src="https://img.shields.io/badge/MSVC_19.10~19.51-support-5C2D91?style=flat" alt="msvc-19.10~19.51 - support">
   </a>
 </p>
 
@@ -21,7 +21,7 @@
 
 *Embedded Function* is a **lightweight** and **no-heap-allocation** function wrapper collection implemented based on the C++11 standard, optimized([see below](#-performance-optimization)) for resource-constrained or high-performance environments.
 
-The library is [freestanding](https://en.cppreference.com/w/cpp/freestanding), making it feasible for embedded development or kernel design of an operating system.
+The library is [freestanding](https://cppreference.com/w/cpp/freestanding), making it feasible for embedded development or kernel design of an operating system.
 
 In a [single header file](./include/embed/embed_function.hpp), **five** function wrappers are provided as follows (the customizable [`ebd::basic_fn`](./docs/api/basic_fn.md) is the fifth):
 
@@ -32,7 +32,7 @@ template <class Signature, size_t BufferSize = /*DefaultSize*/>
 template <class Signature, size_t BufferSize = /*DefaultSize*/>
   class unique_fn; // Wrapper for movable, especially move-only callable objects.
 template <class Signature, size_t BufferSize = /*DefaultSize*/>
-  class safe_fn; // Wrapper for copyable callable objects which assert no-throw in Ctor and Dtor.
+  class classic_fn; // Wrapper for copyable callable objects (throws on empty, like std::function).
 template <class Signature, size_t Unused = 0>
   class fn_ref; // View (non-owning wrapper) for callable objects.
 }
@@ -89,7 +89,7 @@ auto main() -> int {
 // Callable object ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
 
-- *`Function wrapper`*: One of `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_ref`.
+- *`Function wrapper`*: One of `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn` and `ebd::fn_ref`.
 
 - *`Return type`*: A type that can be implicitly converted from the direct return type of *`Callable object`*.
 
@@ -126,7 +126,7 @@ auto main() -> int {
 
   - Provide a view or reference to the callable object, referring to the [`std::function_ref` P0792](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html).
 
-  - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn` and `ebd::fn_ref` were designed for developers to use.
+  - Following the above design goals, `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn` and `ebd::fn_ref` were designed for developers to use.
 
 ## ✨ Core function wrappers
 
@@ -134,19 +134,19 @@ auto main() -> int {
 
 | Wrapper Type | Copyable | View (Non-owning) | Throws on Empty Call | Assert No-Throw (Ctor/Dtor) | Buffer Size | Primary Use Case |
 | :----------- | :---: | :---: | :---: | :---: | :---: | :---: |
-| [`ebd::fn`](./docs/api/fn.md)    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
-| [`ebd::unique_fn`](./docs/api/unique_fn.md)    |  No  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
-| [`ebd::safe_fn`](./docs/api/safe_fn.md)    |  Yes  |   No  | No (`std::terminate()`) | Yes | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Exception-safe copyable callable wrapper |
-| [`ebd::fn_ref`](./docs/api/fn_ref.md)    |  Yes  |   Yes  | No (*NO EMPTY STATE*) | No | Fixed | Lightweight non-owning  reference(view) of callables |
+| [`ebd::fn`](./docs/api/fn.md)    |  Yes  |   No  | No (`std::terminate()`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
+| [`ebd::unique_fn`](./docs/api/unique_fn.md)    |  No  |   No  | No (`std::terminate()`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
+| [`ebd::classic_fn`](./docs/api/classic_fn.md)    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Classic wrapper (like `std::function`) |
+| [`ebd::fn_ref`](./docs/api/fn_ref.md)    |  Yes  |   Yes  | No (**NO EMPTY STATE**) | No | Fixed | Lightweight non-owning  reference(view) of callables |
 | [`ebd::basic_fn`](./docs/api/basic_fn.md) | - | - | - | - | - | Customized by the user |
 
 ### Key takeaways
 
-1. **Ownership & Copy**: `fn`/`safe_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_ref` is non-owning (view).
+1. **Ownership & Copy**: `fn`/`classic_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_ref` is non-owning (view).
 
-2. **Exception Behavior**: Only `fn`/`unique_fn` throw on empty calls; `safe_fn`/`fn_ref` terminate (no exceptions).
+2. **Exception Behavior**: `fn`/`unique_fn` terminate on empty calls (no exceptions); `classic_fn` throws `std::bad_function_call` (like `std::function`).
 
-3. **Buffer Configuration**: `fn`/`unique_fn`/`safe_fn` support configurable buffer sizes (aligned), while `fn_ref` uses a fixed buffer (unused template param).
+3. **Buffer Configuration**: `fn`/`unique_fn`/`classic_fn` support configurable buffer sizes (aligned), while `fn_ref` uses a fixed buffer (unused template param).
 
 4. **Triviality**: `fn_ref` is trivially copyable (same as `std::function_ref`).
 
@@ -157,27 +157,28 @@ auto main() -> int {
 - `Yes-R`: Convertible and non-owning wrapping.
 - `No`: Inconvertible
 
-| From \ To | `ebd::fn` | `ebd::unique_fn` | `ebd::safe_fn` | `ebd::fn_ref` |
+| From \ To | `ebd::fn` | `ebd::unique_fn` | `ebd::classic_fn` | `ebd::fn_ref` |
 | :---: | :---: | :---: | :---: | :---: |
-| `ebd::fn` | Yes-D | Yes-D | No | Yes-R |
+| `ebd::fn` | Yes-D | Yes-D | Yes-I | Yes-R |
 | `ebd::unique_fn` | No | Yes-D | No | Yes-R |
-| `ebd::safe_fn` | Yes-I | Yes-I | Yes-D | Yes-R |
+| `ebd::classic_fn` | Yes-I | Yes-I | Yes-D | Yes-R |
 | `ebd::fn_ref` | Yes-I | Yes-I | Yes-I | Yes-D |
 
 ## 🧩 Automatic deduction
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn` or `ebd::unique_fn` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type.)
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn`, `ebd::unique_fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type. Return `ebd::fn_ref` only when the callable object is `std::cw`.)
 
 > __NOTE__: 
-> The [Concepts](https://en.cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
+> The [Concepts](https://cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
 
 ### Usage
 
-- `[]` means optional.
+- **`[]` means optional**.
 - `Signature`: The signature of the callable object. (such as `void(int)`)
 - `BufferSize`: The buffer size of the callable object. (such as `2*sizeof(void*)`)
+- `FnWrapper`: One of `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn` and `ebd::fn_ref`.
 
 ```cpp
 // Create empty ebd::fn with specified signature and buffer size.
@@ -202,21 +203,31 @@ auto f = ebd::make_fn<Signature>(Ambiguous_Callable_Object);
 // The Callable_Object should be unambiguously callable (non-overload) if `Signature` is omitted.
 auto f = ebd::make_fn<ebd::fn[, Signature]>(Callable_Object);
 auto f = ebd::make_fn<ebd::unique_fn[, Signature]>(Callable_Object);
-auto f = ebd::make_fn<ebd::safe_fn[, Signature]>(Callable_Object);
+auto f = ebd::make_fn<ebd::classic_fn[, Signature]>(Callable_Object);
 auto f = ebd::make_fn<ebd::fn_ref[, Signature]>(Callable_Object);
 ```
 
 ```cpp
 // In place build functor within buffer. Functor should be unambiguously callable (non-overload).
-auto f = ebd::make_fn(std::in_place_type<Functor>, CArgs...); // Since C++17
-auto f = ebd::make_fn(std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...); // Since C++17
+// Since C++17.
+auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, CArgs...);
+auto f = ebd::make_fn[<FnWrapper[, Signature]>](
+  std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...);
+```
+
+```cpp
+// Create ebd::fn_ref from std::constant_wrapper. 
+// Since C++26
+auto f = ebd::make_fn(std::cw<&free_function>);
+auto f = ebd::make_fn(std::cw<&Class::member_function>, obj);
+auto f = ebd::make_fn(std::cw<&Class::member_function>, &obj);
 ```
 
 ## 🔗 Back to function pointer
 
 ### Brief introduction
 
-In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented an `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` to a C-style free function pointer.
+In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented an `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` to a C-style free function pointer.
 
 If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr. Basically, it is equivalent to a highly restricted `target()` method.
 
@@ -262,7 +273,7 @@ export namespace ebd {
   using ::ebd::basic_fn;
   using ::ebd::fn;
   using ::ebd::unique_fn;
-  using ::ebd::safe_fn;
+  using ::ebd::classic_fn;
   using ::ebd::fn_ref;
   using ::ebd::make_fn;
 }
@@ -276,13 +287,41 @@ import ebd.function;
 auto main() -> int {
     ebd::fn<void()> fn1 = []() { /* ... */ };
     ebd::unique_fn<void()> fn2 = []() { /* ... */ };
-    ebd::safe_fn<void()> fn3 = []() { /* ... */ };
+    ebd::classic_fn<void()> fn3 = []() { /* ... */ };
     ebd::fn_ref<void()> fn4 = fn2;
     auto fn5 = ebd::make_fn([]() { /* ... */ });
 
     fn1(); fn2(); fn3(); fn4(); fn5();
 }
 ```
+
+## 🛠️ Debug diagnostics hook
+
+`EMBED_FN_HOOK_DEBUG(message)` is a user-defined macro hook for capturing diagnostic output in debug builds. Define it **before** including the header:
+
+```cpp
+#include <cstdio>
+#define EMBED_FN_HOOK_DEBUG(message) fputs(message, stderr)
+#include "embed/embed_function.hpp"
+```
+
+The library invokes the hook with a pre-formatted message that contains the source location:
+
+```
+<file>:<line>:
+	<message>
+```
+
+The hook is called when:
+
+- An empty wrapper is invoked (e.g., `ebd::fn` / `ebd::unique_fn` holding no target) with message: `"Empty function has been called!"`.
+- An internal assertion fails (e.g., constructing `ebd::fn_ref` from a `nullptr` function or object pointer). For assertions, the message also appends the failed expression, e.g., `[(function_ptr != nullptr) == false]`, and `std::terminate()` is called afterwards.
+
+Notes:
+
+- All diagnostics are **compiled out entirely** in optimized builds (when `__OPTIMIZE__` or `NDEBUG` is defined), which means zero runtime overhead.
+- If the hook is not defined, the library substitutes a no-op. The checks still run in debug builds, and failed internal assertions still call `std::terminate()` regardless of the hook.
+- When `EMBED_FN_CONFIG_UNDEF_MACROS` is defined, `EMBED_FN_HOOK_DEBUG` is undefined at the end of the header.
 
 ## ✅ Compatibility
 
@@ -301,11 +340,11 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 ### Branch elimination
 
-`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` completely eliminate runtime checks for empty function states during invocation, significantly boosting performance of frequent function calls.
+`ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` completely eliminate runtime checks for empty function states during invocation, significantly boosting performance of frequent function calls.
 
 ### Smart forwarding
 
-`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
+`ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` enable scalar arguments and small-sized trivial arguments to be passed via registers instead of having to be passed via the stack as in `std::function`. This significantly reduces the memory access overhead during parameter passing.
 
 ### Zero-stack overhead
 
@@ -313,7 +352,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 ### Stateless elimination
 
-`ebd::fn` / `ebd::unique_fn` / `ebd::safe_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., empty classes with trivial operations). This reduces memory access operations and improves cache efficiency.
+`ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., empty classes with trivial operations). This reduces memory access operations and improves cache efficiency.
 
 > Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 
@@ -353,7 +392,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 ## 📚 Similar implementations
 
-- [std::function](http://en.cppreference.com/w/cpp/utility/functional/function)
+- [std::function](https://cppreference.com/w/cpp/utility/functional/function)
 
 - [Naios/function2](https://github.com/Naios/function2)
 

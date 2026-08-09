@@ -1,9 +1,9 @@
 /**
  * @file        embed_function.hpp
  *
- * @date        2026-2-7
+ * @date        2026-8-6
  *
- * @version     2.1.11
+ * @version     2.2.0
  *
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -15,9 +15,6 @@
  */
 
 // Just like function pointers, it is quick and efficient.
-
-/// @deprecated @b EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
-/// If this macro is defined, bigger default buffer size will be used.
 
 /// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 /// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
@@ -183,10 +180,10 @@
 # include <type_traits> // std::enable_if, ...
 # if EMBED_CXX_VERSION >= 201703L
 #  include <initializer_list>
-# endif // >= C++17
+# endif // C++ >= 17
 # if __cpp_impl_reflection >= 202506L && EMBED_HAS_INCLUDE(<meta>)
 #  include <meta>       // std::meta::is_complete_type(C++26)
-# endif // >= C++26
+# endif // C++ >= 26
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
@@ -210,7 +207,7 @@
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 // The noexcept-specification is a part of the function type and
 // may appear as part of any function declarator. (Since C++17)
-// See <https://en.cppreference.com/w/cpp/language/noexcept_spec>.
+// See <https://cppreference.com/w/cpp/language/noexcept_spec>.
 
 # define EMBED_DETAIL_FN_EXPAND(F) \
   EMBED_DETAIL_FN_EXPAND_IMPL(F, ) EMBED_DETAIL_FN_EXPAND_IMPL(F, noexcept)
@@ -277,19 +274,26 @@
 # define EMBED_DETAIL_ALIAS
 #endif
 
-#if defined(__OPTIMIZE__) || defined(NDEBUG) || !defined(EMBED_FN_HOOK_DEBUG)
+#if defined(__OPTIMIZE__) || defined(NDEBUG)
 # define EMBED_DETAIL_FAIL_MESSAGE(message)
 # define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #else
-# define EMBED_DETAIL_FAIL_MESSAGE(message)                                             \
-  do {                                                                                  \
-    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) ":\n\t" message "\n"); \
-  } while(0) /* Output message together with file name and line number. */
-# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)                               \
-  do { if (!(expression)) {                                                             \
-    EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) ":\n\t" message "\n"); \
-    std::terminate();                                                                   \
-  } } while(0) /* Output message and terminate procedure if expression is false. */
+# ifndef EMBED_FN_HOOK_DEBUG
+#  define EMBED_FN_HOOK_DEBUG(message) // NOP
+# endif
+
+// Output message together with file name and line number.
+# define EMBED_DETAIL_FAIL_MESSAGE(message) \
+  do { EMBED_FN_HOOK_DEBUG(__FILE__ ":" EMBED_DETAIL_TEXT(__LINE__) ":\n\t" message "\n"); } while(false)
+
+// Output message and terminate procedure if expression is false.
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)                 \
+  do {                                                                    \
+    if (!(expression)) {                                                  \
+      EMBED_DETAIL_FAIL_MESSAGE(message " [(" #expression ") == false]"); \
+      std::terminate();                                                   \
+    }                                                                     \
+  } while(false)
 #endif
 
 #if __cpp_lib_unreachable >= 202202L
@@ -332,7 +336,7 @@ inline namespace cxx_traits {
 
   /// @brief Types from <type_traits> have been implemented,
   /// consistent with the standard behavior (C++14 ~ C++23).
-  /// See <https://en.cppreference.com/w/cpp/header/type_traits.html>.
+  /// See <https://cppreference.com/w/cpp/header/type_traits.html>.
 
   template <typename... Args> using void_t = typename make_void<Args...>::type;
 
@@ -575,7 +579,7 @@ inline namespace cxx_traits {
   };
 
   // Get the invoke result and invoke tag.
-  // See <https://en.cppreference.com/w/cpp/types/result_of.html>.
+  // See <https://cppreference.com/w/cpp/types/result_of.html>.
   template <typename Func, typename... ArgsT>
   struct invoke_result : public invoke_result_impl<
     std::is_member_function_pointer<
@@ -643,7 +647,7 @@ inline namespace cxx_traits {
   template <typename Func, typename... Args>
   using call_is_nothrow = call_is_nothrow_helper<Func, args_package<Args...>>;
 
-  // See <https://en.cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
+  // See <https://cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
   template <typename To, typename From>
   struct reference_converts_from_temporary
   : public bool_constant<
@@ -704,7 +708,7 @@ inline namespace cxx_traits {
 # pragma GCC diagnostic pop
 #endif
 
-  // See <https://en.cppreference.com/w/cpp/types/is_invocable.html>.
+  // See <https://cppreference.com/w/cpp/types/is_invocable.html>.
   template <typename Ret, typename Func, typename... Args>
   struct is_invocable_r : public bool_constant<
     is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
@@ -767,7 +771,7 @@ inline namespace cxx_traits {
     );
   }
 
-  // See <https://en.cppreference.com/w/cpp/utility/functional/invoke.html>.
+  // See <https://cppreference.com/w/cpp/utility/functional/invoke.html>.
   template <typename Result, typename Callee, typename... Args>
   EMBED_CXX14_CONSTEXPR enable_if_t<
     is_invocable_r<Result, Callee, Args...>::value
@@ -917,6 +921,7 @@ inline namespace fn_traits {
     using ret   = Ret;                                                        \
     using args  = args_package<Args...>;                                      \
     using pure_sig = Ret(Args...);                                            \
+    using pure_sig_noex = Ret(Args...) NOEXCEPT;                              \
     static constexpr bool hasConst = std::is_const<int C>::value;             \
     static constexpr bool hasVolatile = std::is_volatile<int V>::value;       \
     static constexpr bool hasRRef = std::is_rvalue_reference<int REF>::value; \
@@ -935,15 +940,22 @@ inline namespace fn_traits {
 
   // Implement the "is_ebd_fn" trait.
   template <typename T>
-  struct is_ebd_fn_impl : public std::false_type
-  { using signature = void; };
+  struct is_ebd_fn_impl : public std::false_type {
+    using signature = void;
+    using config = void;
+    static constexpr std::size_t buffer = 0;
+  };
 
   template <std::size_t Buf, typename Cfg, typename Sig>
   struct is_ebd_fn_impl<function<Buf, Cfg, Sig>>
   : public bool_constant<
     unwrap_signature<Sig>::isSignature
     && is_config_package<Cfg>::value
-  > { using signature = Sig; };
+  > {
+    using signature = Sig;
+    using config = Cfg;
+    static constexpr std::size_t buffer = Buf;
+  };
 
   // Check whether the type is `ebd::detail::function` or not.
   template <typename T>
@@ -1028,6 +1040,16 @@ inline namespace fn_traits {
       is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
   };
 
+  // Check the `Config` convertible.
+  template <typename CfgTo, typename CfgFrom>
+  struct is_config_convertible {
+    static constexpr bool value =
+      CfgTo::isCopyable <= CfgFrom::isCopyable // Copyable to Move-only is OK.
+      && CfgTo::isView == CfgFrom::isView
+      && CfgTo::isThrowing == CfgFrom::isThrowing
+      && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
+  };
+
   // Implement `is_convertible_from_specialization`.
   template <typename To, typename From>
   struct is_convertible_from_specialization_impl : public std::false_type {};
@@ -1055,11 +1077,7 @@ inline namespace fn_traits {
     static constexpr bool buf_ok = BufTo >= BufFrom;
 
     // Check the Configuration.
-    static constexpr bool cfg_ok =
-      CfgTo::isCopyable <= CfgFrom::isCopyable // Copyable to Move-only is OK.
-      && CfgTo::isView == CfgFrom::isView
-      && CfgTo::isThrowing == CfgFrom::isThrowing
-      && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
+    static constexpr bool cfg_ok = is_config_convertible<CfgTo, CfgFrom>::value;
 
     // In view mode, the requires is special.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html>.
@@ -1118,17 +1136,9 @@ inline namespace fn_traits {
   struct default_buffer_size {
     // The buffer size for ebd::fn_ref. Stop supporting pointer-to-members.
     static constexpr std::size_t ref_buf = sizeof(void (*) ());
-    static constexpr std::size_t view_buf = ref_buf;
-#if defined(EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER)
-    /// @deprecated @todo TODO: Remove this in version-2.2.0.
-    static constexpr std::size_t value_c1 = 6 * sizeof(void*);
-    static constexpr std::size_t value_c2 = sizeof(::std::function<void()>);
-    static constexpr std::size_t value = value_c1 > value_c2 ? value_c1 : value_c2;
-#else
     static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
-#endif
 
-    // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::safe_fn).
+    // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::classic_fn).
     // Using alignof(std::max_align_t) ensures that objects with the maximum
     // fundamental alignment can be stored in the internal buffer.
     static constexpr std::size_t align_value = alignof(std::max_align_t);
@@ -1249,8 +1259,7 @@ inline namespace fn_traits {
 #define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT)  \
   template <typename This, typename Ret, typename... Args>                \
   struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {        \
-    using type = Ret(Args...) C V REF;                                    \
-    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;              \
+    using type = Ret(Args...) C V REF NOEXCEPT;                           \
     using sig_without_ref = Ret(Args...) C V NOEXCEPT;                    \
   };
 
@@ -1265,13 +1274,10 @@ inline namespace fn_traits {
       "T must be a function pointer or pointer to member function.");
   };
 
-  // The Config::isThrowing of ebd::fn and ebd::unique_fn is true.
-  // So `get_unique_signature_impl` will ignore the `noexcept` specifier.
 #define EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE(C, V, REF, NOEXCEPT)        \
   template <typename Fn, typename Class, typename Ret, typename... Args>          \
   struct get_unique_signature_impl<Fn, Ret(Class::*)(Args...) C V REF NOEXCEPT> { \
-    using type = Ret(Args...) C V REF;                                            \
-    using sig_with_noexcept = Ret(Args...) C V REF NOEXCEPT;                      \
+    using type = Ret(Args...) C V REF NOEXCEPT;                                   \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE)
@@ -1315,15 +1321,13 @@ inline namespace fn_traits {
     requires is_statically_callable<Fn, Args...>::value
   struct get_unique_signature_impl<Fn, Ret(*)(Args...)> {
     using type = Ret(Args...) const;
-    using sig_with_noexcept = Ret(Args...) const;
   };
 
   // noexcept(true)
   template <typename Fn, typename Ret, typename... Args>
     requires is_statically_callable<Fn, Args...>::value
   struct get_unique_signature_impl<Fn, Ret(*)(Args...) noexcept> {
-    using type = Ret(Args...) const;
-    using sig_with_noexcept = Ret(Args...) const noexcept;
+    using type = Ret(Args...) const noexcept;
   };
 
 #endif
@@ -1333,14 +1337,12 @@ inline namespace fn_traits {
     bool Unique = is_unique_callable<Functor>::value>
   struct get_unique_signature {
     using type = void;
-    using sig_with_noexcept = void;
   };
 
   template <typename Functor>
   struct get_unique_signature<Functor, /* Unique = */ true> {
     using impl_t = get_unique_signature_impl<Functor, decltype(&Functor::operator())>;
     using type = typename impl_t::type;
-    using sig_with_noexcept = typename impl_t::sig_with_noexcept;
   };
 
   template <typename T>
@@ -1411,7 +1413,6 @@ inline namespace fn_traits {
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
 #if __cpp_lib_reflection >= 202506L
-  /// @todo experimental `std::meta::is_complete_type`
   // Use template parameter `Val` to avoid violating ODR.
   template <typename T, bool Val = std::meta::is_complete_type(^^T)>
   consteval bool is_complete_here() noexcept { return Val; }
@@ -1494,7 +1495,7 @@ inline namespace fn_traits {
       "                             ^^^^^^^^^^^^^^^^^\n"
       "                                     |\n"
       "         The value should be greater than `sizeof(CallableObject)`\n\n"
-      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, etc."
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, etc."
     );
 
     static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
@@ -1542,68 +1543,29 @@ inline namespace fn_traits {
   struct is_constant_wrapper<std::constant_wrapper<Val, T>> : std::true_type {};
 #endif
 
-  template <typename Functor, typename FnSample, typename Sig, typename = void>
-  struct noexcept_qualify_like { using type = Sig; };
+  template <typename Function, typename Signature>
+  struct get_correct_signature; // Undefined
 
-#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
-
-  template <typename T, typename = void>
-  struct noexcept_qualify_like_helper : std::false_type {};
-
-  template <typename Ret, typename... Args>
-  struct noexcept_qualify_like_helper<Ret(*)(Args...) noexcept, void>
-  : std::true_type {};
-
-  template <typename Mp, typename Class>
-  struct noexcept_qualify_like_helper<Mp Class::*> : std::true_type {};
-
-  template <typename Functor>
-  struct noexcept_qualify_like_helper<
-    Functor, enable_if_t<is_unique_callable<Functor>::value>>
-  : bool_constant<unwrap_signature<
-    typename get_unique_signature<Functor>::sig_with_noexcept
-  >::isNoexcept> {};
-
-# define EMBED_DETAIL_HELPER_MEMPTR_DEFINE(C, V, REF, NOEXCEPT)               \
-  template <typename Ret, typename Class, typename... Args>                   \
-  struct noexcept_qualify_like_helper<Ret(Class::*)(Args...) C V REF NOEXCEPT>\
-  : bool_constant<unwrap_signature<void() NOEXCEPT>::isNoexcept> {};
-
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_HELPER_MEMPTR_DEFINE)
-
-# undef EMBED_DETAIL_HELPER_MEMPTR_DEFINE
-
-# define EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE(C, V, REF, NOEXCEPT)     \
-  template <typename Functor, typename Ret, typename... Args,               \
-    std::size_t Buf, typename Sig,                                          \
-    bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow \
-  > struct noexcept_qualify_like<                                           \
-    /* Functor = */ Functor,                                                \
-    /* FnSample = */ function<Buf, config_package<                          \
-      IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>, Sig>,           \
-    /* Sig = */ Ret(Args...) C V REF NOEXCEPT,                              \
-    enable_if_t<IsView || !IsThrowing>                                      \
-  > {                                                                       \
-    using is_nothrow = typename noexcept_qualify_like_helper<Functor>::type;\
-/* MSVC 14.36~14.44 regression: noexcept(is_nothrow::value) trigger ICE. */ \
-    using sig_normal = conditional_t<is_nothrow::value,                     \
-      Ret(Args...) C V REF noexcept, Ret(Args...) C V REF>;                 \
-    using sig_view = conditional_t<is_nothrow::value,                       \
-      Ret(Args...) C V noexcept, Ret(Args...) C V>;                         \
-    using type = conditional_t<IsView, sig_view, sig_normal>;               \
+#define EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE(C, V, REF, NOEXCEPT)                  \
+  template <std::size_t Buf, typename Cfg, typename Sig, typename Ret, typename... Args>\
+  struct get_correct_signature<function<Buf, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> {\
+    /* MSVC 14.36~14.44 regression: noexcept(!Cfg::isThrowing) trigger ICE. */          \
+    using sig_normal = conditional_t<!Cfg::isThrowing,                                  \
+      Ret(Args...) C V REF NOEXCEPT, Ret(Args...) C V REF>;                             \
+    using sig_view = Ret(Args...) C V NOEXCEPT;                                         \
+    using type = conditional_t<Cfg::isView, sig_view, sig_normal>;                      \
   };
 
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE)
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE)
 
-# undef EMBED_DETAIL_NOEXCEPT_QUALIFY_LIKE_DEFINE
+#undef EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE
 
-#endif
-
-  // Add noexcept qualifier if the Functor is noexcept free function,
-  // and the function wrapper or reference support `noexcept`.
-  template <typename Functor, template <class, std::size_t> class Fn, typename Sig>
-  using noexcept_qualify_like_t =
-    typename noexcept_qualify_like<decay_t<Functor>, Fn<void(), sizeof(void(*)())>, Sig>::type;
+  // Remove `noexcept` qualifier if the `Fn` is configured to `IsThrowing = true`
+  // as well as `IsView = false`, and remove `&` or `&&` qualifier if the `Fn` is
+  // configured to `IsView = true`.
+  template <template <class, std::size_t> class Fn, typename Sig>
+  using get_correct_signature_t =
+    typename get_correct_signature<Fn<Sig, sizeof(void(*)())>, Sig>::type;
 
   // Check if `T` is the stateless standard operator wrapper.
   template <typename T> struct is_std_op_wrapper : std::false_type {};
@@ -1679,7 +1641,7 @@ inline namespace fn_traits {
       "The `Signature` is like `void()`, `float(int,int) const`;\n"
       "The `BufferSize` is the size (in bytes) of the internal storage;\n"
       "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
-      "as a template argument list, such as `ebd::fn_ref`, `ebd::safe_fn`, etc. If omitted, "
+      "as a template argument list, such as `ebd::fn_ref`, `ebd::classic_fn`, etc. If omitted, "
       "the `FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` is copyable, "
       "and `ebd::unique_fn` otherwise."
     );
@@ -1721,6 +1683,24 @@ inline namespace fn_traits {
     // Use template parameter `Val` to avoid violating ODR.
     bool Val = logical_and<is_complete_here<Args>()...>::value>
   constexpr bool each_param_is_complete_here(T<Args...>) noexcept { return Val; }
+
+  template <bool IsWrapper /*=false*/, typename FnWrapper, std::size_t Candidate, typename Arg>
+  struct get_correct_buffer_size_helper { static constexpr std::size_t value = Candidate; };
+  template <typename FnWrapper, std::size_t Candidate, typename OtherWrapper>
+  struct get_correct_buffer_size_helper</*IsWrapper=*/true, FnWrapper, Candidate, OtherWrapper> {
+    static constexpr std::size_t value =
+      is_config_convertible<
+        typename is_ebd_fn<FnWrapper>::config, typename is_ebd_fn<OtherWrapper>::config>::value
+      ? Candidate : sizeof(remove_cvref_t<OtherWrapper>);
+  };
+
+  // Get the correct buffer size for `make_fn<FnWrapper>`.
+  template <typename FnWrapper, std::size_t Candidate, typename... Args>
+  struct get_correct_buffer_size { static constexpr std::size_t value = Candidate; };
+
+  template <typename FnWrapper, std::size_t Candidate, typename Arg>
+  struct get_correct_buffer_size<FnWrapper, Candidate, Arg>
+  : public get_correct_buffer_size_helper<is_ebd_fn<Arg>::value, FnWrapper, Candidate, Arg> {};
 
 } // end namespace fn_traits
 
@@ -2219,9 +2199,9 @@ namespace command {
           typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
         static_assert(!requires { typename std::constant_wrapper<
               std::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
-          "[ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to `fn(args...)`, "
-          "otherwise the intended behavior for a non-owning function wrapper (fn_ref) "
-          "constructed from `cw<fn>` would be ambiguous."
+          "[func.wrap.ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to "
+          "`fn(args...)`, otherwise the intended behavior for a non-owning "
+          "function wrapper (fn_ref) constructed from `cw<fn>` would be ambiguous."
         );
       }
     }
@@ -2417,14 +2397,21 @@ namespace crtp_mixins {
   template <typename Signature, typename Self, bool IsView, typename... Args>
   struct operator_dereference_impl<Signature, Self, IsView, args_package<Args...>> {
   private:
-    using function_ptr_t = typename unwrap_signature<Signature>::pure_sig*;
+    using function_ptr_t = typename unwrap_signature<Signature>::pure_sig_noex*;
 
   public:
-    // If the value stored in m_erasure is a pointer to a free function,
-    // return that pointer. Otherwise, return `nullptr`.
-    /// @warning If the addresses of different functions may be the same
-    /// (which is not in accordance with the C++ standard), then this function
-    /// has undefined behavior. For MSVC in release mode, `/OPT:NOICF` is needed.
+    /**
+     * @brief   If the value stored in m_erasure is a pointer to a free function,
+     *          return that pointer. Otherwise, return `nullptr`.
+     * 
+     * @note    [expr.eq]/4 Two function pointers compare equal, if and only if
+     *          both of them point to the same function.
+     *          See <https://eel.is/c++draft/expr.eq#4.2>.
+     * 
+     * @warning Some implementations do not comply with the standard.
+     *          For example, in MSVC release mode, `/OPT:NOICF` is needed to
+     *          avoid unexpected behaviour.
+     */
     function_ptr_t operator*() const noexcept {
       using invoker_impl_t = typename Self::command_t::invoker_impl_t;
       using invoker_t = conditional_t<IsView,
@@ -2506,7 +2493,7 @@ namespace crtp_mixins {
       "                  ^^^^^^^^^\n"
       "                      |\n"
       " should be like `void()`, `int(int) const`, etc\n\n"
-      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, `ebd::fn_ref`, etc."
+      "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, `ebd::fn_ref`, etc."
     );
 
     // Assert each parameter type is a complete class.
@@ -2883,11 +2870,9 @@ namespace crtp_mixins {
       m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
     }
 
-#endif
+#endif // C++ >= 17
 
 #if __cpp_lib_constant_wrapper >= 202603L
-
-    /// @todo experimental
 
     // Create function reference with given `std::constant_wrapper` param.
     template <auto Val, typename Fn>
@@ -2939,7 +2924,7 @@ namespace crtp_mixins {
       }
     }
 
-#endif
+#endif // C++ >= 26
 
   };
 
@@ -2988,12 +2973,12 @@ namespace crtp_mixins {
 
 
 /**
- * @brief A basic function wrapper that users can customize.
+ * @brief Basic polymorphic function wrapper.
  *
  * This alias provides the most flexible way to instantiate a function wrapper
  * by directly specifying all configuration parameters. It is intended for
  * advanced use cases where none of the predefined aliases (`fn`, `unique_fn`,
- * `safe_fn`, `fn_ref`) satisfy the required combination of copyability,
+ * `classic_fn`, `fn_ref`) satisfy the required combination of copyability,
  * view semantics, exception behavior, and no‑throw assertions.
  *
  * @tparam Signature              Function signature, e.g., `void(int, char)`,
@@ -3026,7 +3011,7 @@ namespace crtp_mixins {
  *                                Violations trigger a `static_assert`.
  *
  * @note                          Prefer using the predefined aliases (`fn`,
- *                                `unique_fn`, `safe_fn`, `fn_ref`) unless you
+ *                                `unique_fn`, `classic_fn`, `fn_ref`) unless you
  *                                need a combination not covered by them.
  *
  * @example                       A move-only, non‑throwing wrapper:
@@ -3057,7 +3042,8 @@ using basic_fn = detail::function<
   /* Signature = */   Signature
 >;
 
-/// @brief A function object wrapper for copyable and callable objects.
+/// @brief Owning polymorphic copyable function wrapper.
+/// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
@@ -3067,11 +3053,12 @@ using fn = basic_fn<
   /* BufferSize = */          detail::get_aligned_size(BufferSize),
   /* IsCopyable = */          true,
   /* IsView = */              false,
-  /* IsThrowing = */          true,
+  /* IsThrowing = */          false,
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A function object wrapper for movable and callable objects.
+/// @brief Owning polymorphic function wrapper.
+/// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
@@ -3081,26 +3068,27 @@ using unique_fn = basic_fn<
   /* BufferSize = */          detail::get_aligned_size(BufferSize),
   /* IsCopyable = */          false,
   /* IsView = */              false,
-  /* IsThrowing = */          true,
+  /* IsThrowing = */          false,
   /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A SAFE function object wrapper for copyable and callable objects.
-/// @throws Strong noexcept guarantee. (ASSERT-NO-THROW)
+/// @brief Classic owning polymorphic function wrapper. (like `std::function`)
+/// @throws `std::bad_function_call` if invoked in an empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 /// And the buffer size will be aligned automatically.
 template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using safe_fn = basic_fn<
+using classic_fn = basic_fn<
   /* Signature = */           Signature,
   /* BufferSize = */          detail::get_aligned_size(BufferSize),
   /* IsCopyable = */          true,
   /* IsView = */              false,
-  /* IsThrowing = */          false,
-  /* AssertObjectNoThrow = */ true
+  /* IsThrowing = */          true,
+  /* AssertObjectNoThrow = */ false
 >;
 
-/// @brief A non-owning polymorphic function wrapper.
+/// @brief Non-owning polymorphic function wrapper.
+/// @note Empty state of this wrapper has been removed.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam Unused - Unused.
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
@@ -3116,6 +3104,11 @@ using fn_ref = basic_fn<
 /// @deprecated Use `fn_ref` instead.
 template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
+
+/// @deprecated Use `fn` instead.
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using safe_fn EMBED_DEPRECATED("Use fn instead") = basic_fn<
+  Signature, detail::get_aligned_size(BufferSize), true, false, false, true>;
 
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
@@ -3192,13 +3185,28 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
     /* NoThrow = */ true
   >(func_ptr);
 }
+#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+
+/// @brief make_fn[3.5]: Make function for noexcept function pointer.
+/// (auto deduce signature and buffer size; the `noexcept` qualifier is preserved)
+/// @return `fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) noexcept)>`
+template <typename Ret, typename... Args>
+EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) noexcept)>
+make_fn(Ret (*func_ptr) (Args...) noexcept) noexcept {
+  return detail::make_function_impl<
+    fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) noexcept)>,
+    /* NoThrow = */ true
+  >(func_ptr);
+}
+
+#endif // C++ >= 17
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   // [Auto] The type of the function pointer.
-  typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig*
+  typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig_noex*
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
@@ -3263,28 +3271,32 @@ EMBED_DETAIL_REQUIRES_END(
   detail::is_unique_callable<Class>::value
   // [Require] The signature must be valid.
   && detail::unwrap_signature<Signature>::isSignature
+  // [Require] The Lambda cannot be ebd::detail::function.
+  && (!detail::is_ebd_fn<Class>::value)
 )
 EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
   return detail::make_function_impl<Fn, NoThrow>(std::forward<Lambda>(fn));
 }
 
-#define EMBED_DETAIL_MAKE_FN_DEFINE(C, V, REF, NOEXCEPT)                        \
-  template <typename Class, typename Ret, typename... Args>                     \
-  EMBED_NODISCARD inline auto                                                   \
-  make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept             \
-  -> fn<                                                                        \
-    Ret(detail::get_qualified_with_t<int REF, C V Class>, Args...) const,       \
-    sizeof(memfunc)                                                             \
-  > {                                                                           \
-    using qualified_class_t = detail::get_qualified_with_t<int REF, C V Class>; \
-    using signature_t = Ret (qualified_class_t, Args...) const;                 \
-    using fn_t = fn<signature_t, sizeof(memfunc)>;                              \
-    return detail::make_function_impl<fn_t, /* NoThrow = */ true>(memfunc);     \
+#define EMBED_DETAIL_MAKE_FN_DEFINE(C, V, REF, NOEXCEPT)                          \
+  template <typename Class, typename Ret, typename... Args>                       \
+  EMBED_NODISCARD inline auto                                                     \
+  make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept               \
+  -> fn<                                                                          \
+    Ret(detail::get_qualified_with_t<int REF, C V Class>, Args...) const NOEXCEPT,\
+    sizeof(memfunc)                                                               \
+  > {                                                                             \
+    using qualified_class_t = detail::get_qualified_with_t<int REF, C V Class>;   \
+    using signature_t = Ret (qualified_class_t, Args...) const NOEXCEPT;          \
+    using fn_t = fn<signature_t, sizeof(memfunc)>;                                \
+    return detail::make_function_impl<fn_t, /* NoThrow = */ true>(memfunc);       \
   }
 
 /// @brief make_fn[8]: Make function for pointer to member function.
 /// (auto deduce signature and buffer size)
 /// @return `fn<Ret(Class, Args...) const, sizeof(Ret(Class::*)(Args...))>`
+///         The deduced signature preserves the `noexcept` qualifier of the
+///         member function when noexcept is part of the type system (C++17+).
 EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 #undef EMBED_DETAIL_MAKE_FN_DEFINE
@@ -3313,13 +3325,18 @@ make_fn(MemFuncPtr memfunc_ptr) noexcept {
 }
 
 /// @brief make_fn[10]: Make function for pointer to member object.
-/// @return `fn<T(Class&) const, sizeof(ptr_memobj)>`
+/// @return `fn<Ret(Class&) const, sizeof(ptr_memobj)>`, where `Ret` is deduced
+///         from invoking the member pointer with `Class&`. A `noexcept`
+///         qualifier is added when the member access and the conversion to
+///         `Ret` cannot throw (C++17+).
 template <typename Class, typename T,
   typename Ret = typename detail::invoke_result<T Class::*, Class&>::type>
 EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
--> fn<Ret(Class&) const, sizeof(ptr_memobj)> {
+-> fn<Ret(Class&) const EMBED_CXX17_NOEXCEPT_(
+    detail::is_nothrow_invocable_r<Ret, T Class::*, Class&>::value), sizeof(ptr_memobj)> {
   return detail::make_function_impl<
-    fn<Ret(Class&) const, sizeof(ptr_memobj)>,
+    fn<Ret(Class&) const EMBED_CXX17_NOEXCEPT_(
+      detail::is_nothrow_invocable_r<Ret, T Class::*, Class&>::value), sizeof(ptr_memobj)>,
     /* NoThrow = */ true
   >(ptr_memobj);
 }
@@ -3361,34 +3378,63 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
   >(std::in_place_type<Functor>, il, std::forward<CArgs>(args)...);
 }
 
-#endif
+#endif // C++ >= 17
 
-/// @brief make_fn[12]: Make function with specified wrapper.
-/// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::safe_fn`, or `ebd::fn_ref`.
+#if __cpp_lib_constant_wrapper >= 202603L
+
+/// @brief make_fn[12]: Make function from `std::cw<fn>`.
+/// @return `fn_ref<Auto-Deduction>`
+template <auto Cw, typename Fn>
+EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept {
+  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using sig_correct = detail::get_correct_signature_t<fn_ref, sig_raw>;
+
+  return detail::make_function_impl<
+    /* Fn = */ fn_ref<sig_correct>, /* NoThrow = */ true
+  >(std::constant_wrapper<Cw, Fn>{});
+}
+
+/// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
+/// @return `fn_ref<Auto-Deduction>`
+template <auto Cw, typename Fn, typename Tp>
+EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) noexcept {
+  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using sig_wip = detail::get_correct_signature_t<fn_ref, sig_raw>;
+  using sig_correct = detail::skip_first_arg_sig_t<sig_wip>;
+
+  return detail::make_function_impl<
+    /* Fn = */ fn_ref<sig_correct>, /* NoThrow = */ true
+  >(std::constant_wrapper<Cw, Fn>{}, std::forward<Tp>(obj));
+}
+
+#endif // C++ >= 26
+
+/// @brief make_fn[14]: Make function with specified wrapper.
+/// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, sizeof(functor)>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t> class Fn,
   typename SpecifiedSig = void,
-  typename Functor,
-  typename Deduction = decltype(make_fn(std::declval<Functor>())),
+  typename... Args,
+  typename Deduction = decltype(make_fn(std::declval<Args>()...)),
   typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
-  typename Signature = detail::conditional_t<
-    std::is_void<SpecifiedSig>::value,
-    detail::noexcept_qualify_like_t<Functor, Fn, RawSig>, SpecifiedSig
-  >,
-  std::size_t BufferSize = sizeof(detail::decay_t<Functor>),
+  typename Signature = detail::conditional_t<std::is_void<SpecifiedSig>::value,
+                           /* Auto deduce */ detail::get_correct_signature_t<Fn, RawSig>,
+          /* Use user specified signature */ SpecifiedSig>,
+  std::size_t BufferSize =
+    detail::get_correct_buffer_size<Fn<int(), 0>, Deduction::get_buffer_size(), Args...>::value,
   typename FnWrapper = Fn<Signature, BufferSize>,
-  bool NoThrow = noexcept(FnWrapper(std::declval<Functor>()))
+  bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))
 )
 EMBED_DETAIL_REQUIRES_END(
   detail::is_ebd_fn<FnWrapper>::value
   && detail::unwrap_signature<Signature>::isSignature
 )
 EMBED_NODISCARD EMBED_CXX20_CONSTEXPR inline
-FnWrapper make_fn(Functor&& functor) noexcept(NoThrow) {
+FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
   return detail::make_function_impl<
     /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
-  >(std::forward<Functor>(functor));
+  >(std::forward<Args>(args)...);
 }
 
 // When all other make_fn() fail to match the input parameters,
@@ -3399,32 +3445,6 @@ template <typename Unused = void,
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
 template <template <class, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
-
-#if __cpp_lib_constant_wrapper >= 202603L
-namespace detail {
-
-  /// @brief `fn_ref` CTAD guides from `std::constant_wrapper`.
-
-  template <typename Fn>
-  using make_fn_ref_deduction_sig_t = noexcept_qualify_like_t<
-    Fn, fn_ref, typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature>;
-
-  template <auto Cw, typename Fn>
-  function(std::constant_wrapper<Cw, Fn>) -> function<
-    default_buffer_size::ref_buf,
-    config_package<true, true, false, false>, // fn_ref
-    make_fn_ref_deduction_sig_t<Fn>
-  >;
-
-  template <auto Cw, typename Fn, typename Tp>
-  function(std::constant_wrapper<Cw, Fn>, Tp&&) -> function<
-    default_buffer_size::ref_buf,
-    config_package<true, true, false, false>, // fn_ref
-    skip_first_arg_sig_t<make_fn_ref_deduction_sig_t<Fn>>
-  >;
-
-} // end namespace detail
-#endif // ^^^ __cpp_lib_constant_wrapper >= 202603L
 
 } // end namespace ebd
 
@@ -3468,7 +3488,6 @@ namespace detail {
 # undef EMBED_NODISCARD
 # undef EMBED_DEPRECATED
 
-# undef EMBED_FN_CONFIG_USE_BIG_DEFAULT_BUFFER
 # undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
 # undef EMBED_FN_HOOK_DEBUG

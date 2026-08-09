@@ -4,7 +4,7 @@ Thank you for contributing to *Embedded-Function*!
 
 To make sure the process of accepting patches goes smoothly for everyone (especially for the maintainer), you should try to follow these few simple guidelines when you contribute:
 
-0. Before contributing, please open an issue to discuss significant changes.
+0. Before contributing, please open an [issue](https://github.com/Kim-J-Smith/Embedded-Function/issues) to discuss significant changes.
 
 1. Fork the repository.
 
@@ -18,7 +18,7 @@ To make sure the process of accepting patches goes smoothly for everyone (especi
 
 3. Do your modifications on that branch. Except for special cases, your contribution should include proper unit tests and documentation.
 
-4. Make sure your modifications did not break anything by building and running the [tests](./test/HOW-TO-TEST.md).
+4. Make sure your modifications did not break anything by building and running the [tests](./test/README.md).
 
 5. Commit your changes. Your commit message should start with a one line short description of the modifications, with the details and explanations of your modifications following in subsequent paragraphs or bullet points.
 

@@ -42,12 +42,12 @@ TEST(LifetimeTest, no_double_free_in_assignment) {
     }
     ASSERT_EQ(free_count, 4);
 
-    // safe_fn
+    // classic_fn
     free_count = 0;
     {
         no_double_free_checker checker; // 1
-        ebd::safe_fn<int()> f1 = [checker]() { return checker.m_var; }; // 2
-        ebd::safe_fn<int()> f2;
+        ebd::classic_fn<int()> f1 = [checker]() { return checker.m_var; }; // 2
+        ebd::classic_fn<int()> f2;
         f2 = f1; // 1
     }
     ASSERT_EQ(free_count, 4);
@@ -55,8 +55,27 @@ TEST(LifetimeTest, no_double_free_in_assignment) {
     free_count = 0;
     {
         no_double_free_checker checker; // 1
-        ebd::safe_fn<int()> f1 = [checker]() { return checker.m_var; }; // 2
-        ebd::safe_fn<int()> f2;
+        ebd::classic_fn<int()> f1 = [checker]() { return checker.m_var; }; // 2
+        ebd::classic_fn<int()> f2;
+        f2 = std::move(f1); // 1
+    }
+    ASSERT_EQ(free_count, 4);
+
+    // __safe_fn
+    free_count = 0;
+    {
+        no_double_free_checker checker; // 1
+        ebd::__safe_fn<int()> f1 = [checker]() { return checker.m_var; }; // 2
+        ebd::__safe_fn<int()> f2;
+        f2 = f1; // 1
+    }
+    ASSERT_EQ(free_count, 4);
+
+    free_count = 0;
+    {
+        no_double_free_checker checker; // 1
+        ebd::__safe_fn<int()> f1 = [checker]() { return checker.m_var; }; // 2
+        ebd::__safe_fn<int()> f2;
         f2 = std::move(f1); // 1
     }
     ASSERT_EQ(free_count, 4);

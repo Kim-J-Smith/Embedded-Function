@@ -4,6 +4,18 @@
 #include "embed/embed_function.hpp"
 #include "gtest/gtest.h"
 
+namespace ebd {
+
+/// @attention TEST USE ONLY!
+template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+using __safe_fn = basic_fn<Signature, detail::get_aligned_size(BufferSize),
+                           true,    // Is Copyable
+                           false,   // Not View
+                           false,   // Not Throwing on empty calls
+                           true>;   // Assert Ctor/Dtor Nothrow
+
+} // namespace ebd
+
 #if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
 # define EBD_TEST_NOEXCEPT noexcept
 #else
@@ -46,6 +58,7 @@ enum OverloadRes {
     OVL_DOUBLE,
     OVL_INT_INT,
     OVL_INT_FLOAT,
+    OVL_INT_INT_INT,
 };
 inline int ebd_test_free_func_overload() { return OVL_VOID; }
 inline int ebd_test_free_func_overload(int) { return OVL_INT; }
@@ -54,6 +67,7 @@ inline int ebd_test_free_func_overload(float) { return OVL_FLOAT; }
 inline int ebd_test_free_func_overload(double) { return OVL_DOUBLE; }
 inline int ebd_test_free_func_overload(int, int) { return OVL_INT_INT; }
 inline int ebd_test_free_func_overload(int, float) { return OVL_INT_FLOAT; }
+inline int ebd_test_free_func_overload(int, int, int) noexcept { return OVL_INT_INT_INT; }
 
 namespace ebd_test {
 
@@ -229,4 +243,34 @@ inline int ebd_test_safe_tmp_fn(ebd::fn_ref<int()> f) { return f(); }
 struct ebd_test_large_alignment {
     alignas(std::max_align_t) int m_var;
     int operator()() const { return 42; }
+};
+
+struct ebd_test_counter {
+    static int m_create_times;
+    static int m_copy_times;
+    static int m_move_times;
+    static int m_delete_times;
+
+    ebd_test_counter(int) noexcept { m_create_times++; }
+    ebd_test_counter() noexcept { m_create_times++; }
+    ebd_test_counter(const ebd_test_counter&) noexcept { m_copy_times++; }
+    ebd_test_counter(ebd_test_counter&&) noexcept { m_move_times++; }
+    ~ebd_test_counter() noexcept { m_delete_times++; }
+
+    static void clear() noexcept {
+        m_create_times = 0;
+        m_copy_times = 0;
+        m_move_times = 0;
+        m_delete_times = 0;
+    }
+
+    int operator()(int n) const noexcept { return n + 42; }
+};
+
+struct ebd_test_implicit_func_ptr {
+    using func_ptr = int (*) (int);
+
+    operator func_ptr() const {
+        return [](int n) { return n + 42; };
+    }
 };

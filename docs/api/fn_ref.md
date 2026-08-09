@@ -99,8 +99,8 @@ process_data(100, &handle_result);
 
 - `ebd::fn_ref` is a non-owning view, so the underlying callable object must outlive the view.
 - `ebd::fn_ref` is trivially copyable and has minimal overhead.
-- The buffer size is fixed to `detail::default_buffer_size::ref_buf`, which is sufficient to store function pointers and member pointers.
-- `ebd::fn_ref` cannot be initialized with rvalue references, as it would create a dangling reference.
+- The buffer size is fixed to `detail::default_buffer_size::ref_buf`, which is sufficient to store function pointers.
+- `ebd::fn_ref` now can be initialized with rvalue references, although it may create a dangling reference. (same as `std::function_ref`)
 
 ## Compare `ebd::fn_ref` with `std::function_ref`
 
@@ -125,4 +125,4 @@ process_data(100, &handle_result);
 - [`ebd::detail::function`](./detail/function.md) - The underlying implementation
 - [`ebd::fn`](./fn.md) - For copyable callables
 - [`ebd::unique_fn`](./unique_fn.md) - For move-only callables
-- [`ebd::safe_fn`](./safe_fn.md) - For exception-safe callables
+- [`ebd::classic_fn`](./classic_fn.md) - For callables with `std::bad_function_call` on empty
