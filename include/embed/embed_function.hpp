@@ -1981,7 +1981,8 @@ namespace management {
     // Move trivial type-erased object from `src` to `dst`.
     template <typename Functor>
     static void trivially_move(erasure_base_t* dst, erasure_base_t* src)
-    noexcept(noexcept(trivially_clone<Functor>(dst, src))) { trivially_clone<Functor>(dst, src); }
+      noexcept(noexcept(trivially_clone<Functor>(dst, src)))
+    { trivially_clone<Functor>(dst, src); }
 
     // Using when M_erasure is empty.
     struct empty {
@@ -2959,6 +2960,12 @@ namespace crtp_mixins {
   operator!=(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
     return !fn.is_empty();
   }
+
+  // Exchange the function wrapper `a` with the wrapper `b`.
+  template <std::size_t Buf, typename Cfg, typename Sig>
+  void swap(function<Buf, Cfg, Sig>& a, function<Buf, Cfg, Sig>& b)
+    noexcept(noexcept(a.swap(b)))
+  { a.swap(b); }
 
   // Make a function.
   template <typename Fn, bool NoThrow, typename... CArgs>

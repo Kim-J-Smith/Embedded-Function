@@ -21,6 +21,24 @@ struct benchmark_trivial_struct {
     void* pod;
 };
 
+struct benchmark_non_trivial_struct_add42 {
+    void* pod;
+    benchmark_non_trivial_struct_add42() = default;
+    ~benchmark_non_trivial_struct_add42() = default;
+    benchmark_non_trivial_struct_add42(const benchmark_non_trivial_struct_add42&) noexcept {}
+
+    int operator()(int n) { return 42 + n; }
+};
+
+struct benchmark_non_trivial_struct_add43 {
+    void* pod;
+    benchmark_non_trivial_struct_add43() = default;
+    ~benchmark_non_trivial_struct_add43() = default;
+    benchmark_non_trivial_struct_add43(const benchmark_non_trivial_struct_add43&) noexcept {}
+
+    int operator()(int n) { return 43 + n; }
+};
+
 struct benchmark_call_trivial_struct {
     void* pod;
     benchmark_call_trivial_struct() : pod(nullptr) {
