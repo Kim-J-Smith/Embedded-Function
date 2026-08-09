@@ -940,15 +940,22 @@ inline namespace fn_traits {
 
   // Implement the "is_ebd_fn" trait.
   template <typename T>
-  struct is_ebd_fn_impl : public std::false_type
-  { using signature = void; };
+  struct is_ebd_fn_impl : public std::false_type {
+    using signature = void;
+    using config = void;
+    static constexpr std::size_t buffer = 0;
+  };
 
   template <std::size_t Buf, typename Cfg, typename Sig>
   struct is_ebd_fn_impl<function<Buf, Cfg, Sig>>
   : public bool_constant<
     unwrap_signature<Sig>::isSignature
     && is_config_package<Cfg>::value
-  > { using signature = Sig; };
+  > {
+    using signature = Sig;
+    using config = Cfg;
+    static constexpr std::size_t buffer = Buf;
+  };
 
   // Check whether the type is `ebd::detail::function` or not.
   template <typename T>
@@ -1033,6 +1040,16 @@ inline namespace fn_traits {
       is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
   };
 
+  // Check the `Config` convertible.
+  template <typename CfgTo, typename CfgFrom>
+  struct is_config_convertible {
+    static constexpr bool value =
+      CfgTo::isCopyable <= CfgFrom::isCopyable // Copyable to Move-only is OK.
+      && CfgTo::isView == CfgFrom::isView
+      && CfgTo::isThrowing == CfgFrom::isThrowing
+      && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
+  };
+
   // Implement `is_convertible_from_specialization`.
   template <typename To, typename From>
   struct is_convertible_from_specialization_impl : public std::false_type {};
@@ -1060,11 +1077,7 @@ inline namespace fn_traits {
     static constexpr bool buf_ok = BufTo >= BufFrom;
 
     // Check the Configuration.
-    static constexpr bool cfg_ok =
-      CfgTo::isCopyable <= CfgFrom::isCopyable // Copyable to Move-only is OK.
-      && CfgTo::isView == CfgFrom::isView
-      && CfgTo::isThrowing == CfgFrom::isThrowing
-      && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
+    static constexpr bool cfg_ok = is_config_convertible<CfgTo, CfgFrom>::value;
 
     // In view mode, the requires is special.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3961r1.html>.
@@ -1670,6 +1683,24 @@ inline namespace fn_traits {
     // Use template parameter `Val` to avoid violating ODR.
     bool Val = logical_and<is_complete_here<Args>()...>::value>
   constexpr bool each_param_is_complete_here(T<Args...>) noexcept { return Val; }
+
+  template <bool IsWrapper /*=false*/, typename FnWrapper, std::size_t Candidate, typename Arg>
+  struct get_correct_buffer_size_helper { static constexpr std::size_t value = Candidate; };
+  template <typename FnWrapper, std::size_t Candidate, typename OtherWrapper>
+  struct get_correct_buffer_size_helper</*IsWrapper=*/true, FnWrapper, Candidate, OtherWrapper> {
+    static constexpr std::size_t value =
+      is_config_convertible<
+        typename is_ebd_fn<FnWrapper>::config, typename is_ebd_fn<OtherWrapper>::config>::value
+      ? Candidate : sizeof(remove_cvref_t<OtherWrapper>);
+  };
+
+  // Get the correct buffer size for `make_fn<FnWrapper>`.
+  template <typename FnWrapper, std::size_t Candidate, typename... Args>
+  struct get_correct_buffer_size { static constexpr std::size_t value = Candidate; };
+
+  template <typename FnWrapper, std::size_t Candidate, typename Arg>
+  struct get_correct_buffer_size<FnWrapper, Candidate, Arg>
+  : public get_correct_buffer_size_helper<is_ebd_fn<Arg>::value, FnWrapper, Candidate, Arg> {};
 
 } // end namespace fn_traits
 
@@ -3240,6 +3271,8 @@ EMBED_DETAIL_REQUIRES_END(
   detail::is_unique_callable<Class>::value
   // [Require] The signature must be valid.
   && detail::unwrap_signature<Signature>::isSignature
+  // [Require] The Lambda cannot be ebd::detail::function.
+  && (!detail::is_ebd_fn<Class>::value)
 )
 EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
   return detail::make_function_impl<Fn, NoThrow>(std::forward<Lambda>(fn));
@@ -3388,7 +3421,8 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature = detail::conditional_t<std::is_void<SpecifiedSig>::value,
                            /* Auto deduce */ detail::get_correct_signature_t<Fn, RawSig>,
           /* Use user specified signature */ SpecifiedSig>,
-  std::size_t BufferSize = Deduction::get_buffer_size(),
+  std::size_t BufferSize =
+    detail::get_correct_buffer_size<Fn<int(), 0>, Deduction::get_buffer_size(), Args...>::value,
   typename FnWrapper = Fn<Signature, BufferSize>,
   bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))
 )
