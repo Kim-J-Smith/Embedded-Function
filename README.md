@@ -1,7 +1,7 @@
 ﻿# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.2.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.2.0">
+  <img src="https://img.shields.io/badge/Version-2.2.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.2.1">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -163,6 +163,26 @@ auto main() -> int {
 | `ebd::unique_fn` | No | Yes-D | No | Yes-R |
 | `ebd::classic_fn` | Yes-I | Yes-I | Yes-D | Yes-R |
 | `ebd::fn_ref` | Yes-I | Yes-I | Yes-I | Yes-D |
+
+### Memory layout overview
+
+> *Owning wrapper*: `fn`, `unique_fn`, `classic_fn`.
+
+> *Non-Owning wrapper*: `fn_ref`.
+
+```mermaid
+graph TB;
+  subgraph "Non-Owning wrapper"
+    B2["Buffer (Fixed)"]
+    I2["Invoker"]
+  end
+
+  subgraph "Owning wrapper"
+    B1["Buffer (Configurable)"]
+    M1["Manager"]
+    I1["Invoker"]
+  end
+```
 
 ## 🧩 Automatic deduction
 
