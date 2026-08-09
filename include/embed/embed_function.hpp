@@ -2961,7 +2961,7 @@ namespace crtp_mixins {
     return !fn.is_empty();
   }
 
-  // Swap function wrapper `a` and `b`.
+  // Exchange the function wrapper `a` with the wrapper `b`.
   template <std::size_t Buf, typename Cfg, typename Sig>
   void swap(function<Buf, Cfg, Sig>& a, function<Buf, Cfg, Sig>& b)
     noexcept(noexcept(a.swap(b)))
