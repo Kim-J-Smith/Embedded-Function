@@ -71,6 +71,7 @@ file(
     "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn/*.pass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/conformance/__safe_fn/*.pass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/conformance/unique_fn/*.pass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/conformance/classic_fn/*.pass.cpp"
 )
 
 # Target executable file.
@@ -174,6 +175,7 @@ file(
   "${CMAKE_CURRENT_SOURCE_DIR}/conformance/fn/fail/*.fail.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/conformance/__safe_fn/fail/*.fail.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/conformance/unique_fn/fail/*.fail.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/conformance/classic_fn/fail/*.fail.cpp"
 )
 
 get_property(PATH_INCLUDES DIRECTORY PROPERTY INCLUDE_DIRECTORIES)

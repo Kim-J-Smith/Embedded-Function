@@ -31,11 +31,11 @@ TEST(AssignAndConvert, small_to_big) {
     ASSERT_EQ(cf_big != nullptr, true);
     ASSERT_EQ(cf_big(23665, 8427), 23665 + 8427);
 
-    ebd::__safe_fn<int(int, int) const, s_buf> sf_small = ebd_test_free_func_iii_add;
+    ebd::__safe_fn<int() const EBD_TEST_NOEXCEPT, s_buf> sf_small = ebd_test_free_func_noexcept;
     ASSERT_EQ(sf_small != nullptr, true);
-    ebd::__safe_fn<int(int, int) const, b_buf> sf_big = sf_small;
+    ebd::__safe_fn<int() const EBD_TEST_NOEXCEPT, b_buf> sf_big = sf_small;
     ASSERT_EQ(sf_big != nullptr, true);
-    ASSERT_EQ(sf_big(23665, 8427), 23665 + 8427);
+    ASSERT_EQ(sf_big(), 0);
 
     auto small = ebd::make_fn<int(int)>([](int v){ return v * 2; });
     using Big = ebd::fn<int(int), 8 * sizeof(void*)>;
@@ -174,6 +174,13 @@ TEST(AssignAndConvert, VolatileToNonVolatile) {
         // f_volatile = f_non_volatile; // Error
     }
     {
+        ebd::__safe_fn<void()> f_non_volatile;
+        ebd::__safe_fn<void() volatile> f_volatile;
+
+        f_non_volatile = f_volatile; // OK
+        // f_volatile = f_non_volatile; // Error
+    }
+    {
         ebd::fn_ref<void()> f_non_volatile = +[]{};
         ebd::fn_ref<void() volatile> f_volatile = +[]{};
 
@@ -205,6 +212,13 @@ TEST(AssignAndConvert, NonRefToLeftValueRef) {
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
     }
+    {
+        ebd::__safe_fn<void()> f_non_ref;
+        ebd::__safe_fn<void() &> f_ref;
+
+        f_ref = f_non_ref; // OK
+        // f_non_ref = f_ref; // Error
+    }
 }
 
 // AssignAndConvert[8]
@@ -226,6 +240,13 @@ TEST(AssignAndConvert, NonRefToRightValueRef) {
     {
         ebd::classic_fn<void()> f_non_ref;
         ebd::classic_fn<void() &&> f_ref;
+
+        f_ref = f_non_ref; // OK
+        // f_non_ref = f_ref; // Error
+    }
+    {
+        ebd::__safe_fn<void()> f_non_ref;
+        ebd::__safe_fn<void() &&> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
@@ -357,9 +378,85 @@ TEST(AssignAndConvert, SelfAssign) {
         ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
         ASSERT_EQ(ebd_test_counter::m_move_times, 0);
     }
+    {
+        ebd::classic_fn<int(int, int) const> f1 = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f1(42, 0), 42);
+        f1 = f1;
+        ASSERT_EQ(f1(42, 1), 43);
+        f1 = std::move(f1);
+        ASSERT_EQ(f1(42, 2), 44);
+
+        ebd_test_counter::clear();
+        auto f2 = ebd::make_fn<ebd::classic_fn>(ebd_test_counter{});
+        ASSERT_EQ(ebd_test_counter::m_create_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 1);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 1);
+
+        ebd_test_counter::clear();
+        f2 = f2;
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+
+        ebd_test_counter::clear();
+        f2 = std::move(f2);
+        ASSERT_EQ(ebd_test_counter::m_create_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_delete_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_copy_times, 0);
+        ASSERT_EQ(ebd_test_counter::m_move_times, 0);
+    }
 #if defined(__GNUC__) || defined(__clang__)
 # pragma GCC diagnostic pop
 #elif defined(_MSC_VER)
 # pragma warning(pop)
 #endif
+}
+
+// AssignAndConvert[10]
+TEST(AssignAndConvert, InterConvert) {
+    {
+        ebd::fn<int(int, int) const> f = ebd_test_free_func_iii_add;
+        auto f1 = ebd::make_fn<ebd::unique_fn>(f);
+        auto f2 = ebd::make_fn<ebd::classic_fn>(f);
+        auto f3 = ebd::make_fn<ebd::fn_ref>(f);
+        static_assert(f.get_buffer_size() == f1.get_buffer_size(), "BUG");
+        static_assert(f.get_buffer_size() < f2.get_buffer_size(), "BUG");
+        ASSERT_EQ(f(42, 0), 42);
+        ASSERT_EQ(f1(42, 0), 42);
+        ASSERT_EQ(f2(42, 0), 42);
+        ASSERT_EQ(f3(42, 0), 42);
+    }
+    {
+        ebd::unique_fn<int(int, int) const> f = ebd_test_free_func_iii_add;
+        auto f3 = ebd::make_fn<ebd::fn_ref>(f);
+        ASSERT_EQ(f(42, 0), 42);
+        ASSERT_EQ(f3(42, 0), 42);
+    }
+    {
+        ebd::classic_fn<int(int, int) const> f = ebd_test_free_func_iii_add;
+        auto f1 = ebd::make_fn<ebd::fn>(f);
+        auto f2 = ebd::make_fn<ebd::unique_fn>(f);
+        auto f3 = ebd::make_fn<ebd::fn_ref>(f);
+        static_assert(f.get_buffer_size() < f1.get_buffer_size(), "BUG");
+        static_assert(f.get_buffer_size() < f2.get_buffer_size(), "BUG");
+        ASSERT_EQ(f(42, 0), 42);
+        ASSERT_EQ(f1(42, 0), 42);
+        ASSERT_EQ(f2(42, 0), 42);
+        ASSERT_EQ(f3(42, 0), 42);
+    }
+    {
+        ebd::fn_ref<int(int, int) const> f = ebd_test_free_func_iii_add;
+        auto f1 = ebd::make_fn<ebd::fn>(f);
+        auto f2 = ebd::make_fn<ebd::unique_fn>(f);
+        auto f3 = ebd::make_fn<ebd::classic_fn>(f);
+        static_assert(f.get_buffer_size() < f1.get_buffer_size(), "BUG");
+        static_assert(f.get_buffer_size() < f2.get_buffer_size(), "BUG");
+        static_assert(f.get_buffer_size() < f3.get_buffer_size(), "BUG");
+        ASSERT_EQ(f(42, 0), 42);
+        ASSERT_EQ(f1(42, 0), 42);
+        ASSERT_EQ(f2(42, 0), 42);
+        ASSERT_EQ(f3(42, 0), 42);
+    }
 }

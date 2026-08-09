@@ -62,6 +62,13 @@ TEST(ThrowDeath, mix_throw_and_death) {
 
     f2 = nullptr;
     EXPECT_DEATH(f2(2), "");
+
+    auto f3 = ebd::make_fn<ebd::classic_fn>(ebd_test_operator_unambiguous{});
+    ASSERT_EQ(f3.is_empty(), false);
+    ASSERT_EQ(f3(3), 3);
+
+    f3.clear();
+    EBD_EXPECT_THROW(f3(3), std::bad_function_call);
 }
 
 #if !defined(_MSC_VER)

@@ -178,7 +178,7 @@ template <auto Cw, typename Fn>
 EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept;
 ```
 
-Creates an `ebd::fn_ref` from a `std::constant_wrapper` (P3007) of a free function or other callable. The signature is deduced automatically. Only available when `__cpp_lib_constant_wrapper >= 202603L`.
+Creates an `ebd::fn_ref` from a `std::constant_wrapper` (P3948) of a free function or other callable. The signature is deduced automatically. Only available when `__cpp_lib_constant_wrapper >= 202603L`.
 
 ### 14. From `std::constant_wrapper` of a member pointer and an object (C++26+)
 
