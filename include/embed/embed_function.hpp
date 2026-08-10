@@ -904,6 +904,7 @@ inline namespace fn_traits {
     using ret   = void;
     using args  = args_package<>;
     using pure_sig = void();
+    using pure_sig_noex = void();
     static constexpr bool hasConst = false;
     static constexpr bool hasVolatile = false;
     static constexpr bool hasRRef = false;
