@@ -31,7 +31,13 @@
 
 #if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(push)
-# pragma warning(disable: 4514 4668 4710 26495)
+# pragma warning(disable: 4514) // ignore "unreferenced inline function has been removed"
+# pragma warning(disable: 4668) // ignore "undefined symbol as a preprocessor macro"
+# pragma warning(disable: 4710) // ignore "inline function not inlined"
+# pragma warning(disable: 4711) // ignore "inlined non-inline function"
+# pragma warning(disable: 4625 5026) // ignore "implicit delete copy/move constructor"
+# pragma warning(disable: 4626 5027) // ignore "implicit delete copy/move assignment"
+# pragma warning(disable: 26495) // ignore "variable is uninitialized"
 #endif
 
 #ifndef EMBED_CXX_VERSION
@@ -1885,7 +1891,16 @@ namespace invocation {
     EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                                 \
   };
 
+#if defined(_MSC_VER) && !defined(__clang__)
+# pragma warning(push)
+# pragma warning(disable: 4191) // unsafe reinterpret_cast
+#endif
+
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_INVOKER_IMPL_DEFINE)
+
+#if defined(_MSC_VER) && !defined(__clang__)
+# pragma warning(pop)
+#endif
 
 #undef EMBED_DETAIL_INVOKER_IMPL_DEFINE
 #undef EMBED_DETAIL_CW_INVOKER_IMPL
