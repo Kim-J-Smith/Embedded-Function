@@ -153,6 +153,19 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     gtest_lib PRIVATE
     -O1
   )
+
+  # Sanitizer
+  if(NOT WIN32)
+    target_compile_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address,undefined
+    )
+    target_link_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address,undefined
+    )
+  endif()
+
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(
     ${PROJECT_NAME} PRIVATE
@@ -171,6 +184,19 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     gtest_lib PRIVATE
     -O1
   )
+
+  # Sanitizer
+  if(NOT WIN32)
+    target_compile_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address,undefined
+    )
+    target_link_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address,undefined
+    )
+  endif()
+
 endif()
 
 # Fail tests
