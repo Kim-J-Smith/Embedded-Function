@@ -156,13 +156,15 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
 
   # Sanitizer
   if(NOT WIN32)
+    # Pointer to member function is not const with
+    # `-fsanitize=undefined` or `-fsanitize=null`.
     target_compile_options(
       ${PROJECT_NAME} PRIVATE
-      -fsanitize=address,undefined
+      -fsanitize=address
     )
     target_link_options(
       ${PROJECT_NAME} PRIVATE
-      -fsanitize=address,undefined
+      -fsanitize=address
     )
   endif()
 
