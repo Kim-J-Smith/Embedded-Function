@@ -17,9 +17,11 @@
 #include <functional>
 #include <type_traits>
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 // C++23 is not full supported if _MSC_VER < 1950.
 # define MSVC_IS_OK (_MSC_VER >= 1950)
+# pragma warning(push)
+# pragma warning(disable: 4643 5266) // std, return const
 #else
 # define MSVC_IS_OK 1
 #endif
@@ -308,5 +310,9 @@ struct constant_wrapper : __cw_operators {
 } // namespace std
 
 #endif // __cplusplus >= 202400L
+
+#if defined(_MSC_VER) && !defined(__clang__)
+# pragma warning(pop)
+#endif
 
 #endif // TEMP_LIBCPP___UTILITY_CONSTANT_WRAPPER_H

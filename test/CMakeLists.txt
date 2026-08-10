@@ -111,12 +111,10 @@ if(MSVC)
     /permissive-
     /W4
     /Wall
-    /wd4710
-    /wd4127
-    /wd4514
-    /wd4626
-    /wd5045
-    /wd6326
+    # /wd4127 # const expression
+    /wd4514 # unused inline function
+    /wd5045 # Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+    /wd6326 # const comparison (/analyze)
     # /analyze 
     /WX
   )
@@ -125,9 +123,16 @@ if(MSVC)
     /OPT:NOICF
   )
   target_compile_options(
-    gtest_lib INTERFACE
-    /w
-    /wd4711
+    gtest_lib PUBLIC
+    /wd4820 # padding
+    /wd4668 # undefined macro
+    /wd4625 # copy-constructor implicit delete
+    /wd4626 # copy-assignment implicit delete
+    /wd5027 # move-assignment implicit delete
+    /wd5026 # move-constructor implicit delete
+    /wd5267 # deprecate copy-constructor
+    /wd4710 # inline function not inlined
+    /wd4711 # inlined non-inline function
   )
 elseif(CMAKE_COMPILER_IS_GNUCXX)
   target_compile_options(
@@ -148,6 +153,21 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     gtest_lib PRIVATE
     -O1
   )
+
+  # Sanitizer
+  if(NOT WIN32)
+    # Pointer to member function is not const with
+    # `-fsanitize=undefined` or `-fsanitize=null`.
+    target_compile_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address
+    )
+    target_link_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address
+    )
+  endif()
+
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(
     ${PROJECT_NAME} PRIVATE
@@ -166,6 +186,19 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     gtest_lib PRIVATE
     -O1
   )
+
+  # Sanitizer
+  if(NOT WIN32)
+    target_compile_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address,undefined
+    )
+    target_link_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address,undefined
+    )
+  endif()
+
 endif()
 
 # Fail tests
