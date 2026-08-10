@@ -410,6 +410,10 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 - [C++26-`std::copyable_function`-P2548](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2548r6.pdf).
 
+- [Deprecating function in C++29 -P2721](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2721r1.pdf)
+
+- [Proxy: A Pointer-Semantics-Based Polymorphism Library -P3086](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3086r5.html)
+
 ## 📚 Similar implementations
 
 - [std::function](https://cppreference.com/w/cpp/utility/functional/function)
