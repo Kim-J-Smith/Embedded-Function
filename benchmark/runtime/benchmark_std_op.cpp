@@ -67,9 +67,29 @@ static void std_op_wrapper_fn_view_fu2(picobench::state& s) {
     }
 }
 
+static void std_op_wrapper_fn_pro(picobench::state& s) {
+    auto less = std::less<int>{};
+    auto greater = std::greater<int>{};
+
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, bool(int, int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+
+    auto f = [](pro::proxy<Invoker> f) { return (*f)(0x111, 0x222); };
+
+    for (auto _ : s) {
+        volatile bool res1 = f(pro::make_proxy_inplace<Invoker>(less));
+        volatile bool res2 = f(pro::make_proxy_inplace<Invoker>(greater));
+        (void)res1; (void)res2;
+    }
+}
+
 BENCHMARK_UNIT(StdOperatorWrapper.FunctionWrapperAsParams);
 BENCHMARK_BASELINE(std_op_wrapper_fn_std);
 BENCHMARK_NOTBASE(std_op_wrapper_fn_fu2);
 BENCHMARK_NOTBASE(std_op_wrapper_fn_ebd);
 BENCHMARK_NOTBASE(std_op_wrapper_fn_view_fu2);
 BENCHMARK_NOTBASE(std_op_wrapper_fn_ref_ebd);
+BENCHMARK_NOTBASE(std_op_wrapper_fn_pro);
