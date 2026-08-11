@@ -201,6 +201,12 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 
 endif()
 
+
+# ============================= TRY COMPILE TESTS =============================
+
+# No link
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
 # Fail tests
 file(
   GLOB EMBED_FUNCTION_FAIL_TEST_FILES
