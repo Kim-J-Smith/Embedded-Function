@@ -1777,16 +1777,16 @@ namespace erasure_type {
 
   // ABI for passing either pointer or value.
   union ErasurePass {
-    ErasureBase* const                ptr__;
-    ErasureBase const* const          ptr_const_;
-    ErasureBase volatile* const       ptr__volatile;
-    ErasureBase const volatile* const ptr_const_volatile;
+    ErasureBase* const                ptr_;
+    ErasureBase const* const          ptr_const;
+    ErasureBase volatile* const       ptr_volatile;
+    ErasureBase const volatile* const ptr_constvolatile;
     ErasureRefStorage                 val;
 
-    ErasurePass(ErasureBase* erased) noexcept : ptr__(erased) {}
-    ErasurePass(ErasureBase const* erased) noexcept : ptr_const_(erased) {}
-    ErasurePass(ErasureBase volatile* erased) noexcept : ptr__volatile(erased) {}
-    ErasurePass(ErasureBase const volatile* erased) noexcept : ptr_const_volatile(erased) {}
+    ErasurePass(ErasureBase* erased) noexcept : ptr_(erased) {}
+    ErasurePass(ErasureBase const* erased) noexcept : ptr_const(erased) {}
+    ErasurePass(ErasureBase volatile* erased) noexcept : ptr_volatile(erased) {}
+    ErasurePass(ErasureBase const volatile* erased) noexcept : ptr_constvolatile(erased) {}
     ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
   };
 
@@ -1860,7 +1860,7 @@ namespace invocation {
     struct inplace {                                                                  \
       template <typename Functor>                                                     \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
-        auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## _ ## V);         \
+        auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## V);              \
         auto& fn = erased->template access<Functor>();                                \
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
