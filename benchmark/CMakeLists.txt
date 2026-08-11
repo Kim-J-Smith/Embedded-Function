@@ -71,7 +71,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -Wold-style-cast
     -pedantic
     -fno-permissive
-    -Os
+    -O2
     -fmax-errors=50
     -fno-exceptions
   )
@@ -87,6 +87,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -pedantic
     -fno-permissive
     -fno-exceptions
-    -Os
+    -O2
   )
 endif()
