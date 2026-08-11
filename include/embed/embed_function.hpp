@@ -1777,10 +1777,16 @@ namespace erasure_type {
 
   // ABI for passing either pointer or value.
   union ErasurePass {
-    ErasureBase* const  ptr;
-    ErasureRefStorage   val;
+    ErasureBase* const                ptr__;
+    ErasureBase const* const          ptr_const_;
+    ErasureBase volatile* const       ptr__volatile;
+    ErasureBase const volatile* const ptr_const_volatile;
+    ErasureRefStorage                 val;
 
-    ErasurePass(ErasureBase* erased) noexcept : ptr(erased) {}
+    ErasurePass(ErasureBase* erased) noexcept : ptr__(erased) {}
+    ErasurePass(ErasureBase const* erased) noexcept : ptr_const_(erased) {}
+    ErasurePass(ErasureBase volatile* erased) noexcept : ptr__volatile(erased) {}
+    ErasurePass(ErasureBase const volatile* erased) noexcept : ptr_const_volatile(erased) {}
     ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
   };
 
@@ -1854,7 +1860,7 @@ namespace invocation {
     struct inplace {                                                                  \
       template <typename Functor>                                                     \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
-        auto* erased = static_cast<erasure_t C V*>(base.ptr);                         \
+        auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## _ ## V);         \
         auto& fn = erased->template access<Functor>();                                \
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
@@ -2078,12 +2084,6 @@ namespace command {
     manager_t m_manager;
     invoker_t m_invoker;
 
-    auto invoke(erasure_pass_t erased, Args&&... args) const
-    noexcept(unwrap_signature<Signature>::isNoexcept)
-    -> typename unwrap_signature<Signature>::ret {
-      return m_invoker(erased, std::forward<Args>(args)...);
-    }
-
     void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
       if (m_manager->clone != nullptr) { m_manager->clone(dst, src); }
@@ -2160,12 +2160,6 @@ namespace command {
 
     // No m_manager because IsView = true.
     invoker_t m_invoker;
-
-    auto invoke(erasure_pass_t erased, Args&&... args) const
-    noexcept(unwrap_signature<Signature>::isNoexcept)
-    -> typename unwrap_signature<Signature>::ret {
-      return m_invoker(erased, std::forward<Args>(args)...);
-    }
 
     void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
     const noexcept {
@@ -2255,15 +2249,14 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
     Ret operator()(Args... args) C V REF NOEXCEPT {                         \
-      using erasure_t = typename Self::erasure_t;                           \
       using command_t = typename Self::command_t;                           \
       using pass_t = typename command_t::erasure_pass_t;                    \
       auto* const self_q = static_cast<Self C V*>(this);                    \
-      auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
+      auto& cmd = self_q->m_command;                                        \
     /* Pass the `m_erasure` by pointer (reference) in owning mode. */       \
     /* Because the usage size of `m_erasure` is uncertain. */               \
-      pass_t erased{ &const_cast<erasure_t&>(self_q->m_erasure) };          \
-      return cmd.invoke(erased, std::forward<Args>(args)...);               \
+      pass_t erased{ &self_q->m_erasure };                                  \
+      return cmd.m_invoker(erased, std::forward<Args>(args)...);            \
     }                                                                       \
   };                                                                        \
                                                                             \
@@ -2281,11 +2274,11 @@ namespace crtp_mixins {
       using pass_t = typename command_t::erasure_pass_t;                    \
       auto* const self_q = static_cast<Self const V*>(this);                \
       auto& erasure = const_cast<erasure_t&>(self_q->m_erasure);            \
-      auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
+      auto& cmd = self_q->m_command;                                        \
     /* Pass the `m_erasure` by value in non-owning mode to avoid ODR use. */\
     /* Because the ODR use forces compilers to reserve stack memory. */     \
       pass_t erased{ erasure.m_core.ref_storage };                          \
-      return cmd.invoke(erased, std::forward<Args>(args)...);               \
+      return cmd.m_invoker(erased, std::forward<Args>(args)...);            \
     }                                                                       \
   };
 
