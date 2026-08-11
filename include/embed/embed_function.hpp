@@ -1777,8 +1777,11 @@ namespace erasure_type {
 
   // ABI for passing either pointer or value.
   union ErasurePass {
-    ErasureBase*      ptr;
-    ErasureRefStorage val;
+    ErasureBase* const  ptr;
+    ErasureRefStorage   val;
+
+    ErasurePass(ErasureBase* erased) noexcept : ptr(erased) {}
+    ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
   };
 
 } // end namespace erasure_type
@@ -2255,12 +2258,11 @@ namespace crtp_mixins {
       using erasure_t = typename Self::erasure_t;                           \
       using command_t = typename Self::command_t;                           \
       using pass_t = typename command_t::erasure_pass_t;                    \
-      remove_cv_t<pass_t> erased;                                           \
-      auto* self_q = static_cast<Self C V*>(this);                          \
+      auto* const self_q = static_cast<Self C V*>(this);                    \
       auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
     /* Pass the `m_erasure` by pointer (reference) in owning mode. */       \
     /* Because the usage size of `m_erasure` is uncertain. */               \
-      erased.ptr = &const_cast<erasure_t&>(self_q->m_erasure);              \
+      pass_t erased{ &const_cast<erasure_t&>(self_q->m_erasure) };          \
       return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
   };                                                                        \
@@ -2277,13 +2279,12 @@ namespace crtp_mixins {
       using erasure_t = typename Self::erasure_t;                           \
       using command_t = typename Self::command_t;                           \
       using pass_t = typename command_t::erasure_pass_t;                    \
-      remove_cv_t<pass_t> erased;                                           \
-      auto* self_q = static_cast<Self const V*>(this);                      \
+      auto* const self_q = static_cast<Self const V*>(this);                \
       auto& erasure = const_cast<erasure_t&>(self_q->m_erasure);            \
       auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
     /* Pass the `m_erasure` by value in non-owning mode to avoid ODR use. */\
     /* Because the ODR use forces compilers to reserve stack memory. */     \
-      erased.val = erasure.m_core.ref_storage;                              \
+      pass_t erased{ erasure.m_core.ref_storage };                          \
       return cmd.invoke(erased, std::forward<Args>(args)...);               \
     }                                                                       \
   };
