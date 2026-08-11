@@ -978,12 +978,12 @@ inline namespace fn_traits {
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
-  throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
+  throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__) {
     EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
-#if EMBED_CXX_ENABLE_EXCEPTION != 0
-    throw std::bad_function_call{};
-#else
+#if !EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__
     std::terminate();
+#else
+    throw std::bad_function_call{};
 #endif
   }
 
@@ -1190,14 +1190,18 @@ inline namespace fn_traits {
     template <typename T>
     static constexpr bool not_empty(const T&) noexcept { return true; }
 
-    template <typename Sig>
-    static bool not_empty(const ::std::function<Sig>& f) noexcept
-    { return static_cast<bool>(f); }
-
     template <std::size_t Buf, typename Cfg, typename Sig,
       EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/> static
     EMBED_CXX14_CONSTEXPR bool not_empty(const function<Buf, Cfg, Sig>& f) noexcept
     { return static_cast<bool>(f); }
+
+#if __STDC_HOSTED__
+
+    template <typename Sig>
+    static bool not_empty(const ::std::function<Sig>& f) noexcept
+    { return static_cast<bool>(f); }
+
+#endif // __STDC_HOSTED__
 
 #if __cpp_lib_move_only_function >= 202110L
 

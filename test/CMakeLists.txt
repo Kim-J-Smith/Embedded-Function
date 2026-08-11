@@ -201,6 +201,12 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 
 endif()
 
+
+# ============================= TRY COMPILE TESTS =============================
+
+# No link
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
 # Fail tests
 file(
   GLOB EMBED_FUNCTION_FAIL_TEST_FILES
@@ -279,3 +285,56 @@ foreach(FAIL_TEST_SRC ${EMBED_FUNCTION_FAIL_TEST_FILES})
 endforeach()
 
 message(STATUS "===----------------------- FAIL TEST END -----------------------===")
+
+
+#Freestanding tests
+file(
+  GLOB EMBED_FUNCTION_FREESTANDING_TEST_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/freestanding/*.cpp"
+)
+
+if(MSVC)
+  set(FREESTANDING_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} /EHs-c- /GR- /kernel")
+else()
+  set(FREESTANDING_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -ffreestanding")
+endif()
+
+message(STATUS "===------------------ FREESTANDING TEST BEGIN ------------------===")
+
+foreach(FREESTANDING_TEST_SRC ${EMBED_FUNCTION_FREESTANDING_TEST_FILES})
+  file(
+    RELATIVE_PATH FREESTANDING_TEST_REL_PATH 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${FREESTANDING_TEST_SRC}
+  )
+
+  # Use a unique bindir per test so that tests sharing a file name do not
+  # reuse the same try_compile binary directory.
+  string(REPLACE "/" "_" FREESTANDING_TEST_UNIQUE_NAME "${FREESTANDING_TEST_REL_PATH}")
+  string(REPLACE ".cpp" "" FREESTANDING_TEST_UNIQUE_NAME "${FREESTANDING_TEST_UNIQUE_NAME}")
+
+  try_compile(
+    COMPILE_RESULT
+    ${CMAKE_CURRENT_BINARY_DIR}/freestanding_test/${FREESTANDING_TEST_UNIQUE_NAME}
+    SOURCES ${FREESTANDING_TEST_SRC}
+    CMAKE_FLAGS "${FREESTANDING_TEST_CMAKE_FLAGS}"
+    COMPILE_DEFINITIONS "${CMAKE_CXX_FLAGS} ${FREESTANDING_TEST_INCLUDE_PATH_CMD}"
+    OUTPUT_VARIABLE COMPILE_OUTPUT
+  )
+
+  if(NOT ${COMPILE_RESULT})
+    message(
+      FATAL_ERROR
+      "[  ERROR   ]: \"${FREESTANDING_TEST_REL_PATH}\" failed!"
+      " See ${FREESTANDING_TEST_SRC}\n"
+      "message:\n${COMPILE_OUTPUT}"
+    )
+  else()
+    message(
+      STATUS
+      "[  PASSED  ]: \"${FREESTANDING_TEST_REL_PATH}\""
+    )
+  endif()
+endforeach()
+
+message(STATUS "===------------------- FREESTANDING TEST END -------------------===")
