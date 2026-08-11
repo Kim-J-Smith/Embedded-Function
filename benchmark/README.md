@@ -17,7 +17,7 @@ sudo apt update && sudo apt install cmake -y
 ```bash
 cd ./benchmark # Go to benchmark directory: <repo_root>/benchmark
 
-cmake -B build -S . -DCMAKE_CXX_STANDARD=14 # Generate build files (function2 need C++14)
+cmake -B build -S . -DCMAKE_CXX_STANDARD=20 # Generate build files (proxy need C++20)
 
 cmake --build build --config Release --target benchmark --parallel
 ```

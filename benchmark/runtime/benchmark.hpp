@@ -3,6 +3,7 @@
 
 #include "embed/embed_function.hpp"
 #include "function2/function2.hpp"
+#include "proxy/proxy.h"
 #include "picobench/picobench.hpp"
 
 #define BENCHMARK_TIMES {10000, 100000, 1000000}
