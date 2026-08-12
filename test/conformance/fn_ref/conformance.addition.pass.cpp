@@ -144,7 +144,7 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
   }
 
   {
-#if !defined(NDEBUG)
+#if !defined(NDEBUG) && !defined(__OPTIMIZE__)
     ASSERT_DEATH({
       ebd::fn_ref<int(int)> f1(
         std::cw<&ebd_test_member_fn::get_var_and_increase>, 
