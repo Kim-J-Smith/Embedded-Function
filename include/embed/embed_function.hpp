@@ -2247,12 +2247,18 @@ namespace crtp_mixins {
 #if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 16
   /// @todo TODO: `__GNUC__ >= 16` is temporary.
 
-  // GCC 16's ipa-cp function-pointer-in-record tracking keys its lookup
-  // by record type with pointer equality, so loading m_invoker through
-  // a const-qualified access (yielding `const CommandTable` instead of
-  // `CommandTable`) misses the recorded target and the indirect calls are
-  // never devirtualized in time for inlining.
-  // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/133>.
+  /**
+   * GCC 16's ipa-cp optimization tracks indirect calls via function pointers
+   * stored in records. The lookup is keyed on the record type using pointer
+   * equality, which includes type identity. Therefore, accessing `m_invoker`
+   * through a const-qualified path yields type `const CommandTable` rather
+   * than `CommandTable`, causing the lookup to miss the recorded target.
+   * As a result, indirect calls are not devirtualized early enough for inlining.
+   * 
+   * See <https://github.com/Kim-J-Smith/Embedded-Function/issues/133>.
+   * 
+   * This helper casts away `const` to work around this limitation.
+   */
   template <typename Self, typename CRTP_Base>
   EMBED_INLINE remove_const_t<Self>* gcc_ipa_cp_friendly_cast(CRTP_Base* self) noexcept
   { return const_cast<remove_const_t<Self>*>(static_cast<Self*>(self)); }
