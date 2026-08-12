@@ -1,6 +1,7 @@
 **🔧 Fixed Bugs**
 - Fixed freestanding support: `throw_or_terminate()` now uses `std::terminate()` and the `std::function` overload of `not_empty()` is skipped when `__STDC_HOSTED__` is not defined.
 - Fixed GCC 16 ipa-cp devirtualization failure by adding `gcc_ipa_cp_friendly_cast()` so indirect calls via `m_invoker` are tracked correctly (see issue #133).
+- Fixed `-Wuninitialized` warning by explicitly initializing `Base_MemberVariable` in the default/`nullptr_t`/functor constructors.
 
 **⚠️ Breaking Changes**
 - None.
