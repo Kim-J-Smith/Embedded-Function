@@ -144,7 +144,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -Wold-style-cast
     -pedantic
     -fno-permissive
-    -O0
+    -O1 # -Wuninitialized skipped in O0.
     -fmax-errors=50
     -fno-exceptions
     -Werror

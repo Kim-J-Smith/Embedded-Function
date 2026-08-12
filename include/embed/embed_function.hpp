@@ -2774,14 +2774,14 @@ namespace crtp_mixins {
 #if __cpp_concepts >= 202002L
       requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : Base_CoreComponents(nullptr) {}
+    : Base_MemberVariable(nullptr), Base_CoreComponents(nullptr) {}
 
     // Create an empty function wrapper.
     function(std::nullptr_t) noexcept
 #if __cpp_concepts >= 202002L
       requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : Base_CoreComponents(nullptr) {}
+    : Base_MemberVariable(nullptr), Base_CoreComponents(nullptr) {}
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -2829,8 +2829,8 @@ namespace crtp_mixins {
       && (!is_self<Functor, function>::value)
       && (!is_in_place_type<decay_t<Functor>>::value)
       && is_callable_from<Functor>::value
-    ) function(Functor&& functor)
-    noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
+    ) function(Functor&& functor) noexcept(is_nothrow_construct_from_functor<Functor&&>::value)
+    : Base_MemberVariable(nullptr) {
 
       (void)assertions_for_functor<BufferSize, Config, Signature, Functor, Functor&&, erasure_t>{};
 

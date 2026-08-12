@@ -860,3 +860,16 @@ TEST(InitFunction, from_implicit_func_ptr) {
         ASSERT_EQ(f(0), 42);
     }
 }
+
+struct ebd_test_InitFunction_Wuninitialized {
+    ebd::fn<void()> f;
+    void set(ebd::fn<void()> fn) {
+        f = std::move(fn);
+    }
+};
+
+// InitFunction[42]
+TEST(InitFunction, Wuninitialized) {
+    ebd_test_InitFunction_Wuninitialized f;
+    f.set([]{});
+}
