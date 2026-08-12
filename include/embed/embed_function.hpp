@@ -2238,6 +2238,24 @@ namespace command {
 // Move the function's implementation to the base class to simplify the code.
 namespace crtp_mixins {
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 16
+  /// @todo TODO: `__GNUC__ >= 16` is temporary.
+
+  // GCC 16's ipa-cp function-pointer-in-record tracking keys its lookup
+  // by record type with pointer equality, so loading m_invoker through
+  // a const-qualified access (yielding `const CommandTable` instead of
+  // `CommandTable`) misses the recorded target and the indirect calls are
+  // never devirtualized in time for inlining.
+  // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/133>.
+  template <typename Self, typename CRTP_Base>
+  EMBED_INLINE remove_const_t<Self>* gcc_ipa_cp_friendly_cast(CRTP_Base* self) noexcept
+  { return const_cast<remove_const_t<Self>*>(static_cast<Self*>(self)); }
+#else
+  template <typename Self, typename CRTP_Base>
+  EMBED_INLINE Self* gcc_ipa_cp_friendly_cast(CRTP_Base* self) noexcept
+  { return static_cast<Self*>(self); }
+#endif
+
   // Implement the 'operator()' for function.
   template <bool IsView, typename Signature, typename Self>
   struct operator_call_impl; // Undefined
@@ -2249,7 +2267,7 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
     Ret operator()(Args... args) C V REF NOEXCEPT {                         \
-      auto* const self = static_cast<Self C V*>(this);                      \
+      auto* const self = gcc_ipa_cp_friendly_cast<Self C V>(this);          \
       auto& command = self->m_command;                                      \
       auto& erasure = self->m_erasure;                                      \
     /* Pass the `m_erasure` by pointer (reference) in owning mode. */       \
