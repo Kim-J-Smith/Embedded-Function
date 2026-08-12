@@ -1790,6 +1790,12 @@ namespace erasure_type {
     ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
   };
 
+  static_assert(std::is_trivially_copyable<ErasurePass>::value,
+    EMBED_DETAIL_REPORT_IE("ErasurePass is not TrviallyCopyable."));
+
+  static_assert(sizeof(ErasurePass) <= sizeof(void*) || sizeof(ErasurePass) <= sizeof(void(*)()),
+    EMBED_DETAIL_REPORT_IE("ErasurePass is too large."));
+
 } // end namespace erasure_type
 
 // In the namespace "invocation", we define a series of
