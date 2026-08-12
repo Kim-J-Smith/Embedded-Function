@@ -331,6 +331,12 @@
 # define EMBED_DETAIL_NOT_NULL(T) T
 #endif
 
+#if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
+# define EMBED_DETAIL_MSVC_INTRINSIC [[msvc::intrinsic]]
+#else
+# define EMBED_DETAIL_MSVC_INTRINSIC
+#endif
+
 namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
 
@@ -2264,8 +2270,8 @@ namespace crtp_mixins {
   { return const_cast<remove_const_t<Self>*>(static_cast<Self*>(self)); }
 #else
   template <typename Self, typename CRTP_Base>
-  EMBED_INLINE Self* gcc_ipa_cp_friendly_cast(CRTP_Base* self) noexcept
-  { return static_cast<Self*>(self); }
+  EMBED_DETAIL_MSVC_INTRINSIC EMBED_INLINE Self*
+  gcc_ipa_cp_friendly_cast(CRTP_Base* self) noexcept { return static_cast<Self*>(self); }
 #endif
 
   // Implement the 'operator()' for function.
@@ -3527,6 +3533,7 @@ constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>
 # pragma clang diagnostic pop
 #endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NOT_NULL
 #undef EMBED_DETAIL_NOT_NULL
+#undef EMBED_DETAIL_MSVC_INTRINSIC
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
