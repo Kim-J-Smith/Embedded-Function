@@ -13,8 +13,10 @@
 **🛠️ Optimizations and Improvements**
 - Constructed `ErasurePass` directly with const pointers, adding dedicated constructors for const/volatile-qualified erased pointers.
 - Simplified `operator()` by inlining the invoker call and dropping the `invoke()` helper from the command tables and removing unnecessary `const_cast`.
-- Benchmarks now build with `-O2` (was `-Os`) to avoid the trange bug in MinGW, and benchmark parameters were adjusted (`BENCHMARK_TIMES {1000, 1000000}`, `BENCHMARK_REPEAT 15`).
+- Benchmarks now build with `-O2` (was `-Os`) to avoid the strange bug in MinGW, and benchmark parameters were adjusted (`BENCHMARK_TIMES {1000, 1000000}`, `BENCHMARK_REPEAT 15`).
 - Updated benchmark CI to GCC-16 on Ubuntu 26.04, and README benchmark results (GCC-16, C++23, `-O2`).
+- Enabled sanitizers in the test suite (non-Windows): GCC tests build with `-fsanitize=address` and Clang tests build with `-fsanitize=address,undefined`.
+- Defining `DEBUG` now forces the debug diagnostics (assertions and terminate checks) to stay active even when `NDEBUG` or `__OPTIMIZE__` is defined.
 
 **📌 Notes**
 - Benchmark now requires C++20 because of the `proxy` dependency.
