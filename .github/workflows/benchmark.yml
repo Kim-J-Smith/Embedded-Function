@@ -31,7 +31,7 @@ jobs:
       - name: Install compilers
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build
+          sudo apt-get install -y cmake
           sudo apt-get install -y g++-14 clang
           sudo apt-get install python3
 
@@ -48,7 +48,7 @@ jobs:
       - name: Run benchmark with C++
         working-directory: benchmark
         run: |
-          cmake --build build --config Release --target benchmark -j$(nproc)
+          cmake --build build --config Release --target benchmark --parallel
           cd ./compiletime
           chmod a+x ./run_benchmark.sh
           ./run_benchmark.sh
