@@ -79,7 +79,7 @@ BENCHMARK_NOTBASE(scalar_params_pro);
 static void small_trivial_params_std(picobench::state& s) {
     std::move_only_function<void(benchmark_trivial_struct, benchmark_trivial_struct)> fn = 
         [](benchmark_trivial_struct a, benchmark_trivial_struct b) { 
-            volatile void* res = a.pod;
+            void* volatile res = a.pod;
             (void)b; (void)res; 
         };
     benchmark_trivial_struct obj{};
@@ -92,7 +92,7 @@ static void small_trivial_params_std(picobench::state& s) {
 static void small_trivial_params_ebd(picobench::state& s) {
     ebd::unique_fn<void(benchmark_trivial_struct, benchmark_trivial_struct)> fn = 
         [](benchmark_trivial_struct a, benchmark_trivial_struct b) { 
-            volatile void* res = a.pod;
+            void* volatile res = a.pod;
             (void)b; (void)res; 
         };
     benchmark_trivial_struct obj{};
@@ -105,7 +105,7 @@ static void small_trivial_params_ebd(picobench::state& s) {
 static void small_trivial_params_fu2(picobench::state& s) {
     fu2::unique_function<void(benchmark_trivial_struct, benchmark_trivial_struct)> fn =
         [](benchmark_trivial_struct a, benchmark_trivial_struct b) {
-            volatile void* res = a.pod;
+            void* volatile res = a.pod;
             (void)b; (void)res;
         };
     benchmark_trivial_struct obj{};
@@ -123,7 +123,7 @@ static void small_trivial_params_pro(picobench::state& s) {
         ::build;
     pro::proxy<Invoker> fn = pro::make_proxy_inplace<Invoker>(
         [](benchmark_trivial_struct a, benchmark_trivial_struct b) {
-            volatile void* res = a.pod;
+            void* volatile res = a.pod;
             (void)b; (void)res;
         });
     benchmark_trivial_struct obj{};
