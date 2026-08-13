@@ -68,9 +68,26 @@ static void functor_scalar_fu2(picobench::state& s) {
     }
 }
 
+static void functor_scalar_pro(picobench::state& s) {
+    functor_scalar f1, f2;
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, int(int, int, int, int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    pro::proxy<Invoker> fn1 = pro::make_proxy_inplace<Invoker>(f1);
+    pro::proxy<Invoker> fn2 = pro::make_proxy_inplace<Invoker>(f2);
+
+    for (auto _ : s) {
+        (*fn1)(0x111, 0x222, 0x333, 0x444);
+        (*fn2)(0x222, 0x111, 0x333, 0x444);
+    }
+}
+
 BENCHMARK_BASELINE(functor_scalar_std);
 BENCHMARK_NOTBASE(functor_scalar_ebd);
 BENCHMARK_NOTBASE(functor_scalar_fu2);
+BENCHMARK_NOTBASE(functor_scalar_pro);
 
 
 // ----------------------------------------------------------------------------
@@ -136,9 +153,30 @@ static void functor_trivial_fu2(picobench::state& s) {
     }
 }
 
+static void functor_trivial_pro(picobench::state& s) {
+    functor_trivial f1, f2;
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, void(
+            benchmark_trivial_struct, benchmark_trivial_struct,
+            benchmark_trivial_struct, benchmark_trivial_struct)>
+        ::restrict_layout<ebd::fn<void()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    pro::proxy<Invoker> fn1 = pro::make_proxy_inplace<Invoker>(f1);
+    pro::proxy<Invoker> fn2 = pro::make_proxy_inplace<Invoker>(f2);
+
+    benchmark_trivial_struct trivial_{nullptr};
+
+    for (auto _ : s) {
+        (*fn1)(trivial_, trivial_, trivial_, trivial_);
+        (*fn2)(trivial_, trivial_, trivial_, trivial_);
+    }
+}
+
 BENCHMARK_BASELINE(functor_trivial_std);
 BENCHMARK_NOTBASE(functor_trivial_ebd);
 BENCHMARK_NOTBASE(functor_trivial_fu2);
+BENCHMARK_NOTBASE(functor_trivial_pro);
 
 
 // ----------------------------------------------------------------------------
@@ -204,6 +242,27 @@ static void functor_calltrivial_fu2(picobench::state& s) {
     }
 }
 
+static void functor_calltrivial_pro(picobench::state& s) {
+    functor_call_trivial f1, f2;
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, void(
+            benchmark_call_trivial_struct, benchmark_call_trivial_struct,
+            benchmark_call_trivial_struct, benchmark_call_trivial_struct)>
+        ::restrict_layout<ebd::fn<void()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    pro::proxy<Invoker> fn1 = pro::make_proxy_inplace<Invoker>(f1);
+    pro::proxy<Invoker> fn2 = pro::make_proxy_inplace<Invoker>(f2);
+
+    benchmark_call_trivial_struct trivial_{};
+
+    for (auto _ : s) {
+        (*fn1)(trivial_, trivial_, trivial_, trivial_);
+        (*fn2)(trivial_, trivial_, trivial_, trivial_);
+    }
+}
+
 BENCHMARK_BASELINE(functor_calltrivial_std);
 BENCHMARK_NOTBASE(functor_calltrivial_ebd);
 BENCHMARK_NOTBASE(functor_calltrivial_fu2);
+BENCHMARK_NOTBASE(functor_calltrivial_pro);

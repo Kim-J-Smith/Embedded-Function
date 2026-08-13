@@ -64,29 +64,15 @@ if(MSVC)
 elseif(CMAKE_COMPILER_IS_GNUCXX)
   target_compile_options(
     ${PROJECT_NAME} PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Wconversion
-    -Wold-style-cast
-    -pedantic
-    -fno-permissive
-    -Os
-    -fmax-errors=50
-    -fno-exceptions
+    # -Os
+    -O2
+    # -O3
   )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(
     ${PROJECT_NAME} PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Wconversion
-    -Wold-style-cast
-    -Wno-sign-conversion
-    -pedantic
-    -fno-permissive
-    -fno-exceptions
-    -Os
+    # -Os
+    -O2
+    # -O3
   )
 endif()

@@ -58,10 +58,32 @@ static void copy_assign_small_trivial_fu2(picobench::state& s) {
     }
 }
 
+static void copy_assign_small_trivial_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, int(int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    auto a1 = pro::make_proxy_inplace<Invoker>([](int x) { return x + 1; });
+    auto a2 = pro::make_proxy_inplace<Invoker>([](int x) { return x + 2; });
+    auto b = pro::proxy<Invoker>{};
+    int result = 0;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        b = toggle ? a1 : a2;
+        result = (*b)(result);
+        auto* volatile ff = &b;
+        volatile int u = (**ff)(result); (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.CopyAssignmentSmallTrivial);
 BENCHMARK_BASELINE(copy_assign_small_trivial_std);
 BENCHMARK_NOTBASE(copy_assign_small_trivial_ebd);
 BENCHMARK_NOTBASE(copy_assign_small_trivial_fu2);
+BENCHMARK_NOTBASE(copy_assign_small_trivial_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.MoveAssignment - Small Trivial Lambda
@@ -115,10 +137,32 @@ static void move_assign_small_trivial_fu2(picobench::state& s) {
     }
 }
 
+static void move_assign_small_trivial_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, int(int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    auto b = pro::proxy<Invoker>{};
+    int result = 0;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        auto a1 = pro::make_proxy_inplace<Invoker>([](int x) { return x + 1; });
+        auto a2 = pro::make_proxy_inplace<Invoker>([](int x) { return x + 2; });
+        b = std::move(toggle ? a1 : a2);
+        result = (*b)(result);
+        auto* volatile ff = &b;
+        volatile int u = (**ff)(result); (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.MoveAssignmentSmallTrivial);
 BENCHMARK_BASELINE(move_assign_small_trivial_std);
 BENCHMARK_NOTBASE(move_assign_small_trivial_ebd);
 BENCHMARK_NOTBASE(move_assign_small_trivial_fu2);
+BENCHMARK_NOTBASE(move_assign_small_trivial_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.CopyAssignment - Large Capture Lambda
@@ -177,10 +221,32 @@ static void copy_assign_large_capture_fu2(picobench::state& s) {
     }
 }
 
+static void copy_assign_large_capture_pro(picobench::state& s) {
+    LargeCaptureData data1, data2;
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, size_t()>
+        ::restrict_layout<sizeof(LargeCaptureData)>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::support_relocation<pro::constraint_level::nothrow>
+        ::build;
+    auto a1 = pro::make_proxy_inplace<Invoker>([data1]() { return data1.numbers.size() + data1.str.size(); });
+    auto a2 = pro::make_proxy_inplace<Invoker>([data2]() { return data2.numbers.size() + data2.str.size() + 1; });
+    auto b = pro::proxy<Invoker>{};
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        b = toggle ? a1 : a2;
+        auto* volatile ff = &b;
+        volatile size_t u = (**ff)(); (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.CopyAssignmentLargeCapture);
 BENCHMARK_BASELINE(copy_assign_large_capture_std);
 BENCHMARK_NOTBASE(copy_assign_large_capture_ebd);
 BENCHMARK_NOTBASE(copy_assign_large_capture_fu2);
+BENCHMARK_NOTBASE(copy_assign_large_capture_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.MoveAssignment - Large Capture Lambda
@@ -242,10 +308,35 @@ static void move_assign_large_capture_fu2(picobench::state& s) {
     }
 }
 
+static void move_assign_large_capture_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, size_t()>
+        ::restrict_layout<sizeof(LargeCaptureData)>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::support_relocation<pro::constraint_level::nothrow>
+        ::build;
+    auto b = pro::proxy<Invoker>{};
+    size_t total = 0;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        LargeCaptureData data1, data2;
+        auto a1 = pro::make_proxy_inplace<Invoker>([data1]() { return data1.numbers.size() + data1.str.size(); });
+        auto a2 = pro::make_proxy_inplace<Invoker>([data2]() { return data2.numbers.size() + data2.str.size() + 1; });
+        b = std::move(toggle ? a1 : a2);
+        total += (*b)();
+        auto* volatile ff = &b;
+        volatile size_t u = (**ff)(); (void)u;
+        (void)total;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.MoveAssignmentLargeCapture);
 BENCHMARK_BASELINE(move_assign_large_capture_std);
 BENCHMARK_NOTBASE(move_assign_large_capture_ebd);
 BENCHMARK_NOTBASE(move_assign_large_capture_fu2);
+BENCHMARK_NOTBASE(move_assign_large_capture_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.CopyAssignment - Stateless Lambda (Small Buffer Optimization)
@@ -299,10 +390,32 @@ static void copy_assign_stateless_fu2(picobench::state& s) {
     }
 }
 
+static void copy_assign_stateless_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, int(int, int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    auto a1 = pro::make_proxy_inplace<Invoker>(std::plus<int>{});
+    auto a2 = pro::make_proxy_inplace<Invoker>(std::minus<int>{});
+    auto b = pro::proxy<Invoker>{};
+    int total = 0;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        b = toggle ? a1 : a2;
+        total = (*b)(total, 1);
+        auto* volatile ff = &b;
+        volatile int u = (**ff)(total, 1); (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.CopyAssignmentStateless);
 BENCHMARK_BASELINE(copy_assign_stateless_std);
 BENCHMARK_NOTBASE(copy_assign_stateless_ebd);
 BENCHMARK_NOTBASE(copy_assign_stateless_fu2);
+BENCHMARK_NOTBASE(copy_assign_stateless_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.MoveAssignment - Stateless Lambda (Small Buffer Optimization)
@@ -356,10 +469,32 @@ static void move_assign_stateless_fu2(picobench::state& s) {
     }
 }
 
+static void move_assign_stateless_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, int(int, int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    auto b = pro::proxy<Invoker>{};
+    int total = 0;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        auto a1 = pro::make_proxy_inplace<Invoker>(std::plus<int>{});
+        auto a2 = pro::make_proxy_inplace<Invoker>(std::minus<int>{});
+        b = std::move(toggle ? a1 : a2);
+        total = (*b)(total, 1);
+        auto* volatile ff = &b;
+        volatile int u = (**ff)(total, 1); (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.MoveAssignmentStateless);
 BENCHMARK_BASELINE(move_assign_stateless_std);
 BENCHMARK_NOTBASE(move_assign_stateless_ebd);
 BENCHMARK_NOTBASE(move_assign_stateless_fu2);
+BENCHMARK_NOTBASE(move_assign_stateless_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.CopyAssignment - Function Pointer
@@ -416,10 +551,32 @@ static void copy_assign_func_ptr_fu2(picobench::state& s) {
     }
 }
 
+static void copy_assign_func_ptr_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, int(int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    auto a1 = pro::make_proxy_inplace<Invoker>(bench_func1);
+    auto a2 = pro::make_proxy_inplace<Invoker>(bench_func2);
+    auto b = pro::make_proxy_inplace<Invoker>(bench_func1);
+    int result = 1;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        b = toggle ? a1 : a2;
+        result = (*b)(result);
+        auto* volatile ff = &b;
+        volatile int u = (**ff)(result); (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.CopyAssignmentFuncPtr);
 BENCHMARK_BASELINE(copy_assign_func_ptr_std);
 BENCHMARK_NOTBASE(copy_assign_func_ptr_ebd);
 BENCHMARK_NOTBASE(copy_assign_func_ptr_fu2);
+BENCHMARK_NOTBASE(copy_assign_func_ptr_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.MoveAssignment - Function Pointer
@@ -473,10 +630,32 @@ static void move_assign_func_ptr_fu2(picobench::state& s) {
     }
 }
 
+static void move_assign_func_ptr_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, int(int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    auto b = pro::make_proxy_inplace<Invoker>(bench_func1);
+    int result = 1;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        auto a1 = pro::make_proxy_inplace<Invoker>(bench_func1);
+        auto a2 = pro::make_proxy_inplace<Invoker>(bench_func2);
+        b = std::move(toggle ? a1 : a2);
+        result = (*b)(result);
+        auto* volatile ff = &b;
+        volatile int u = (**ff)(result); (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.MoveAssignmentFuncPtr);
 BENCHMARK_BASELINE(move_assign_func_ptr_std);
 BENCHMARK_NOTBASE(move_assign_func_ptr_ebd);
 BENCHMARK_NOTBASE(move_assign_func_ptr_fu2);
+BENCHMARK_NOTBASE(move_assign_func_ptr_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.CopyAssignment - Between Same Type
@@ -536,10 +715,34 @@ static void copy_assign_same_type_fu2(picobench::state& s) {
     }
 }
 
+static void copy_assign_same_type_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, void()>
+        ::restrict_layout<ebd::fn<void()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    auto a1 = pro::make_proxy_inplace<Invoker>([]() {});
+    auto a2 = pro::make_proxy_inplace<Invoker>([]() {});
+    auto b = pro::make_proxy_inplace<Invoker>([]() {});
+    int dummy = 0;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        b = toggle ? a1 : a2;
+        (*b)();
+        dummy++;
+        auto* volatile ff = &b;
+        (**ff)();
+        volatile int u = dummy; (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.CopyAssignmentSameType);
 BENCHMARK_BASELINE(copy_assign_same_type_std);
 BENCHMARK_NOTBASE(copy_assign_same_type_ebd);
 BENCHMARK_NOTBASE(copy_assign_same_type_fu2);
+BENCHMARK_NOTBASE(copy_assign_same_type_pro);
 
 // ----------------------------------------------------------------------------
 // AssignmentBenchmark.MoveAssignment - Between Same Type
@@ -599,7 +802,31 @@ static void move_assign_same_type_fu2(picobench::state& s) {
     }
 }
 
+static void move_assign_same_type_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, void()>
+        ::restrict_layout<ebd::fn<void()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+    auto b = pro::make_proxy_inplace<Invoker>([]() {});
+    int dummy = 0;
+    bool toggle = false;
+
+    for (auto _ : s) {
+        toggle = !toggle;
+        auto a1 = pro::make_proxy_inplace<Invoker>([]() {});
+        auto a2 = pro::make_proxy_inplace<Invoker>([]() {});
+        b = std::move(toggle ? a1 : a2);
+        (*b)();
+        dummy++;
+        auto* volatile ff = &b;
+        (**ff)();
+        volatile int u = dummy; (void)u;
+    }
+}
+
 BENCHMARK_UNIT(AssignmentBenchmark.MoveAssignmentSameType);
 BENCHMARK_BASELINE(move_assign_same_type_std);
 BENCHMARK_NOTBASE(move_assign_same_type_ebd);
 BENCHMARK_NOTBASE(move_assign_same_type_fu2);
+BENCHMARK_NOTBASE(move_assign_same_type_pro);

@@ -380,27 +380,25 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 **Embedded-Function has 5%~30% performance enhancement over `std::function`.**
 
-> *( `Compiler`: GCC-14 `Standard`: C++14 `Config`: -Os `Tool`: [picobench](https://github.com/iboB/picobench) `fu2`: [function2](https://github.com/Naios/function2) )*
+> *( `Compiler`: GCC-16 `Standard`: C++23 `Config`: -O2 `Tool`: [iboB/picobench](https://github.com/iboB/picobench) )*
 
-### StdOperatorWrapper.FunctionWrapperAsParams:
+- **std**: Standard Template Library
+- **ebd**: Embedded-Function
+- **fu2**: [Naios/function2](https://github.com/Naios/function2)
+- **pro**: [ngcpp/proxy](https://github.com/ngcpp/proxy)
+
+### Functor.TrivialParameters:
 
  Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
 --------------------------|--------:|----------:|--------:|-------:|----------:
- `std::function` *        |   10000 |     0.090 |       8 |      - |111671952.5
- `fu2::function`          |   10000 |     0.176 |      17 |  1.968 | 56744349.7
- **`ebd::fn`**            |   10000 |     0.068 |       6 |  0.758 |147412179.2
- `fu2::function_view`     |   10000 |     0.034 |       3 |  0.379 |294602875.3
- **`ebd::fn_ref`**        |   10000 |     0.034 |       3 |  0.375 |297424305.5
- `std::function` *        |  100000 |     0.895 |       8 |      - |111756442.5
- `fu2::function`          |  100000 |     1.765 |      17 |  1.973 | 56644386.5
- **`ebd::fn`**            |  100000 |     0.678 |       6 |  0.758 |147444347.1
- `fu2::function_view`     |  100000 |     0.340 |       3 |  0.380 |294061429.4
- **`ebd::fn_ref`**        |  100000 |     0.308 |       3 |  0.345 |324361494.4
- `std::function` *        | 1000000 |     9.952 |       9 |      - |100481295.4
- `fu2::function`          | 1000000 |    17.733 |      17 |  1.782 | 56391833.9
- **`ebd::fn`**            | 1000000 |     6.832 |       6 |  0.686 |146378186.5
- `fu2::function_view`     | 1000000 |     3.420 |       3 |  0.344 |292392274.6
- **`ebd::fn_ref`**        | 1000000 |     3.249 |       3 |  0.326 |307826614.8
+ functor_trivial_`std` *  |    1000 |     0.004 |       3 |      - |250878073.3
+ functor_trivial_`ebd`    |    1000 |     0.001 |       0 |  0.231 |1085776330.1
+ functor_trivial_`fu2`    |    1000 |     0.003 |       3 |  0.829 |302571860.8
+ functor_trivial_`pro`    |    1000 |     0.003 |       3 |  0.804 |312012480.5
+ functor_trivial_`std` *  | 1000000 |     3.858 |       3 |      - |259225310.3
+ functor_trivial_`ebd`    | 1000000 |     0.865 |       0 |  0.224 |1155748694.0
+ functor_trivial_`fu2`    | 1000000 |     3.157 |       3 |  0.818 |316715483.1
+ functor_trivial_`pro`    | 1000000 |     3.158 |       3 |  0.819 |316677871.8
 
 > See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
 
@@ -409,6 +407,10 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 - [C++26-`std::function_ref`-P0792](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0792r14.html).
 
 - [C++26-`std::copyable_function`-P2548](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2548r6.pdf).
+
+- [Deprecating function in C++29 -P2721](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2721r1.pdf)
+
+- [Proxy: A Pointer-Semantics-Based Polymorphism Library -P3086](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3086r5.html)
 
 ## 📚 Similar implementations
 
