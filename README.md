@@ -380,17 +380,25 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 **Embedded-Function has 5%~30% performance enhancement over `std::function`.**
 
-> *( `Compiler`: GCC-14 `Standard`: C++20 `Config`: -O2 `Tool`: [iboB/picobench](https://github.com/iboB/picobench) )*
+> *( `Compiler`: GCC-16 `Standard`: C++23 `Config`: -O2 `Tool`: [iboB/picobench](https://github.com/iboB/picobench) )*
 
 - **std**: Standard Template Library
 - **ebd**: Embedded-Function
 - **fu2**: [Naios/function2](https://github.com/Naios/function2)
 - **pro**: [ngcpp/proxy](https://github.com/ngcpp/proxy)
 
-### TODO: Update data
+### Functor.TrivialParameters:
 
  Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
 --------------------------|--------:|----------:|--------:|-------:|----------:
+ functor_trivial_`std` *  |    1000 |     0.004 |       3 |      - |250878073.3
+ functor_trivial_`ebd`    |    1000 |     0.001 |       0 |  0.231 |1085776330.1
+ functor_trivial_`fu2`    |    1000 |     0.003 |       3 |  0.829 |302571860.8
+ functor_trivial_`pro`    |    1000 |     0.003 |       3 |  0.804 |312012480.5
+ functor_trivial_`std` *  | 1000000 |     3.858 |       3 |      - |259225310.3
+ functor_trivial_`ebd`    | 1000000 |     0.865 |       0 |  0.224 |1155748694.0
+ functor_trivial_`fu2`    | 1000000 |     3.157 |       3 |  0.818 |316715483.1
+ functor_trivial_`pro`    | 1000000 |     3.158 |       3 |  0.819 |316677871.8
 
 > See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
 
