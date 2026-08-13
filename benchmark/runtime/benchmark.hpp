@@ -6,8 +6,8 @@
 #include "proxy/proxy.h"
 #include "picobench/picobench.hpp"
 
-#define BENCHMARK_TIMES {10000, 100000, 1000000}
-#define BENCHMARK_REPEAT 10
+#define BENCHMARK_TIMES {1000, 1000000}
+#define BENCHMARK_REPEAT 15
 
 #define BENCHMARK_UNIT(unit_name) \
     PICOBENCH_SUITE(#unit_name)
