@@ -339,7 +339,7 @@ The hook is called when:
 
 Notes:
 
-- All diagnostics are **compiled out entirely** in optimized builds (when `__OPTIMIZE__` or `NDEBUG` is defined), which means zero runtime overhead.
+- All diagnostics are **compiled out entirely** in optimized builds (when `__OPTIMIZE__` or `NDEBUG` is defined), which means zero runtime overhead. Defining `DEBUG` forces the diagnostics to stay active even in optimized builds.
 - If the hook is not defined, the library substitutes a no-op. The checks still run in debug builds, and failed internal assertions still call `std::terminate()` regardless of the hook.
 - When `EMBED_FN_CONFIG_UNDEF_MACROS` is defined, `EMBED_FN_HOOK_DEBUG` is undefined at the end of the header.
 
