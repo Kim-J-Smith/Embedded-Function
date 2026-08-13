@@ -20,7 +20,7 @@ jobs:
   # Ubuntu check
   benchmark-on-ubuntu:
     if: github.repository_owner == 'Kim-J-Smith'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       # Get the code
@@ -32,7 +32,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake
-          sudo apt-get install -y g++-14 clang
+          sudo apt-get install -y g++-16 clang
           sudo apt-get install python3
 
       # Config CMake for compilers
@@ -41,8 +41,8 @@ jobs:
         run: |
           cmake -B build -S . \
             -DCMAKE_CXX_STANDARD=23 \
-            -DCMAKE_C_COMPILER=gcc-14 \
-            -DCMAKE_CXX_COMPILER=g++-14
+            -DCMAKE_C_COMPILER=gcc-16 \
+            -DCMAKE_CXX_COMPILER=g++-16
 
       # Run benchmark
       - name: Run benchmark with C++
