@@ -280,10 +280,7 @@
 # define EMBED_DETAIL_ALIAS
 #endif
 
-#if defined(__OPTIMIZE__) || defined(NDEBUG)
-# define EMBED_DETAIL_FAIL_MESSAGE(message)
-# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
-#else
+#if ( !defined(NDEBUG) && !defined(__OPTIMIZE__) ) || defined(DEBUG)
 # ifndef EMBED_FN_HOOK_DEBUG
 #  define EMBED_FN_HOOK_DEBUG(message) // NOP
 # endif
@@ -300,6 +297,9 @@
       std::terminate();                                                   \
     }                                                                     \
   } while(false)
+#else
+# define EMBED_DETAIL_FAIL_MESSAGE(message)
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #endif
 
 #if __cpp_lib_unreachable >= 202202L
