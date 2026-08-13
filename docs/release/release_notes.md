@@ -9,6 +9,7 @@
 
 **✨ New Features**
 - Added [ngcpp/proxy](https://github.com/ngcpp/proxy) as a benchmark target, with `proxy` cases added to all runtime benchmark suites (headers vendored in `benchmark/runtime/proxy/`). (#137)
+- Added an ADL swap() free function for exchanging two same-type wrappers. (#128)
 
 **🛠️ Optimizations and Improvements**
 - Constructed `ErasurePass` directly with const pointers, adding dedicated constructors for const/volatile-qualified erased pointers. (#134)
@@ -17,6 +18,7 @@
 - Updated benchmark CI to GCC-16 on Ubuntu 26.04, and README benchmark results (GCC-16, C++23, `-O2`). (#137)
 - Enabled sanitizers in the test suite (non-Windows): GCC tests build with `-fsanitize=address` and Clang tests build with `-fsanitize=address,undefined`. (#130)
 - Defining `DEBUG` now forces the debug diagnostics (assertions and terminate checks) to stay active even when `NDEBUG` or `__OPTIMIZE__` is defined. (#136)
+- Added `[[msvc::intrinsic]]` to `gcc_ipa_cp_friendly_cast()` to help MSVC inline. (#135)
 
 **📌 Notes**
 - Benchmark now requires C++20 because of the `proxy` dependency.
