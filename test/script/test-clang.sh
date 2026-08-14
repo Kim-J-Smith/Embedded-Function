@@ -13,7 +13,12 @@ CXX_STANDARDS=("11" "14" "17" "20" "23")
 environment_setup() {
     sudo apt-get update -y
     sudo apt-get install -y --no-install-recommends cmake ninja-build
-    sudo apt-get install -y --no-install-recommends "${COMPILER_VERSIONS[@]/#/clang-}"
+    local packages=()
+    for v in "${COMPILER_VERSIONS[@]}"; do
+        packages+=("clang-$v")
+        packages+=("libclang-rt-$v-dev")
+    done
+    sudo apt-get install -y --no-install-recommends "${packages[@]}"
 }
 
 # $1: C++ standard version

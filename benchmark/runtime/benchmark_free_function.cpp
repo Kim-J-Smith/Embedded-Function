@@ -40,9 +40,26 @@ static void free_scalar_fu2(picobench::state& s) {
     }
 }
 
+static void free_scalar_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, int(int, int, int, int)>
+        ::restrict_layout<ebd::fn<int()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+
+    pro::proxy<Invoker> fn_scalar1_pro = pro::make_proxy_inplace<Invoker>(scalar_1);
+    pro::proxy<Invoker> fn_scalar2_pro = pro::make_proxy_inplace<Invoker>(scalar_2);
+
+    for (auto _ : s) {
+        (*fn_scalar1_pro)(0x111, 0x222, 0x333, 0x444);
+        (*fn_scalar2_pro)(0x222, 0x111, 0x333, 0x444);
+    }
+}
+
 BENCHMARK_BASELINE(free_scalar_std);
 BENCHMARK_NOTBASE(free_scalar_ebd);
 BENCHMARK_NOTBASE(free_scalar_fu2);
+BENCHMARK_NOTBASE(free_scalar_pro);
 
 
 BENCHMARK_UNIT(FreeFunction.TrivialParameters);
@@ -117,9 +134,31 @@ static void free_trivial_fu2(picobench::state& s) {
     }
 }
 
+static void free_trivial_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, void(
+            benchmark_trivial_struct, benchmark_trivial_struct,
+            benchmark_trivial_struct, benchmark_trivial_struct)>
+        ::restrict_layout<ebd::fn<void()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+
+    pro::proxy<Invoker> fn_trivial1_pro = pro::make_proxy_inplace<Invoker>(pass_trivial_args_1);
+    pro::proxy<Invoker> fn_trivial2_pro = pro::make_proxy_inplace<Invoker>(pass_trivial_args_2);
+
+    benchmark_trivial_struct trivial_;
+    trivial_.pod = nullptr;
+
+    for (auto _ : s) {
+        (*fn_trivial1_pro)(trivial_, trivial_, trivial_, trivial_);
+        (*fn_trivial2_pro)(trivial_, trivial_, trivial_, trivial_);
+    }
+}
+
 BENCHMARK_BASELINE(free_trivial_std);
 BENCHMARK_NOTBASE(free_trivial_ebd);
 BENCHMARK_NOTBASE(free_trivial_fu2);
+BENCHMARK_NOTBASE(free_trivial_pro);
 
 
 BENCHMARK_UNIT(FreeFunction.CopyHardParameters);
@@ -191,9 +230,30 @@ static void free_copyhard_fu2(picobench::state& s) {
     }
 }
 
+static void free_copyhard_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, void(
+            benchmark_copy_hard_struct, benchmark_copy_hard_struct)>
+        ::restrict_layout<ebd::fn<void()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+
+    pro::proxy<Invoker> fn_copy_hard1_pro = pro::make_proxy_inplace<Invoker>(pass_copy_hard_struct_1);
+    pro::proxy<Invoker> fn_copy_hard2_pro = pro::make_proxy_inplace<Invoker>(pass_copy_hard_struct_2);
+
+    benchmark_copy_hard_struct trivial_{};
+    fn_copy_hard1_pro.swap(fn_copy_hard2_pro);
+
+    for (auto _ : s) {
+        (*fn_copy_hard1_pro)(trivial_, trivial_);
+        (*fn_copy_hard2_pro)(trivial_, trivial_);
+    }
+}
+
 BENCHMARK_BASELINE(free_copyhard_std);
 BENCHMARK_NOTBASE(free_copyhard_ebd);
 BENCHMARK_NOTBASE(free_copyhard_fu2);
+BENCHMARK_NOTBASE(free_copyhard_pro);
 
 
 BENCHMARK_UNIT(FreeFunction.CallTrivialParameters);
@@ -266,9 +326,30 @@ static void free_calltrivial_fu2(picobench::state& s) {
     }
 }
 
+static void free_calltrivial_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, void(
+            benchmark_call_trivial_struct, benchmark_call_trivial_struct,
+            benchmark_call_trivial_struct, benchmark_call_trivial_struct)>
+        ::restrict_layout<ebd::fn<void()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+
+    pro::proxy<Invoker> fn_trivial1_pro = pro::make_proxy_inplace<Invoker>(pass_call_trivial_args_1);
+    pro::proxy<Invoker> fn_trivial2_pro = pro::make_proxy_inplace<Invoker>(pass_call_trivial_args_2);
+
+    benchmark_call_trivial_struct trivial_{};
+
+    for (auto _ : s) {
+        (*fn_trivial1_pro)(trivial_, trivial_, trivial_, trivial_);
+        (*fn_trivial2_pro)(trivial_, trivial_, trivial_, trivial_);
+    }
+}
+
 BENCHMARK_BASELINE(free_calltrivial_std);
 BENCHMARK_NOTBASE(free_calltrivial_ebd);
 BENCHMARK_NOTBASE(free_calltrivial_fu2);
+BENCHMARK_NOTBASE(free_calltrivial_pro);
 
 
 BENCHMARK_UNIT(FreeFunction.CallWithStdStringAsParameters);
@@ -341,6 +422,27 @@ static void free_callstd_string_fu2(picobench::state& s) {
     }
 }
 
+static void free_callstd_string_pro(picobench::state& s) {
+    using Invoker = pro::facade_builder
+        ::add_convention<pro::operator_dispatch<"()">, void(
+            std::string, std::string,
+            std::string, std::string)>
+        ::restrict_layout<ebd::fn<void()>::get_buffer_size()>
+        ::support_copy<pro::constraint_level::nontrivial>
+        ::build;
+
+    pro::proxy<Invoker> fn_std_string1_pro = pro::make_proxy_inplace<Invoker>(pass_call_std_string_args_1);
+    pro::proxy<Invoker> fn_std_string2_pro = pro::make_proxy_inplace<Invoker>(pass_call_std_string_args_2);
+
+    std::string std_string_{};
+
+    for (auto _ : s) {
+        (*fn_std_string1_pro)(std_string_, std_string_, std_string_, std_string_);
+        (*fn_std_string2_pro)(std_string_, std_string_, std_string_, std_string_);
+    }
+}
+
 BENCHMARK_BASELINE(free_callstd_string_std);
 BENCHMARK_NOTBASE(free_callstd_string_ebd);
 BENCHMARK_NOTBASE(free_callstd_string_fu2);
+BENCHMARK_NOTBASE(free_callstd_string_pro);

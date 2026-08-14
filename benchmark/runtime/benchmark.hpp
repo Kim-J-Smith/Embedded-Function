@@ -3,10 +3,11 @@
 
 #include "embed/embed_function.hpp"
 #include "function2/function2.hpp"
+#include "proxy/proxy.h"
 #include "picobench/picobench.hpp"
 
-#define BENCHMARK_TIMES {10000, 100000, 1000000}
-#define BENCHMARK_REPEAT 10
+#define BENCHMARK_TIMES {1000, 1000000}
+#define BENCHMARK_REPEAT 15
 
 #define BENCHMARK_UNIT(unit_name) \
     PICOBENCH_SUITE(#unit_name)
@@ -19,6 +20,24 @@
 
 struct benchmark_trivial_struct {
     void* pod;
+};
+
+struct benchmark_non_trivial_struct_add42 {
+    void* pod;
+    benchmark_non_trivial_struct_add42() = default;
+    ~benchmark_non_trivial_struct_add42() = default;
+    benchmark_non_trivial_struct_add42(const benchmark_non_trivial_struct_add42&) noexcept {}
+
+    int operator()(int n) { return 42 + n; }
+};
+
+struct benchmark_non_trivial_struct_add43 {
+    void* pod;
+    benchmark_non_trivial_struct_add43() = default;
+    ~benchmark_non_trivial_struct_add43() = default;
+    benchmark_non_trivial_struct_add43(const benchmark_non_trivial_struct_add43&) noexcept {}
+
+    int operator()(int n) { return 43 + n; }
 };
 
 struct benchmark_call_trivial_struct {

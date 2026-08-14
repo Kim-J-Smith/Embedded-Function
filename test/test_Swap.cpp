@@ -114,3 +114,41 @@ TEST(TestSwap, NonTrivialSwap) {
         ASSERT_EQ(f2(), 42);
     }
 }
+
+TEST(TestSwap, ADL_Swap) {
+    {
+        auto f1 = ebd::make_fn<ebd::fn>(+[] { return 42; });
+        auto f2 = ebd::make_fn<ebd::fn>(+[] { return 43; });
+        swap(f1, f2);
+        ASSERT_EQ(f1(), 43);
+        ASSERT_EQ(f2(), 42);
+    }
+    {
+        auto f1 = ebd::make_fn<ebd::unique_fn>(+[] { return 42; });
+        auto f2 = ebd::make_fn<ebd::unique_fn>(+[] { return 43; });
+        swap(f1, f2);
+        ASSERT_EQ(f1(), 43);
+        ASSERT_EQ(f2(), 42);
+    }
+    {
+        auto f1 = ebd::make_fn<ebd::__safe_fn>(+[] { return 42; });
+        auto f2 = ebd::make_fn<ebd::__safe_fn>(+[] { return 43; });
+        swap(f1, f2);
+        ASSERT_EQ(f1(), 43);
+        ASSERT_EQ(f2(), 42);
+    }
+    {
+        auto f1 = ebd::make_fn<ebd::classic_fn>(+[] { return 42; });
+        auto f2 = ebd::make_fn<ebd::classic_fn>(+[] { return 43; });
+        swap(f1, f2);
+        ASSERT_EQ(f1(), 43);
+        ASSERT_EQ(f2(), 42);
+    }
+    {
+        auto f1 = ebd::make_fn<ebd::fn_ref>(+[] { return 42; });
+        auto f2 = ebd::make_fn<ebd::fn_ref>(+[] { return 43; });
+        swap(f1, f2);
+        ASSERT_EQ(f1(), 43);
+        ASSERT_EQ(f2(), 42);
+    }
+}

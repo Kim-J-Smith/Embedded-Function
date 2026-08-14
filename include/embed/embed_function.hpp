@@ -3,7 +3,7 @@
  *
  * @date        2026-8-6
  *
- * @version     2.2.0
+ * @version     2.2.1
  *
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -31,7 +31,13 @@
 
 #if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(push)
-# pragma warning(disable: 4514 4668 4710 26495)
+# pragma warning(disable: 4514) // ignore "unreferenced inline function has been removed"
+# pragma warning(disable: 4668) // ignore "undefined symbol as a preprocessor macro"
+# pragma warning(disable: 4710) // ignore "inline function not inlined"
+# pragma warning(disable: 4711) // ignore "inlined non-inline function"
+# pragma warning(disable: 4625 5026) // ignore "implicit delete copy/move constructor"
+# pragma warning(disable: 4626 5027) // ignore "implicit delete copy/move assignment"
+# pragma warning(disable: 26495) // ignore "variable is uninitialized"
 #endif
 
 #ifndef EMBED_CXX_VERSION
@@ -274,10 +280,7 @@
 # define EMBED_DETAIL_ALIAS
 #endif
 
-#if defined(__OPTIMIZE__) || defined(NDEBUG)
-# define EMBED_DETAIL_FAIL_MESSAGE(message)
-# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
-#else
+#if ( !defined(NDEBUG) && !defined(__OPTIMIZE__) ) || defined(DEBUG)
 # ifndef EMBED_FN_HOOK_DEBUG
 #  define EMBED_FN_HOOK_DEBUG(message) // NOP
 # endif
@@ -294,6 +297,9 @@
       std::terminate();                                                   \
     }                                                                     \
   } while(false)
+#else
+# define EMBED_DETAIL_FAIL_MESSAGE(message)
+# define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #endif
 
 #if __cpp_lib_unreachable >= 202202L
@@ -323,6 +329,12 @@
 # define EMBED_DETAIL_NOT_NULL(T) _Notnull_ T
 #else
 # define EMBED_DETAIL_NOT_NULL(T) T
+#endif
+
+#if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
+# define EMBED_DETAIL_MSVC_INTRINSIC [[msvc::intrinsic]]
+#else
+# define EMBED_DETAIL_MSVC_INTRINSIC
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {
@@ -898,6 +910,7 @@ inline namespace fn_traits {
     using ret   = void;
     using args  = args_package<>;
     using pure_sig = void();
+    using pure_sig_noex = void();
     static constexpr bool hasConst = false;
     static constexpr bool hasVolatile = false;
     static constexpr bool hasRRef = false;
@@ -971,12 +984,12 @@ inline namespace fn_traits {
 
   template<bool IsThrowing>
   [[noreturn]] inline enable_if_t<IsThrowing>
-  throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION) {
+  throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__) {
     EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
-#if EMBED_CXX_ENABLE_EXCEPTION != 0
-    throw std::bad_function_call{};
-#else
+#if !EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__
     std::terminate();
+#else
+    throw std::bad_function_call{};
 #endif
   }
 
@@ -1183,14 +1196,18 @@ inline namespace fn_traits {
     template <typename T>
     static constexpr bool not_empty(const T&) noexcept { return true; }
 
-    template <typename Sig>
-    static bool not_empty(const ::std::function<Sig>& f) noexcept
-    { return static_cast<bool>(f); }
-
     template <std::size_t Buf, typename Cfg, typename Sig,
       EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/> static
     EMBED_CXX14_CONSTEXPR bool not_empty(const function<Buf, Cfg, Sig>& f) noexcept
     { return static_cast<bool>(f); }
+
+#if __STDC_HOSTED__
+
+    template <typename Sig>
+    static bool not_empty(const ::std::function<Sig>& f) noexcept
+    { return static_cast<bool>(f); }
+
+#endif // __STDC_HOSTED__
 
 #if __cpp_lib_move_only_function >= 202110L
 
@@ -1766,9 +1783,24 @@ namespace erasure_type {
 
   // ABI for passing either pointer or value.
   union ErasurePass {
-    ErasureBase*      ptr;
-    ErasureRefStorage val;
+    ErasureBase* const                ptr_;
+    ErasureBase const* const          ptr_const;
+    ErasureBase volatile* const       ptr_volatile;
+    ErasureBase const volatile* const ptr_constvolatile;
+    ErasureRefStorage                 val;
+
+    ErasurePass(ErasureBase* erased) noexcept : ptr_(erased) {}
+    ErasurePass(ErasureBase const* erased) noexcept : ptr_const(erased) {}
+    ErasurePass(ErasureBase volatile* erased) noexcept : ptr_volatile(erased) {}
+    ErasurePass(ErasureBase const volatile* erased) noexcept : ptr_constvolatile(erased) {}
+    ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
   };
+
+  static_assert(std::is_trivially_copyable<ErasurePass>::value,
+    EMBED_DETAIL_REPORT_IE("ErasurePass is not TrviallyCopyable."));
+
+  static_assert(sizeof(ErasurePass) <= sizeof(void*) || sizeof(ErasurePass) <= sizeof(void(*)()),
+    EMBED_DETAIL_REPORT_IE("ErasurePass is too large."));
 
 } // end namespace erasure_type
 
@@ -1840,7 +1872,7 @@ namespace invocation {
     struct inplace {                                                                  \
       template <typename Functor>                                                     \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
-        auto* erased = static_cast<erasure_t C V*>(base.ptr);                         \
+        auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## V);              \
         auto& fn = erased->template access<Functor>();                                \
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
@@ -1885,7 +1917,16 @@ namespace invocation {
     EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                                 \
   };
 
+#if defined(_MSC_VER) && !defined(__clang__)
+# pragma warning(push)
+# pragma warning(disable: 4191) // unsafe reinterpret_cast
+#endif
+
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_INVOKER_IMPL_DEFINE)
+
+#if defined(_MSC_VER) && !defined(__clang__)
+# pragma warning(pop)
+#endif
 
 #undef EMBED_DETAIL_INVOKER_IMPL_DEFINE
 #undef EMBED_DETAIL_CW_INVOKER_IMPL
@@ -1981,7 +2022,8 @@ namespace management {
     // Move trivial type-erased object from `src` to `dst`.
     template <typename Functor>
     static void trivially_move(erasure_base_t* dst, erasure_base_t* src)
-    noexcept(noexcept(trivially_clone<Functor>(dst, src))) { trivially_clone<Functor>(dst, src); }
+      noexcept(noexcept(trivially_clone<Functor>(dst, src)))
+    { trivially_clone<Functor>(dst, src); }
 
     // Using when M_erasure is empty.
     struct empty {
@@ -2053,12 +2095,6 @@ namespace command {
 
     manager_t m_manager;
     invoker_t m_invoker;
-
-    auto invoke(erasure_pass_t erased, Args&&... args) const
-    noexcept(unwrap_signature<Signature>::isNoexcept)
-    -> typename unwrap_signature<Signature>::ret {
-      return m_invoker(erased, std::forward<Args>(args)...);
-    }
 
     void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src) const
     noexcept(Config::assertNoThrow) {
@@ -2137,12 +2173,6 @@ namespace command {
     // No m_manager because IsView = true.
     invoker_t m_invoker;
 
-    auto invoke(erasure_pass_t erased, Args&&... args) const
-    noexcept(unwrap_signature<Signature>::isNoexcept)
-    -> typename unwrap_signature<Signature>::ret {
-      return m_invoker(erased, std::forward<Args>(args)...);
-    }
-
     void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
     const noexcept {
       auto* destination = static_cast<erasure_t*>(dst);
@@ -2220,6 +2250,30 @@ namespace command {
 // Move the function's implementation to the base class to simplify the code.
 namespace crtp_mixins {
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 16
+  /// @todo TODO: `__GNUC__ >= 16` is temporary.
+
+  /**
+   * GCC 16's ipa-cp optimization tracks indirect calls via function pointers
+   * stored in records. The lookup is keyed on the record type using pointer
+   * equality, which includes type identity. Therefore, accessing `m_invoker`
+   * through a const-qualified path yields type `const CommandTable` rather
+   * than `CommandTable`, causing the lookup to miss the recorded target.
+   * As a result, indirect calls are not devirtualized early enough for inlining.
+   * 
+   * See <https://github.com/Kim-J-Smith/Embedded-Function/issues/133>.
+   * 
+   * This helper casts away `const` to work around this limitation.
+   */
+  template <typename Self, typename CRTP_Base>
+  EMBED_INLINE remove_const_t<Self>* gcc_ipa_cp_friendly_cast(CRTP_Base* self) noexcept
+  { return const_cast<remove_const_t<Self>*>(static_cast<Self*>(self)); }
+#else
+  template <typename Self, typename CRTP_Base>
+  EMBED_DETAIL_MSVC_INTRINSIC EMBED_INLINE Self*
+  gcc_ipa_cp_friendly_cast(CRTP_Base* self) noexcept { return static_cast<Self*>(self); }
+#endif
+
   // Implement the 'operator()' for function.
   template <bool IsView, typename Signature, typename Self>
   struct operator_call_impl; // Undefined
@@ -2231,16 +2285,12 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
     Ret operator()(Args... args) C V REF NOEXCEPT {                         \
-      using erasure_t = typename Self::erasure_t;                           \
-      using command_t = typename Self::command_t;                           \
-      using pass_t = typename command_t::erasure_pass_t;                    \
-      remove_cv_t<pass_t> erased;                                           \
-      auto* self_q = static_cast<Self C V*>(this);                          \
-      auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
+      auto* const self = gcc_ipa_cp_friendly_cast<Self C V>(this);          \
+      auto& command = self->m_command;                                      \
+      auto& erasure = self->m_erasure;                                      \
     /* Pass the `m_erasure` by pointer (reference) in owning mode. */       \
     /* Because the usage size of `m_erasure` is uncertain. */               \
-      erased.ptr = &const_cast<erasure_t&>(self_q->m_erasure);              \
-      return cmd.invoke(erased, std::forward<Args>(args)...);               \
+      return command.m_invoker(&erasure, std::forward<Args>(args)...);      \
     }                                                                       \
   };                                                                        \
                                                                             \
@@ -2254,16 +2304,13 @@ namespace crtp_mixins {
                                                                             \
     Ret operator()(Args... args) const V NOEXCEPT {                         \
       using erasure_t = typename Self::erasure_t;                           \
-      using command_t = typename Self::command_t;                           \
-      using pass_t = typename command_t::erasure_pass_t;                    \
-      remove_cv_t<pass_t> erased;                                           \
-      auto* self_q = static_cast<Self const V*>(this);                      \
-      auto& erasure = const_cast<erasure_t&>(self_q->m_erasure);            \
-      auto& cmd = const_cast<command_t const&>(self_q->m_command);          \
+      auto* const self = static_cast<Self const V*>(this);                  \
+      auto& command = self->m_command;                                      \
+      auto& erasure = const_cast<erasure_t&>(self->m_erasure);              \
+      auto& ref_storage = erasure.m_core.ref_storage;                       \
     /* Pass the `m_erasure` by value in non-owning mode to avoid ODR use. */\
     /* Because the ODR use forces compilers to reserve stack memory. */     \
-      erased.val = erasure.m_core.ref_storage;                              \
-      return cmd.invoke(erased, std::forward<Args>(args)...);               \
+      return command.m_invoker(ref_storage, std::forward<Args>(args)...);   \
     }                                                                       \
   };
 
@@ -2727,14 +2774,14 @@ namespace crtp_mixins {
 #if __cpp_concepts >= 202002L
       requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : Base_CoreComponents(nullptr) {}
+    : Base_MemberVariable(nullptr), Base_CoreComponents(nullptr) {}
 
     // Create an empty function wrapper.
     function(std::nullptr_t) noexcept
 #if __cpp_concepts >= 202002L
       requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : Base_CoreComponents(nullptr) {}
+    : Base_MemberVariable(nullptr), Base_CoreComponents(nullptr) {}
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -2782,8 +2829,8 @@ namespace crtp_mixins {
       && (!is_self<Functor, function>::value)
       && (!is_in_place_type<decay_t<Functor>>::value)
       && is_callable_from<Functor>::value
-    ) function(Functor&& functor)
-    noexcept(is_nothrow_construct_from_functor<Functor&&>::value) {
+    ) function(Functor&& functor) noexcept(is_nothrow_construct_from_functor<Functor&&>::value)
+    : Base_MemberVariable(nullptr) {
 
       (void)assertions_for_functor<BufferSize, Config, Signature, Functor, Functor&&, erasure_t>{};
 
@@ -2885,6 +2932,9 @@ namespace crtp_mixins {
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
+        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
+        /// free functions and pointers to member functions are not considered constant expressions.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
     }
@@ -2901,6 +2951,9 @@ namespace crtp_mixins {
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
+        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
+        /// free functions and pointers to member functions are not considered constant expressions.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
     }
@@ -2917,6 +2970,9 @@ namespace crtp_mixins {
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
+        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
+        /// free functions and pointers to member functions are not considered constant expressions.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
       if constexpr (std::is_member_pointer_v<Fn>) {
@@ -2959,6 +3015,12 @@ namespace crtp_mixins {
   operator!=(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
     return !fn.is_empty();
   }
+
+  // Exchange the function wrapper `a` with the wrapper `b`.
+  template <std::size_t Buf, typename Cfg, typename Sig>
+  void swap(function<Buf, Cfg, Sig>& a, function<Buf, Cfg, Sig>& b)
+    noexcept(noexcept(a.swap(b)))
+  { a.swap(b); }
 
   // Make a function.
   template <typename Fn, bool NoThrow, typename... CArgs>
@@ -3471,6 +3533,7 @@ constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>
 # pragma clang diagnostic pop
 #endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NOT_NULL
 #undef EMBED_DETAIL_NOT_NULL
+#undef EMBED_DETAIL_MSVC_INTRINSIC
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.

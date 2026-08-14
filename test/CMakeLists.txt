@@ -27,6 +27,7 @@ endif()
 # test-use macros
 set(
   TEST_USE_MACROS ${TEST_USE_MACROS}
+  "DEBUG"
   # "EMBED_FN_CONFIG_DISABLE_SMART_FORWARD"
   # "EMBED_FN_CONFIG_UNDEF_MACROS"
   # "EMBED_FN_HOOK_DEBUG(msg)"
@@ -111,12 +112,10 @@ if(MSVC)
     /permissive-
     /W4
     /Wall
-    /wd4710
-    /wd4127
-    /wd4514
-    /wd4626
-    /wd5045
-    /wd6326
+    # /wd4127 # const expression
+    /wd4514 # unused inline function
+    /wd5045 # Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+    /wd6326 # const comparison (/analyze)
     # /analyze 
     /WX
   )
@@ -125,9 +124,16 @@ if(MSVC)
     /OPT:NOICF
   )
   target_compile_options(
-    gtest_lib INTERFACE
-    /w
-    /wd4711
+    gtest_lib PUBLIC
+    /wd4820 # padding
+    /wd4668 # undefined macro
+    /wd4625 # copy-constructor implicit delete
+    /wd4626 # copy-assignment implicit delete
+    /wd5027 # move-assignment implicit delete
+    /wd5026 # move-constructor implicit delete
+    /wd5267 # deprecate copy-constructor
+    /wd4710 # inline function not inlined
+    /wd4711 # inlined non-inline function
   )
 elseif(CMAKE_COMPILER_IS_GNUCXX)
   target_compile_options(
@@ -139,7 +145,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -Wold-style-cast
     -pedantic
     -fno-permissive
-    -O0
+    -O1 # -Wuninitialized skipped in O0.
     -fmax-errors=50
     -fno-exceptions
     -Werror
@@ -148,6 +154,21 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     gtest_lib PRIVATE
     -O1
   )
+
+  # Sanitizer
+  if(NOT WIN32)
+    # Pointer to member function is not const with
+    # `-fsanitize=undefined` or `-fsanitize=null`.
+    target_compile_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address
+    )
+    target_link_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address
+    )
+  endif()
+
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(
     ${PROJECT_NAME} PRIVATE
@@ -166,7 +187,26 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     gtest_lib PRIVATE
     -O1
   )
+
+  # Sanitizer
+  if(NOT WIN32)
+    target_compile_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address,undefined
+    )
+    target_link_options(
+      ${PROJECT_NAME} PRIVATE
+      -fsanitize=address,undefined
+    )
+  endif()
+
 endif()
+
+
+# ============================= TRY COMPILE TESTS =============================
+
+# No link
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # Fail tests
 file(
@@ -246,3 +286,56 @@ foreach(FAIL_TEST_SRC ${EMBED_FUNCTION_FAIL_TEST_FILES})
 endforeach()
 
 message(STATUS "===----------------------- FAIL TEST END -----------------------===")
+
+
+#Freestanding tests
+file(
+  GLOB EMBED_FUNCTION_FREESTANDING_TEST_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/freestanding/*.cpp"
+)
+
+if(MSVC)
+  set(FREESTANDING_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} /EHs-c- /GR- /kernel")
+else()
+  set(FREESTANDING_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -ffreestanding")
+endif()
+
+message(STATUS "===------------------ FREESTANDING TEST BEGIN ------------------===")
+
+foreach(FREESTANDING_TEST_SRC ${EMBED_FUNCTION_FREESTANDING_TEST_FILES})
+  file(
+    RELATIVE_PATH FREESTANDING_TEST_REL_PATH 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${FREESTANDING_TEST_SRC}
+  )
+
+  # Use a unique bindir per test so that tests sharing a file name do not
+  # reuse the same try_compile binary directory.
+  string(REPLACE "/" "_" FREESTANDING_TEST_UNIQUE_NAME "${FREESTANDING_TEST_REL_PATH}")
+  string(REPLACE ".cpp" "" FREESTANDING_TEST_UNIQUE_NAME "${FREESTANDING_TEST_UNIQUE_NAME}")
+
+  try_compile(
+    COMPILE_RESULT
+    ${CMAKE_CURRENT_BINARY_DIR}/freestanding_test/${FREESTANDING_TEST_UNIQUE_NAME}
+    SOURCES ${FREESTANDING_TEST_SRC}
+    CMAKE_FLAGS "${FREESTANDING_TEST_CMAKE_FLAGS}"
+    COMPILE_DEFINITIONS "${CMAKE_CXX_FLAGS} ${FREESTANDING_TEST_INCLUDE_PATH_CMD}"
+    OUTPUT_VARIABLE COMPILE_OUTPUT
+  )
+
+  if(NOT ${COMPILE_RESULT})
+    message(
+      FATAL_ERROR
+      "[  ERROR   ]: \"${FREESTANDING_TEST_REL_PATH}\" failed!"
+      " See ${FREESTANDING_TEST_SRC}\n"
+      "message:\n${COMPILE_OUTPUT}"
+    )
+  else()
+    message(
+      STATUS
+      "[  PASSED  ]: \"${FREESTANDING_TEST_REL_PATH}\""
+    )
+  endif()
+endforeach()
+
+message(STATUS "===------------------- FREESTANDING TEST END -------------------===")

@@ -182,7 +182,7 @@ Clears the function wrapper, destroying the wrapped callable object if necessary
 void swap(function& fn) noexcept(Config::assertNoThrow);
 ```
 
-Swaps the contents of two function wrappers.
+Swaps the contents of two function wrappers. A free ADL `swap()` for the same type is also available, see [swap (Non-member Functions)](#swap-1).
 
 ### Utility
 
@@ -229,6 +229,23 @@ bool operator!=(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept;
 ```
 
 Compare a function wrapper with `nullptr` to check if it is empty.
+
+### swap
+
+```cpp
+template <std::size_t Buf, typename Cfg, typename Sig>
+void swap(function<Buf, Cfg, Sig>& a, function<Buf, Cfg, Sig>& b)
+  noexcept(noexcept(a.swap(b)));
+```
+
+Exchanges the contents of the two function wrappers. It is found by argument-dependent lookup (ADL), so it is picked up by the standard two-step idiom:
+
+```cpp
+using std::swap;
+swap(f1, f2); // calls the ADL swap of ebd
+```
+
+Both wrappers must be the same specialization (identical `Buf`, `Cfg`, and `Sig`). The `noexcept` specification is inherited from the member `swap()`: it is `noexcept` for view wrappers (`ebd::fn_ref`) and for wrappers with `Config::assertNoThrow == true`, and potentially throwing otherwise (e.g. `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`).
 
 ## Performance Characteristics
 
