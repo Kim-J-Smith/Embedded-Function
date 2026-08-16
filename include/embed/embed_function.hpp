@@ -1199,7 +1199,7 @@ inline namespace fn_traits {
     template <std::size_t Buf, typename Cfg, typename Sig,
       EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/> static
     EMBED_CXX14_CONSTEXPR bool not_empty(const function<Buf, Cfg, Sig>& f) noexcept
-    { return static_cast<bool>(f); }
+    { return !f.is_empty(); }
 
 #if __STDC_HOSTED__
 
@@ -2580,7 +2580,8 @@ namespace crtp_mixins {
     EMBED_NODISCARD constexpr bool is_empty() const noexcept
     { return static_cast<const Self&>(*this).m_command.is_empty(); }
 
-    // Return `true` if the object is NOT empty.
+    /// @deprecated This method usually indicates a bug. Use explicit `!f.is_empty()` instead.
+    EMBED_DEPRECATED("Use `!f.is_empty()` instead")
     constexpr explicit operator bool() const noexcept { return !is_empty(); }
 
     // Clear the object.

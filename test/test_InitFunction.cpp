@@ -16,12 +16,10 @@ TEST(InitFunction, fn_freeFunction_v) {
     ASSERT_EQ(buf_size, buf_expect);
     ASSERT_EQ(f != nullptr, true);
     ASSERT_EQ(f == nullptr, false);
-    ASSERT_EQ(static_cast<bool>(f), true);
 
     f = nullptr;
     ASSERT_EQ(f != nullptr, false);
     ASSERT_EQ(f == nullptr, true);
-    ASSERT_EQ(static_cast<bool>(f), false);
 
     auto f2 = ebd::make_fn(ebd_test_free_func_v);
     ASSERT_EQ(f2.is_empty(), false);

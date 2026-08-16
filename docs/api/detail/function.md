@@ -160,13 +160,17 @@ constexpr bool is_empty() const noexcept;
 
 Returns `true` if the function wrapper is empty, `false` otherwise.
 
-#### operator bool
+#### operator bool (Deprecated)
 
 ```cpp
+EMBED_DEPRECATED("Use `!f.is_empty()` instead")
 constexpr explicit operator bool() const noexcept;
 ```
 
 Returns `true` if the function wrapper is not empty, `false` otherwise.
+
+> [!WARNING]
+> This operator is deprecated and will be removed in a future release. It usually indicates a bug in user code: e.g., with `ebd::fn<bool()> f`, `f (f())` can be confused with `if (f)`, because the conversion only tests emptiness, not the call result. Use explicit `!f.is_empty()` instead.
 
 #### clear
 
