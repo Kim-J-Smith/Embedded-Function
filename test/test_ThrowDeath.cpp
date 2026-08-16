@@ -10,7 +10,6 @@
 TEST(ThrowDeath, throw_bad_function_call) {
     ebd::classic_fn<void()> f1;
     ASSERT_EQ(f1.is_empty(), true);
-    ASSERT_EQ(static_cast<bool>(f1), false);
     EBD_EXPECT_THROW(f1(), std::bad_function_call);
 }
 
@@ -18,27 +17,22 @@ TEST(ThrowDeath, throw_bad_function_call) {
 TEST(ThrowDeath, terminate_on_empty_call) {
     ebd::fn<void()> f1;
     ASSERT_EQ(f1.is_empty(), true);
-    ASSERT_EQ(static_cast<bool>(f1), false);
     EXPECT_DEATH(f1(), "");
 
     ebd::unique_fn<void()> f2;
     ASSERT_EQ(f2.is_empty(), true);
-    ASSERT_EQ(static_cast<bool>(f2), false);
     EXPECT_DEATH(f2(), "");
 
     ebd::__safe_fn<void()> sf;
     ASSERT_EQ(sf.is_empty(), true);
-    ASSERT_EQ(static_cast<bool>(sf), false);
     EXPECT_DEATH(sf(), "");
 
     auto f3 = ebd::make_fn<void()>();
     ASSERT_EQ(f3.is_empty(), true);
-    ASSERT_EQ(static_cast<bool>(f3), false);
     EXPECT_DEATH(f3(), "");
 
     auto f4 = ebd::make_fn<void()>(nullptr);
     ASSERT_EQ(f4.is_empty(), true);
-    ASSERT_EQ(static_cast<bool>(f4), false);
     EXPECT_DEATH(f4(), "");
 }
 

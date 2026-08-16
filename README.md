@@ -412,6 +412,8 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 - [Proxy: A Pointer-Semantics-Based Polymorphism Library -P3086](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3086r5.html)
 
+- [SG14: Non-allocating standard functions](https://github.com/WG21-SG14/SG14/blob/master/Docs/Proposals/NonAllocatingStandardFunction.pdf)
+
 ## 📚 Similar implementations
 
 - [std::function](https://cppreference.com/w/cpp/utility/functional/function)
