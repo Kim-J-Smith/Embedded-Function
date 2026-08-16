@@ -7,8 +7,13 @@
 namespace ebd {
 
 /// @attention TEST USE ONLY!
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
-using __safe_fn = basic_fn<Signature, detail::get_aligned_size(BufferSize),
+template <
+    typename Signature,
+    std::size_t BufferSize = detail::default_values::owning::buffer_size,
+    std::size_t Alignment = detail::default_values::owning::alignment
+>
+using __safe_fn = basic_fn<Signature, BufferSize,
+                           Alignment,
                            true,    // Is Copyable
                            false,   // Not View
                            false,   // Not Throwing on empty calls
