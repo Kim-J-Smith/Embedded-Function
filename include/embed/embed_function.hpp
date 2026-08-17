@@ -3543,7 +3543,7 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
-template <template <class, std::size_t> class Unused>
+template <template <class, std::size_t, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
 
 } // end namespace ebd
