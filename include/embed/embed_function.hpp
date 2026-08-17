@@ -1724,6 +1724,12 @@ inline namespace fn_traits {
   struct get_correct_buffer_size<FnWrapper, Candidate, Arg>
   : public get_correct_buffer_size_helper<is_ebd_fn<Arg>::value, FnWrapper, Candidate, Arg> {};
 
+  template <std::size_t Alignment>
+  struct enough_alignment {
+    static constexpr std::size_t value =
+      Alignment > default_values::owning::alignment ? Alignment : default_values::owning::alignment;
+  };
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of
