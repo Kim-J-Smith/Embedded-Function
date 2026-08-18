@@ -1622,23 +1622,11 @@ inline namespace fn_traits {
 # endif // ^^^ __cpp_lib_three_way_comparison >= 201907L
 #endif
 
-  // Check empty and normal callable functor.
-  // Lambda has trivially default constructor since C++20.
-  // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0624r2.pdf>.
-  template <typename Fn>
-  struct is_empty_trivial : bool_constant<
-    std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value
-    && std::is_trivially_destructible<Fn>::value
-  > {};
-
   // Check whether the functor is stateless.
   template <bool IsView, typename Fn, typename... Args>
   struct is_stateless : bool_constant<
     is_statically_callable<Fn, Args...>::value
     || is_std_op_wrapper<Fn>::value
-    || (is_empty_trivial<Fn>::value && !IsView)
-    // ^^^ empty trivial functor may use `this` in operator(). This is
-    // not strict stateless and cannot be used in reference semantic.
   > {};
 
   // Log error for make_fn.
