@@ -1660,10 +1660,11 @@ inline namespace fn_traits {
       "                                         ^^^^^^^^^\n\n"
       "The `Signature` is like `void()`, `float(int,int) const`;\n"
       "The `BufferSize` is the size (in bytes) of the internal storage;\n"
-      "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
-      "as a template argument list, such as `ebd::fn_ref`, `ebd::classic_fn`, etc. If omitted, "
-      "the `FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` is copyable, "
-      "and `ebd::unique_fn` otherwise."
+      "The `FnWrapper` is an alias of `ebd::basic_fn` and has "
+      "`template <class, std::size_t, std::size_t>` as a template argument "
+      "list, such as `ebd::fn_ref`, `ebd::classic_fn`, etc. If omitted, the "
+      "`FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` "
+      "is copyable, and `ebd::unique_fn` otherwise."
     );
     return true;
   }
@@ -3213,7 +3214,7 @@ using safe_fn EMBED_DEPRECATED("Use fn instead") = basic_fn<
   Signature, BufferSize, detail::default_values::owning::alignment, true, false, false, true>;
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
-/// @return `fn<Signature, sizeof(Functor)>`
+/// @return `fn<Signature, sizeof(Functor), Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
@@ -3238,7 +3239,7 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 }
 
 /// @brief make_fn[1]: Make function with specified signature for move-only functor.
-/// @return `unique_fn<Signature, sizeof(Functor)>`
+/// @return `unique_fn<Signature, sizeof(Functor), Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
@@ -3327,7 +3328,7 @@ make_fn(FunctionPtr func_ptr) noexcept {
 }
 
 /// @brief make_fn[5]: Create a function from another function. (Copy)
-/// @return `detail::function<Buf, Cfg, Sig>`
+/// @return `detail::function<Buf, Align, Cfg, Sig>`
 template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Align, Cfg, Sig>
 make_fn(const detail::function<Buf, Align, Cfg, Sig>& fn)
@@ -3339,7 +3340,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 }
 
 /// @brief make_fn[6]: Create a function from another function. (Move)
-/// @return `detail::function<Buf, Cfg, Sig>`
+/// @return `detail::function<Buf, Align, Cfg, Sig>`
 template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
 EMBED_NODISCARD inline detail::function<Buf, Align, Cfg, Sig>
 make_fn(detail::function<Buf, Align, Cfg, Sig>&& fn)
@@ -3522,7 +3523,7 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) 
 
 /// @brief make_fn[14]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
-/// @return `Fn<Signature, sizeof(functor)>`
+/// @return `Fn<Signature, BufferSize, Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t, std::size_t> class Fn,
   typename SpecifiedSig = void,
