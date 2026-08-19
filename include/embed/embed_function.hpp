@@ -956,7 +956,6 @@ inline namespace fn_traits {
   struct is_ebd_fn_impl : public std::false_type {
     using signature = void;
     using config = void;
-    static constexpr std::size_t buffer = 0;
   };
 
   template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
@@ -967,7 +966,6 @@ inline namespace fn_traits {
   > {
     using signature = Sig;
     using config = Cfg;
-    static constexpr std::size_t buffer = Buf;
   };
 
   // Check whether the type is `ebd::detail::function` or not.
