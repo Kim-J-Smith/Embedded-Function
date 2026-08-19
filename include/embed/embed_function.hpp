@@ -3128,8 +3128,8 @@ using basic_fn = detail::function<
 /// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
+///         And the buffer size will be aligned automatically.
 /// @tparam Alignment - Alignment size. Used for storing the callable object.
-/// And the buffer size will be aligned automatically.
 template <
   typename Signature,
   std::size_t BufferSize = detail::default_values::owning::buffer_size,
@@ -3149,8 +3149,8 @@ using fn = basic_fn<
 /// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
+///         And the buffer size will be aligned automatically.
 /// @tparam Alignment - Alignment size. Used for storing the callable object.
-/// And the buffer size will be aligned automatically.
 template <
   typename Signature,
   std::size_t BufferSize = detail::default_values::owning::buffer_size,
@@ -3170,8 +3170,8 @@ using unique_fn = basic_fn<
 /// @throws `std::bad_function_call` if invoked in an empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
+///         And the buffer size will be aligned automatically.
 /// @tparam Alignment - Alignment size. Used for storing the callable object.
-/// And the buffer size will be aligned automatically.
 template <
   typename Signature,
   std::size_t BufferSize = detail::default_values::owning::buffer_size,
