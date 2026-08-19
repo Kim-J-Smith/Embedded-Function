@@ -3212,8 +3212,6 @@ template <typename Signature, std::size_t BufferSize = detail::default_values::o
 using safe_fn EMBED_DEPRECATED("Use fn instead") = basic_fn<
   Signature, BufferSize, detail::default_values::owning::alignment, true, false, false, true>;
 
-/// TODO: Deduce alignment.
-
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
 /// @return `fn<Signature, sizeof(Functor)>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
@@ -3221,7 +3219,8 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Functor,   // [Auto] Functor type.
   typename Class = detail::remove_cvref_t<Functor>,
   // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value
+  bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value,
+  std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] Functor cannot be the function pointer or pointer to member function.
@@ -3231,10 +3230,10 @@ EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline fn<Signature, sizeof(Class)>
+EMBED_NODISCARD inline fn<Signature, sizeof(Class), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
-    fn<Signature, sizeof(Class)>, /* NoThrow = */ NoThrow
+    fn<Signature, sizeof(Class), Alignment>, /* NoThrow = */ NoThrow
   >(std::forward<Functor>(functor));
 }
 
@@ -3244,7 +3243,8 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   // [Auto] Get the nothrow guarantee of functor.
-  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value
+  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
+  std::size_t Alignment = detail::enough_alignment<alignof(Functor)>::value
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] Functor must be movable.
@@ -3254,10 +3254,10 @@ EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor)>
+EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
-    unique_fn<Signature, sizeof(Functor)>, NoThrow
+    unique_fn<Signature, sizeof(Functor), Alignment>, NoThrow
   >(std::forward<Functor>(functor));
 }
 
@@ -3265,16 +3265,17 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 /// @return `fn<Signature, BufferSize>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
-  std::size_t BufferSize = detail::default_values::owning::buffer_size
+  std::size_t BufferSize = detail::default_values::owning::buffer_size,
+  std::size_t Alignment = detail::default_values::owning::alignment
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
   detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline fn<Signature, BufferSize>
+EMBED_NODISCARD inline fn<Signature, BufferSize, Alignment>
 make_fn(std::nullptr_t = nullptr) noexcept {
   return detail::make_function_impl<
-    fn<Signature, BufferSize>, /* NoThrow = */ true
+    fn<Signature, BufferSize, Alignment>, /* NoThrow = */ true
   >(nullptr);
 }
 
@@ -3358,12 +3359,14 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Class = detail::remove_cvref_t<Lambda>,
   // [Auto] The buffer size of functor.
   std::size_t BufferSize = sizeof(Class),
+  // [Auto] The alignment size of functor.
+  std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value,
   // [Auto] The signature of functor.
   typename Signature = detail::get_unique_signature_t<Class>,
   // [Auto] The function type. (fn or unique_fn)
   typename Fn = detail::conditional_t<
     std::is_copy_constructible<Class>::value,
-    fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
+    fn<Signature, BufferSize, Alignment>, unique_fn<Signature, BufferSize, Alignment>
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
   bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value
@@ -3450,12 +3453,15 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 template <typename Functor, typename... CArgs>
 EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
-  using signature = typename detail::is_ebd_fn<
-    decltype(make_fn(std::declval<Functor>()))>::signature;
+  using deduction_wrapper = decltype(make_fn(std::declval<Functor>()));
+  using signature = typename detail::is_ebd_fn<deduction_wrapper>::signature;
+  static constexpr std::size_t buffer_size = sizeof(Functor);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Functor)>::value;
 
   using Fn = detail::conditional_t<
     std::is_copy_constructible<Functor>::value,
-    ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
 
   return detail::make_function_impl<
     Fn, std::is_nothrow_constructible<Functor, CArgs...>::value
@@ -3468,12 +3474,15 @@ template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto
 make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value) {
-  using signature = typename detail::is_ebd_fn<
-    decltype(make_fn(std::declval<Functor>()))>::signature;
+  using deduction_wrapper = decltype(make_fn(std::declval<Functor>()));
+  using signature = typename detail::is_ebd_fn<deduction_wrapper>::signature;
+  static constexpr std::size_t buffer_size = sizeof(Functor);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Functor)>::value;
 
   using Fn = detail::conditional_t<
     std::is_copy_constructible<Functor>::value,
-    ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
 
   return detail::make_function_impl<
     Fn, std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value
@@ -3548,7 +3557,7 @@ template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
 template <template <class, std::size_t, std::size_t> class Unused>
-constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
+constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0, 8>>()) { return 0; }
 
 } // end namespace ebd
 
