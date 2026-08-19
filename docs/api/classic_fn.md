@@ -9,7 +9,8 @@
 | Parameter | Description |
 |-----------|-------------|
 | `Signature` | Function signature, e.g., `Ret(Args...)` or `Ret(Args...) const`. |
-| `BufferSize` | Buffer size used for storing the callable object. Defaults to `detail::default_buffer_size::value` if omitted. |
+| `BufferSize` | Buffer size used for storing the callable object. Defaults to `detail::default_values::owning::buffer_size` if omitted. |
+| `Alignment` | Alignment of the internal storage (in bytes). Defaults to `detail::default_values::owning::alignment` if omitted. |
 
 ## Configuration
 
@@ -61,8 +62,8 @@ fn(100);
 ## Notes
 
 - `ebd::classic_fn` is copyable and owns the callable object it wraps.
-- The buffer size is automatically aligned to the nearest alignment boundary.
-- If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.
+- The buffer size is automatically aligned to a multiple of the `Alignment` parameter.
+- If the callable object is too large or has a larger alignment than the specified `BufferSize`/`Alignment`, a `static_assert` will be triggered at compile time.
 - When called in an empty state, `ebd::classic_fn` will throw `std::bad_function_call` (if exceptions are enabled), matching `std::function` behavior.
 
 ## See Also

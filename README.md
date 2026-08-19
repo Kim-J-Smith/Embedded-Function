@@ -27,13 +27,13 @@ In a [single header file](./include/embed/embed_function.hpp), **five** function
 
 ```cpp
 namespace ebd {
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
   class fn; // Wrapper for copyable callable objects.
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
   class unique_fn; // Wrapper for movable, especially move-only callable objects.
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
   class classic_fn; // Wrapper for copyable callable objects (throws on empty, like std::function).
-template <class Signature, size_t Unused = 0>
+template <class Signature, size_t Unused_1 = 0, size_t Unused_2 = 0>
   class fn_ref; // View (non-owning wrapper) for callable objects.
 }
 ```
