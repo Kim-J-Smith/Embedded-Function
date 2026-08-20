@@ -1,7 +1,7 @@
 ﻿# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.2.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.2.1">
+  <img src="https://img.shields.io/badge/Version-2.2.2-yellow?style=for-the-badge&logo=github" alt="Version - 2.2.2">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml">
     <img src="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml/badge.svg">
-    <img src="https://img.shields.io/badge/GCC_5.1~16.1-support-B46F1B?style=flat&logo=gnu" alt="gcc-5.1~16.1 - support">
+    <img src="https://img.shields.io/badge/GCC_5.1~16.2-support-B46F1B?style=flat&logo=gnu" alt="gcc-5.1~16.2 - support">
     <img src="https://img.shields.io/badge/Clang_3.7~22.1-support-045891?style=flat&logo=llvm" alt="clang-3.7~22.1 - support">
     <img src="https://img.shields.io/badge/MSVC_19.10~19.51-support-5C2D91?style=flat" alt="msvc-19.10~19.51 - support">
   </a>
@@ -411,6 +411,8 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 - [Deprecating function in C++29 -P2721](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2721r1.pdf)
 
 - [Proxy: A Pointer-Semantics-Based Polymorphism Library -P3086](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3086r5.html)
+
+- [SG14: Non-allocating standard functions](https://github.com/WG21-SG14/SG14/blob/master/Docs/Proposals/NonAllocatingStandardFunction.pdf)
 
 ## 📚 Similar implementations
 
