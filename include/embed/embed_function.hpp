@@ -3554,11 +3554,14 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 // When all other make_fn() fail to match the input parameters,
 // this function will be called as the fall back to avoid the
 // awful template error flood.
+#if !defined(_MSC_VER) || defined(__clang__)
+// MSVC bug: reports error when passing large-aligned arguments to make_fn.
 template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
 template <template <class, std::size_t, std::size_t> class Unused>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0, 8>>()) { return 0; }
+#endif // !defined(_MSC_VER) || defined(__clang__)
 
 } // end namespace ebd
 
