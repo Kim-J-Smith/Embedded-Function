@@ -921,4 +921,15 @@ TEST(InitFunction, GreatAlignment) {
 
         static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
     }
+
+    // Deduction
+    {
+        ebd::fn<int(), sizeof(Obj_t), alignof(Obj_t)> f = obj;
+        ASSERT_EQ(f(), 42);
+
+        auto f_deduce = ebd::make_fn(obj);
+        ASSERT_EQ(f_deduce(), 42);
+
+        static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
+    }
 }
