@@ -279,3 +279,8 @@ struct ebd_test_implicit_func_ptr {
         return [](int n) { return n + 42; };
     }
 };
+
+struct ebd_test_great_alignment {
+    alignas(128) int a;
+    int operator()() { return a + 42; }
+};
