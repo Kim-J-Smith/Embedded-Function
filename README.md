@@ -386,7 +386,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 ### Stateless elimination
 
-`ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., empty classes with trivial operations). This reduces memory access operations and improves cache efficiency.
+`ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., trivially copyable classes with `static operator()`). This reduces memory access operations and improves cache efficiency.
 
 > Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 
