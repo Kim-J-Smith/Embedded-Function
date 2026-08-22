@@ -9,7 +9,8 @@
 | Parameter | Description |
 |-----------|-------------|
 | `Signature` | Function signature, e.g., `Ret(Args...)` or `Ret(Args...) const`. |
-| `BufferSize` | Size of the internal storage (in bytes). The value will be automatically aligned. |
+| `BufferSize` | Size of the internal storage (in bytes). The value will be automatically aligned to a multiple of `Alignment`. |
+| `Alignment` | Alignment of the internal storage (in bytes). |
 | `IsCopyable` | If `true`, the stored callable object must be copy-constructible; otherwise, move-only is sufficient. |
 | `IsView` | If `true`, the wrapper acts as a non-owning view (no copy/move/destroy of the target). |
 | `IsThrowing` | If `true`, calling an empty wrapper throws `std::bad_function_call` (if exceptions are enabled); otherwise, `std::terminate` is called. |
@@ -27,10 +28,15 @@ All member functions of `ebd::detail::function` are available for `ebd::basic_fn
 #include "embed/embed_function.hpp"
 
 // Define a custom move-only, non-throwing function wrapper
-template <typename Signature, std::size_t BufferSize = ebd::detail::default_buffer_size::value>
+template <
+    typename Signature,
+    std::size_t BufferSize = ebd::detail::default_values::owning::buffer_size,
+    std::size_t Alignment = ebd::detail::default_values::owning::alignment
+>
 using unique_safe_fn = ebd::basic_fn<
     Signature,
     BufferSize,
+    Alignment,
     false, // IsCopyable (move-only)
     false, // IsView (owning)
     false, // IsThrowing (call std::terminate() when empty)
@@ -54,6 +60,7 @@ template <typename Signature>
 using large_fn_view = ebd::basic_fn<
     Signature,
     64,    // Larger buffer size
+    ebd::detail::default_values::non_owning::alignment,
     true,  // IsCopyable (views are copyable)
     true,  // IsView (non-owning)
     false, // IsThrowing (call std::terminate() when empty)
@@ -69,8 +76,8 @@ view(42);
 ## Notes
 
 - Prefer using the predefined aliases (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, `ebd::fn_ref`) unless you need a combination not covered by them.
-- The buffer size is automatically aligned to the nearest alignment boundary.
-- If the callable object is too large for the specified buffer size, a `static_assert` will be triggered at compile time.
+- The buffer size is automatically aligned to a multiple of `Alignment`.
+- If the callable object is too large or requires a larger alignment than the specified `BufferSize`/`Alignment`, a `static_assert` will be triggered at compile time.
 
 ## See Also
 

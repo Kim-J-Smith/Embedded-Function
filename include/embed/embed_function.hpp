@@ -840,7 +840,7 @@ inline namespace cxx_traits {
 } // end namespace cxx_traits
 
   // Forward declaration.
-  template <std::size_t BufferSize, typename Config, typename Signature>
+  template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function;
 
 /// @brief Here are some self-defined traits.
@@ -956,18 +956,16 @@ inline namespace fn_traits {
   struct is_ebd_fn_impl : public std::false_type {
     using signature = void;
     using config = void;
-    static constexpr std::size_t buffer = 0;
   };
 
-  template <std::size_t Buf, typename Cfg, typename Sig>
-  struct is_ebd_fn_impl<function<Buf, Cfg, Sig>>
+  template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+  struct is_ebd_fn_impl<function<Buf, Align, Cfg, Sig>>
   : public bool_constant<
     unwrap_signature<Sig>::isSignature
     && is_config_package<Cfg>::value
   > {
     using signature = Sig;
     using config = Cfg;
-    static constexpr std::size_t buffer = Buf;
   };
 
   // Check whether the type is `ebd::detail::function` or not.
@@ -1067,10 +1065,10 @@ inline namespace fn_traits {
   template <typename To, typename From>
   struct is_convertible_from_specialization_impl : public std::false_type {};
 
-  template <std::size_t BufTo, typename CfgTo, typename SigTo,
-    std::size_t BufFrom, typename CfgFrom, typename SigFrom>
+  template <std::size_t BufTo, std::size_t AlignTo, typename CfgTo, typename SigTo,
+    std::size_t BufFrom, std::size_t AlignFrom, typename CfgFrom, typename SigFrom>
   struct is_convertible_from_specialization_impl<
-    function<BufTo, CfgTo, SigTo>, function<BufFrom, CfgFrom, SigFrom>
+    function<BufTo, AlignTo, CfgTo, SigTo>, function<BufFrom, AlignFrom, CfgFrom, SigFrom>
   > {
     // Get the unwrap trait.
     using unwrap_to = unwrap_signature<SigTo>;
@@ -1089,6 +1087,9 @@ inline namespace fn_traits {
     // Check the buffer size of `To` is bigger `From` or equals.
     static constexpr bool buf_ok = BufTo >= BufFrom;
 
+    // Check the alignment is ok.
+    static constexpr bool align_ok = AlignTo >= AlignFrom;
+
     // Check the Configuration.
     static constexpr bool cfg_ok = is_config_convertible<CfgTo, CfgFrom>::value;
 
@@ -1100,10 +1101,10 @@ inline namespace fn_traits {
     static constexpr bool qualifier_ok =
       // The `const` and `noexcept` checks in the Non-owning context have certain peculiarities.
       noexcept_qualifier_ok && unwrap_to::hasConst <= unwrap_from::hasConst
-      && is_callable_from_impl<function<BufFrom, CfgFrom, SigFrom>, SigTo>::value;
+      && is_callable_from_impl<function<BufFrom, AlignFrom, CfgFrom, SigFrom>, SigTo>::value;
 
     static constexpr bool value =
-      buf_ok && cfg_ok && sig_ret_ok && sig_args_ok && qualifier_ok;
+      buf_ok && cfg_ok && sig_ret_ok && sig_args_ok && qualifier_ok && align_ok;
   };
 
   // If the `From` type can be converted to the `To` type, then the value is `true`.
@@ -1146,24 +1147,32 @@ inline namespace fn_traits {
   class EMBED_DETAIL_VIRTUAL_INHERITANCE UndefinedClass;
 
   // The default buffer size. Usually is 2 * sizeof(void*).
-  struct default_buffer_size {
-    // The buffer size for ebd::fn_ref. Stop supporting pointer-to-members.
-    static constexpr std::size_t ref_buf = sizeof(void (*) ());
-    static constexpr std::size_t value = sizeof(void (UndefinedClass::*) ());
+  struct default_values {
+    struct owning {
+      static constexpr std::size_t buffer_size = sizeof(void(UndefinedClass::*)());
 
-    // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::classic_fn).
-    // Using alignof(std::max_align_t) ensures that objects with the maximum
-    // fundamental alignment can be stored in the internal buffer.
-    static constexpr std::size_t align_value = alignof(std::max_align_t);
+      // The alignment for owning wrappers (ebd::fn, ebd::unique_fn, ebd::classic_fn).
+      // Using alignof(std::max_align_t) ensures that objects with the maximum
+      // fundamental alignment can be stored in the internal buffer.
+      static constexpr std::size_t alignment = alignof(std::max_align_t);
+    };
 
-    // The alignment for non-owning wrapper (ebd::fn_ref).
-    static constexpr std::size_t view_align_value = alignof(void (*) ());
+    struct non_owning {
+      // The buffer size for ebd::fn_ref. Stop supporting pointer-to-members.
+      static constexpr std::size_t buffer_size = sizeof(void(*)());
+
+      // The alignment for non-owning wrapper (ebd::fn_ref).
+      static constexpr std::size_t alignment = alignof(void(*)());
+    };
   };
 
-  // Get aligned size. Rounds up to the nearest MinAlign size.
-  template <std::size_t MinAlign = default_buffer_size::align_value>
-  constexpr std::size_t get_aligned_size(std::size_t size)
-  { return size == 0 ? MinAlign : ((size - 1) / MinAlign + 1) * MinAlign; }
+  // Get aligned size. Rounds up to the nearest Alignment size.
+  template <std::size_t Alignment>
+  constexpr std::size_t get_aligned_size(std::size_t size) {
+    static_assert(Alignment >= alignof(void(*)()), "The alignment must be greater than `alignof(void(*)())`.");
+    static_assert((Alignment & (Alignment-1)) == 0, "The alignment must be a power of two.");
+    return size == 0 ? Alignment : ((size - 1) / Alignment + 1) * Alignment;
+  }
 
   // Check whether throwing operations are acceptable.
   template <typename Functor, typename Object, typename Config,
@@ -1196,9 +1205,9 @@ inline namespace fn_traits {
     template <typename T>
     static constexpr bool not_empty(const T&) noexcept { return true; }
 
-    template <std::size_t Buf, typename Cfg, typename Sig,
+    template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig,
       EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/> static
-    EMBED_CXX14_CONSTEXPR bool not_empty(const function<Buf, Cfg, Sig>& f) noexcept
+    EMBED_CXX14_CONSTEXPR bool not_empty(const function<Buf, Align, Cfg, Sig>& f) noexcept
     { return !f.is_empty(); }
 
 #if __STDC_HOSTED__
@@ -1563,14 +1572,15 @@ inline namespace fn_traits {
   template <typename Function, typename Signature>
   struct get_correct_signature; // Undefined
 
-#define EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE(C, V, REF, NOEXCEPT)                  \
-  template <std::size_t Buf, typename Cfg, typename Sig, typename Ret, typename... Args>\
-  struct get_correct_signature<function<Buf, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> {\
-    /* MSVC 14.36~14.44 regression: noexcept(!Cfg::isThrowing) trigger ICE. */          \
-    using sig_normal = conditional_t<!Cfg::isThrowing,                                  \
-      Ret(Args...) C V REF NOEXCEPT, Ret(Args...) C V REF>;                             \
-    using sig_view = Ret(Args...) C V NOEXCEPT;                                         \
-    using type = conditional_t<Cfg::isView, sig_view, sig_normal>;                      \
+#define EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE(C, V, REF, NOEXCEPT)                          \
+  template <std::size_t Buf, std::size_t Align, typename Cfg,                                   \
+    typename Sig, typename Ret, typename... Args>                                               \
+  struct get_correct_signature<function<Buf, Align, Cfg, Sig>, Ret(Args...) C V REF NOEXCEPT> { \
+    /* MSVC 14.36~14.44 regression: noexcept(!Cfg::isThrowing) trigger ICE. */                  \
+    using sig_normal = conditional_t<!Cfg::isThrowing,                                          \
+      Ret(Args...) C V REF NOEXCEPT, Ret(Args...) C V REF>;                                     \
+    using sig_view = Ret(Args...) C V NOEXCEPT;                                                 \
+    using type = conditional_t<Cfg::isView, sig_view, sig_normal>;                              \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_GET_CORRECT_SIGNATURE_DEFINE)
@@ -1580,9 +1590,9 @@ inline namespace fn_traits {
   // Remove `noexcept` qualifier if the `Fn` is configured to `IsThrowing = true`
   // as well as `IsView = false`, and remove `&` or `&&` qualifier if the `Fn` is
   // configured to `IsView = true`.
-  template <template <class, std::size_t> class Fn, typename Sig>
+  template <template <class, std::size_t, std::size_t> class Fn, typename Sig>
   using get_correct_signature_t =
-    typename get_correct_signature<Fn<Sig, sizeof(void(*)())>, Sig>::type;
+    typename get_correct_signature<Fn<Sig, sizeof(int*), alignof(int*)>, Sig>::type;
 
   // Check if `T` is the stateless standard operator wrapper.
   template <typename T> struct is_std_op_wrapper : std::false_type {};
@@ -1653,10 +1663,11 @@ inline namespace fn_traits {
       "                                         ^^^^^^^^^\n\n"
       "The `Signature` is like `void()`, `float(int,int) const`;\n"
       "The `BufferSize` is the size (in bytes) of the internal storage;\n"
-      "The `FnWrapper` is an alias of `ebd::basic_fn` and has `template <class, std::size_t>` "
-      "as a template argument list, such as `ebd::fn_ref`, `ebd::classic_fn`, etc. If omitted, "
-      "the `FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` is copyable, "
-      "and `ebd::unique_fn` otherwise."
+      "The `FnWrapper` is an alias of `ebd::basic_fn` and has "
+      "`template <class, std::size_t, std::size_t>` as a template argument "
+      "list, such as `ebd::fn_ref`, `ebd::classic_fn`, etc. If omitted, the "
+      "`FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` "
+      "is copyable, and `ebd::unique_fn` otherwise."
     );
     return true;
   }
@@ -1715,6 +1726,12 @@ inline namespace fn_traits {
   struct get_correct_buffer_size<FnWrapper, Candidate, Arg>
   : public get_correct_buffer_size_helper<is_ebd_fn<Arg>::value, FnWrapper, Candidate, Arg> {};
 
+  template <std::size_t Alignment>
+  struct enough_alignment {
+    static constexpr std::size_t value =
+      Alignment > default_values::owning::alignment ? Alignment : default_values::owning::alignment;
+  };
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of
@@ -1745,12 +1762,9 @@ namespace erasure_type {
   // placement new. After that, using `access` to obtain the address or reference
   // (rather than the content) is also in accordance with the C++ standard.
   // See <https://eel.is/c++draft/basic.life#7>.
-  template <bool IsView, std::size_t Size>
+  template <bool IsView, std::size_t Size, std::size_t Align>
   struct EMBED_DETAIL_ALIAS Erasure : public ErasureBase {
-    alignas(IsView
-            ? default_buffer_size::view_align_value
-            : default_buffer_size::align_value)
-    ErasureCore<Size> m_core;
+    alignas(Align) ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
     EMBED_NODISCARD void* access() noexcept { return &m_core.pod[0]; }
@@ -1841,15 +1855,16 @@ namespace invocation {
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)
 #endif
 
-  template <std::size_t Size, typename Config, typename Signature>
+  template <std::size_t Size, std::size_t Align, typename Config, typename Signature>
   struct InvokerImpl;
 
 #define EMBED_DETAIL_INVOKER_IMPL_DEFINE(C, V, REF, NOEXCEPT)                         \
-  template <std::size_t Size, typename Config, typename Ret, typename... Args>        \
-  struct InvokerImpl<Size, Config, Ret(Args...) C V REF NOEXCEPT> {                   \
+  template <std::size_t Size, std::size_t Align, typename Config,                     \
+    typename Ret, typename... Args>                                                   \
+  struct InvokerImpl<Size, Align, Config, Ret(Args...) C V REF NOEXCEPT> {            \
   public:                                                                             \
     using erasure_base_t = erasure_type::ErasureBase;                                 \
-    using erasure_t = erasure_type::Erasure<Config::isView, Size>;                    \
+    using erasure_t = erasure_type::Erasure<Config::isView, Size, Align>;             \
     using erasure_pass_t = erasure_type::ErasurePass C;                               \
     static constexpr bool is_rvalue_ref =                                             \
       std::is_rvalue_reference<int REF>::value;                                       \
@@ -1933,10 +1948,10 @@ namespace invocation {
 // types for objects that implement the behaviour of management.
 namespace management {
 
-  template <std::size_t Size, typename Config, typename Signature>
+  template <std::size_t Size, std::size_t Align, typename Config, typename Signature>
   struct ManagerImpl {
   private:
-    using invoke_impl_t = invocation::InvokerImpl<Size, Config, Signature>;
+    using invoke_impl_t = invocation::InvokerImpl<Size, Align, Config, Signature>;
     using erasure_base_t  = typename invoke_impl_t::erasure_base_t;
     using erasure_t       = typename invoke_impl_t::erasure_t;
 
@@ -2075,15 +2090,15 @@ namespace management {
 namespace command {
 
   /// @note CommandTable is trivial
-  template <bool IsView, std::size_t Size,
+  template <bool IsView, std::size_t Size, std::size_t Align,
     typename Config, typename Signature, typename ArgsPackage>
   struct CommandTable;
 
   // Command Table for inplace mode.
-  template <std::size_t Size, typename Config, typename Signature, typename... Args>
-  struct CommandTable</* IsView = */ false, Size, Config, Signature, args_package<Args...>> {
-    using invoker_impl_t = invocation::InvokerImpl<Size, Config, Signature>;
-    using manager_impl_t = management::ManagerImpl<Size, Config, Signature>;
+  template <std::size_t Size, std::size_t Align, typename Config, typename Signature, typename... Args>
+  struct CommandTable</* IsView = */ false, Size, Align, Config, Signature, args_package<Args...>> {
+    using invoker_impl_t = invocation::InvokerImpl<Size, Align, Config, Signature>;
+    using manager_impl_t = management::ManagerImpl<Size, Align, Config, Signature>;
     using invoker_t       = typename invoker_impl_t::invoker_type;
     using erasure_base_t  = typename invoker_impl_t::erasure_base_t;
     using erasure_pass_t  = typename invoker_impl_t::erasure_pass_t;
@@ -2157,10 +2172,10 @@ namespace command {
   };
 
   // Command Table for view mode.
-  template <std::size_t Size, typename Config, typename Signature, typename... Args>
-  struct CommandTable</* IsView = */ true, Size, Config, Signature, args_package<Args...>> {
-    using invoker_impl_t = invocation::InvokerImpl<Size, Config, Signature>;
-    using manager_impl_t = management::ManagerImpl<Size, Config, Signature>;
+  template <std::size_t Size, std::size_t Align, typename Config, typename Signature, typename... Args>
+  struct CommandTable</* IsView = */ true, Size, Align, Config, Signature, args_package<Args...>> {
+    using invoker_impl_t = invocation::InvokerImpl<Size, Align, Config, Signature>;
+    using manager_impl_t = management::ManagerImpl<Size, Align, Config, Signature>;
     using invoker_t       = typename invoker_impl_t::invoker_type;
     using erasure_base_t  = typename invoker_impl_t::erasure_base_t;
     using erasure_pass_t  = typename invoker_impl_t::erasure_pass_t;
@@ -2173,7 +2188,7 @@ namespace command {
     const noexcept {
       auto* destination = static_cast<erasure_t*>(dst);
       auto* source = static_cast<erasure_t const*>(src);
-      std::memcpy(destination->access(), source->access(), default_buffer_size::ref_buf);
+      std::memcpy(destination->access(), source->access(), default_values::non_owning::buffer_size);
     }
 
     void move(erasure_base_t*, erasure_base_t*) = delete;
@@ -2502,9 +2517,9 @@ namespace crtp_mixins {
   // to the base class to achieve greater flexibility.
   /// @attention This class must be placed first in the inheritance list; otherwise, there
   /// will be an out-of-order error when it comes to move constructors and move assignments.
-  template <std::size_t BufferSize, typename Config, typename Signature>
+  template <std::size_t Size, std::size_t Align, typename Config, typename Signature>
   struct EMBED_DETAIL_FORCE_EBO member_variable_impl : public assignment_self_clear<
-    /* Self = */ function<BufferSize, Config, Signature>, Config, Config::isView
+    /* Self = */ function<Size, Align, Config, Signature>, Config, Config::isView
   > {
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
 
@@ -2512,9 +2527,9 @@ namespace crtp_mixins {
     constexpr member_variable_impl(std::nullptr_t) noexcept
     : m_erasure(erasure_t{}), m_command(command_t{}) {}
 
-    using erasure_t = erasure_type::Erasure<Config::isView, BufferSize>;
+    using erasure_t = erasure_type::Erasure<Config::isView, Size, Align>;
     using command_t = command::CommandTable<
-      Config::isView, BufferSize, Config, Signature,
+      Config::isView, Size, Align, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
   protected:
@@ -2557,13 +2572,13 @@ namespace crtp_mixins {
   };
 
   /// @brief Implement core components for function wrapper.
-  template <bool IsView, std::size_t BufferSize, typename Config, typename Signature, typename Self>
+  template <bool IsView, typename Config, typename Signature, typename Self>
   struct core_components_impl; // undefined
 
   // Implement the Ctor, assignment operator, swap(), is_empty()
   // operator bool, etc for normal function wrapper.
-  template <std::size_t BufferSize, typename Config, typename Signature, typename Self>
-  struct core_components_impl</*IsView=*/ false, BufferSize, Config, Signature, Self> {
+  template <typename Config, typename Signature, typename Self>
+  struct core_components_impl</*IsView=*/ false, Config, Signature, Self> {
     EMBED_DETAIL_ALL_DEFAULT(core_components_impl)
 
     // Construct an empty wrapper.
@@ -2633,8 +2648,8 @@ namespace crtp_mixins {
 
   // Implement the Ctor, assignment operator, swap(), is_empty()
   // operator bool, etc for function reference (function view).
-  template <std::size_t BufferSize, typename Config, typename Signature, typename Self>
-  struct core_components_impl</*IsView=*/ true, BufferSize, Config, Signature, Self> {
+  template <typename Config, typename Signature, typename Self>
+  struct core_components_impl</*IsView=*/ true, Config, Signature, Self> {
     EMBED_DETAIL_ALL_DEFAULT(core_components_impl)
 
     // Empty state of function view is removed.
@@ -2663,35 +2678,36 @@ namespace crtp_mixins {
 
   /// @brief A lightweight and heap-free wrapper for callable objects.
   /// @tparam BufferSize - Specifies the size reserved to store the object.
+  /// @tparam Alignment - Specifies the alignment of buffer to store the object.
   /// @tparam Config - Specifies the configuration attributes of the wrapper.
   ///           See @def config_package for details.
   /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
-  template <std::size_t BufferSize, typename Config, typename Signature>
+  template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function final
     : protected crtp_mixins::member_variable_impl<
-        /* Buf = */ BufferSize, /* Cfg = */ Config, /* Sig = */ Signature
+        /* Buf = */ BufferSize, /* Align = */ Alignment, /* Cfg = */ Config, /* Sig = */ Signature
       >,
       public crtp_mixins::operator_call_impl<
         /* IsView = */ Config::isView, /* Signature = */ Signature,
-        /* Self = */ function<BufferSize, Config, Signature>
+        /* Self = */ function<BufferSize, Alignment, Config, Signature>
       >,
       public crtp_mixins::operator_dereference_impl<
-        Signature, /* Self = */ function<BufferSize, Config, Signature>,
+        Signature, /* Self = */ function<BufferSize, Alignment, Config, Signature>,
         /* IsView = */ Config::isView
       >,
       public crtp_mixins::lifetime_operations_impl<
         /* IsView = */ Config::isView, /* IsCopyable = */ Config::isCopyable,
-        Config, /* Self = */ function<BufferSize, Config, Signature>
+        Config, /* Self = */ function<BufferSize, Alignment, Config, Signature>
       >,
       public crtp_mixins::core_components_impl<
-        /* IsView = */ Config::isView, /* BufferSize = */ BufferSize,
+        /* IsView = */ Config::isView,
         /* Config = */ Config, /* Signature = */ Signature,
-        /* Self = */ function<BufferSize, Config, Signature>
+        /* Self = */ function<BufferSize, Alignment, Config, Signature>
       >
   {
   private:
 
-    template<std::size_t, typename, typename>
+    template<std::size_t, std::size_t, typename, typename>
     friend class function;
 
     template <bool, typename, typename>
@@ -2709,13 +2725,14 @@ namespace crtp_mixins {
     template <typename, typename, bool, typename>
     friend struct crtp_mixins::operator_dereference_impl;
 
-    template <bool, std::size_t, typename, typename, typename>
+    template <bool, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
 
-    using Base_MemberVariable = crtp_mixins::member_variable_impl<BufferSize, Config, Signature>;
+    using Base_MemberVariable =
+      crtp_mixins::member_variable_impl<BufferSize, Alignment, Config, Signature>;
 
     using Base_CoreComponents =
-      crtp_mixins::core_components_impl<Config::isView, BufferSize, Config, Signature, function>;
+      crtp_mixins::core_components_impl<Config::isView, Config, Signature, function>;
 
     using erasure_t = typename Base_MemberVariable::erasure_t;
 
@@ -2749,6 +2766,10 @@ namespace crtp_mixins {
     /// @brief Get the buffer size.
     EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
     get_buffer_size() noexcept { return BufferSize; }
+
+    /// @brief Get the alignment.
+    EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
+    get_alignment() noexcept { return Alignment; }
 
     /// @brief Return `true` if the function is copyable.
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
@@ -2784,11 +2805,12 @@ namespace crtp_mixins {
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
     // Used in both OWNING mode and NON-OWNING mode.
     EMBED_DETAIL_TEMPLATE_BEGIN(
-      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
+      std::size_t OtherSize, std::size_t OtherAlign, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
-      function<OtherSize, OtherCfg, OtherSig>::internal_is_copyable
-      && is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
-    ) function(const function<OtherSize, OtherCfg, OtherSig>& other)
+      function<OtherSize, OtherAlign, OtherCfg, OtherSig>::internal_is_copyable
+      && is_convertible_from_specialization<function,
+        function<OtherSize, OtherAlign, OtherCfg, OtherSig>>::value
+    ) function(const function<OtherSize, OtherAlign, OtherCfg, OtherSig>& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
       std::memset(&m_erasure, 0, sizeof(void*));
@@ -2800,11 +2822,12 @@ namespace crtp_mixins {
     // Use `placement new` to create new functor during construction. (Move)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
     EMBED_DETAIL_TEMPLATE_BEGIN(
-      std::size_t OtherSize, typename OtherCfg, typename OtherSig)
+      std::size_t OtherSize, std::size_t OtherAlign, typename OtherCfg, typename OtherSig)
     EMBED_DETAIL_REQUIRES_END(
       (!Config::isView)
-      && is_convertible_from_specialization<function, function<OtherSize, OtherCfg, OtherSig>>::value
-    ) function(function<OtherSize, OtherCfg, OtherSig>&& other)
+      && is_convertible_from_specialization<function,
+        function<OtherSize, OtherAlign, OtherCfg, OtherSig>>::value
+    ) function(function<OtherSize, OtherAlign, OtherCfg, OtherSig>&& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
       std::memset(&m_erasure, 0, sizeof(void*));
@@ -2982,40 +3005,40 @@ namespace crtp_mixins {
   };
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
-  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
     EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
   EMBED_NODISCARD constexpr bool
-  operator==(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept {
+  operator==(const function<Buf, Align, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return fn.is_empty();
   }
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
-  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
     EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
   EMBED_NODISCARD constexpr bool
-  operator==(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
+  operator==(std::nullptr_t, const function<Buf, Align, Cfg, Sig>& fn) noexcept {
     return fn.is_empty();
   }
 
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
-  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
     EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
   EMBED_NODISCARD constexpr bool
-  operator!=(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept {
+  operator!=(const function<Buf, Align, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return !fn.is_empty();
   }
 
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
-  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, typename Cfg, typename Sig)
+  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
     EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
   EMBED_NODISCARD constexpr bool
-  operator!=(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept {
+  operator!=(std::nullptr_t, const function<Buf, Align, Cfg, Sig>& fn) noexcept {
     return !fn.is_empty();
   }
 
   // Exchange the function wrapper `a` with the wrapper `b`.
-  template <std::size_t Buf, typename Cfg, typename Sig>
-  void swap(function<Buf, Cfg, Sig>& a, function<Buf, Cfg, Sig>& b)
+  template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+  void swap(function<Buf, Align, Cfg, Sig>& a, function<Buf, Align, Cfg, Sig>& b)
     noexcept(noexcept(a.swap(b)))
   { a.swap(b); }
 
@@ -3044,7 +3067,9 @@ namespace crtp_mixins {
  *                                `int(int, float) const`, `void() &&`, etc.
  *
  * @tparam BufferSize             Size of the internal storage (in bytes).
- *                                The value will NOT be automatically aligned.
+ *                                The value will be automatically aligned.
+ * 
+ * @tparam Alignment              Alignment of the internal storage (in bytes).
  *
  * @tparam IsCopyable             If `true`, the stored callable object must be
  *                                copy‑constructible; otherwise, move‑only is
@@ -3086,13 +3111,15 @@ namespace crtp_mixins {
 template <
   typename Signature,
   std::size_t BufferSize,
+  std::size_t Alignment,
   bool IsCopyable,
   bool IsView,
   bool IsThrowing,
   bool AssertObjectNoThrow
 >
 using basic_fn = detail::function<
-  /* BufferSize = */  BufferSize,
+  /* BufferSize = */  detail::get_aligned_size<Alignment>(BufferSize),
+  /* Alignment = */   Alignment,
   /* Config = */      detail::config_package<
     /* IsCopyable = */          IsCopyable,
     /* IsView = */              IsView,
@@ -3105,11 +3132,17 @@ using basic_fn = detail::function<
 /// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
-/// And the buffer size will be aligned automatically.
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+///         And the buffer size will be aligned automatically.
+/// @tparam Alignment - Alignment size. Used for storing the callable object.
+template <
+  typename Signature,
+  std::size_t BufferSize = detail::default_values::owning::buffer_size,
+  std::size_t Alignment = detail::default_values::owning::alignment
+>
 using fn = basic_fn<
   /* Signature = */           Signature,
-  /* BufferSize = */          detail::get_aligned_size(BufferSize),
+  /* BufferSize = */          BufferSize,
+  /* Alignment = */           Alignment,
   /* IsCopyable = */          true,
   /* IsView = */              false,
   /* IsThrowing = */          false,
@@ -3120,11 +3153,17 @@ using fn = basic_fn<
 /// @note Invoking the wrapper in an empty state calls `std::terminate`.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
-/// And the buffer size will be aligned automatically.
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+///         And the buffer size will be aligned automatically.
+/// @tparam Alignment - Alignment size. Used for storing the callable object.
+template <
+  typename Signature,
+  std::size_t BufferSize = detail::default_values::owning::buffer_size,
+  std::size_t Alignment = detail::default_values::owning::alignment
+>
 using unique_fn = basic_fn<
   /* Signature = */           Signature,
-  /* BufferSize = */          detail::get_aligned_size(BufferSize),
+  /* BufferSize = */          BufferSize,
+  /* Alignment = */           Alignment,
   /* IsCopyable = */          false,
   /* IsView = */              false,
   /* IsThrowing = */          false,
@@ -3135,11 +3174,17 @@ using unique_fn = basic_fn<
 /// @throws `std::bad_function_call` if invoked in an empty state.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
-/// And the buffer size will be aligned automatically.
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+///         And the buffer size will be aligned automatically.
+/// @tparam Alignment - Alignment size. Used for storing the callable object.
+template <
+  typename Signature,
+  std::size_t BufferSize = detail::default_values::owning::buffer_size,
+  std::size_t Alignment = detail::default_values::owning::alignment
+>
 using classic_fn = basic_fn<
   /* Signature = */           Signature,
-  /* BufferSize = */          detail::get_aligned_size(BufferSize),
+  /* BufferSize = */          BufferSize,
+  /* Alignment = */           Alignment,
   /* IsCopyable = */          true,
   /* IsView = */              false,
   /* IsThrowing = */          true,
@@ -3149,11 +3194,11 @@ using classic_fn = basic_fn<
 /// @brief Non-owning polymorphic function wrapper.
 /// @note Empty state of this wrapper has been removed.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
-/// @tparam Unused - Unused.
-template <typename Signature, std::size_t Unused = 0 /* Unused */>
+template <typename Signature, std::size_t /*Unused*/ = 0, std::size_t /*Unused*/ = 0>
 using fn_ref = basic_fn<
   /* Signature = */           Signature,
-  /* BufferSize = */          detail::default_buffer_size::ref_buf,
+  /* BufferSize = */          detail::default_values::non_owning::buffer_size,
+  /* Alignment = */           detail::default_values::non_owning::alignment,
   /* IsCopyable = */          true,
   /* IsView = */              true,
   /* IsThrowing = */          false,
@@ -3165,19 +3210,19 @@ template <typename Signature, std::size_t Unused = 0 /* Unused */>
 using fn_view EMBED_DEPRECATED("Use fn_ref instead") = fn_ref<Signature>;
 
 /// @deprecated Use `fn` instead.
-template <typename Signature, std::size_t BufferSize = detail::default_buffer_size::value>
+template <typename Signature, std::size_t BufferSize = detail::default_values::owning::buffer_size>
 using safe_fn EMBED_DEPRECATED("Use fn instead") = basic_fn<
-  Signature, detail::get_aligned_size(BufferSize), true, false, false, true>;
-
+  Signature, BufferSize, detail::default_values::owning::alignment, true, false, false, true>;
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
-/// @return `fn<Signature, sizeof(Functor)>`
+/// @return `fn<Signature, sizeof(Functor), Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   typename Class = detail::remove_cvref_t<Functor>,
   // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value
+  bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value,
+  std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] Functor cannot be the function pointer or pointer to member function.
@@ -3187,20 +3232,21 @@ EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline fn<Signature, sizeof(Class)>
+EMBED_NODISCARD inline fn<Signature, sizeof(Class), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
-    fn<Signature, sizeof(Class)>, /* NoThrow = */ NoThrow
+    fn<Signature, sizeof(Class), Alignment>, /* NoThrow = */ NoThrow
   >(std::forward<Functor>(functor));
 }
 
 /// @brief make_fn[1]: Make function with specified signature for move-only functor.
-/// @return `unique_fn<Signature, sizeof(Functor)>`
+/// @return `unique_fn<Signature, sizeof(Functor), Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   // [Auto] Get the nothrow guarantee of functor.
-  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value
+  bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
+  std::size_t Alignment = detail::enough_alignment<alignof(Functor)>::value
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] Functor must be movable.
@@ -3210,10 +3256,10 @@ EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
   && detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor)>
+EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
-    unique_fn<Signature, sizeof(Functor)>, NoThrow
+    unique_fn<Signature, sizeof(Functor), Alignment>, NoThrow
   >(std::forward<Functor>(functor));
 }
 
@@ -3221,16 +3267,17 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 /// @return `fn<Signature, BufferSize>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Signature, // [User specify] function signature.
-  std::size_t BufferSize = detail::default_buffer_size::value
+  std::size_t BufferSize = detail::default_values::owning::buffer_size,
+  std::size_t Alignment = detail::default_values::owning::alignment
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] First template argument must be signature.
   detail::unwrap_signature<Signature>::isSignature
 )
-EMBED_NODISCARD inline fn<Signature, BufferSize>
+EMBED_NODISCARD inline fn<Signature, BufferSize, Alignment>
 make_fn(std::nullptr_t = nullptr) noexcept {
   return detail::make_function_impl<
-    fn<Signature, BufferSize>, /* NoThrow = */ true
+    fn<Signature, BufferSize, Alignment>, /* NoThrow = */ true
   >(nullptr);
 }
 
@@ -3282,28 +3329,27 @@ make_fn(FunctionPtr func_ptr) noexcept {
 }
 
 /// @brief make_fn[5]: Create a function from another function. (Copy)
-/// @return `detail::function<Buf, Cfg, Sig>`
-template <std::size_t Buf, typename Cfg, typename Sig>
-EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
-make_fn(const detail::function<Buf, Cfg, Sig>& fn)
+/// @return `detail::function<Buf, Align, Cfg, Sig>`
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+EMBED_NODISCARD inline detail::function<Buf, Align, Cfg, Sig>
+make_fn(const detail::function<Buf, Align, Cfg, Sig>& fn)
 noexcept(Cfg::isView || Cfg::assertNoThrow) {
   return detail::make_function_impl<
-    detail::function<Buf, Cfg, Sig>,
+    detail::function<Buf, Align, Cfg, Sig>,
     /* NoThrow = */ Cfg::isView || Cfg::assertNoThrow
   >(fn);
 }
 
 /// @brief make_fn[6]: Create a function from another function. (Move)
-/// @return `detail::function<Buf, Cfg, Sig>`
-template <std::size_t Buf, typename Cfg, typename Sig>
-EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
-make_fn(detail::function<Buf, Cfg, Sig>&& fn)
+/// @return `detail::function<Buf, Align, Cfg, Sig>`
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+EMBED_NODISCARD inline detail::function<Buf, Align, Cfg, Sig>
+make_fn(detail::function<Buf, Align, Cfg, Sig>&& fn)
 noexcept(Cfg::isView || Cfg::assertNoThrow) {
-  using Fn = detail::function<Buf, Cfg, Sig>;
   return detail::make_function_impl<
-    detail::function<Buf, Cfg, Sig>,
+    detail::function<Buf, Align, Cfg, Sig>,
     /* NoThrow = */ Cfg::isView || Cfg::assertNoThrow
-  >(std::forward<Fn>(fn));
+  >(std::move(fn));
 }
 
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
@@ -3315,12 +3361,14 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Class = detail::remove_cvref_t<Lambda>,
   // [Auto] The buffer size of functor.
   std::size_t BufferSize = sizeof(Class),
+  // [Auto] The alignment size of functor.
+  std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value,
   // [Auto] The signature of functor.
   typename Signature = detail::get_unique_signature_t<Class>,
   // [Auto] The function type. (fn or unique_fn)
   typename Fn = detail::conditional_t<
     std::is_copy_constructible<Class>::value,
-    fn<Signature, BufferSize>, unique_fn<Signature, BufferSize>
+    fn<Signature, BufferSize, Alignment>, unique_fn<Signature, BufferSize, Alignment>
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
   bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value
@@ -3407,12 +3455,15 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 template <typename Functor, typename... CArgs>
 EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
-  using signature = typename detail::is_ebd_fn<
-    decltype(make_fn(std::declval<Functor>()))>::signature;
+  using deduction_wrapper = decltype(make_fn(std::declval<Functor>()));
+  using signature = typename detail::is_ebd_fn<deduction_wrapper>::signature;
+  static constexpr std::size_t buffer_size = sizeof(Functor);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Functor)>::value;
 
   using Fn = detail::conditional_t<
     std::is_copy_constructible<Functor>::value,
-    ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
 
   return detail::make_function_impl<
     Fn, std::is_nothrow_constructible<Functor, CArgs...>::value
@@ -3425,12 +3476,15 @@ template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto
 make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value) {
-  using signature = typename detail::is_ebd_fn<
-    decltype(make_fn(std::declval<Functor>()))>::signature;
+  using deduction_wrapper = decltype(make_fn(std::declval<Functor>()));
+  using signature = typename detail::is_ebd_fn<deduction_wrapper>::signature;
+  static constexpr std::size_t buffer_size = sizeof(Functor);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Functor)>::value;
 
   using Fn = detail::conditional_t<
     std::is_copy_constructible<Functor>::value,
-    ebd::fn<signature, sizeof(Functor)>, ebd::unique_fn<signature, sizeof(Functor)>>;
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
 
   return detail::make_function_impl<
     Fn, std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value
@@ -3470,9 +3524,9 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) 
 
 /// @brief make_fn[14]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
-/// @return `Fn<Signature, sizeof(functor)>`
+/// @return `Fn<Signature, BufferSize, Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
-  template <class, std::size_t> class Fn,
+  template <class, std::size_t, std::size_t> class Fn,
   typename SpecifiedSig = void,
   typename... Args,
   typename Deduction = decltype(make_fn(std::declval<Args>()...)),
@@ -3481,8 +3535,10 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
                            /* Auto deduce */ detail::get_correct_signature_t<Fn, RawSig>,
           /* Use user specified signature */ SpecifiedSig>,
   std::size_t BufferSize =
-    detail::get_correct_buffer_size<Fn<int(), 0>, Deduction::get_buffer_size(), Args...>::value,
-  typename FnWrapper = Fn<Signature, BufferSize>,
+    detail::get_correct_buffer_size<Fn<int(), 0, alignof(int*)>, Deduction::get_buffer_size(), Args...>::value,
+  std::size_t Alignment = detail::is_ebd_fn<Fn<int(), 0, alignof(int*)>>::config::isView ?
+    detail::default_values::non_owning::alignment : Deduction::get_alignment(),
+  typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
   bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))
 )
 EMBED_DETAIL_REQUIRES_END(
@@ -3499,11 +3555,14 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 // When all other make_fn() fail to match the input parameters,
 // this function will be called as the fall back to avoid the
 // awful template error flood.
+#if !defined(_MSC_VER) || defined(__clang__)
+// MSVC has a bug where passing over-aligned arguments to make_fn triggers error C2718.
 template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
-template <template <class, std::size_t> class Unused>
-constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0>>()) { return 0; }
+template <template <class, std::size_t, std::size_t> class Unused>
+constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0, 8>>()) { return 0; }
+#endif // !defined(_MSC_VER) || defined(__clang__)
 
 } // end namespace ebd
 

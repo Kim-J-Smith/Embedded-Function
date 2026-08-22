@@ -18,19 +18,21 @@ It can:
 ```cpp
 template <typename Signature, typename Functor,
           typename Class = detail::remove_cvref_t<Functor>,
-          bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value>
-EMBED_NODISCARD inline fn<Signature, sizeof(Class)>
+          bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value,
+          std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value>
+EMBED_NODISCARD inline fn<Signature, sizeof(Class), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow);
 ```
 
-Creates an `ebd::fn` for a class-type callable when the signature is specified explicitly. The buffer size is automatically deduced as `sizeof(Class)`.
+Creates an `ebd::fn` for a class-type callable when the signature is specified explicitly. The buffer size is automatically deduced as `sizeof(Class)`, and the alignment as `alignof(Class)` (never less than `detail::default_values::owning::alignment`).
 
 ### 2. Move-only functor with explicit signature
 
 ```cpp
 template <typename Signature, typename Functor,
-          bool NoThrow = std::is_nothrow_move_constructible<Functor>::value>
-EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor)>
+          bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
+          std::size_t Alignment = detail::enough_alignment<alignof(Functor)>::value>
+EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow);
 ```
 
@@ -40,8 +42,9 @@ Creates an `ebd::unique_fn` for a move-only functor when the signature is specif
 
 ```cpp
 template <typename Signature,
-          std::size_t BufferSize = detail::default_buffer_size::value>
-EMBED_NODISCARD inline fn<Signature, BufferSize>
+          std::size_t BufferSize = detail::default_values::owning::buffer_size,
+          std::size_t Alignment = detail::default_values::owning::alignment>
+EMBED_NODISCARD inline fn<Signature, BufferSize, Alignment>
 make_fn(std::nullptr_t = nullptr) noexcept;
 ```
 
@@ -81,9 +84,9 @@ Creates an `ebd::fn` from a free-function pointer using the specified signature.
 ### 6. Copy from another wrapper
 
 ```cpp
-template <std::size_t Buf, typename Cfg, typename Sig>
-EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
-make_fn(const detail::function<Buf, Cfg, Sig>& fn)
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+EMBED_NODISCARD inline detail::function<Buf, Align, Cfg, Sig>
+make_fn(const detail::function<Buf, Align, Cfg, Sig>& fn)
 noexcept(Cfg::isView || Cfg::assertNoThrow);
 ```
 
@@ -92,9 +95,9 @@ Creates a wrapper by copying another `ebd::detail::function`.
 ### 7. Move from another wrapper
 
 ```cpp
-template <std::size_t Buf, typename Cfg, typename Sig>
-EMBED_NODISCARD inline detail::function<Buf, Cfg, Sig>
-make_fn(detail::function<Buf, Cfg, Sig>&& fn)
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+EMBED_NODISCARD inline detail::function<Buf, Align, Cfg, Sig>
+make_fn(detail::function<Buf, Align, Cfg, Sig>&& fn)
 noexcept(Cfg::isView || Cfg::assertNoThrow);
 ```
 
@@ -106,16 +109,17 @@ Creates a wrapper by moving another `ebd::detail::function`.
 template <typename Lambda,
           typename Class = detail::remove_cvref_t<Lambda>,
           std::size_t BufferSize = sizeof(Class),
+          std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value,
           typename Signature = detail::get_unique_signature_t<Class>,
           typename Fn = detail::conditional_t<
               std::is_copy_constructible<Class>::value,
-              fn<Signature, BufferSize>,
-              unique_fn<Signature, BufferSize>>,
+              fn<Signature, BufferSize, Alignment>,
+              unique_fn<Signature, BufferSize, Alignment>>,
           bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value>
 EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow);
 ```
 
-Creates a wrapper from a lambda or other functor with exactly one viable `operator()`. The signature is deduced automatically.
+Creates a wrapper from a lambda or other functor with exactly one viable `operator()`. The signature is deduced automatically; the buffer size and alignment are deduced from `sizeof(Class)` and `alignof(Class)` respectively.
 
 ### 9. Pointer to member function
 
@@ -169,7 +173,7 @@ make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... a
 noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value);
 ```
 
-Constructs the callable directly inside the wrapper buffer. The returned wrapper type is deduced from the functor.
+Constructs the callable directly inside the wrapper buffer. The returned wrapper type is deduced from the functor, and the buffer size and alignment are deduced from `sizeof(Functor)` and `alignof(Functor)` respectively.
 
 ### 13. From `std::constant_wrapper` (C++26+)
 
@@ -192,7 +196,7 @@ Creates an `ebd::fn_ref` from a `std::constant_wrapper` together with an object 
 ### 15. Explicit wrapper type
 
 ```cpp
-template <template <class, std::size_t> class Fn,
+template <template <class, std::size_t, std::size_t> class Fn,
           typename SpecifiedSig = void,
           typename... Args,
           typename Deduction = decltype(make_fn(std::declval<Args>()...)),
@@ -202,13 +206,15 @@ template <template <class, std::size_t> class Fn,
               detail::get_correct_signature_t<Fn, RawSig>,
               SpecifiedSig>,
           std::size_t BufferSize =
-              detail::get_correct_buffer_size<Fn<int(), 0>, Deduction::get_buffer_size(), Args...>::value,
-          typename FnWrapper = Fn<Signature, BufferSize>,
+              detail::get_correct_buffer_size<Fn<int(), 0, alignof(int*)>, Deduction::get_buffer_size(), Args...>::value,
+          std::size_t Alignment = detail::is_ebd_fn<Fn<int(), 0, alignof(int*)>>::config::isView ?
+              detail::default_values::non_owning::alignment : Deduction::get_alignment(),
+          typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
           bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))>
 EMBED_NODISCARD inline FnWrapper make_fn(Args&&... args) noexcept(NoThrow);
 ```
 
-Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. Accepts multiple arguments: the wrapper type and signature are deduced from `make_fn(args...)`, and the buffer size is taken from the deduced result (when an argument is another ebd wrapper that is not directly config-convertible, the buffer is sized to fit that wrapper object for indirect wrapping). If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(args...)`. This also enables in-place construction with a specific wrapper, e.g. `make_fn<ebd::fn>(std::in_place_type<Functor>, 0)`.
+Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. Accepts multiple arguments: the wrapper type and signature are deduced from `make_fn(args...)`, and the buffer size is taken from the deduced result (when an argument is another ebd wrapper that is not directly config-convertible, the buffer is sized to fit that wrapper object for indirect wrapping). For owning wrappers the alignment is taken from the deduced result, while view wrappers use the non-owning default alignment. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(args...)`. This also enables in-place construction with a specific wrapper, e.g. `make_fn<ebd::fn>(std::in_place_type<Functor>, 0)`.
 
 ## Usage Examples
 
@@ -307,6 +313,7 @@ auto cw_mem_obj = ebd::make_fn(std::cw<&MyClass::value>, &obj);
 ## Notes
 
 - `ebd::make_fn` returns `ebd::fn` for copyable deduced callables and `ebd::unique_fn` for move-only deduced callables.
+- The buffer size and alignment of the resulting wrapper are deduced from the functor (`sizeof`/`alignof`). For over-aligned functors (with `alignof` greater than `detail::default_values::owning::alignment`), the alignment is automatically raised so the wrapper can store the object safely.
 - When the callable is ambiguous, such as an overloaded function, specify the signature explicitly.
 - The explicit-wrapper overload accepts multiple arguments and works with `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`. The buffer size is deduced from the `make_fn(args...)` result instead of `sizeof(Functor)`.
 - `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.

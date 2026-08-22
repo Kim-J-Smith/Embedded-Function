@@ -27,14 +27,21 @@ In a [single header file](./include/embed/embed_function.hpp), **five** function
 
 ```cpp
 namespace ebd {
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
-  class fn; // Wrapper for copyable callable objects.
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
-  class unique_fn; // Wrapper for movable, especially move-only callable objects.
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
-  class classic_fn; // Wrapper for copyable callable objects (throws on empty, like std::function).
-template <class Signature, size_t Unused = 0>
-  class fn_ref; // View (non-owning wrapper) for callable objects.
+// Owning polymorphic copyable function wrapper.
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
+  class fn;
+
+// Owning polymorphic function wrapper.
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
+  class unique_fn;
+
+// Classic owning polymorphic function wrapper. (like `std::function`)
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
+  class classic_fn;
+
+// Non-owning polymorphic function wrapper.
+template <class Signature, size_t /*Unused*/ = 0, size_t /*Unused*/ = 0>
+  class fn_ref;
 }
 ```
 
@@ -78,15 +85,16 @@ auto main() -> int {
 
 ```cpp
 /// The definition of method of a function wrapper is as follows:
-        FnWrapper <void(int, char) const, 3*sizeof(void*)> fn_ = +[](int, char) {};
-//          ^       ^   ^~~~~~~      ^     ^~~~~~                 ^~~~~~~~~~~~~
-//          |       |   |            |     |                      |
-// Function wrapper |   |            |     |                      |
-// Return type ~~~~~|   |            |     |                      |
-// Parameters ~~~~~~~~~~|            |     |                      |
-// Qualifier ~~~~~~~~~~~~~~~~~~~~~~~~|     |                      |
-// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~|                      |
-// Callable object ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+        FnWrapper <void(int) const, sizeof(int(*)()), alignof(int(*)())> fn_ = +[](int) {};
+//          ^       ^   ^~~    ^    ^~~~~~~~~~~~      ^~~~~~~~~~~~~            ^~~~~~~~~~~
+//          |       |   |      |    |                 |                        |
+// Function wrapper |   |      |    |                 |                        |
+// Return type ~~~~~|   |      |    |                 |                        |
+// Parameters ~~~~~~~~~~|      |    |                 |                        |
+// Qualifier ~~~~~~~~~~~~~~~~~~|    |                 |                        |
+// Buffer size ~~~~~~~~~~~~~~~~~~~~~|                 |                        |
+// Alignment ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|                        |
+// Callable object ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
 
 - *`Function wrapper`*: One of `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn` and `ebd::fn_ref`.
@@ -98,6 +106,8 @@ auto main() -> int {
 - *`Qualifier`*: Applies to the wrapper's `operator()` (e.g., `const`, `noexcept`, `&`, `&&`), restricting which callable objects can be stored.
 
 - *`Buffer size`*: Size (in bytes) of the internal storage. Triggers `static_assert` if insufficient - no heap allocation.
+
+- *`Alignment`*: Alignment (in bytes) of the internal storage. Triggers `static_assert` if insufficient - no heap allocation.
 
 - *`Callable object`*: Any entity callable with the target signature (function pointer, lambda, function object, `std::reference_wrapper`). Copied or moved into the buffer depending on wrapper type.
 
@@ -174,13 +184,17 @@ auto main() -> int {
 graph TB;
   subgraph "Non-Owning wrapper"
     B2["Buffer (Fixed)"]
-    I2["Invoker"]
+    subgraph CT1["Command Table"]
+      I2["Invoker"]
+    end
   end
 
   subgraph "Owning wrapper"
     B1["Buffer (Configurable)"]
-    M1["Manager"]
-    I1["Invoker"]
+    subgraph CT2["Command Table"]
+      M1["Manager"]
+      I1["Invoker"]
+    end
   end
 ```
 

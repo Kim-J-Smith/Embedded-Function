@@ -12,7 +12,7 @@
 TEST(InitFunction, fn_freeFunction_v) {
     ebd::fn<void(int, int)> f = ebd_test_free_func_vii;
     const std::size_t buf_size = f.get_buffer_size();
-    const std::size_t buf_expect = ebd::detail::default_buffer_size::value;
+    const std::size_t buf_expect = ebd::detail::default_values::owning::buffer_size;
     ASSERT_EQ(buf_size, buf_expect);
     ASSERT_EQ(f != nullptr, true);
     ASSERT_EQ(f == nullptr, false);
@@ -870,4 +870,66 @@ struct ebd_test_InitFunction_Wuninitialized {
 TEST(InitFunction, Wuninitialized) {
     ebd_test_InitFunction_Wuninitialized f;
     f.set([]{});
+}
+
+// InitFunction[43]
+TEST(InitFunction, GreatAlignment) {
+    using Obj_t = ebd_test_great_alignment;
+    Obj_t obj{0};
+    {
+        ebd::fn<int(), sizeof(Obj_t), alignof(Obj_t)> f = obj;
+        ASSERT_EQ(f(), 42);
+
+        auto f_deduce = ebd::make_fn<ebd::fn>(obj);
+        ASSERT_EQ(f_deduce(), 42);
+
+        static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
+    }
+    {
+        ebd::unique_fn<int(), sizeof(Obj_t), alignof(Obj_t)> f = obj;
+        ASSERT_EQ(f(), 42);
+
+        auto f_deduce = ebd::make_fn<ebd::unique_fn>(obj);
+        ASSERT_EQ(f_deduce(), 42);
+
+        static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
+    }
+    {
+        ebd::__safe_fn<int(), sizeof(Obj_t), alignof(Obj_t)> f = obj;
+        ASSERT_EQ(f(), 42);
+
+        auto f_deduce = ebd::make_fn<ebd::__safe_fn>(obj);
+        ASSERT_EQ(f_deduce(), 42);
+
+        static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
+    }
+    {
+        ebd::classic_fn<int(), sizeof(Obj_t), alignof(Obj_t)> f = obj;
+        ASSERT_EQ(f(), 42);
+
+        auto f_deduce = ebd::make_fn<ebd::classic_fn>(obj);
+        ASSERT_EQ(f_deduce(), 42);
+
+        static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
+    }
+    {
+        ebd::fn_ref<int(), sizeof(Obj_t), alignof(Obj_t)> f = obj;
+        ASSERT_EQ(f(), 42);
+
+        auto f_deduce = ebd::make_fn<ebd::fn_ref>(obj);
+        ASSERT_EQ(f_deduce(), 42);
+
+        static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
+    }
+
+    // Deduction
+    {
+        ebd::fn<int(), sizeof(Obj_t), alignof(Obj_t)> f = obj;
+        ASSERT_EQ(f(), 42);
+
+        auto f_deduce = ebd::make_fn(obj);
+        ASSERT_EQ(f_deduce(), 42);
+
+        static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
+    }
 }

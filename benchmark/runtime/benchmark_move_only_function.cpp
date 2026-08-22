@@ -696,10 +696,10 @@ static void noexcept_params_std(picobench::state& s) {
 }
 
 static void noexcept_params_ebd(picobench::state& s) {
-    ebd::basic_fn<void(int, double) noexcept, 2*sizeof(void*), false, false, false, false> fn = 
-        [](int a, double b) noexcept { 
+    ebd::unique_fn<void(int, double) noexcept> fn =
+        [](int a, double b) noexcept {
             volatile int res = a + static_cast<int>(b);
-            (void)res; 
+            (void)res;
         };
 
     for (auto _ : s) {

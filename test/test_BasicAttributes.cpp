@@ -14,16 +14,16 @@ TEST(BasicAttributes, SizeAndAlign) {
     using sf_t = ebd::__safe_fn<void()>;
     using fr_t = ebd::fn_ref<void()>;
 
-    ASSERT_EQ(f_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(uf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(cf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(sf_t::get_buffer_size() == ebd::detail::default_buffer_size::value, true);
-    ASSERT_EQ(fr_t::get_buffer_size() == ebd::detail::default_buffer_size::ref_buf, true);
+    ASSERT_EQ(f_t::get_buffer_size() == ebd::detail::default_values::owning::buffer_size, true);
+    ASSERT_EQ(uf_t::get_buffer_size() == ebd::detail::default_values::owning::buffer_size, true);
+    ASSERT_EQ(cf_t::get_buffer_size() == ebd::detail::default_values::owning::buffer_size, true);
+    ASSERT_EQ(sf_t::get_buffer_size() == ebd::detail::default_values::owning::buffer_size, true);
+    ASSERT_EQ(fr_t::get_buffer_size() == ebd::detail::default_values::non_owning::buffer_size, true);
 
-    ASSERT_EQ(alignof(f_t) == ebd::detail::default_buffer_size::align_value, true);
-    ASSERT_EQ(alignof(uf_t) == ebd::detail::default_buffer_size::align_value, true);
-    ASSERT_EQ(alignof(cf_t) == ebd::detail::default_buffer_size::align_value, true);
-    ASSERT_EQ(alignof(sf_t) == ebd::detail::default_buffer_size::align_value, true);
+    ASSERT_EQ(alignof(f_t) == ebd::detail::default_values::owning::alignment, true);
+    ASSERT_EQ(alignof(uf_t) == ebd::detail::default_values::owning::alignment, true);
+    ASSERT_EQ(alignof(cf_t) == ebd::detail::default_values::owning::alignment, true);
+    ASSERT_EQ(alignof(sf_t) == ebd::detail::default_values::owning::alignment, true);
     ASSERT_EQ(alignof(fr_t) == alignof(void(*)()), true);
 
     ASSERT_EQ(sizeof(f_t) - f_t::get_buffer_size(), 2 * sizeof(void*));
@@ -111,28 +111,30 @@ TEST(BasicAttributes, AlwaysConstFnView) {
 
 // BasicAttributes[4]
 TEST(BasicAttributes, DefaultConfig) {
+    static constexpr auto obuf_align = ebd::detail::default_values::owning::alignment;
+    static constexpr auto n_obuf_align = ebd::detail::default_values::non_owning::alignment;
     static_assert(
         std::is_same<
             ebd::fn<void(), 0>, 
-            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), true, false, false, false>
+            ebd::basic_fn<void(), 0, obuf_align, true, false, false, false>
         >::value, 
         "The default config of ebd::fn has been changed!");
     static_assert(
         std::is_same<
             ebd::unique_fn<void(), 0>, 
-            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), false, false, false, false>
+            ebd::basic_fn<void(), 0, obuf_align, false, false, false, false>
         >::value, 
         "The default config of ebd::unique_fn has been changed!");
     static_assert(
         std::is_same<
             ebd::classic_fn<void(), 0>, 
-            ebd::basic_fn<void(), ebd::detail::get_aligned_size(0), true, false, true, false>
+            ebd::basic_fn<void(), 0, obuf_align, true, false, true, false>
         >::value, 
         "The default config of ebd::classic_fn has been changed!");
     static_assert(
         std::is_same<
             ebd::fn_ref<void(), 0>, 
-            ebd::basic_fn<void(), ebd::detail::default_buffer_size::ref_buf, true, true, false, false>
+            ebd::basic_fn<void(), 0, n_obuf_align, true, true, false, false>
         >::value, 
         "The default config of ebd::fn_ref has been changed!");
 }
