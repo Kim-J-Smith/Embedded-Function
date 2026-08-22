@@ -1,4 +1,4 @@
-/// basic_usage.cpp — four wrapper types: fn, unique_fn, classic_fn, fn_ref
+/// Four wrapper types: fn, unique_fn, classic_fn, fn_ref
 #include <iostream>
 #include <memory>
 #include <embed/embed_function.hpp>

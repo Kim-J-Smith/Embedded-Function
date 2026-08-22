@@ -1,4 +1,4 @@
-/// member_binding.cpp — member function wrapping, object binding, wrapper conversions
+/// Member function wrapping, object binding, wrapper conversions
 #include <iostream>
 #include <string>
 #include <embed/embed_function.hpp>

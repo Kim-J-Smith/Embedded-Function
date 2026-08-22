@@ -1,4 +1,4 @@
-/// thread_pool.cpp — simple thread pool using ebd::unique_fn for move-only task storage
+/// Simple thread pool using ebd::unique_fn for move-only task storage
 #include <iostream>
 #include <thread>
 #include <mutex>
@@ -12,7 +12,7 @@
 
 class ThreadPool {
 private:
-    // Task_t = ebd::unique_fn<void(), Auto-Deducing>
+    // Task_t = ebd::unique_fn<void(), Auto-Deduction, Auto-Deduction>
     using Task_t = decltype(ebd::make_fn<void()>(std::packaged_task<void()>{}));
 
     std::vector<std::thread> m_wokers;
