@@ -1851,6 +1851,7 @@ namespace invocation {
       }                                                                               \
     }                                                                                 \
   }; /* end view_cw */
+  /// TODO: explore `inplace_cw` according to <https://wg21.link/P2511>.
 #else
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)
 #endif
@@ -2950,6 +2951,8 @@ namespace crtp_mixins {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw>();
 
+      /// TODO: explore to use `std::cw` in owning mode according to P2511.
+
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
@@ -2969,6 +2972,8 @@ namespace crtp_mixins {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
 
+      /// TODO: explore to use `std::cw` in owning mode according to P2511.
+
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
@@ -2987,6 +2992,8 @@ namespace crtp_mixins {
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
+
+      /// TODO: explore to use `std::cw` in owning mode according to P2511.
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
