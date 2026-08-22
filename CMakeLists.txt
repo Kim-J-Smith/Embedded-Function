@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(embedded_function VERSION 2.2.2 LANGUAGES CXX)
+project(embedded_function VERSION 2.3.0 LANGUAGES CXX)
 add_library(embedded_function INTERFACE)
 add_library(embedded_function::functions ALIAS embedded_function)
 set_target_properties(embedded_function PROPERTIES EXPORT_NAME functions)
