@@ -40,7 +40,7 @@ template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment
   class classic_fn;
 
 // Non-owning polymorphic function wrapper.
-template <class Signature, size_t Unused_1 = 0, size_t Unused_2 = 0>
+template <class Signature, size_t /*Unused*/ = 0, size_t /*Unused*/ = 0>
   class fn_ref;
 }
 ```

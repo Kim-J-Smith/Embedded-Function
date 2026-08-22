@@ -1168,8 +1168,11 @@ inline namespace fn_traits {
 
   // Get aligned size. Rounds up to the nearest Alignment size.
   template <std::size_t Alignment>
-  constexpr std::size_t get_aligned_size(std::size_t size)
-  { return size == 0 ? Alignment : ((size - 1) / Alignment + 1) * Alignment; }
+  constexpr std::size_t get_aligned_size(std::size_t size) {
+    static_assert(Alignment >= alignof(void(*)()), "The alignment must be greater than `alignof(void(*)())`.");
+    static_assert((Alignment & (Alignment-1)) == 0, "The alignment must be a power of two.");
+    return size == 0 ? Alignment : ((size - 1) / Alignment + 1) * Alignment;
+  }
 
   // Check whether throwing operations are acceptable.
   template <typename Functor, typename Object, typename Config,
@@ -3191,9 +3194,7 @@ using classic_fn = basic_fn<
 /// @brief Non-owning polymorphic function wrapper.
 /// @note Empty state of this wrapper has been removed.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
-/// @tparam Unused_1 - Unused.
-/// @tparam Unused_2 - Unused.
-template <typename Signature, std::size_t Unused_1 = 0, std::size_t Unused_2 = 0>
+template <typename Signature, std::size_t /*Unused*/ = 0, std::size_t /*Unused*/ = 0>
 using fn_ref = basic_fn<
   /* Signature = */           Signature,
   /* BufferSize = */          detail::default_values::non_owning::buffer_size,
@@ -3555,7 +3556,7 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 // this function will be called as the fall back to avoid the
 // awful template error flood.
 #if !defined(_MSC_VER) || defined(__clang__)
-// MSVC bug: reports error when passing large-aligned arguments to make_fn.
+// MSVC has a bug where passing over-aligned arguments to make_fn triggers error C2718.
 template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
