@@ -3557,6 +3557,7 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 // awful template error flood.
 #if !defined(_MSC_VER) || defined(__clang__)
 // MSVC has a bug where passing over-aligned arguments to make_fn triggers error C2718.
+// See <https://developercommunity.visualstudio.com/t/MSVC-emits-C2718-for-over-aligned-argume/11141150>.
 template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
 constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
