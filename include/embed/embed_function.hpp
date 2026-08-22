@@ -3107,8 +3107,8 @@ namespace crtp_mixins {
  *
  * @example                       A move-only, non‑throwing wrapper:
  * ```cpp
- * template <typename Signature, std::size_t BufferSize>
- * using unique_safe_fn = ebd::basic_fn<Signature, BufferSize,
+ * template <typename Signature, std::size_t BufferSize, std::size_t Alignment>
+ * using unique_safe_fn = ebd::basic_fn<Signature, BufferSize, Alignment,
  *                                      false, // IsCopyable
  *                                      false, // IsView
  *                                      false, // IsThrowing

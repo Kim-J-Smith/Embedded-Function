@@ -12,4 +12,4 @@
 - None.
 
 **📌 Notes**
-- None.
+- `operator bool` still works but may warn. It will be removed in a future release.
