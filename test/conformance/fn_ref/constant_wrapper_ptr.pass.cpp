@@ -381,6 +381,12 @@ TEST(Conformance_fn_ref, constant_wrapper_ptr_pass) {
     static_assert(std::is_same_v<decltype(f), ebd::fn_ref<int&() noexcept>>);
     ASSERT_EQ(f(), 0);
   }
+
+  {
+    // death
+    ebd_test_member_fn* ptr = nullptr;
+    EXPECT_DEATH({ ebd::fn_ref<int&()> f(std::cw<&ebd_test_member_fn::member_var>, ptr); }, "");
+  }
 }
 
 #endif // __cpp_lib_constant_wrapper >= 202603L

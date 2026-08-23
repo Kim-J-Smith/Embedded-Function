@@ -81,3 +81,10 @@ TEST(ThrowDeath, fail_make_fn) {
     EBD_EXPECT_THROW(ebd_test_fail(), std::exception);
 }
 #endif
+
+// ThrowDeath[4]
+TEST(ThrowDeath, RefTerminateNullInit) {
+    int(*f_ptr)() = []{ return 0; };
+    f_ptr = nullptr;
+    EXPECT_DEATH({ ebd::fn_ref<int()> f(f_ptr); }, "");
+}

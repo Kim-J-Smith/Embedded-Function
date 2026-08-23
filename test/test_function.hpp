@@ -223,6 +223,22 @@ public:
     int operator()(double) const volatile && { return OVL_CONST | OVL_VOLATILE | OVL_R_REF; }
 };
 
+// Like `ebd_test_operator_qualifier`, but stateful (has a data member).
+// A stateful functor is stored in the wrapper buffer, so invoking a volatile
+// or const-volatile signature goes through the inplace invoker and reaches the
+// volatile / const-volatile `access()` overloads of `Erasure`.
+class ebd_test_stateful_operator_qualifier {
+public:
+    explicit ebd_test_stateful_operator_qualifier(int base) noexcept : m_base(base) {}
+
+    int operator()(int) volatile { return m_base + OVL_VOLATILE; }
+
+    int operator()(int) const volatile { return m_base + OVL_CONST + OVL_VOLATILE; }
+
+private:
+    int m_base;
+};
+
 inline int (ebd_test_member_fn::* ebd_test_return_ptr_class()) (int, int) {
     return &ebd_test_member_fn::mem_fn_ii_add;
 } 
