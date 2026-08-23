@@ -11,8 +11,6 @@ It is an alias of `ebd::detail::function` with specific configuration parameters
 | Parameter | Description |
 |-----------|-------------|
 | `Signature` | Function signature, e.g., `Ret(Args...)` or `Ret(Args...) const`. |
-| `Unused_1` | Unused parameter. Included for consistency with other function wrapper templates. |
-| `Unused_2` | Unused parameter. Included for consistency with other function wrapper templates. |
 
 ## Configuration
 

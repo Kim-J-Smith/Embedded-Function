@@ -52,27 +52,6 @@ fn = [value = std::move(value)](int x) noexcept { /* use value */ };
 fn(100);
 ```
 
-### Custom View Wrapper with Larger Buffer
-
-```cpp
-// Define a custom view wrapper with a larger buffer
-template <typename Signature>
-using large_fn_view = ebd::basic_fn<
-    Signature,
-    64,    // Larger buffer size
-    ebd::detail::default_values::non_owning::alignment,
-    true,  // IsCopyable (views are copyable)
-    true,  // IsView (non-owning)
-    false, // IsThrowing (call std::terminate() when empty)
-    false  // AssertObjectNoThrow (no requirement)
->;
-
-// Usage
-void foo(int x) { /* do something */ }
-large_fn_view<void(int)> view = &foo;
-view(42);
-```
-
 ## Notes
 
 - Prefer using the predefined aliases (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, `ebd::fn_ref`) unless you need a combination not covered by them.

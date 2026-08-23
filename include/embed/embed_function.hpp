@@ -1649,27 +1649,17 @@ inline namespace fn_traits {
 
   // Log error for make_fn.
   template <typename Unused>
-  constexpr bool make_fn_log_error() noexcept {
+  constexpr void make_fn_log_error() noexcept {
     static_assert(always_false<Unused>::value,
       "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` from the given "
       "arguments.\nYou can specify the signature and try again:\n\n"
-      "        auto f = ebd::make_fn<Signature[, BufferSize]>();\n"
+      "        auto f = ebd::make_fn<Signature[, BufferSize[, Alignment]]>();\n"
       "                              ^^^^^^^^^\n"
-      "        auto f = ebd::make_fn<Signature[, BufferSize]>(nullptr);\n"
+      "        auto f = ebd::make_fn<Signature[, BufferSize[, Alignment]]>(nullptr);\n"
       "                              ^^^^^^^^^\n"
-      "        auto f = ebd::make_fn<Signature>(CallableObject);\n"
-      "                              ^^^^^^^^^\n"
-      "        auto f = ebd::make_fn<FnWrapper, Signature>(CallableObject);\n"
-      "                                         ^^^^^^^^^\n\n"
-      "The `Signature` is like `void()`, `float(int,int) const`;\n"
-      "The `BufferSize` is the size (in bytes) of the internal storage;\n"
-      "The `FnWrapper` is an alias of `ebd::basic_fn` and has "
-      "`template <class, std::size_t, std::size_t>` as a template argument "
-      "list, such as `ebd::fn_ref`, `ebd::classic_fn`, etc. If omitted, the "
-      "`FnWrapper` will be inferred to be `ebd::fn` if the `CallableObject` "
-      "is copyable, and `ebd::unique_fn` otherwise."
+      "        auto f = ebd::make_fn<[FnWrapper, ]Signature>(CallableObject);\n"
+      "                                           ^^^^^^^^^\n\n"
     );
-    return true;
   }
 
   // The trait is expression-equivalent to `Cfg::assertNoThrow || Cfg::isView`.
@@ -3567,9 +3557,9 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 // See <https://developercommunity.visualstudio.com/t/MSVC-emits-C2718-for-over-aligned-argume/11141150>.
 template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
-constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused>()) { return 0; }
+EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused>(); }
 template <template <class, std::size_t, std::size_t> class Unused>
-constexpr int make_fn(...) noexcept(detail::make_fn_log_error<Unused<void(), 0, 8>>()) { return 0; }
+EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(), 0, 8>>(); }
 #endif // !defined(_MSC_VER) || defined(__clang__)
 
 } // end namespace ebd
