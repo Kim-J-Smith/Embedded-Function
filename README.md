@@ -202,7 +202,7 @@ graph TB;
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn`, `ebd::unique_fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type. Return `ebd::fn_ref` only when the callable object is `std::cw`.)
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature, buffer size and alignment of the callable object and create a `ebd::fn`, `ebd::unique_fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type. Return `ebd::fn_ref` only when the callable object is `std::cw`.)
 
 > __NOTE__: 
 > The [Concepts](https://cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
@@ -217,8 +217,8 @@ In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided
 ```cpp
 // Create empty ebd::fn with specified signature and buffer size.
 // If the BufferSize is omitted, it will be set by default (usually 2*sizeof(void*)).
-auto f = ebd::make_fn<Signature[, BufferSize]>();
-auto f = ebd::make_fn<Signature[, BufferSize]>(nullptr);
+auto f = ebd::make_fn<Signature[, BufferSize[, Alignment]]>();
+auto f = ebd::make_fn<Signature[, BufferSize[, Alignment]]>(nullptr);
 ```
 
 ```cpp
