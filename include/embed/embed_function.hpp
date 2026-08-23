@@ -1649,7 +1649,7 @@ inline namespace fn_traits {
 
   // Log error for make_fn.
   template <typename Unused>
-  constexpr void make_fn_log_error() noexcept {
+  EMBED_CXX14_CONSTEXPR void make_fn_log_error() noexcept {
     static_assert(always_false<Unused>::value,
       "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` from the given "
       "arguments.\nYou can specify the signature and try again:\n\n"
