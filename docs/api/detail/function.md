@@ -9,6 +9,7 @@
 | Parameter | Description |
 |-----------|-------------|
 | `BufferSize` | Specifies the size reserved to store the callable object. Must be at least `sizeof(void*)`. |
+| `Alignment` | Specifies the alignment of the internal storage. |
 | `Config` | Specifies the configuration attributes of the wrapper. Must be a `config_package` type. |
 | `Signature` | The function signature of the wrapper, e.g., `Ret(Args...)` or `Ret(Args...) const`. |
 
@@ -68,14 +69,14 @@ Moves another function wrapper.
 #### Conversion Constructor
 
 ```cpp
-template <std::size_t OtherSize, typename OtherCfg, typename OtherSig>
-function(const function<OtherSize, OtherCfg, OtherSig>& other);
+template <std::size_t OtherSize, std::size_t OtherAlign, typename OtherCfg, typename OtherSig>
+function(const function<OtherSize, OtherAlign, OtherCfg, OtherSig>& other);
 
-template <std::size_t OtherSize, typename OtherCfg, typename OtherSig>
-function(function<OtherSize, OtherCfg, OtherSig>&& other);
+template <std::size_t OtherSize, std::size_t OtherAlign, typename OtherCfg, typename OtherSig>
+function(function<OtherSize, OtherAlign, OtherCfg, OtherSig>&& other);
 ```
 
-Converts from another function wrapper with a different buffer size or configuration, if compatible.
+Converts from another function wrapper with a different buffer size, alignment, or configuration, if compatible. The conversion requires the source buffer size and alignment to be no larger than the target's.
 
 #### Functor Constructor
 
@@ -198,6 +199,14 @@ static constexpr std::size_t get_buffer_size() noexcept;
 
 Returns the buffer size of the function wrapper.
 
+#### get_alignment
+
+```cpp
+static constexpr std::size_t get_alignment() noexcept;
+```
+
+Returns the alignment of the function wrapper.
+
 #### is_copyable
 
 ```cpp
@@ -219,17 +228,17 @@ If the wrapped object is a function pointer, returns that pointer; otherwise, re
 ### Comparison Operators
 
 ```cpp
-template <std::size_t Buf, typename Cfg, typename Sig>
-bool operator==(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept;
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+bool operator==(const function<Buf, Align, Cfg, Sig>& fn, std::nullptr_t) noexcept;
 
-template <std::size_t Buf, typename Cfg, typename Sig>
-bool operator==(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept;
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+bool operator==(std::nullptr_t, const function<Buf, Align, Cfg, Sig>& fn) noexcept;
 
-template <std::size_t Buf, typename Cfg, typename Sig>
-bool operator!=(const function<Buf, Cfg, Sig>& fn, std::nullptr_t) noexcept;
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+bool operator!=(const function<Buf, Align, Cfg, Sig>& fn, std::nullptr_t) noexcept;
 
-template <std::size_t Buf, typename Cfg, typename Sig>
-bool operator!=(std::nullptr_t, const function<Buf, Cfg, Sig>& fn) noexcept;
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+bool operator!=(std::nullptr_t, const function<Buf, Align, Cfg, Sig>& fn) noexcept;
 ```
 
 Compare a function wrapper with `nullptr` to check if it is empty.
@@ -237,8 +246,8 @@ Compare a function wrapper with `nullptr` to check if it is empty.
 ### swap
 
 ```cpp
-template <std::size_t Buf, typename Cfg, typename Sig>
-void swap(function<Buf, Cfg, Sig>& a, function<Buf, Cfg, Sig>& b)
+template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
+void swap(function<Buf, Align, Cfg, Sig>& a, function<Buf, Align, Cfg, Sig>& b)
   noexcept(noexcept(a.swap(b)));
 ```
 
@@ -249,7 +258,7 @@ using std::swap;
 swap(f1, f2); // calls the ADL swap of ebd
 ```
 
-Both wrappers must be the same specialization (identical `Buf`, `Cfg`, and `Sig`). The `noexcept` specification is inherited from the member `swap()`: it is `noexcept` for view wrappers (`ebd::fn_ref`) and for wrappers with `Config::assertNoThrow == true`, and potentially throwing otherwise (e.g. `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`).
+Both wrappers must be the same specialization (identical `Buf`, `Align`, `Cfg`, and `Sig`). The `noexcept` specification is inherited from the member `swap()`: it is `noexcept` for view wrappers (`ebd::fn_ref`) and for wrappers with `Config::assertNoThrow == true`, and potentially throwing otherwise (e.g. `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`).
 
 ## Performance Characteristics
 
@@ -268,6 +277,7 @@ Both wrappers must be the same specialization (identical `Buf`, `Cfg`, and `Sig`
 // Create a function wrapper for a void() signature
 ebd::detail::function<
     sizeof(void(*)()),
+    ebd::detail::default_values::owning::alignment,
     ebd::detail::config_package<true, false, true, false>,
     void()
 > fn;
@@ -287,6 +297,7 @@ if (fn) {
 // Create a move-only, non-throwing function wrapper
 typedef ebd::detail::function<
     32, // 32-byte buffer
+    ebd::detail::default_values::owning::alignment,
     ebd::detail::config_package<false, false, false, true>, // move-only, non-throwing, assert no-throw
     int(int, int)
 > custom_fn;
@@ -298,6 +309,7 @@ int result = add(10, 20); // result = 30
 ## Notes
 
 - The `ebd::detail::function` class is not intended for direct use. Instead, use the predefined aliases such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`.
-- The buffer size is automatically aligned to the nearest alignment boundary.
+- The buffer size is automatically aligned to a multiple of the `Alignment` parameter.
+- The stored callable object must fit in the buffer and have an alignment no greater than the `Alignment` parameter; otherwise a `static_assert` is triggered.
 - The function wrapper supports all callable objects, including free functions, lambdas, functors, static member functions, and member functions.
 - When `Config::isView` is `true`, the wrapper acts as a non-owning view, similar to `std::function_ref`.

@@ -1,11 +1,12 @@
 **🔧 Fixed Bugs**
-- Fixed incorrect stateless detection in `is_stateless`: functors with copy side effects (non-trivially-copyable) were treated as stateless, causing copies to be elided. (#145)
+- None.
 
 **⚠️ Breaking Changes**
-- Deprecated `operator bool`. Use `!f.is_empty()` instead. (#143)
+- Added an `Alignment` template parameter to polymorphic function wrappers, which changes their template argument list. Existing code that directly instantiates `basic_fn` is affected; other wrappers (`ebd::fn`, `ebd::unique_fn`, etc.) are unaffected as the new parameter has a default value. (#147)
 
 **✨ New Features**
-- None.
+- Added the `Alignment` template parameter to specify the alignment of the internal storage. (#147)
+- `make_fn` now automatically deduces the alignment from the callable object. (#147)
 
 **🛠️ Optimizations and Improvements**
 - None.

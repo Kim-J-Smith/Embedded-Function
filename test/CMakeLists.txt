@@ -8,7 +8,7 @@ endif()
 
 # Project name.
 project(
-    "embed_function_2.2.x-GoogleTest"
+    "embed_function_2.x-GoogleTest"
     LANGUAGES CXX
 )
 

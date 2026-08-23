@@ -1,4 +1,4 @@
-/// callback_abstraction.cpp — fn_ref as zero-overhead callback param, fn as stored callback
+/// `fn_ref` as zero-overhead callback param, fn as stored callback
 #include <iostream>
 #include <vector>
 #include <embed/embed_function.hpp>

@@ -1,4 +1,4 @@
-/// make_fn_deduction.cpp — auto-deduced signature, member function wrapping, operator* fallback
+/// Auto-deduced signature, member function wrapping, operator* fallback
 #include <iostream>
 #include <embed/embed_function.hpp>
 

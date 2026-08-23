@@ -1,7 +1,7 @@
 ﻿# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.2.2-yellow?style=for-the-badge&logo=github" alt="Version - 2.2.2">
+  <img src="https://img.shields.io/badge/Version-2.3.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.3.0">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -27,14 +27,21 @@ In a [single header file](./include/embed/embed_function.hpp), **five** function
 
 ```cpp
 namespace ebd {
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
-  class fn; // Wrapper for copyable callable objects.
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
-  class unique_fn; // Wrapper for movable, especially move-only callable objects.
-template <class Signature, size_t BufferSize = /*DefaultSize*/>
-  class classic_fn; // Wrapper for copyable callable objects (throws on empty, like std::function).
-template <class Signature, size_t Unused = 0>
-  class fn_ref; // View (non-owning wrapper) for callable objects.
+// Owning polymorphic copyable function wrapper.
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
+  class fn;
+
+// Owning polymorphic function wrapper.
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
+  class unique_fn;
+
+// Classic owning polymorphic function wrapper. (like `std::function`)
+template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
+  class classic_fn;
+
+// Non-owning polymorphic function wrapper.
+template <class Signature, size_t /*Unused*/ = 0, size_t /*Unused*/ = 0>
+  class fn_ref;
 }
 ```
 
@@ -78,15 +85,16 @@ auto main() -> int {
 
 ```cpp
 /// The definition of method of a function wrapper is as follows:
-        FnWrapper <void(int, char) const, 3*sizeof(void*)> fn_ = +[](int, char) {};
-//          ^       ^   ^~~~~~~      ^     ^~~~~~                 ^~~~~~~~~~~~~
-//          |       |   |            |     |                      |
-// Function wrapper |   |            |     |                      |
-// Return type ~~~~~|   |            |     |                      |
-// Parameters ~~~~~~~~~~|            |     |                      |
-// Qualifier ~~~~~~~~~~~~~~~~~~~~~~~~|     |                      |
-// Buffer size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~|                      |
-// Callable object ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+        FnWrapper <void(int) const, sizeof(int(*)()), alignof(int(*)())> fn_ = +[](int) {};
+//          ^       ^   ^~~    ^    ^~~~~~~~~~~~      ^~~~~~~~~~~~~            ^~~~~~~~~~~
+//          |       |   |      |    |                 |                        |
+// Function wrapper |   |      |    |                 |                        |
+// Return type ~~~~~|   |      |    |                 |                        |
+// Parameters ~~~~~~~~~~|      |    |                 |                        |
+// Qualifier ~~~~~~~~~~~~~~~~~~|    |                 |                        |
+// Buffer size ~~~~~~~~~~~~~~~~~~~~~|                 |                        |
+// Alignment ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|                        |
+// Callable object ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 ```
 
 - *`Function wrapper`*: One of `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn` and `ebd::fn_ref`.
@@ -98,6 +106,8 @@ auto main() -> int {
 - *`Qualifier`*: Applies to the wrapper's `operator()` (e.g., `const`, `noexcept`, `&`, `&&`), restricting which callable objects can be stored.
 
 - *`Buffer size`*: Size (in bytes) of the internal storage. Triggers `static_assert` if insufficient - no heap allocation.
+
+- *`Alignment`*: Alignment (in bytes) of the internal storage. Triggers `static_assert` if insufficient - no heap allocation.
 
 - *`Callable object`*: Any entity callable with the target signature (function pointer, lambda, function object, `std::reference_wrapper`). Copied or moved into the buffer depending on wrapper type.
 
@@ -174,13 +184,17 @@ auto main() -> int {
 graph TB;
   subgraph "Non-Owning wrapper"
     B2["Buffer (Fixed)"]
-    I2["Invoker"]
+    subgraph CT1["Command Table"]
+      I2["Invoker"]
+    end
   end
 
   subgraph "Owning wrapper"
     B1["Buffer (Configurable)"]
-    M1["Manager"]
-    I1["Invoker"]
+    subgraph CT2["Command Table"]
+      M1["Manager"]
+      I1["Invoker"]
+    end
   end
 ```
 
@@ -188,7 +202,7 @@ graph TB;
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature and buffer size of the callable object and create a `ebd::fn`, `ebd::unique_fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type. Return `ebd::fn_ref` only when the callable object is `std::cw`.)
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature, buffer size and alignment of the callable object and create a `ebd::fn`, `ebd::unique_fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type. Return `ebd::fn_ref` only when the callable object is `std::cw`.)
 
 > __NOTE__: 
 > The [Concepts](https://cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
@@ -203,8 +217,8 @@ In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided
 ```cpp
 // Create empty ebd::fn with specified signature and buffer size.
 // If the BufferSize is omitted, it will be set by default (usually 2*sizeof(void*)).
-auto f = ebd::make_fn<Signature[, BufferSize]>();
-auto f = ebd::make_fn<Signature[, BufferSize]>(nullptr);
+auto f = ebd::make_fn<Signature[, BufferSize[, Alignment]]>();
+auto f = ebd::make_fn<Signature[, BufferSize[, Alignment]]>(nullptr);
 ```
 
 ```cpp
@@ -372,7 +386,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 ### Stateless elimination
 
-`ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., empty classes with trivial operations). This reduces memory access operations and improves cache efficiency.
+`ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., trivially copyable classes with `static operator()`). This reduces memory access operations and improves cache efficiency.
 
 > Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 

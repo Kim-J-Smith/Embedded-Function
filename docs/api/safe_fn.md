@@ -6,12 +6,16 @@ Please use [`ebd::fn`](./fn.md) instead.
 
 ### Migration Note
 
-The `safe_fn` alias still works but has been deprecated. If you migrate to `ebd::fn`, note that `AssertObjectNoThrow` changes to `false` — meaning `ebd::fn` no longer requires the callable object to be noexcept-constructible/destructible. If you need the `AssertObjectNoThrow=true` guarantee, use `ebd::basic_fn` directly:
+The `safe_fn` alias still works but has been deprecated. If you migrate to `ebd::fn`, note that `AssertObjectNoThrow` changes to `false`, which means `ebd::fn` no longer requires the callable object to be noexcept-constructible/destructible. If you need the `AssertObjectNoThrow=true` guarantee, use `ebd::basic_fn` directly:
 
 ```cpp
-template <typename Signature, std::size_t BufferSize = ebd::detail::default_buffer_size::value>
+template <
+    typename Signature,
+    std::size_t BufferSize = ebd::detail::default_values::owning::buffer_size,
+    std::size_t Alignment = ebd::detail::default_values::owning::alignment
+>
 using my_safe_fn = ebd::basic_fn<
-    Signature, ebd::detail::get_aligned_size(BufferSize),
+    Signature, BufferSize, Alignment,
     true,  // IsCopyable
     false, // IsView
     false, // IsThrowing

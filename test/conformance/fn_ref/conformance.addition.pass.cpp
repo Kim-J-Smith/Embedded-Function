@@ -13,8 +13,8 @@
 
 #include "test_function.hpp"
 
-template <class Sig, std::size_t Buf>
-using nothrow_fn = ebd::basic_fn<Sig, ebd::detail::get_aligned_size(Buf), true, false, false, false>;
+template <class Sig, std::size_t Buf, std::size_t Align = ebd::detail::default_values::owning::alignment>
+using nothrow_fn = ebd::basic_fn<Sig, Buf, Align, true, false, false, false>;
 
 struct empty_trivial_but_state {
   std::uintptr_t operator()() const { return reinterpret_cast<std::uintptr_t>(this); }
