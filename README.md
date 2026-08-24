@@ -1,7 +1,7 @@
 ﻿# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.3.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.3.0">
+  <img src="https://img.shields.io/badge/Version-2.3.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.3.1">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -211,7 +211,8 @@ In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided
 
 - **`[]` means optional**.
 - `Signature`: The signature of the callable object. (such as `void(int)`)
-- `BufferSize`: The buffer size of the callable object. (such as `2*sizeof(void*)`)
+- `BufferSize`: The buffer size of the internal storage. (in bytes)
+- `Alignment`: The alignment of the internal storage. (in bytes)
 - `FnWrapper`: One of `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn` and `ebd::fn_ref`.
 
 ```cpp
