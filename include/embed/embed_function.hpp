@@ -14,7 +14,7 @@
  *              <http://opensource.org/licenses/MIT>
  */
 
-// Just like function pointers, it is quick and efficient.
+// Lightweight and heap-free polymorphic function wrapper collection.
 
 /// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 /// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
