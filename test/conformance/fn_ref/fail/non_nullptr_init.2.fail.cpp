@@ -1,7 +1,4 @@
-#include "test_fallback_macros.hpp"
-
 #include "../__constant_wrapper.hpp"
-#include "embed/embed_function.hpp"
 #include "test_function.hpp"
 
 int main() {

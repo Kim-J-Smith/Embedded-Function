@@ -1,6 +1,3 @@
-#include "test_fallback_macros.hpp"
-
-#include "embed/embed_function.hpp"
 #include "test_function.hpp"
 
 struct not_assert_nothrowing {
