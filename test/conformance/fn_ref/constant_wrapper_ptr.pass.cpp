@@ -380,7 +380,8 @@ TEST(Conformance_fn_ref, constant_wrapper_ptr_pass) {
   {
     // death
     ebd_test_member_fn* ptr = nullptr;
-    EXPECT_DEATH({ ebd::fn_ref<int&()> f(std::cw<&ebd_test_member_fn::member_var>, ptr); }, "");
+    EXPECT_DEATH({ ebd::fn_ref<int&()> f(std::cw<&ebd_test_member_fn::member_var>, ptr); },
+      "object pointer cannot be nullptr.");
   }
 }
 

@@ -12,23 +12,23 @@ TEST(ThrowDeath, throw_bad_function_call) {
 TEST(ThrowDeath, terminate_on_empty_call) {
     ebd::fn<void()> f1;
     ASSERT_EQ(f1.is_empty(), true);
-    EXPECT_DEATH(f1(), "");
+    EXPECT_DEATH(f1(), "Empty function has been called!");
 
     ebd::unique_fn<void()> f2;
     ASSERT_EQ(f2.is_empty(), true);
-    EXPECT_DEATH(f2(), "");
+    EXPECT_DEATH(f2(), "Empty function has been called!");
 
     ebd::__safe_fn<void()> sf;
     ASSERT_EQ(sf.is_empty(), true);
-    EXPECT_DEATH(sf(), "");
+    EXPECT_DEATH(sf(), "Empty function has been called!");
 
     auto f3 = ebd::make_fn<void()>();
     ASSERT_EQ(f3.is_empty(), true);
-    EXPECT_DEATH(f3(), "");
+    EXPECT_DEATH(f3(), "Empty function has been called!");
 
     auto f4 = ebd::make_fn<void()>(nullptr);
     ASSERT_EQ(f4.is_empty(), true);
-    EXPECT_DEATH(f4(), "");
+    EXPECT_DEATH(f4(), "Empty function has been called!");
 }
 
 // ThrowDeath[1] — fn/unique_fn terminate on empty; safe_fn (deprecated) also terminates
@@ -39,7 +39,7 @@ TEST(ThrowDeath, mix_throw_and_death) {
 
     f1.clear();
     ASSERT_EQ(f1 == nullptr, true);
-    EXPECT_DEATH(f1(1, 2), "");
+    EXPECT_DEATH(f1(1, 2), "Empty function has been called!");
 
     auto f2 = ebd::make_fn(ebd_test_operator_unambiguous{});
     ASSERT_EQ(f2 != nullptr, true);
@@ -50,7 +50,7 @@ TEST(ThrowDeath, mix_throw_and_death) {
     ASSERT_EQ(f2(3), 3);
 
     f2 = nullptr;
-    EXPECT_DEATH(f2(2), "");
+    EXPECT_DEATH(f2(2), "Empty function has been called!");
 
     auto f3 = ebd::make_fn<ebd::classic_fn>(ebd_test_operator_unambiguous{});
     ASSERT_EQ(f3.is_empty(), false);
@@ -81,5 +81,5 @@ TEST(ThrowDeath, fail_make_fn) {
 TEST(ThrowDeath, RefTerminateNullInit) {
     int(*f_ptr)() = []{ return 0; };
     f_ptr = nullptr;
-    EXPECT_DEATH({ ebd::fn_ref<int()> f(f_ptr); }, "");
+    EXPECT_DEATH({ ebd::fn_ref<int()> f(f_ptr); }, "function pointer cannot be nullptr.");
 }

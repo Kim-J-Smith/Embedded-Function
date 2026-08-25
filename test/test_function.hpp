@@ -1,4 +1,7 @@
 #pragma once
+#include <cstdio>
+#define EMBED_FN_HOOK_DEBUG(message) do { fputs(message, stderr); fflush(stderr); } while(0)
+
 #include "test_fallback_macros.hpp"
 
 #include "embed/embed_function.hpp"
