@@ -974,14 +974,14 @@ inline namespace fn_traits {
 
   // Throw std::bad_function_call or just call std::terminate().
   template<bool IsThrowing>
-  [[noreturn]] inline enable_if_t<!IsThrowing>
+  [[noreturn]] static enable_if_t<!IsThrowing>
   throw_or_terminate() noexcept {
     EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
     std::terminate();
   }
 
   template<bool IsThrowing>
-  [[noreturn]] inline enable_if_t<IsThrowing>
+  [[noreturn]] static enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__) {
     EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
 #if !EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__
