@@ -1,8 +1,3 @@
-#include "test_fallback_macros.hpp"
-
-#include "embed/embed_function.hpp"
-#include "gtest/gtest.h"
-
 #include "test_function.hpp"
 
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106067

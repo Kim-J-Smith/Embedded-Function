@@ -17,16 +17,11 @@
 // - is_pointer_v<T> is false, and
 // - T is not a specialization of constant_wrapper. (Unused for `ebd::fn_ref`)
 
-#include "test_fallback_macros.hpp"
-
 #include <functional>
 #include <utility>
 #include <type_traits>
 
 #include "__constant_wrapper.hpp"
-
-#include "embed/embed_function.hpp"
-#include "gtest/gtest.h"
 
 #include "test_function.hpp"
 

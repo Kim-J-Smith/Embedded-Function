@@ -15,16 +15,11 @@
 // template<auto f, class T>
 //   constexpr fn_ref(constant_wrapper<f>, cv T* obj) noexcept;
 
-#include "test_fallback_macros.hpp"
-
 #include <functional>
 #include <utility>
 #include <type_traits>
 
 #include "__constant_wrapper.hpp"
-
-#include "embed/embed_function.hpp"
-#include "gtest/gtest.h"
 
 #include "test_function.hpp"
 
