@@ -972,18 +972,21 @@ inline namespace fn_traits {
   template <typename T>
   using is_ebd_fn = is_ebd_fn_impl<remove_cvref_t<T>>;
 
+  inline void report_empty_call() noexcept
+  { EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!"); }
+
   // Throw std::bad_function_call or just call std::terminate().
   template<bool IsThrowing>
-  [[noreturn]] static enable_if_t<!IsThrowing>
+  [[noreturn]] enable_if_t<!IsThrowing>
   throw_or_terminate() noexcept {
-    EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
+    report_empty_call();
     std::terminate();
   }
 
   template<bool IsThrowing>
-  [[noreturn]] static enable_if_t<IsThrowing>
+  [[noreturn]] enable_if_t<IsThrowing>
   throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__) {
-    EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!");
+    report_empty_call();
 #if !EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__
     std::terminate();
 #else
