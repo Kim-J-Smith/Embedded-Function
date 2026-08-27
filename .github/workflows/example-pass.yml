@@ -25,16 +25,16 @@ jobs:
 
       - name: Build with g++ (C++11)
         run: |
-          g++ -std=c++11 -I include -o /dev/null example/basic_usage.cpp
-          g++ -std=c++11 -I include -o /dev/null example/callback_abstraction.cpp
-          g++ -std=c++11 -I include -o /dev/null example/make_fn_deduction.cpp
-          g++ -std=c++11 -I include -o /dev/null example/member_binding.cpp
-          g++ -std=c++11 -I include -o /dev/null example/thread_pool.cpp
+          g++ -Werror -std=c++11 -I include -o /dev/null example/basic_usage.cpp
+          g++ -Werror -std=c++11 -I include -o /dev/null example/callback_abstraction.cpp
+          g++ -Werror -std=c++11 -I include -o /dev/null example/make_fn_deduction.cpp
+          g++ -Werror -std=c++11 -I include -o /dev/null example/member_binding.cpp
+          g++ -Werror -std=c++11 -I include -o /dev/null example/thread_pool.cpp
 
       - name: Build with clang++ (C++11)
         run: |
-          clang++ -std=c++11 -I include -o /dev/null example/basic_usage.cpp
-          clang++ -std=c++11 -I include -o /dev/null example/callback_abstraction.cpp
-          clang++ -std=c++11 -I include -o /dev/null example/make_fn_deduction.cpp
-          clang++ -std=c++11 -I include -o /dev/null example/member_binding.cpp
-          clang++ -std=c++11 -I include -o /dev/null example/thread_pool.cpp
+          clang++ -Werror -std=c++11 -I include -o /dev/null example/basic_usage.cpp
+          clang++ -Werror -std=c++11 -I include -o /dev/null example/callback_abstraction.cpp
+          clang++ -Werror -std=c++11 -I include -o /dev/null example/make_fn_deduction.cpp
+          clang++ -Werror -std=c++11 -I include -o /dev/null example/member_binding.cpp
+          clang++ -Werror -std=c++11 -I include -o /dev/null example/thread_pool.cpp

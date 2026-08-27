@@ -1,15 +1,8 @@
-#include "test_fallback_macros.hpp"
-
 #include <functional>
 #include <utility>
 #include <type_traits>
 
 #include "__constant_wrapper.hpp"
-
-#define EMBED_FN_HOOK_DEBUG(msg) // puts(msg)
-
-#include "embed/embed_function.hpp"
-#include "gtest/gtest.h"
 
 #include "test_function.hpp"
 

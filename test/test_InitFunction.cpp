@@ -1,7 +1,3 @@
-#include "test_fallback_macros.hpp"
-
-#include "embed/embed_function.hpp"
-#include "gtest/gtest.h"
 #include "test_function.hpp"
 
 #include <iostream>
@@ -931,5 +927,33 @@ TEST(InitFunction, GreatAlignment) {
         ASSERT_EQ(f_deduce(), 42);
 
         static_assert(std::is_same<decltype(f), decltype(f_deduce)>::value, "BUG");
+    }
+}
+
+// InitFunction[44]
+TEST(InitFunction, testQualifier_Stateful) {
+    // `ebd_test_stateful_operator_qualifier` has a data member, so it is stored
+    // in the wrapper buffer (inplace path). Invoking a volatile / const-volatile
+    // signature therefore executes `Erasure::access()`'s volatile overloads.
+    const int base = 1000;
+    ebd_test_stateful_operator_qualifier c(base);
+
+    {
+        auto f2 = ebd::make_fn<int(int) volatile>(c);
+        ASSERT_EQ(f2(1), base + OVL_VOLATILE);
+
+        auto f9 = ebd::make_fn<int(int) const volatile>(c);
+        ASSERT_EQ(f9(1), base + OVL_CONST + OVL_VOLATILE);
+    }
+    {
+        ebd::fn<int(int) volatile> f2 = c;
+        ASSERT_EQ(f2(1), base + OVL_VOLATILE);
+
+        ebd::fn<int(int) const volatile> f9 = c;
+        ASSERT_EQ(f9(1), base + OVL_CONST + OVL_VOLATILE);
+    }
+    {
+        ebd::unique_fn<int(int) volatile> f2 = c;
+        ASSERT_EQ(std::move(f2)(1), base + OVL_VOLATILE);
     }
 }

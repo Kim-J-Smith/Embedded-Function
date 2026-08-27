@@ -15,16 +15,11 @@
 // template<auto f, class T>
 //   constexpr fn_ref(constant_wrapper<f>, cv T* obj) noexcept;
 
-#include "test_fallback_macros.hpp"
-
 #include <functional>
 #include <utility>
 #include <type_traits>
 
 #include "__constant_wrapper.hpp"
-
-#include "embed/embed_function.hpp"
-#include "gtest/gtest.h"
 
 #include "test_function.hpp"
 
@@ -380,6 +375,13 @@ TEST(Conformance_fn_ref, constant_wrapper_ptr_pass) {
     auto f = ebd::make_fn(std::cw<&ebd_test_member_fn::member_var>, &obj);
     static_assert(std::is_same_v<decltype(f), ebd::fn_ref<int&() noexcept>>);
     ASSERT_EQ(f(), 0);
+  }
+
+  {
+    // death
+    ebd_test_member_fn* ptr = nullptr;
+    EXPECT_DEATH({ ebd::fn_ref<int&()> f(std::cw<&ebd_test_member_fn::member_var>, ptr); },
+      "object pointer cannot be nullptr.");
   }
 }
 

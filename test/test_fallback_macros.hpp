@@ -14,6 +14,9 @@
 # define EMBED_NODISCARD
 # define EMBED_DEPRECATED(x)
 
+# define EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
+# define EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
+
 #endif // defined(EBD_TEST_USE_FALLBACK)
 
 #if defined(__GNUC__) && __GNUC__ >= 16

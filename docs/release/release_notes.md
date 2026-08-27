@@ -2,14 +2,13 @@
 - None.
 
 **⚠️ Breaking Changes**
-- Added an `Alignment` template parameter to polymorphic function wrappers, which changes their template argument list. Existing code that directly instantiates `basic_fn` is affected; other wrappers (`ebd::fn`, `ebd::unique_fn`, etc.) are unaffected as the new parameter has a default value. (#147)
+- None.
 
 **✨ New Features**
-- Added the `Alignment` template parameter to specify the alignment of the internal storage. (#147)
-- `make_fn` now automatically deduces the alignment from the callable object. (#147)
+- Added the `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` macro. When defined, empty trivial functors are no longer treated as stateless (except standard operator wrappers). (#156)
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Achieved full (100%) line coverage of the library's measurable runtime code (gcov); the only lines gcov reports as unexecuted are the empty-call terminate paths executed inside death-test subprocesses, which are not measurable because the child process aborts before flushing profile data. Removed unused header includes from tests. (#153)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.

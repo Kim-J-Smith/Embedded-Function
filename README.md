@@ -1,7 +1,7 @@
 ﻿# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.3.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.3.0">
+  <img src="https://img.shields.io/badge/Version-2.3.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.3.1">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -211,7 +211,8 @@ In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided
 
 - **`[]` means optional**.
 - `Signature`: The signature of the callable object. (such as `void(int)`)
-- `BufferSize`: The buffer size of the callable object. (such as `2*sizeof(void*)`)
+- `BufferSize`: The buffer size of the internal storage. (in bytes)
+- `Alignment`: The alignment of the internal storage. (in bytes)
 - `FnWrapper`: One of `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn` and `ebd::fn_ref`.
 
 ```cpp
@@ -387,6 +388,9 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 ### Stateless elimination
 
 `ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., trivially copyable classes with `static operator()`). This reduces memory access operations and improves cache efficiency.
+
+> [!IMPORTANT]
+> For owning polymorphic function wrappers (`fn`, `unique_fn`, etc.), empty and trivial functors are treated as *stateless* types. Consequently, their `this` pointer value will change on every invocation, as a fresh temporary is constructed on the stack for each call. Define macro `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` to disable this optimization.
 
 > Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 
