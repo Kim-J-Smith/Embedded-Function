@@ -16,7 +16,7 @@ struct Button {
     ebd::fn<void()> onClick;
 
     void click() {
-        if (onClick) { onClick(); }
+        if (!onClick.is_empty()) { onClick(); }
     }
 };
 

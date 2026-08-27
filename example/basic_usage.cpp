@@ -66,7 +66,7 @@ int main() {
     // Empty state check
     ebd::fn<void()> empty_fn;
     std::cout << "empty_fn is "
-              << (empty_fn ? "not empty" : "empty") << '\n';
+              << (empty_fn.is_empty() ? "empty" : "not empty") << '\n';
 
     return 0;
 }
