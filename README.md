@@ -160,8 +160,6 @@ auto main() -> int {
 
 4. **Triviality**: `fn_ref` is trivially copyable (same as `std::function_ref`).
 
-5. **`this` Pointer Stability (Technical Trade-off)**: The owning wrappers (`fn`/`unique_fn`/`classic_fn`) do **NOT** guarantee that the `this` pointer value of the wrapped callable object stays stable, even if the wrapper is never copied or moved. As an optimization (see [Stateless elimination](#stateless-elimination)), stateless callables (e.g., `std::less`, capture-less lambdas) are not stored in the buffer at all; instead, a fresh temporary is constructed on the stack for each invocation. Consequently, a callable must **NOT** rely on its own address for identity, caching, or self-reference.
-
 ### Convertibility
 
 - `Yes-D`: Convertible and direct wrapping (`To.BufferSize` >= `From.BufferSize`);
@@ -391,7 +389,8 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 `ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., trivially copyable classes with `static operator()`). This reduces memory access operations and improves cache efficiency.
 
-> **Trade-off**: As a result, stateless callables are invoked on a freshly-constructed temporary, so their `this` pointer value is **not stable** (it changes on every call). Owning wrappers make no promise about the `this` pointer stability of the wrapped callable, even without any copy or move (see [Key takeaways](#key-takeaways)).
+> [!IMPORTANT]
+> For owning polymorphic function wrappers (`fn`, `unique_fn`, etc.), empty and trivial functors are treated as *stateless* types. Consequently, their `this` pointer value will change on every invocation, as a fresh temporary is constructed on the stack for each call. Define macro `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` to disable this optimization.
 
 > Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
 
