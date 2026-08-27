@@ -1851,8 +1851,20 @@ namespace invocation {
         return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);            \
       }                                                                               \
     }                                                                                 \
-  }; /* end view_cw */
-  /// TODO: explore `inplace_cw` according to <https://wg21.link/P2511>.
+  }; /* end view_cw */                                                                \
+                                                                                      \
+  struct inplace_cw {                                                                 \
+    template <typename Cw, typename Functor>                                          \
+    static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
+      auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## V);                \
+      auto& fn = erased->template access<Functor>();                                  \
+      using Fn = conditional_t<is_rvalue_ref,                                         \
+        remove_reference_t<decltype(fn)>&&,                                           \
+        remove_reference_t<decltype(fn)>&>;                                           \
+      return invoke_r<Ret>(                                                           \
+        Cw::value, static_cast<Fn>(fn), std::forward<Args>(args)...);                 \
+    }                                                                                 \
+  }; /* end inplace_cw */
 #else
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)
 #endif
@@ -2170,6 +2182,19 @@ namespace command {
       m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
     }
 
+#endif // C++ >= 17
+
+#if __cpp_lib_constant_wrapper >= 202603L
+
+    /// @brief Initialize the m_invoker from given std::constant_wrapper.
+
+    template <typename Cw, typename Functor, typename DecFunctor = decay_t<Functor>>
+    constexpr void cw_init(erasure_base_t* target, Functor&& obj) noexcept {
+      manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
+      m_invoker = &invoker_impl_t::inplace_cw::template invoke<Cw, DecFunctor>;
+      m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
+    }
+
 #endif
   };
 
@@ -2255,7 +2280,7 @@ namespace command {
       m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj, CallPointer>;
     }
 
-#endif
+#endif // C++ >= 26
   };
 
 } // end namespace command
@@ -2759,6 +2784,8 @@ namespace crtp_mixins {
 
     template <typename T>
     using add_cv_like_sig_t = typename unwrap_signature<Signature>::template add_cv_like<T>;
+    template <typename T>
+    using add_cvref_like_sig_t = typename unwrap_signature<Signature>::template add_cvref_like<T>;
 
   public:
 
@@ -2952,8 +2979,6 @@ namespace crtp_mixins {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw>();
 
-      /// TODO: explore to use `std::cw` in owning mode according to P2511.
-
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
@@ -2972,8 +2997,6 @@ namespace crtp_mixins {
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
-
-      /// TODO: explore to use `std::cw` in owning mode according to P2511.
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
@@ -2994,8 +3017,6 @@ namespace crtp_mixins {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
 
-      /// TODO: explore to use `std::cw` in owning mode according to P2511.
-
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
@@ -3005,6 +3026,27 @@ namespace crtp_mixins {
       }
       if constexpr (std::is_member_pointer_v<Fn>) {
         EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, "object pointer cannot be nullptr.");
+      }
+    }
+
+    // Create function reference with given `std::constant_wrapper` and object params.
+    template <auto Val, typename Fn, typename Up, typename Tp = decay_t<Up>>
+      requires (!Config::isView)
+        && is_invocable_using<const Fn&, add_cvref_like_sig_t<Tp>>::value
+    constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
+    : Base_MemberVariable(nullptr) {
+
+      (void)assertions_for_functor<BufferSize, Config, Signature, Up, Up&&, erasure_t>{};
+
+      using Cw = std::constant_wrapper<Val, Fn>;
+      m_command.template cw_init<Cw>(&m_erasure, std::forward<Up>(obj));
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
+        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
+        /// free functions and pointers to member functions are not considered constant expressions.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
       }
     }
 
