@@ -2784,8 +2784,6 @@ namespace crtp_mixins {
 
     template <typename T>
     using add_cv_like_sig_t = typename unwrap_signature<Signature>::template add_cv_like<T>;
-    template <typename T>
-    using add_cvref_like_sig_t = typename unwrap_signature<Signature>::template add_cvref_like<T>;
 
   public:
 
@@ -3030,9 +3028,10 @@ namespace crtp_mixins {
     }
 
     // Create function reference with given `std::constant_wrapper` and object params.
-    template <auto Val, typename Fn, typename Up, typename Tp = decay_t<Up>>
-      requires (!Config::isView)
-        && is_invocable_using<const Fn&, add_cvref_like_sig_t<Tp>>::value
+    template <auto Val, typename Fn, typename Up, typename Tp = add_cv_like_sig_t<decay_t<Up>>,
+      bool RightRef = unwrap_signature<Signature>::hasRRef>
+        requires (!Config::isView)
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
     constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
     : Base_MemberVariable(nullptr) {
 
@@ -3546,28 +3545,33 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 #if __cpp_lib_constant_wrapper >= 202603L
 
 /// @brief make_fn[12]: Make function from `std::cw<fn>`.
-/// @return `fn_ref<Auto-Deduction>`
-template <auto Cw, typename Fn>
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept {
-  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using sig_correct = detail::get_correct_signature_t<fn_ref, sig_raw>;
+/// @return `fn<Auto-Deduction>`
+template <auto Val, typename Fn>
+EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Val, Fn>) noexcept {
+  using signature = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using Cw = std::constant_wrapper<Val, Fn>;
+  static constexpr std::size_t buffer_size = sizeof(Cw);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Cw)>::value;
 
   return detail::make_function_impl<
-    /* Fn = */ fn_ref<sig_correct>, /* NoThrow = */ true
-  >(std::constant_wrapper<Cw, Fn>{});
+    /* Fn = */ fn<signature, buffer_size, alignment>, /* NoThrow = */ true
+  >(Cw{});
 }
 
 /// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
-/// @return `fn_ref<Auto-Deduction>`
-template <auto Cw, typename Fn, typename Tp>
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) noexcept {
+/// @return `fn<Auto-Deduction>`
+template <auto Val, typename Fn, typename Tp,
+  bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Tp>, Tp&&>::value>
+EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using sig_wip = detail::get_correct_signature_t<fn_ref, sig_raw>;
-  using sig_correct = detail::skip_first_arg_sig_t<sig_wip>;
+  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using Cw = std::constant_wrapper<Val, Fn>;
+  static constexpr std::size_t buffer_size = sizeof(Tp);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Tp)>::value;
 
   return detail::make_function_impl<
-    /* Fn = */ fn_ref<sig_correct>, /* NoThrow = */ true
-  >(std::constant_wrapper<Cw, Fn>{}, std::forward<Tp>(obj));
+    /* Fn = */ fn<signature, buffer_size, alignment>, /* NoThrow = */ NoThrow
+  >(Cw{}, std::forward<Tp>(obj));
 }
 
 #endif // C++ >= 26

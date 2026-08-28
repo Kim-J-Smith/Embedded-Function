@@ -179,7 +179,7 @@ TEST(Conformance_fn_ref, constant_wrapper_pass) {
 
   {
     // constexpr and make_fn
-    constexpr auto f = ebd::make_fn(std::cw<&ebd_test_free_func_iii_add>);
+    constexpr auto f = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_free_func_iii_add>);
     static_assert(std::is_same_v<decltype(f), const ebd::fn_ref<int(int, int) const>>);
     ASSERT_EQ(f(42, 42), 42 + 42);
   }
