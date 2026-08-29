@@ -66,6 +66,24 @@ fn = [value](int x) { /* use value */ };
 fn(100);
 ```
 
+### From `std::constant_wrapper` (C++26+)
+
+```cpp
+struct MyClass {
+    void method(int a, int b) { /* do something */ }
+};
+
+// Bind an instance to a member function constant_wrapper; the first parameter
+// is removed from the signature and the instance is stored inside the wrapper.
+MyClass obj;
+ebd::fn<void(int)> fn(std::cw<&MyClass::method>, obj);
+fn(42);
+
+// A free-function constant_wrapper can also be stored (see ebd::make_fn).
+```
+
+`ebd::fn` can be constructed from a `std::constant_wrapper` (P3948) together with an object, which is stored by value in the wrapper buffer. This is available when `__cpp_lib_constant_wrapper >= 202603L` (C++26).
+
 ## Notes
 
 - `ebd::fn` is copyable and owns the callable object it wraps.

@@ -12,6 +12,9 @@ TEST(Conformance_fn, constant_wrapper_pass) {
 
         ebd::fn<int() noexcept> f2(std::cw<&Class::mem_fn_noexcept>, Class{});
         ASSERT_EQ(f2(), 0);
+
+        ebd::fn<int() &&> f3(std::cw<&Class::mem_fn_rref_callable>, Class{});
+        ASSERT_EQ(std::move(f3)(), OVL_R_REF);
     }
 }
 

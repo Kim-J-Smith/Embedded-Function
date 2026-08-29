@@ -99,6 +99,26 @@ explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&
 
 Constructs a function wrapper by in-place constructing the callable object within the internal buffer.
 
+#### Constant Wrapper Constructor (C++26+)
+
+```cpp
+template <auto Val, typename Fn>
+constexpr function(std::constant_wrapper<Val, Fn>) noexcept;
+
+template <auto Val, typename Fn, typename Up>
+constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept;
+
+template <auto Val, typename Fn, typename Tp>
+constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept;
+```
+
+Constructs a function wrapper from a `std::constant_wrapper` (P3948), available when `__cpp_lib_constant_wrapper >= 202603L`. The exact overload set depends on the configuration:
+
+- View wrappers (`ebd::fn_ref`): support construction from a bare `std::constant_wrapper` (free function or other callable), from a `std::constant_wrapper` plus an object (lvalue `obj`, bound by reference as the first parameter, which is removed from the signature), and from a `std::constant_wrapper` plus an object pointer (`Tp*`, which must not be null for member pointers).
+- Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, `ebd::safe_fn`): support construction from a `std::constant_wrapper` plus an object (or object pointer). The object is stored inside the wrapper buffer, and its type must satisfy the same buffer size/alignment constraints as any other functor.
+
+A `static_assert` rejects null `Val` when `Fn` is a (member) function pointer.
+
 ### Assignment Operators
 
 #### Nullptr Assignment
