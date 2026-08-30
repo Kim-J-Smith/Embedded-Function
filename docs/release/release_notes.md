@@ -8,7 +8,7 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- Removed unused and unnecessary macros in `embed/embed_function.hpp`.
+- None.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
