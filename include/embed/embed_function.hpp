@@ -2198,7 +2198,7 @@ namespace command {
       m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
     }
 
-#endif
+#endif // C++ >= 26
   };
 
   // Command Table for view mode.

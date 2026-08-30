@@ -32,6 +32,7 @@
 #endif
 
 #if 0
+/// TODO: Following up <https://github.com/llvm/llvm-project/issues/106660>.
 # define EBD_TEST_TRY_BUG__Clang_106660
 #endif
 
