@@ -3047,6 +3047,12 @@ namespace crtp_mixins {
       }
     }
 
+    /// TODO: @todo Explore new overload constructor with  `constant_wrapper` +`in_place_type_t`.
+    /// function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&...)
+    /// function(std::constant_wrapper<Val, Fn>,
+    ///          std::in_place_type_t<Obj>,
+    ///          std::initializer_list<U>, CArgs&&...)
+
 #endif // C++ >= 26
 
   };
