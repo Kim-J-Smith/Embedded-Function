@@ -3,7 +3,7 @@
  *
  * @date        2026-8-22
  *
- * @version     2.3.1
+ * @version     2.3.2
  *
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
