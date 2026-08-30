@@ -3506,6 +3506,9 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 /// @brief make_fn[12]: Make function from `std::cw<fn>`.
 /// @return `fn_ref<Auto-Deduction>`
 template <auto Cw, typename Fn>
+EMBED_DEPRECATED(
+  "The API of `make_fn(std::cw<...>)` will be changed in v2.4.0. "
+  "Use `make_fn<ebd::fn_ref>(std::cw<...>)` instead.")
 EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
   using sig_correct = detail::get_correct_signature_t<fn_ref, sig_raw>;
@@ -3518,6 +3521,9 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept {
 /// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
 /// @return `fn_ref<Auto-Deduction>`
 template <auto Cw, typename Fn, typename Tp>
+EMBED_DEPRECATED(
+  "The API of `make_fn(std::cw<...>, obj)` will be changed in v2.4.0. "
+  "Use `make_fn<ebd::fn_ref>(std::cw<...>, obj)` instead.")
 EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) noexcept {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
   using sig_wip = detail::get_correct_signature_t<fn_ref, sig_raw>;
@@ -3533,6 +3539,10 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) 
 /// @brief make_fn[14]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, BufferSize, Alignment>`
+#if defined(__GNUC__) || defined(__clang__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t, std::size_t> class Fn,
   typename SpecifiedSig = void,
@@ -3559,6 +3569,9 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
     /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
   >(std::forward<Args>(args)...);
 }
+#if defined(__GNUC__) || defined(__clang__)
+# pragma GCC diagnostic pop
+#endif
 
 // When all other make_fn() fail to match the input parameters,
 // this function will be called as the fall back to avoid the
