@@ -2191,7 +2191,8 @@ namespace command {
     // This method cannot be `constexpr` because `create` uses placement
     // new and 'unsigned char' is not similar to 'DecFunctor'.
     template <typename Cw, typename Functor, typename DecFunctor = decay_t<Functor>>
-    void cw_init(erasure_base_t* target, Functor&& obj) noexcept {
+    void cw_init(erasure_base_t* target, Functor&& obj)
+        noexcept(std::is_nothrow_constructible_v<DecFunctor, Functor&&>) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::inplace_cw::template invoke<Cw, DecFunctor>;
       m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
@@ -3031,7 +3032,7 @@ namespace crtp_mixins {
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
         && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
-    function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
+    function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept(std::is_nothrow_constructible_v<Tp, Up&&>)
     : Base_MemberVariable(nullptr) {
 
       (void)assertions_for_functor<BufferSize, Config, Signature, Up, Up&&, erasure_t>{};
