@@ -816,7 +816,7 @@ inline namespace cxx_traits {
     // `__builtin_launder` in MSVC is only accessible since C++17.
     return __builtin_launder(ptr);
 #elif defined(__GNUC__) || defined(__clang__)
-    __asm__("": "+r"(ptr)); // Cannot use `__asm__` in `noexcept` function.
+    __asm__("": "+r"(ptr)); // Cannot use `__asm__` in `constexpr` function.
     return ptr;
 #else
 # if defined(_MSC_VER) && !defined(__clang__)
