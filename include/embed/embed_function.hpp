@@ -3000,9 +3000,7 @@ namespace crtp_mixins {
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
-        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
-        /// free functions and pointers to member functions are not considered constant expressions.
+        /// @bug GCC bug 100313.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
     }
@@ -3019,9 +3017,7 @@ namespace crtp_mixins {
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
-        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
-        /// free functions and pointers to member functions are not considered constant expressions.
+        /// @bug GCC bug 100313.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
       if constexpr (std::is_member_pointer_v<Fn>) {
@@ -3030,6 +3026,7 @@ namespace crtp_mixins {
     }
 
     // Create owning function wrapper with given `std::constant_wrapper` and object params.
+    /// @note experimental @implements <https://wg21.link/P2511>
     template <auto Val, typename Fn, typename Up, typename Tp = add_cv_like_sig_t<decay_t<Up>>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
@@ -3044,9 +3041,7 @@ namespace crtp_mixins {
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
-        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
-        /// free functions and pointers to member functions are not considered constant expressions.
+        /// @bug GCC bug 100313.
         static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
       }
     }
