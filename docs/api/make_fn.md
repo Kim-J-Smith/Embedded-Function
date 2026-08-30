@@ -178,26 +178,21 @@ Constructs the callable directly inside the wrapper buffer. The returned wrapper
 ### 13. From `std::constant_wrapper` (C++26+)
 
 ```cpp
-template <auto Cw, typename Fn>
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept;
+template <auto Val, typename Fn>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept;
 ```
 
-Creates an `ebd::fn_ref` from a `std::constant_wrapper` (P3948) of a free function or other callable. The signature is deduced automatically. Only available when `__cpp_lib_constant_wrapper >= 202603L`.
-
-> [!WARNING]
-> This overload is **deprecated**: its API will be changed in v2.4.0. Use `make_fn<ebd::fn_ref>(std::cw<...>)` instead.
+Creates an owning `ebd::fn` from a `std::constant_wrapper` (P3948) of a free function or other callable. The signature is deduced automatically, and the buffer size and alignment are deduced from `sizeof(Cw)` and `alignof(Cw)` respectively (never less than `detail::default_values::owning::alignment`). Only available when `__cpp_lib_constant_wrapper >= 202603L`.
 
 ### 14. From `std::constant_wrapper` of a member pointer and an object (C++26+)
 
 ```cpp
-template <auto Cw, typename Fn, typename Tp>
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) noexcept;
+template <auto Val, typename Fn, typename Tp,
+          bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Tp>, Tp&&>::value>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow);
 ```
 
-Creates an `ebd::fn_ref` from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature.
-
-> [!WARNING]
-> This overload is **deprecated**: its API will be changed in v2.4.0. Use `make_fn<ebd::fn_ref>(std::cw<...>, obj)` instead.
+Creates an owning `ebd::fn` from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature. The object is stored inside the wrapper buffer, so the buffer size and alignment are deduced from `sizeof(Tp)` and `alignof(Tp)` respectively. The `noexcept` specification is deduced from whether the object is nothrow-constructible from `Tp&&`.
 
 ### 15. Explicit wrapper type
 
@@ -305,15 +300,19 @@ struct MyClass {
     int value;
 };
 
-// From a constant_wrapper of a free function.
-auto cw_fn = ebd::make_fn<ebd::fn_ref>(std::cw<&free_func>);
+// From a constant_wrapper of a free function. Returns an owning ebd::fn.
+auto cw_fn = ebd::make_fn(std::cw<&free_func>);
+cw_fn(1, 2);
 
-// From a constant_wrapper of a member function + instance.
+// From a constant_wrapper of a member function + instance. The instance is
+// copied into the returned owning ebd::fn, and the first parameter is removed.
 MyClass obj;
-auto cw_mem = ebd::make_fn<ebd::fn_ref>(std::cw<&MyClass::method>, obj);
+auto cw_mem = ebd::make_fn(std::cw<&MyClass::method>, obj);
+cw_mem(1, 2);
 
 // From a constant_wrapper of a member object + instance.
-auto cw_mem_obj = ebd::make_fn<ebd::fn_ref>(std::cw<&MyClass::value>, &obj);
+auto cw_mem_obj = ebd::make_fn(std::cw<&MyClass::value>, &obj);
+int v = cw_mem_obj();
 ```
 
 ## Notes
@@ -324,7 +323,7 @@ auto cw_mem_obj = ebd::make_fn<ebd::fn_ref>(std::cw<&MyClass::value>, &obj);
 - The explicit-wrapper overload accepts multiple arguments and works with `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`. The buffer size is deduced from the `make_fn(args...)` result instead of `sizeof(Functor)`.
 - `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.
 - When deduction fails, the fallback overload triggers a static assertion with guidance.
-- The `std::constant_wrapper` overloads (C++26+) return `ebd::fn_ref` and are `constexpr`. They replace the removed `ebd::fn_ref` CTAD deduction guides for `std::constant_wrapper`.
+- The `std::constant_wrapper` overloads (C++26+) return `ebd::fn`.
 
 ## See Also
 

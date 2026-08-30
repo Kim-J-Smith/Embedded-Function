@@ -1744,27 +1744,27 @@ namespace erasure_type {
     alignas(Align) ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
-    EMBED_NODISCARD void* access() noexcept { return &m_core.pod[0]; }
-    EMBED_NODISCARD const void* access() const noexcept { return &m_core.pod[0]; }
+    void* access() noexcept { return &m_core.pod[0]; }
+    const void* access() const noexcept { return &m_core.pod[0]; }
 
     // Access the pointer of erasureCore that qualified with volatile or const volatile.
-    EMBED_NODISCARD volatile void* access() volatile noexcept { return &m_core.pod[0]; }
-    EMBED_NODISCARD const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
+    volatile void* access() volatile noexcept { return &m_core.pod[0]; }
+    const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
 
     template <typename T>
-    EMBED_NODISCARD T& access() noexcept
+    T& access() noexcept
     { return *::ebd::detail::launder(static_cast<T*>(access())); }
 
     template <typename T>
-    EMBED_NODISCARD const T& access() const noexcept
+    const T& access() const noexcept
     { return *::ebd::detail::launder(static_cast<const T*>(access())); }
 
     template <typename T>
-    EMBED_NODISCARD volatile T& access() volatile noexcept
+    volatile T& access() volatile noexcept
     { return *::ebd::detail::launder(static_cast<volatile T*>(access())); }
 
     template <typename T>
-    EMBED_NODISCARD const volatile T& access() const volatile noexcept
+    const volatile T& access() const volatile noexcept
     { return *::ebd::detail::launder(static_cast<const volatile T*>(access())); }
   };
 
@@ -1827,8 +1827,20 @@ namespace invocation {
         return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);            \
       }                                                                               \
     }                                                                                 \
-  }; /* end view_cw */
-  /// TODO: explore `inplace_cw` according to <https://wg21.link/P2511>.
+  }; /* end view_cw */                                                                \
+                                                                                      \
+  struct inplace_cw {                                                                 \
+    template <typename Cw, typename Functor>                                          \
+    static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
+      auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## V);                \
+      auto& fn = erased->template access<Functor>();                                  \
+      using Fn = conditional_t<is_rvalue_ref,                                         \
+        remove_reference_t<decltype(fn)>&&,                                           \
+        remove_reference_t<decltype(fn)>&>;                                           \
+      return invoke_r<Ret>(                                                           \
+        Cw::value, static_cast<Fn>(fn), std::forward<Args>(args)...);                 \
+    }                                                                                 \
+  }; /* end inplace_cw */
 #else
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)
 #endif
@@ -1973,9 +1985,9 @@ namespace management {
     static void destroy(erasure_base_t* victim)
     noexcept(std::is_nothrow_destructible<Functor>::value) {
       auto* victim_ = static_cast<erasure_t*>(victim);
-      // Workaround for MSVC /analyze bug "warning C6031: Return value ignored".
-      auto& fn = victim_->template access<Functor>();
-      fn.~Functor();
+      // `access` shouldn't be qualified with `EMBED_NODISCARD` because of MSVC bug.
+      // MSVC /analyze triggers "warning C6031: Return value ignored" as a bug here.
+      victim_->template access<Functor>().~Functor();
     }
 
     // Clone type-erased object from `src` to `dst`.
@@ -2146,7 +2158,23 @@ namespace command {
       m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
     }
 
-#endif
+#endif // C++ >= 17
+
+#if __cpp_lib_constant_wrapper >= 202603L
+
+    /// @brief Initialize the m_invoker from given std::constant_wrapper.
+
+    // This method cannot be `constexpr` because `create` uses placement
+    // new and 'unsigned char' is not similar to 'DecFunctor'.
+    template <typename Cw, typename Functor, typename DecFunctor = decay_t<Functor>>
+    void cw_init(erasure_base_t* target, Functor&& obj)
+        noexcept(std::is_nothrow_constructible_v<DecFunctor, Functor&&>) {
+      manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
+      m_invoker = &invoker_impl_t::inplace_cw::template invoke<Cw, DecFunctor>;
+      m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
+    }
+
+#endif // C++ >= 26
   };
 
   // Command Table for view mode.
@@ -2231,7 +2259,7 @@ namespace command {
       m_invoker = &invoker_impl_t::view_cw::template invoke<Cw, Obj, CallPointer>;
     }
 
-#endif
+#endif // C++ >= 26
   };
 
 } // end namespace command
@@ -2937,8 +2965,6 @@ namespace crtp_mixins {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw>();
 
-      /// TODO: explore to use `std::cw` in owning mode according to P2511.
-
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
@@ -2958,13 +2984,9 @@ namespace crtp_mixins {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
 
-      /// TODO: explore to use `std::cw` in owning mode according to P2511.
-
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
-        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
-        /// free functions and pointers to member functions are not considered constant expressions.
+        /// @bug GCC bug 100313.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
     }
@@ -2979,19 +3001,42 @@ namespace crtp_mixins {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
 
-      /// TODO: explore to use `std::cw` in owning mode according to P2511.
-
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
-        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
-        /// free functions and pointers to member functions are not considered constant expressions.
+        /// @bug GCC bug 100313.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
       if constexpr (std::is_member_pointer_v<Fn>) {
         EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, "object pointer cannot be nullptr.");
       }
     }
+
+    // Create owning function wrapper with given `std::constant_wrapper` and object params.
+    /// @note experimental @implements <https://wg21.link/P2511>
+    template <auto Val, typename Fn, typename Up, typename Tp = add_cv_like_sig_t<decay_t<Up>>,
+      bool RightRef = unwrap_signature<Signature>::hasRRef>
+        requires (!Config::isView)
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
+    function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept(std::is_nothrow_constructible_v<Tp, Up&&>)
+    : Base_MemberVariable(nullptr) {
+
+      (void)assertions_for_functor<BufferSize, Config, Signature, Up, Up&&, erasure_t>{};
+
+      using Cw = std::constant_wrapper<Val, Fn>;
+      m_command.template cw_init<Cw>(&m_erasure, std::forward<Up>(obj));
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+      }
+    }
+
+    /// TODO: @todo Explore new overload constructor with  `constant_wrapper` +`in_place_type_t`.
+    /// function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&...)
+    /// function(std::constant_wrapper<Val, Fn>,
+    ///          std::in_place_type_t<Obj>,
+    ///          std::initializer_list<U>, CArgs&&...)
 
 #endif // C++ >= 26
 
@@ -3489,34 +3534,33 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 #if __cpp_lib_constant_wrapper >= 202603L
 
 /// @brief make_fn[12]: Make function from `std::cw<fn>`.
-/// @return `fn_ref<Auto-Deduction>`
-template <auto Cw, typename Fn>
-EMBED_DEPRECATED(
-  "The API of `make_fn(std::cw<...>)` will be changed in v2.4.0. "
-  "Use `make_fn<ebd::fn_ref>(std::cw<...>)` instead.")
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept {
-  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using sig_correct = detail::get_correct_signature_t<fn_ref, sig_raw>;
+/// @return `fn<Auto-Deduction>`
+template <auto Val, typename Fn>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept {
+  using signature = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using Cw = std::constant_wrapper<Val, Fn>;
+  static constexpr std::size_t buffer_size = sizeof(Cw);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Cw)>::value;
 
   return detail::make_function_impl<
-    /* Fn = */ fn_ref<sig_correct>, /* NoThrow = */ true
-  >(std::constant_wrapper<Cw, Fn>{});
+    /* Fn = */ fn<signature, buffer_size, alignment>, /* NoThrow = */ true
+  >(Cw{});
 }
 
 /// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
-/// @return `fn_ref<Auto-Deduction>`
-template <auto Cw, typename Fn, typename Tp>
-EMBED_DEPRECATED(
-  "The API of `make_fn(std::cw<...>, obj)` will be changed in v2.4.0. "
-  "Use `make_fn<ebd::fn_ref>(std::cw<...>, obj)` instead.")
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) noexcept {
+/// @return `fn<Auto-Deduction>`
+template <auto Val, typename Fn, typename Tp,
+  bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Tp>, Tp&&>::value>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using sig_wip = detail::get_correct_signature_t<fn_ref, sig_raw>;
-  using sig_correct = detail::skip_first_arg_sig_t<sig_wip>;
+  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using Cw = std::constant_wrapper<Val, Fn>;
+  static constexpr std::size_t buffer_size = sizeof(Tp);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Tp)>::value;
 
   return detail::make_function_impl<
-    /* Fn = */ fn_ref<sig_correct>, /* NoThrow = */ true
-  >(std::constant_wrapper<Cw, Fn>{}, std::forward<Tp>(obj));
+    /* Fn = */ fn<signature, buffer_size, alignment>, /* NoThrow = */ NoThrow
+  >(Cw{}, std::forward<Tp>(obj));
 }
 
 #endif // C++ >= 26
