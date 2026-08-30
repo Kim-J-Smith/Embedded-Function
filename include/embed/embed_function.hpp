@@ -1768,27 +1768,27 @@ namespace erasure_type {
     alignas(Align) ErasureCore<Size> m_core;
 
     // Access the pointer of erasureCore that qualified with nothing or const.
-    EMBED_NODISCARD void* access() noexcept { return &m_core.pod[0]; }
-    EMBED_NODISCARD const void* access() const noexcept { return &m_core.pod[0]; }
+    void* access() noexcept { return &m_core.pod[0]; }
+    const void* access() const noexcept { return &m_core.pod[0]; }
 
     // Access the pointer of erasureCore that qualified with volatile or const volatile.
-    EMBED_NODISCARD volatile void* access() volatile noexcept { return &m_core.pod[0]; }
-    EMBED_NODISCARD const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
+    volatile void* access() volatile noexcept { return &m_core.pod[0]; }
+    const volatile void* access() const volatile noexcept { return &m_core.pod[0]; }
 
     template <typename T>
-    EMBED_NODISCARD T& access() noexcept
+    T& access() noexcept
     { return *::ebd::detail::launder(static_cast<T*>(access())); }
 
     template <typename T>
-    EMBED_NODISCARD const T& access() const noexcept
+    const T& access() const noexcept
     { return *::ebd::detail::launder(static_cast<const T*>(access())); }
 
     template <typename T>
-    EMBED_NODISCARD volatile T& access() volatile noexcept
+    volatile T& access() volatile noexcept
     { return *::ebd::detail::launder(static_cast<volatile T*>(access())); }
 
     template <typename T>
-    EMBED_NODISCARD const volatile T& access() const volatile noexcept
+    const volatile T& access() const volatile noexcept
     { return *::ebd::detail::launder(static_cast<const volatile T*>(access())); }
   };
 
@@ -2009,9 +2009,9 @@ namespace management {
     static void destroy(erasure_base_t* victim)
     noexcept(std::is_nothrow_destructible<Functor>::value) {
       auto* victim_ = static_cast<erasure_t*>(victim);
-      // Workaround for MSVC /analyze bug "warning C6031: Return value ignored".
-      auto& fn = victim_->template access<Functor>();
-      fn.~Functor();
+      // `access` shouldn't be qualified with `EMBED_NODISCARD` because of MSVC bug.
+      // MSVC /analyze triggers "warning C6031: Return value ignored" as a bug here.
+      victim_->template access<Functor>().~Functor();
     }
 
     // Clone type-erased object from `src` to `dst`.
@@ -2188,8 +2188,10 @@ namespace command {
 
     /// @brief Initialize the m_invoker from given std::constant_wrapper.
 
+    // This method cannot be `constexpr` because `create` uses placement
+    // new and 'unsigned char' is not similar to 'DecFunctor'.
     template <typename Cw, typename Functor, typename DecFunctor = decay_t<Functor>>
-    constexpr void cw_init(erasure_base_t* target, Functor&& obj) noexcept {
+    void cw_init(erasure_base_t* target, Functor&& obj) noexcept {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::inplace_cw::template invoke<Cw, DecFunctor>;
       m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
@@ -3027,12 +3029,12 @@ namespace crtp_mixins {
       }
     }
 
-    // Create function reference with given `std::constant_wrapper` and object params.
+    // Create owning function wrapper with given `std::constant_wrapper` and object params.
     template <auto Val, typename Fn, typename Up, typename Tp = add_cv_like_sig_t<decay_t<Up>>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
         && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
-    constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
+    function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
     : Base_MemberVariable(nullptr) {
 
       (void)assertions_for_functor<BufferSize, Config, Signature, Up, Up&&, erasure_t>{};
