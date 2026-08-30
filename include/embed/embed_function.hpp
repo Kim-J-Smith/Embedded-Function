@@ -305,18 +305,6 @@
 # define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
 #endif
 
-#if __cpp_lib_unreachable >= 202202L
-# define EMBED_DETAIL_UNREACHABLE() std::unreachable()
-#elif EMBED_HAS_BUILTIN(__builtin_unreachable)
-# define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
-#elif defined(__GNUC__) && (__GNUC__ >= 5)
-# define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
-#elif defined(_MSC_VER) && !defined(__clang__)
-# define EMBED_DETAIL_UNREACHABLE() __assume(false)
-#else
-# define EMBED_DETAIL_UNREACHABLE()
-#endif
-
 // Guidelines for reporting internal errors.
 #define EMBED_DETAIL_REPORT_IE(error) \
   "An internal library error has occurred: [" error "] This is unexpected.\n" \
@@ -3603,7 +3591,6 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 #undef EMBED_DETAIL_TEXT_IMPL
 #undef EMBED_DETAIL_ALIAS
 #undef EMBED_DETAIL_FAIL_MESSAGE
-#undef EMBED_DETAIL_UNREACHABLE
 #undef EMBED_DETAIL_ASSERT_MESSAGE
 #undef EMBED_DETAIL_REPORT_IE
 #if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
