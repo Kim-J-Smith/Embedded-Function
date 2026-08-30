@@ -31,4 +31,8 @@
 # define EBD_TEST_TRY_BUG__MSVC_1944_1
 #endif
 
+#if 0
+# define EBD_TEST_TRY_BUG__Clang_106660
+#endif
+
 #endif // TEST_FALLBACK_MACRO_HPP_
