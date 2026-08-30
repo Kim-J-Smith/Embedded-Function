@@ -3549,7 +3549,7 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 /// @brief make_fn[12]: Make function from `std::cw<fn>`.
 /// @return `fn<Auto-Deduction>`
 template <auto Val, typename Fn>
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Val, Fn>) noexcept {
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept {
   using signature = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
   using Cw = std::constant_wrapper<Val, Fn>;
   static constexpr std::size_t buffer_size = sizeof(Cw);
@@ -3564,7 +3564,7 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Val, Fn>) noexcept 
 /// @return `fn<Auto-Deduction>`
 template <auto Val, typename Fn, typename Tp,
   bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Tp>, Tp&&>::value>
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
   using signature = detail::skip_first_arg_sig_t<sig_raw>;
   using Cw = std::constant_wrapper<Val, Fn>;
