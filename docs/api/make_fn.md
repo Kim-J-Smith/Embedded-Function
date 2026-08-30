@@ -179,7 +179,7 @@ Constructs the callable directly inside the wrapper buffer. The returned wrapper
 
 ```cpp
 template <auto Val, typename Fn>
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Val, Fn>) noexcept;
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept;
 ```
 
 Creates an owning `ebd::fn` from a `std::constant_wrapper` (P3948) of a free function or other callable. The signature is deduced automatically, and the buffer size and alignment are deduced from `sizeof(Cw)` and `alignof(Cw)` respectively (never less than `detail::default_values::owning::alignment`). Only available when `__cpp_lib_constant_wrapper >= 202603L`.
@@ -189,7 +189,7 @@ Creates an owning `ebd::fn` from a `std::constant_wrapper` (P3948) of a free fun
 ```cpp
 template <auto Val, typename Fn, typename Tp,
           bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Tp>, Tp&&>::value>
-EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow);
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow);
 ```
 
 Creates an owning `ebd::fn` from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature. The object is stored inside the wrapper buffer, so the buffer size and alignment are deduced from `sizeof(Tp)` and `alignof(Tp)` respectively. The `noexcept` specification is deduced from whether the object is nothrow-constructible from `Tp&&`.
