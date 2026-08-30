@@ -386,7 +386,7 @@ TEST(Conformance_fn_ref, constant_wrapper_ref_pass) {
   {
     // constexpr and make_fn
     static ebd_test_member_fn obj;
-    constexpr auto f = ebd::make_fn(std::cw<&ebd_test_member_fn::mem_fn_ii_add>, obj);
+    constexpr auto f = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_member_fn::mem_fn_ii_add>, obj);
     static_assert(std::is_same_v<decltype(f), const ebd::fn_ref<int(int, int)>>);
     ASSERT_EQ(f(42, 42), 42 + 42);
   }
@@ -394,20 +394,20 @@ TEST(Conformance_fn_ref, constant_wrapper_ref_pass) {
   {
     // make_fn
     static ebd_test_member_fn obj;
-    auto f = ebd::make_fn(std::cw<&ebd_test_member_fn::member_var>, obj);
+    auto f = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_member_fn::member_var>, obj);
     static_assert(std::is_same_v<decltype(f), ebd::fn_ref<int&() noexcept>>);
     ASSERT_EQ(f(), 0);
 
     int a = 0;
-    auto f2 = ebd::make_fn(std::cw<&ebd_test_free_func_iii_add>, a);
+    auto f2 = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_free_func_iii_add>, a);
     static_assert(std::is_same_v<decltype(f2), ebd::fn_ref<int(int)>>);
     ASSERT_EQ(f2(42), 42);
 
-    auto f3 = ebd::make_fn(std::cw<&ebd_test_free_func_iii_add_noexcept>, a);
+    auto f3 = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_free_func_iii_add_noexcept>, a);
     static_assert(std::is_same_v<decltype(f3), ebd::fn_ref<int(int&) noexcept>>);
     ASSERT_EQ(f3(a), 0);
 
-    auto f4 = ebd::make_fn(std::cw<&ebd_test_free_func_iii_add_const>, a);
+    auto f4 = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_free_func_iii_add_const>, a);
     static_assert(std::is_same_v<decltype(f4), ebd::fn_ref<int(const int&) const>>);
     ASSERT_EQ(f4(42), 42);
   }
