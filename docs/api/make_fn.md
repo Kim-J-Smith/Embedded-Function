@@ -184,6 +184,9 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept;
 
 Creates an `ebd::fn_ref` from a `std::constant_wrapper` (P3948) of a free function or other callable. The signature is deduced automatically. Only available when `__cpp_lib_constant_wrapper >= 202603L`.
 
+> [!WARNING] Deprecated
+> This overload is **deprecated**: its API will be changed in v2.4.0. Use `make_fn<ebd::fn_ref>(std::cw<...>)` instead.
+
 ### 14. From `std::constant_wrapper` of a member pointer and an object (C++26+)
 
 ```cpp
@@ -192,6 +195,9 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) 
 ```
 
 Creates an `ebd::fn_ref` from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature.
+
+> [!WARNING] Deprecated
+> This overload is **deprecated**: its API will be changed in v2.4.0. Use `make_fn<ebd::fn_ref>(std::cw<...>, obj)` instead.
 
 ### 15. Explicit wrapper type
 
@@ -300,14 +306,14 @@ struct MyClass {
 };
 
 // From a constant_wrapper of a free function.
-auto cw_fn = ebd::make_fn(std::cw<&free_func>);
+auto cw_fn = ebd::make_fn<ebd::fn_ref>(std::cw<&free_func>);
 
 // From a constant_wrapper of a member function + instance.
 MyClass obj;
-auto cw_mem = ebd::make_fn(std::cw<&MyClass::method>, obj);
+auto cw_mem = ebd::make_fn<ebd::fn_ref>(std::cw<&MyClass::method>, obj);
 
 // From a constant_wrapper of a member object + instance.
-auto cw_mem_obj = ebd::make_fn(std::cw<&MyClass::value>, &obj);
+auto cw_mem_obj = ebd::make_fn<ebd::fn_ref>(std::cw<&MyClass::value>, &obj);
 ```
 
 ## Notes
