@@ -3568,10 +3568,6 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(
 /// @brief make_fn[14]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, BufferSize, Alignment>`
-#if defined(__GNUC__) || defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t, std::size_t> class Fn,
   typename SpecifiedSig = void,
@@ -3598,9 +3594,6 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
     /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
   >(std::forward<Args>(args)...);
 }
-#if defined(__GNUC__) || defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
 
 // When all other make_fn() fail to match the input parameters,
 // this function will be called as the fall back to avoid the
