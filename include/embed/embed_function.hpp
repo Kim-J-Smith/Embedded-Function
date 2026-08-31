@@ -3,7 +3,7 @@
  *
  * @date        2026-8-22
  *
- * @version     2.3.1
+ * @version     2.3.2
  *
  * @copyright   Copyright (c) 2026 Kim-J-Smith
  *              All rights reserved.
@@ -241,26 +241,14 @@
 # define EMBED_DETAIL_VIRTUAL_INHERITANCE
 #endif
 
-// Generate the default/delete move constructors and move assignment for specified class.
-#define EMBED_DETAIL_MOVE_FUNCTION(class_name, default_or_delete) \
-  class_name(class_name&&)            = default_or_delete;\
-  class_name& operator=(class_name&&) = default_or_delete;
-
-// Generate the default/delete copy constructors and copy assignment for specified class.
-#define EMBED_DETAIL_COPY_FUNCTION(class_name, default_or_delete) \
-  class_name(const class_name&)             = default_or_delete;\
-  class_name& operator=(const class_name&)  = default_or_delete;
-
-// Generate default destructor and empty default constructor.
-#define EMBED_DETAIL_DTOR_ECTOR_DEFAULT(class_name) \
-  ~class_name() = default; \
-  class_name()  = default;
-
 // Generate all default functions (Ctor, Dtor, and assignment) for specified class.
-#define EMBED_DETAIL_ALL_DEFAULT(class_name)      \
-  EMBED_DETAIL_DTOR_ECTOR_DEFAULT(class_name)     \
-  EMBED_DETAIL_COPY_FUNCTION(class_name, default) \
-  EMBED_DETAIL_MOVE_FUNCTION(class_name, default)
+#define EMBED_DETAIL_ALL_DEFAULT(class_name) \
+    class_name()                              = default;\
+    ~class_name()                             = default;\
+    class_name(class_name&&)                  = default;\
+    class_name(const class_name&)             = default;\
+    class_name& operator=(class_name&&)       = default;\
+    class_name& operator=(const class_name&)  = default;
 
 /// @brief Unify the two SFINAE writing methods of "enable_if" and "requires",
 /// eliminating the need to maintain two sets of code.
@@ -303,18 +291,6 @@
 #else
 # define EMBED_DETAIL_FAIL_MESSAGE(message)
 # define EMBED_DETAIL_ASSERT_MESSAGE(expression, message)
-#endif
-
-#if __cpp_lib_unreachable >= 202202L
-# define EMBED_DETAIL_UNREACHABLE() std::unreachable()
-#elif EMBED_HAS_BUILTIN(__builtin_unreachable)
-# define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
-#elif defined(__GNUC__) && (__GNUC__ >= 5)
-# define EMBED_DETAIL_UNREACHABLE() __builtin_unreachable()
-#elif defined(_MSC_VER) && !defined(__clang__)
-# define EMBED_DETAIL_UNREACHABLE() __assume(false)
-#else
-# define EMBED_DETAIL_UNREACHABLE()
 #endif
 
 // Guidelines for reporting internal errors.
@@ -828,7 +804,7 @@ inline namespace cxx_traits {
     // `__builtin_launder` in MSVC is only accessible since C++17.
     return __builtin_launder(ptr);
 #elif defined(__GNUC__) || defined(__clang__)
-    __asm__("": "+r"(ptr)); // Cannot use `__asm__` in `noexcept` function.
+    __asm__("": "+r"(ptr)); // Cannot use `__asm__` in `constexpr` function.
     return ptr;
 #else
 # if defined(_MSC_VER) && !defined(__clang__)
@@ -2334,9 +2310,11 @@ namespace crtp_mixins {
   // Implement the destructor.
   template <typename Config, typename Self>
   struct destructor_impl {
-    EMBED_DETAIL_COPY_FUNCTION(destructor_impl, default)
-    EMBED_DETAIL_MOVE_FUNCTION(destructor_impl, default)
-    destructor_impl() = default;
+    destructor_impl()                                   = default;
+    destructor_impl(destructor_impl&&)                  = default;
+    destructor_impl(const destructor_impl&)             = default;
+    destructor_impl& operator=(destructor_impl&&)       = default;
+    destructor_impl& operator=(const destructor_impl&)  = default;
 
     ~destructor_impl() noexcept(Config::assertNoThrow) {
       using erasure_t = typename Self::erasure_t;
@@ -2348,8 +2326,10 @@ namespace crtp_mixins {
   // Implement the move constructor and move assignment.
   template <typename Config, typename Self>
   struct move_impl {
-    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(move_impl)
-    EMBED_DETAIL_COPY_FUNCTION(move_impl, default)
+    move_impl()                             = default;
+    ~move_impl()                            = default;
+    move_impl(const move_impl&)             = default;
+    move_impl& operator=(const move_impl&)  = default;
 
     move_impl(move_impl&& other_raw) noexcept(Config::assertNoThrow) {
       // Get the real `self` and `other`.
@@ -2386,8 +2366,10 @@ namespace crtp_mixins {
   // Implement the copy constructor and copy assignment.
   template <typename Config, typename Self>
   struct copy_impl {
-    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(copy_impl)
-    EMBED_DETAIL_MOVE_FUNCTION(copy_impl, default)
+    copy_impl()                       = default;
+    ~copy_impl()                      = default;
+    copy_impl(copy_impl&&)            = default;
+    copy_impl& operator=(copy_impl&&) = default;
 
     copy_impl(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
       // Get the real `self` and `other`.
@@ -2433,9 +2415,12 @@ namespace crtp_mixins {
     : public destructor_impl<Config, Self>,
       public move_impl<Config, Self>
   {
-    EMBED_DETAIL_DTOR_ECTOR_DEFAULT(lifetime_operations_impl)
-    EMBED_DETAIL_MOVE_FUNCTION(lifetime_operations_impl, default)
-    EMBED_DETAIL_COPY_FUNCTION(lifetime_operations_impl, delete)
+    lifetime_operations_impl()                                      = default;
+    ~lifetime_operations_impl()                                     = default;
+    lifetime_operations_impl(lifetime_operations_impl&&)            = default;
+    lifetime_operations_impl& operator=(lifetime_operations_impl&&) = default;
+    lifetime_operations_impl(const lifetime_operations_impl&)             = delete;
+    lifetime_operations_impl& operator=(const lifetime_operations_impl&)  = delete;
   };
 
   // Implement clone constructor, move constructor, destructor, clone assignment,
@@ -3506,6 +3491,9 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 /// @brief make_fn[12]: Make function from `std::cw<fn>`.
 /// @return `fn_ref<Auto-Deduction>`
 template <auto Cw, typename Fn>
+EMBED_DEPRECATED(
+  "The API of `make_fn(std::cw<...>)` will be changed in v2.4.0. "
+  "Use `make_fn<ebd::fn_ref>(std::cw<...>)` instead.")
 EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
   using sig_correct = detail::get_correct_signature_t<fn_ref, sig_raw>;
@@ -3518,6 +3506,9 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>) noexcept {
 /// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
 /// @return `fn_ref<Auto-Deduction>`
 template <auto Cw, typename Fn, typename Tp>
+EMBED_DEPRECATED(
+  "The API of `make_fn(std::cw<...>, obj)` will be changed in v2.4.0. "
+  "Use `make_fn<ebd::fn_ref>(std::cw<...>, obj)` instead.")
 EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) noexcept {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
   using sig_wip = detail::get_correct_signature_t<fn_ref, sig_raw>;
@@ -3533,6 +3524,10 @@ EMBED_NODISCARD constexpr auto make_fn(std::constant_wrapper<Cw, Fn>, Tp&& obj) 
 /// @brief make_fn[14]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, BufferSize, Alignment>`
+#if defined(__GNUC__) || defined(__clang__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 EMBED_DETAIL_TEMPLATE_BEGIN(
   template <class, std::size_t, std::size_t> class Fn,
   typename SpecifiedSig = void,
@@ -3559,6 +3554,9 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
     /* Fn = */ FnWrapper, /* NoThrow = */ NoThrow
   >(std::forward<Args>(args)...);
 }
+#if defined(__GNUC__) || defined(__clang__)
+# pragma GCC diagnostic pop
+#endif
 
 // When all other make_fn() fail to match the input parameters,
 // this function will be called as the fall back to avoid the
@@ -3580,9 +3578,6 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 #undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_FORCE_EBO
 #undef EMBED_DETAIL_VIRTUAL_INHERITANCE
-#undef EMBED_DETAIL_MOVE_FUNCTION
-#undef EMBED_DETAIL_COPY_FUNCTION
-#undef EMBED_DETAIL_DTOR_ECTOR_DEFAULT
 #undef EMBED_DETAIL_ALL_DEFAULT
 #undef EMBED_DETAIL_TEMPLATE_BEGIN
 #undef EMBED_DETAIL_REQUIRES_END
@@ -3590,7 +3585,6 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 #undef EMBED_DETAIL_TEXT_IMPL
 #undef EMBED_DETAIL_ALIAS
 #undef EMBED_DETAIL_FAIL_MESSAGE
-#undef EMBED_DETAIL_UNREACHABLE
 #undef EMBED_DETAIL_ASSERT_MESSAGE
 #undef EMBED_DETAIL_REPORT_IE
 #if EMBED_HAS_FEATURE(nullability) && defined(__clang__)

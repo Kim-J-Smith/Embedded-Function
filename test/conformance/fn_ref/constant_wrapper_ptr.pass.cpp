@@ -364,7 +364,7 @@ TEST(Conformance_fn_ref, constant_wrapper_ptr_pass) {
   {
     // constexpr and make_fn
     static ebd_test_member_fn obj;
-    constexpr auto f = ebd::make_fn(std::cw<&ebd_test_member_fn::mem_fn_ii_add>, &obj);
+    constexpr auto f = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_member_fn::mem_fn_ii_add>, &obj);
     static_assert(std::is_same_v<decltype(f), const ebd::fn_ref<int(int, int)>>);
     ASSERT_EQ(f(42, 42), 42 + 42);
   }
@@ -372,7 +372,7 @@ TEST(Conformance_fn_ref, constant_wrapper_ptr_pass) {
   {
     // make_fn
     static ebd_test_member_fn obj;
-    auto f = ebd::make_fn(std::cw<&ebd_test_member_fn::member_var>, &obj);
+    auto f = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_member_fn::member_var>, &obj);
     static_assert(std::is_same_v<decltype(f), ebd::fn_ref<int&() noexcept>>);
     ASSERT_EQ(f(), 0);
   }
