@@ -3601,6 +3601,7 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 #if !defined(_MSC_VER) || defined(__clang__)
 // MSVC has a bug where passing over-aligned arguments to make_fn triggers error C2718.
 // See <https://developercommunity.visualstudio.com/t/MSVC-emits-C2718-for-over-aligned-argume/11141150>.
+/// TODO: MSVC's fix is pending-release.
 template <typename Unused = void,
   EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
 EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused>(); }
