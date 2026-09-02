@@ -15,19 +15,39 @@ static int func_iii_add_noexcept(int a, int b) noexcept {
     return a + b;
 }
 
+struct NonConstInvocable {
+  void operator()(int*) noexcept {}
+};
+
+using A = ebd_test_member_fn;
+
 }
 
+// member function
+static_assert(
+    std::is_constructible_v<ebd::fn<int(int, int)>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+static_assert(
+    !std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<int(int, int) const>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<int(int, int) noexcept>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<int(int, int) const noexcept>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+
+// non-const-invocable functor
+static_assert(
+    !std::is_constructible_v<ebd::fn<void()>, std::constant_wrapper<NonConstInvocable{}>, int*>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<void() const>, std::constant_wrapper<NonConstInvocable{}>, int*>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<void() noexcept>, std::constant_wrapper<NonConstInvocable{}>, int*>);
 
 TEST(Conformance_fn, constant_wrapper_pass) {
     {
         using Class = ebd_test_member_fn;
         Class obj{};
         auto* ptr = &obj;
-
-        static_assert(std::is_constructible_v<ebd::fn<int(int, int)>,
-            std::constant_wrapper<&Class::mem_fn_ii_add>, Class>);
-        static_assert(!std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,
-            std::constant_wrapper<&Class::mem_fn_ii_add>, Class>);
 
         {
             ebd::fn<int(int, int)> f1(std::cw<&Class::mem_fn_ii_add>, obj);
