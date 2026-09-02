@@ -11,8 +11,37 @@ struct ExplicitThis {
     }
 };
 
+static int func_iii_add_noexcept(int a, int b) noexcept {
+    return a + b;
 }
 
+struct NonConstInvocable {
+  void operator()(int*) noexcept {}
+};
+
+using A = ebd_test_member_fn;
+
+}
+
+// member function
+static_assert(
+    std::is_constructible_v<ebd::fn<int(int, int)>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+static_assert(
+    !std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<int(int, int) const>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<int(int, int) noexcept>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<int(int, int) const noexcept>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+
+// non-const-invocable functor
+static_assert(
+    !std::is_constructible_v<ebd::fn<void()>, std::constant_wrapper<NonConstInvocable{}>, int*>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<void() const>, std::constant_wrapper<NonConstInvocable{}>, int*>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<void() noexcept>, std::constant_wrapper<NonConstInvocable{}>, int*>);
 
 TEST(Conformance_fn, constant_wrapper_pass) {
     {
@@ -42,6 +71,54 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             // ERROR
             // ebd::fn<int() &&> f2(std::cw<&Class::mem_fn_rref_callable>, ptr);
             // ASSERT_EQ(std::move(f2)(), OVL_R_REF);
+        }
+        {
+            // non-qualifier
+            int a = 42;
+            ebd::fn<int(int)> f1(std::cw<&ebd_test_free_func_iii_add>, a);
+            ASSERT_EQ(f1(1), 43);
+
+            ebd::fn<int(int)> f2(std::cw<[](int a, int b) { return a + b; }>, a);
+            ASSERT_EQ(f2(2), 44);
+
+            ebd::fn<int(int)> f3(std::cw<+[](int a, int b) { return a + b; }>, a);
+            ASSERT_EQ(f3(3), 45);
+        }
+        {
+            // const-qualifier
+            int a = 42;
+            ebd::fn<int(int) const> f1(std::cw<&ebd_test_free_func_iii_add>, a);
+            ASSERT_EQ(f1(1), 43);
+
+            ebd::fn<int(int) const> f2(std::cw<[](int a, int b) { return a + b; }>, a);
+            ASSERT_EQ(f2(2), 44);
+
+            ebd::fn<int(int) const> f3(std::cw<+[](int a, int b) { return a + b; }>, a);
+            ASSERT_EQ(f3(3), 45);
+        }
+        {
+            // noexcept-qualifier
+            int a = 42;
+            ebd::fn<int(int) noexcept> f1(std::cw<&func_iii_add_noexcept>, a);
+            ASSERT_EQ(f1(1), 43);
+
+            ebd::fn<int(int) noexcept> f2(std::cw<[](int a, int b) noexcept { return a + b; }>, a);
+            ASSERT_EQ(f2(2), 44);
+
+            ebd::fn<int(int) noexcept> f3(std::cw<+[](int a, int b) noexcept { return a + b; }>, a);
+            ASSERT_EQ(f3(3), 45);
+        }
+        {
+            // const & noexcept-qualifier
+            int a = 42;
+            ebd::fn<int(int) const noexcept> f1(std::cw<&func_iii_add_noexcept>, a);
+            ASSERT_EQ(f1(1), 43);
+
+            ebd::fn<int(int) const noexcept> f2(std::cw<[](int a, int b) noexcept { return a + b; }>, a);
+            ASSERT_EQ(f2(2), 44);
+
+            ebd::fn<int(int) const noexcept> f3(std::cw<+[](int a, int b) noexcept { return a + b; }>, a);
+            ASSERT_EQ(f3(3), 45);
         }
     }
 
