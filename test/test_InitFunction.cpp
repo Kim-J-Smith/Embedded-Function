@@ -864,8 +864,25 @@ struct ebd_test_InitFunction_Wuninitialized {
 
 // InitFunction[42]
 TEST(InitFunction, Wuninitialized) {
-    ebd_test_InitFunction_Wuninitialized f;
-    f.set([]{});
+    {
+        ebd_test_InitFunction_Wuninitialized f;
+        f.set([]{});
+    }
+    {
+        ebd::fn<bool(int, int)> f = std::less<int>{};
+        auto g = std::move(f);
+        ASSERT_TRUE(!g.is_empty());
+    }
+    {
+        ebd::fn<void()> f = static_cast<void(*)()>(nullptr);
+        auto g = std::move(f);
+        ASSERT_TRUE(g.is_empty());
+    }
+    {
+        ebd::fn<void()> f = static_cast<void(*)()>(nullptr);
+        ebd::fn<void()> g;
+        std::swap(g, f);
+    }
 }
 
 // InitFunction[43]

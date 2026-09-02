@@ -2539,6 +2539,9 @@ namespace crtp_mixins {
 #if defined(__GNUC__) || defined(__clang__)
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wuninitialized"
+# ifndef __clang__
+#  pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+# endif // ^^^ GCC only
 #endif
 
     // The `m_erasure` is sometimes uninitialized.
