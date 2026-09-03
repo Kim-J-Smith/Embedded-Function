@@ -1099,17 +1099,17 @@ inline namespace fn_traits {
   // without throwing an exception. And `std::is_nothrow_constructible`
   // has bug. (It will also check the destructor)
   // See <https://cplusplus.github.io/LWG/issue2116>.
-  template <typename Functor, typename Class = decay_t<Functor>,
-    typename = void>
-  struct is_nothrow_construct_from_functor
-  : public bool_constant<false> {};
+  template <typename Target, typename... Args>
+  struct is_nothrow_constructible_lwg2116 : public bool_constant<
+    noexcept(::new (static_cast<void*>(nullptr)) Target(std::declval<Args>()...))
+  > {};
+
+  template <typename Functor, typename Class = decay_t<Functor>, typename = void>
+  struct is_nothrow_construct_from_functor : public bool_constant<false> {};
 
   template <typename Functor, typename Class>
-  struct is_nothrow_construct_from_functor<
-    Functor, Class, void_t<decltype( Class(std::declval<Functor>()) )>>
-  : public bool_constant<
-    noexcept(::new (static_cast<void*>(nullptr)) Class(std::declval<Functor>()))
-  > {};
+  struct is_nothrow_construct_from_functor<Functor, Class, void_t<decltype(Class(std::declval<Functor>()))>>
+  : public is_nothrow_constructible_lwg2116<Class, Functor> {};
 
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_size_is_enough : bool_constant<
@@ -3599,7 +3599,7 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   std::size_t Alignment = detail::is_ebd_fn<Fn<int(), 0, alignof(int*)>>::config::isView ?
     detail::default_values::non_owning::alignment : Deduction::get_alignment(),
   typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
-  bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))
+  bool NoThrow = detail::is_nothrow_constructible_lwg2116<FnWrapper, Args...>::value
 )
 EMBED_DETAIL_REQUIRES_END(
   detail::is_ebd_fn<FnWrapper>::value
