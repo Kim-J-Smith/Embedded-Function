@@ -9,6 +9,7 @@
 
 **🛠️ Optimizations and Improvements**
 - Owning polymorphic function wrappers no longer zero-initialize `m_erasure` when constructing from a functor, in order to reduce binary size. (#164)
+- Default-constructed function wrappers (and those constructed from `nullptr`) no longer zero-initialize the whole internal storage and command table; only `sizeof(char)` (one byte) is written into `m_erasure` to suppress GCC warnings (`-Wmaybe-uninitialized` / `-Wuninitialized`), and the buffer-converting copy/move constructors likewise now write one byte instead of `sizeof(void*)`, in order to reduce binary size and initialization cost. (#165)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
