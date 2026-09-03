@@ -1100,16 +1100,16 @@ inline namespace fn_traits {
   // has bug. (It will also check the destructor)
   // See <https://cplusplus.github.io/LWG/issue2116>.
   template <typename Target, typename... Args>
-  struct is_nothrow_constructible_lwg2116 : public bool_constant<
+  struct is_nothrow_constructible_lwg2116 : bool_constant<
     noexcept(::new (static_cast<void*>(nullptr)) Target(std::declval<Args>()...))
   > {};
 
   template <typename Functor, typename Class = decay_t<Functor>, typename = void>
-  struct is_nothrow_construct_from_functor : public bool_constant<false> {};
+  struct is_nothrow_construct_from_functor : std::false_type {};
 
   template <typename Functor, typename Class>
   struct is_nothrow_construct_from_functor<Functor, Class, void_t<decltype(Class(std::declval<Functor>()))>>
-  : public is_nothrow_constructible_lwg2116<Class, Functor> {};
+  : is_nothrow_constructible_lwg2116<Class, Functor> {};
 
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_size_is_enough : bool_constant<

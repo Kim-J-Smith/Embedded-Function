@@ -1,4 +1,3 @@
-#include "__constant_wrapper.hpp"
 #include "test_function.hpp"
 
 namespace {
