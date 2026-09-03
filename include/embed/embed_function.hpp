@@ -2555,6 +2555,11 @@ namespace crtp_mixins {
     constexpr member_variable_impl(std::nullptr_t) noexcept
     : m_erasure(erasure_t{}), m_command(command_t{}) {}
 
+    member_variable_impl(std::nullptr_t, std::nullptr_t) noexcept {
+      // Suppress GCC warning: "-Wmaybe-uninitialized" and "-Wuninitialized".
+      std::memset(m_erasure.access(), 0, sizeof(char));
+    }
+
     using erasure_t = erasure_type::Erasure<Config::isView, Size, Align>;
     using command_t = command::CommandTable<
       Config::isView, Size, Align, Config, Signature,
@@ -2820,14 +2825,14 @@ namespace crtp_mixins {
 #if __cpp_concepts >= 202002L
       requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : Base_MemberVariable(nullptr), Base_CoreComponents(nullptr) {}
+    : Base_MemberVariable(nullptr, nullptr), Base_CoreComponents(nullptr) {}
 
     // Create an empty function wrapper.
     function(std::nullptr_t) noexcept
 #if __cpp_concepts >= 202002L
       requires requires { Base_CoreComponents(nullptr); }
 #endif
-    : Base_MemberVariable(nullptr), Base_CoreComponents(nullptr) {}
+    : Base_MemberVariable(nullptr, nullptr), Base_CoreComponents(nullptr) {}
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
@@ -2841,7 +2846,7 @@ namespace crtp_mixins {
     ) function(const function<OtherSize, OtherAlign, OtherCfg, OtherSig>& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
-      std::memset(&m_erasure, 0, sizeof(void*));
+      std::memset(m_erasure.access(), 0, sizeof(char));
 
       other.m_command.clone(&m_erasure, &other.m_erasure);
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
@@ -2858,7 +2863,7 @@ namespace crtp_mixins {
     ) function(function<OtherSize, OtherAlign, OtherCfg, OtherSig>&& other)
     noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
       // Suppress GCC warning: "-Wmaybe-uninitialized".
-      std::memset(&m_erasure, 0, sizeof(void*));
+      std::memset(m_erasure.access(), 0, sizeof(char));
 
       other.m_command.move(&m_erasure, &other.m_erasure);
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
