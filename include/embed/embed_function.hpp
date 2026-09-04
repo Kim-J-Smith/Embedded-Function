@@ -2791,6 +2791,14 @@ namespace crtp_mixins {
     template <typename T>
     using add_cv_like_sig_t = typename unwrap_signature<Signature>::template add_cv_like<T>;
 
+    // Set empty if self is in owning mode.
+    template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig,
+      EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/>
+    static EMBED_INLINE void set_empty_if_owning(function<Buf, Align, Cfg, Sig>& self) noexcept
+    { self.m_command.set_empty(); }
+    template <typename T>
+    static EMBED_INLINE void set_empty_if_owning(T&) noexcept { /* nothing */ }
+
   public:
 
     // The return type.
@@ -2844,12 +2852,14 @@ namespace crtp_mixins {
       && is_convertible_from_specialization<function,
         function<OtherSize, OtherAlign, OtherCfg, OtherSig>>::value
     ) function(const function<OtherSize, OtherAlign, OtherCfg, OtherSig>& other)
-    noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
-      // Suppress GCC warning: "-Wmaybe-uninitialized".
-      std::memset(m_erasure.access(), 0, sizeof(char));
-
-      other.m_command.clone(&m_erasure, &other.m_erasure);
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+      noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value)
+    : Base_MemberVariable(nullptr, nullptr) {
+      if (!check_not_empty::not_empty(other)) {
+        set_empty_if_owning(*this);
+      } else {
+        other.m_command.clone(&m_erasure, &other.m_erasure);
+        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+      }
     }
 
     // Use `placement new` to create new functor during construction. (Move)
@@ -2861,14 +2871,16 @@ namespace crtp_mixins {
       && is_convertible_from_specialization<function,
         function<OtherSize, OtherAlign, OtherCfg, OtherSig>>::value
     ) function(function<OtherSize, OtherAlign, OtherCfg, OtherSig>&& other)
-    noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value) {
-      // Suppress GCC warning: "-Wmaybe-uninitialized".
-      std::memset(m_erasure.access(), 0, sizeof(char));
-
-      other.m_command.move(&m_erasure, &other.m_erasure);
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-      other.m_command.destroy(&other.m_erasure);
-      other.m_command.set_empty();
+      noexcept(is_cfg_noexcept<Config>::value && is_cfg_noexcept<OtherCfg>::value)
+    : Base_MemberVariable(nullptr, nullptr) {
+      if (other.is_empty()) {
+        m_command.set_empty();
+      } else {
+        other.m_command.move(&m_erasure, &other.m_erasure);
+        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+        other.m_command.destroy(&other.m_erasure);
+        other.m_command.set_empty();
+      }
     }
 
     /// @brief Builds a Fn that targets a copy/move of the incoming function object.

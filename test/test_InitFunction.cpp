@@ -883,6 +883,23 @@ TEST(InitFunction, Wuninitialized) {
         ebd::fn<void()> g;
         std::swap(g, f);
     }
+    {
+        ebd::fn<void()> f = static_cast<void(*)()>(nullptr);
+        ebd::fn<void(), 128> g = std::move(f);
+        ASSERT_TRUE(g.is_empty());
+    }
+    {
+        ebd::fn<void()> f = static_cast<void(*)()>(nullptr);
+        ebd::fn<void(), 128> g;
+        g = f;
+        ASSERT_TRUE(g.is_empty());
+    }
+    {
+        auto f = ebd::make_fn(std::function<void()>{nullptr});
+        ebd::fn<void() const> g;
+        f = g;
+        ASSERT_TRUE(f.is_empty());
+    }
 }
 
 // InitFunction[43]

@@ -1,5 +1,6 @@
 **🔧 Fixed Bugs**
 - Fixed a bug where `make_fn` would be `noexcept(false)` when the passed-in functor is not nothrow-destructible. (#166)
+- Fixed a bug where assigning `fn<Sig, Small>` to `fn<Sig, Large>` would lose empty state. (#168)
 
 **⚠️ Breaking Changes**
 - `make_fn(std::cw<...>)` and `make_fn(std::cw<...>, ...)` now return `fn` instead of `fn_ref`. If you still want them to return `fn_ref`, use `make_fn<fn_ref>(std::cw<...>)` and `make_fn<fn_ref>(std::cw<...>, ...)` instead. (#160)
