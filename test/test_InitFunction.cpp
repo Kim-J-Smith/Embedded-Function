@@ -864,8 +864,42 @@ struct ebd_test_InitFunction_Wuninitialized {
 
 // InitFunction[42]
 TEST(InitFunction, Wuninitialized) {
-    ebd_test_InitFunction_Wuninitialized f;
-    f.set([]{});
+    {
+        ebd_test_InitFunction_Wuninitialized f;
+        f.set([]{});
+    }
+    {
+        ebd::fn<bool(int, int)> f = std::less<int>{};
+        auto g = std::move(f);
+        ASSERT_TRUE(!g.is_empty());
+    }
+    {
+        ebd::fn<void()> f = static_cast<void(*)()>(nullptr);
+        auto g = std::move(f);
+        ASSERT_TRUE(g.is_empty());
+    }
+    {
+        ebd::fn<void()> f = static_cast<void(*)()>(nullptr);
+        ebd::fn<void()> g;
+        std::swap(g, f);
+    }
+    {
+        ebd::fn<void()> f = static_cast<void(*)()>(nullptr);
+        ebd::fn<void(), 128> g = std::move(f);
+        ASSERT_TRUE(g.is_empty());
+    }
+    {
+        ebd::fn<void()> f = static_cast<void(*)()>(nullptr);
+        ebd::fn<void(), 128> g;
+        g = f;
+        ASSERT_TRUE(g.is_empty());
+    }
+    {
+        auto f = ebd::make_fn(std::function<void()>{nullptr});
+        ebd::fn<void() const> g;
+        f = g;
+        ASSERT_TRUE(f.is_empty());
+    }
 }
 
 // InitFunction[43]

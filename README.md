@@ -1,7 +1,7 @@
 ﻿# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.3.2-yellow?style=for-the-badge&logo=github" alt="Version - 2.3.2">
+  <img src="https://img.shields.io/badge/Version-2.4.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.4.0">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -202,7 +202,7 @@ graph TB;
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature, buffer size and alignment of the callable object and create a `ebd::fn`, `ebd::unique_fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type. Return `ebd::fn_ref` only when the callable object is `std::cw`.)
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature, buffer size and alignment of the callable object and create a `ebd::fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type.)
 
 > __NOTE__: 
 > The [Concepts](https://cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
@@ -251,7 +251,7 @@ auto f = ebd::make_fn[<FnWrapper[, Signature]>](
 ```
 
 ```cpp
-// Create ebd::fn_ref from std::constant_wrapper. 
+// Create ebd::fn from std::constant_wrapper. 
 // Since C++26
 auto f = ebd::make_fn(std::cw<&free_function>);
 auto f = ebd::make_fn(std::cw<&Class::member_function>, obj);

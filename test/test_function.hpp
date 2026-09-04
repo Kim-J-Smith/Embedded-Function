@@ -68,6 +68,14 @@ enum OverloadRes {
     OVL_INT_FLOAT,
     OVL_INT_INT_INT,
 };
+
+enum OverloadQualifier {
+    OVL_CONST       = 0x01,
+    OVL_VOLATILE    = 0x02,
+    OVL_L_REF       = 0x04,
+    OVL_R_REF       = 0x08,
+};
+
 inline int ebd_test_free_func_overload() { return OVL_VOID; }
 inline int ebd_test_free_func_overload(int) { return OVL_INT; }
 inline int ebd_test_free_func_overload(char) { return OVL_CHAR; }
@@ -126,6 +134,8 @@ public:
     int mem_fn_overload(double) { return OVL_DOUBLE; }
     int mem_fn_overload(int, int) { return OVL_INT_INT; }
     int mem_fn_overload(int, float) { return OVL_INT_FLOAT; }
+
+    int mem_fn_rref_callable() && { return OVL_R_REF; }
 
     int get_var_and_increase(int step) noexcept {
         auto tmp = member_var;
@@ -194,13 +204,6 @@ public:
     ~ebd_test_move_only_callable() = default;
 
     int operator()(char) && { return OVL_CHAR; }
-};
-
-enum OverloadQualifier {
-    OVL_CONST       = 0x01,
-    OVL_VOLATILE    = 0x02,
-    OVL_L_REF       = 0x04,
-    OVL_R_REF       = 0x08,
 };
 
 class ebd_test_operator_qualifier { 
