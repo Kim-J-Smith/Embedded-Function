@@ -76,8 +76,8 @@ struct MyClass {
 // Bind an instance to a member function constant_wrapper; the first parameter
 // is removed from the signature and the instance is stored inside the wrapper.
 MyClass obj;
-ebd::fn<void(int)> fn(std::cw<&MyClass::method>, obj);
-fn(42);
+ebd::fn<void(int, int)> fn(std::cw<&MyClass::method>, obj);
+fn(0, 42);
 
 // A free-function constant_wrapper can also be stored (see ebd::make_fn).
 ```
