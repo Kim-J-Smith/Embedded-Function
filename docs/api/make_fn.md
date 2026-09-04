@@ -188,7 +188,7 @@ Creates an owning `ebd::fn` from a `std::constant_wrapper` (P3948) of a free fun
 
 ```cpp
 template <auto Val, typename Fn, typename Tp,
-          bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Tp>, Tp&&>::value>
+          bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Tp>, Tp&&>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow);
 ```
 

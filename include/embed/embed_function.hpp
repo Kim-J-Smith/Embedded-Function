@@ -2162,7 +2162,7 @@ namespace command {
 
 #if __cpp_lib_constant_wrapper >= 202603L
 
-    /// @brief Initialize the m_invoker from given std::constant_wrapper.
+    /// @brief Initialize the wrapper from given std::constant_wrapper and functor.
 
     // This method cannot be `constexpr` because `create` uses placement
     // new and 'unsigned char' is not similar to 'DecFunctor'.
@@ -3046,9 +3046,7 @@ namespace crtp_mixins {
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
         && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
-    function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept(std::is_nothrow_constructible_v<Tp, Up&&>)
-    : Base_MemberVariable(nullptr) {
-
+    function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept(std::is_nothrow_constructible_v<Tp, Up&&>) {
       (void)assertions_for_functor<BufferSize, Config, Signature, Up, Up&&, erasure_t>{};
 
       using Cw = std::constant_wrapper<Val, Fn>;
@@ -3061,7 +3059,8 @@ namespace crtp_mixins {
       }
     }
 
-    /// TODO: @todo Explore new overload constructor with  `constant_wrapper` +`in_place_type_t`.
+    /// Explore new overload constructor with  `constant_wrapper` +`in_place_type_t`.
+    /// TODO: @todo Finish this job in `v2.4.x`.
     /// function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&...)
     /// function(std::constant_wrapper<Val, Fn>,
     ///          std::in_place_type_t<Obj>,

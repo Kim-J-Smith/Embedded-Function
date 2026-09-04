@@ -73,7 +73,7 @@ struct MyClass {
     void method(int a, int b) { /* do something */ }
 };
 
-// Bind an instance to a member function constant_wrapper; the first parameter
+// Bind an instance to a member function constant_wrapper; the first parameter (`MyClass&`)
 // is removed from the signature and the instance is stored inside the wrapper.
 MyClass obj;
 ebd::fn<void(int, int)> fn(std::cw<&MyClass::method>, obj);
