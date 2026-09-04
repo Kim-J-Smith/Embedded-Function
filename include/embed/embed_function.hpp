@@ -3567,7 +3567,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept {
 /// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
 /// @return `fn<Auto-Deduction>`
 template <auto Val, typename Fn, typename Tp,
-  bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Tp>, Tp&&>::value>
+  bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Tp>, Tp&&>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
   using signature = detail::skip_first_arg_sig_t<sig_raw>;
