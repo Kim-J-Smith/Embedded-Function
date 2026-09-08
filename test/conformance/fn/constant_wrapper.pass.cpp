@@ -181,15 +181,37 @@ TEST(Conformance_fn, constant_wrapper_pass) {
 #endif
 
     {
-        ebd::fn<int(int) const> f(std::cw<&func_iii_add_noexcept>, std::in_place_type<int>, 42);
-        ASSERT_EQ(f(0), 42);
+        {
+            ebd::fn<int(int) const noexcept, sizeof(int)> f(std::cw<&func_iii_add_noexcept>, std::in_place_type<int>, 42);
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
 
-        ebd::fn<int(int, int)> f1(std::cw<&A::mem_fn_ii_add>, std::in_place_type<A>);
-        ASSERT_EQ(f1(42, 1), 43);
+            auto f_auto = ebd::make_fn(std::cw<&func_iii_add_noexcept>, std::in_place_type<int>, 42);
+            ASSERT_EQ(f_auto(0), 42);
+            ASSERT_EQ(f_auto(1), 43);
+
+            static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
+        }
+        {
+            ebd::fn<int(int, int), sizeof(A)> f(std::cw<&A::mem_fn_ii_add>, std::in_place_type<A>);
+            ASSERT_EQ(f(42, 0), 42);
+            ASSERT_EQ(f(42, 1), 43);
+
+            auto f_auto = ebd::make_fn(std::cw<&A::mem_fn_ii_add>, std::in_place_type<A>);
+            ASSERT_EQ(f_auto(42, 0), 42);
+            ASSERT_EQ(f_auto(42, 1), 43);
+
+            static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
+        }
     }
     {
         ebd::fn<int(), sizeof(B)> f(std::cw<&B::sum>, std::in_place_type<B>, {1, 3, 42});
         ASSERT_EQ(f(), 46);
+
+        auto f_auto = ebd::make_fn(std::cw<&B::sum>, std::in_place_type<B>, {1, 3, 42});
+        ASSERT_EQ(f_auto(), 46);
+
+        static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
     }
 }
 

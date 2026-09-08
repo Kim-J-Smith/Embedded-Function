@@ -1264,11 +1264,13 @@ inline namespace fn_traits {
   template <typename This, typename Signature>
   struct add_qualifier_like;
 
-#define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT)  \
-  template <typename This, typename Ret, typename... Args>                \
-  struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {        \
-    using type = Ret(Args...) C V REF NOEXCEPT;                           \
-    using sig_without_ref = Ret(Args...) C V NOEXCEPT;                    \
+#define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT)    \
+  template <typename This, typename Ret, typename... Args>                  \
+  struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {          \
+    using type = Ret(Args...) C V REF NOEXCEPT;                             \
+    /* Non-ref means that only one copy of the object is used. */           \
+    using sig_without_ref = conditional_t<std::is_reference<int REF>::value,\
+      Ret(Args...) C V NOEXCEPT, Ret(Args...) const V NOEXCEPT>;            \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE)
