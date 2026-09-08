@@ -3644,9 +3644,52 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(
   return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, std::forward<Tp>(obj));
 }
 
+/// @brief make_fn[14]: ...
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
+template <auto Val, typename Fn, typename Obj, typename... CArgs,
+  bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Obj>, CArgs...>>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
+noexcept(NoThrow) {
+  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using Cw = std::constant_wrapper<Val, Fn>;
+  using Ip = std::in_place_type_t<Obj>;
+  static constexpr std::size_t buffer_size = sizeof(Obj);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Obj)>::value;
+
+  using FnWrapper = detail::conditional_t<
+    std::is_copy_constructible<Obj>::value,
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
+
+  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, std::forward<CArgs>(args)...);
+}
+
+/// @brief make_fn[15]: ...
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
+template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
+  bool NoThrow = std::is_nothrow_constructible_v<Obj, std::initializer_list<Init>&, CArgs...>>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+  std::initializer_list<Init> il, CArgs&&... args)
+noexcept(NoThrow) {
+  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using Cw = std::constant_wrapper<Val, Fn>;
+  using Ip = std::in_place_type_t<Obj>;
+  static constexpr std::size_t buffer_size = sizeof(Obj);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Obj)>::value;
+
+  using FnWrapper = detail::conditional_t<
+    std::is_copy_constructible<Obj>::value,
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
+
+  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, il, std::forward<CArgs>(args)...);
+}
+
 #endif // C++ >= 26
 
-/// @brief make_fn[14]: Make function with specified wrapper.
+/// @brief make_fn[16]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, BufferSize, Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
