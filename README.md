@@ -251,11 +251,13 @@ auto f = ebd::make_fn[<FnWrapper[, Signature]>](
 ```
 
 ```cpp
-// Create ebd::fn from std::constant_wrapper. 
+// Create ebd::fn (or ebd::unique_fn when the bound object is move-only) from std::constant_wrapper.
 // Since C++26
 auto f = ebd::make_fn(std::cw<&free_function>);
 auto f = ebd::make_fn(std::cw<&Class::member_function>, obj);
 auto f = ebd::make_fn(std::cw<&Class::member_function>, &obj);
+auto f = ebd::make_fn(std::cw<&Class::member_function>, std::in_place_type<Class>, CArgs...);
+auto f = ebd::make_fn(std::cw<&Class::member_function>, std::in_place_type<Class>, {/*std::initializer_list*/}, CArgs...);
 ```
 
 ## 🔗 Back to function pointer

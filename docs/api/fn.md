@@ -79,10 +79,26 @@ MyClass obj;
 ebd::fn<void(int, int)> fn(std::cw<&MyClass::method>, obj);
 fn(0, 42);
 
+// Construct the instance in place inside the wrapper buffer instead of copying an
+// existing one. The buffer size must be large enough to hold `MyClass`.
+ebd::fn<void(int, int), sizeof(MyClass)> fn2(std::cw<&MyClass::method>, std::in_place_type<MyClass>);
+fn2(0, 42);
+
+// The in-place form also accepts constructor arguments and a leading `std::initializer_list`.
+struct Sum {
+    Sum(std::initializer_list<int> il) : value(0) {
+        for (int i : il) { value += i; }
+    }
+    int sum() const { return value; }
+    int value;
+};
+ebd::fn<int(), sizeof(Sum)> fn3(std::cw<&Sum::sum>, std::in_place_type<Sum>, {1, 2, 3});
+int total = fn3(); // total == 6
+
 // A free-function constant_wrapper can also be stored (see ebd::make_fn).
 ```
 
-`ebd::fn` can be constructed from a `std::constant_wrapper` (P3948) together with an object, which is stored by value in the wrapper buffer. This is available when `__cpp_lib_constant_wrapper >= 202603L` (C++26).
+`ebd::fn` can be constructed from a `std::constant_wrapper` (P3948) together with an object, which is stored by value in the wrapper buffer, or by in-place constructing that object from `std::in_place_type<T>` plus constructor arguments. This is available when `__cpp_lib_constant_wrapper >= 202603L` (C++26).
 
 ## Notes
 

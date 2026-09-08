@@ -192,9 +192,31 @@ template <auto Val, typename Fn, typename Tp,
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow);
 ```
 
-Creates an owning `ebd::fn` from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature. The object is stored inside the wrapper buffer, so the buffer size and alignment are deduced from `sizeof(Tp)` and `alignof(Tp)` respectively. The `noexcept` specification is deduced from whether the object is nothrow-constructible from `Tp&&`.
+Creates an owning `ebd::fn`, or `ebd::unique_fn` when `detail::decay_t<Tp>` is not copy-constructible, from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature. The object is stored inside the wrapper buffer, so the buffer size and alignment are deduced from `sizeof(Tp)` and `alignof(Tp)` respectively. The `noexcept` specification is deduced from whether the object is nothrow-constructible from `Tp&&`.
 
-### 15. Explicit wrapper type
+### 15. In-place object with `std::constant_wrapper` (C++26+)
+
+```cpp
+template <auto Val, typename Fn, typename Obj, typename... CArgs,
+          bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Obj>, CArgs...>>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>,
+                             std::in_place_type_t<Obj>, CArgs&&... args) noexcept(NoThrow);
+```
+
+Creates an owning wrapper by constructing the object in place inside the wrapper buffer from `args`, and binding it to the **first parameter** of the wrapped callable. Returns `ebd::fn`, or `ebd::unique_fn` when `Obj` is not copy-constructible. The buffer size and alignment are deduced from `sizeof(Obj)` and `alignof(Obj)` respectively. `Obj` must be constructible from `args`, and the same `const`-qualifier deduction as the other `std::constant_wrapper` overloads applies (see Notes).
+
+### 16. In-place object with `std::constant_wrapper` and `std::initializer_list` (C++26+)
+
+```cpp
+template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
+          bool NoThrow = std::is_nothrow_constructible_v<Obj, std::initializer_list<Init>&, CArgs...>>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+                             std::initializer_list<Init> il, CArgs&&... args) noexcept(NoThrow);
+```
+
+Same as overload 15, but the object is constructed from an `std::initializer_list` followed by `args`.
+
+### 17. Explicit wrapper type
 
 ```cpp
 template <template <class, std::size_t, std::size_t> class Fn,
@@ -313,6 +335,22 @@ cw_mem(1, 2);
 // From a constant_wrapper of a member object + instance.
 auto cw_mem_obj = ebd::make_fn(std::cw<&MyClass::value>, &obj);
 int v = cw_mem_obj();
+
+// From a constant_wrapper and an in-place constructed object (Since C++26).
+auto cw_in_place = ebd::make_fn(std::cw<&MyClass::method>, std::in_place_type<MyClass>);
+cw_in_place(1, 2);
+
+// From a constant_wrapper and an in-place constructed object with an
+// initializer_list and trailing arguments.
+struct Sum {
+    Sum(std::initializer_list<int> il, int extra) : value(extra) {
+        for (int i : il) { value += i; }
+    }
+    int sum() const { return value; }
+    int value;
+};
+auto cw_il = ebd::make_fn(std::cw<&Sum::sum>, std::in_place_type<Sum>, {1, 2, 3}, 4);
+int total = cw_il();
 ```
 
 ## Notes
@@ -323,7 +361,8 @@ int v = cw_mem_obj();
 - The explicit-wrapper overload accepts multiple arguments and works with `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`. The buffer size is deduced from the `make_fn(args...)` result instead of `sizeof(Functor)`.
 - `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.
 - When deduction fails, the fallback overload triggers a static assertion with guidance.
-- The `std::constant_wrapper` overloads (C++26+) return `ebd::fn`.
+- The `std::constant_wrapper` overloads (C++26+) return `ebd::fn`, or `ebd::unique_fn` when the bound object is not copy-constructible.
+- For the `std::constant_wrapper` overloads, the deduced signature is `const`-qualified when the bound object is passed by value; the qualifiers of the object type are preserved only when the first parameter of the callable is a reference. For example, `ebd::make_fn(std::cw<&free_func_add_ii>, a)` yields `fn<int(int) const>` (a `noexcept` callable additionally keeps `noexcept` in the deduced signature) and `ebd::make_fn(std::cw<&MyClass::method>, obj)` yields `fn<void(int, int)>` for a `void method(int, int)` member function.
 
 ## See Also
 
