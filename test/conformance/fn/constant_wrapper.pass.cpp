@@ -11,6 +11,17 @@ struct ExplicitThis {
     }
 };
 
+struct InitFunction_list_init_struct {
+    InitFunction_list_init_struct(std::initializer_list<int>& il) : buf(il) {}
+    std::vector<int> buf;
+    int operator()() {
+        int result = 0;
+        for (auto& i : buf) { result += i; }
+        return result;
+    }
+    int sum() { return this->operator()(); }
+};
+
 static int func_iii_add_noexcept(int a, int b) noexcept {
     return a + b;
 }
@@ -20,6 +31,7 @@ struct NonConstInvocable {
 };
 
 using A = ebd_test_member_fn;
+using B = InitFunction_list_init_struct;
 
 }
 
@@ -138,6 +150,17 @@ TEST(Conformance_fn, constant_wrapper_pass) {
     }
 #endif
 
+    {
+        ebd::fn<int(int) const> f(std::cw<&func_iii_add_noexcept>, std::in_place_type<int>, 42);
+        ASSERT_EQ(f(0), 42);
+
+        ebd::fn<int(int, int)> f1(std::cw<&A::mem_fn_ii_add>, std::in_place_type<A>);
+        ASSERT_EQ(f1(42, 1), 43);
+    }
+    {
+        ebd::fn<int(), sizeof(B)> f(std::cw<&B::sum>, std::in_place_type<B>, {1, 3, 42});
+        ASSERT_EQ(f(), 46);
+    }
 }
 
 #endif // __cpp_lib_constant_wrapper >= 202603L

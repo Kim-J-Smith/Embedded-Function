@@ -2174,6 +2174,14 @@ namespace command {
       m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
     }
 
+    template <typename Cw, typename Functor, typename DecFunctor = decay_t<Functor>, typename... CArgs>
+    void cw_inplace_init(erasure_base_t* target, CArgs&&... args)
+        noexcept(std::is_nothrow_constructible_v<DecFunctor, CArgs...>) {
+      manager_impl_t::template emplace_create<DecFunctor>(target, std::forward<CArgs>(args)...);
+      m_invoker = &invoker_impl_t::inplace_cw::template invoke<Cw, DecFunctor>;
+      m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
+    }
+
 #endif // C++ >= 26
   };
 
@@ -3041,16 +3049,17 @@ namespace crtp_mixins {
     }
 
     // Create owning function wrapper with given `std::constant_wrapper` and object params.
-    /// @note experimental @implements <https://wg21.link/P2511>
-    template <auto Val, typename Fn, typename Up, typename Tp = add_cv_like_sig_t<decay_t<Up>>,
+    /// @todo @note experimental @implements <https://wg21.link/P2511>
+    template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<decay_t<Obj>>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
-        && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
-    function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept(std::is_nothrow_constructible_v<Tp, Up&&>) {
-      (void)assertions_for_functor<BufferSize, Config, Signature, Up, Up&&, erasure_t>{};
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+    function(std::constant_wrapper<Val, Fn>, Obj&& obj)
+    noexcept(std::is_nothrow_constructible_v<Obj_cv, Obj&&>) {
+      (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj&&, erasure_t>{};
 
       using Cw = std::constant_wrapper<Val, Fn>;
-      m_command.template cw_init<Cw>(&m_erasure, std::forward<Up>(obj));
+      m_command.template cw_init<Cw>(&m_erasure, std::forward<Obj>(obj));
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
@@ -3059,12 +3068,48 @@ namespace crtp_mixins {
       }
     }
 
-    /// Explore new overload constructor with  `constant_wrapper` +`in_place_type_t`.
-    /// TODO: @todo Finish this job in `v2.4.x`.
-    /// function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&...)
-    /// function(std::constant_wrapper<Val, Fn>,
-    ///          std::in_place_type_t<Obj>,
-    ///          std::initializer_list<U>, CArgs&&...)
+    /// @todo @note experimental @implements <https://wg21.link/P2511>
+    template <auto Val, typename Fn, typename Obj, typename... CArgs,
+      typename Tp = add_cv_like_sig_t<Obj>,
+      bool RightRef = unwrap_signature<Signature>::hasRRef>
+        requires (!Config::isView)
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
+    function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible_v<Tp, CArgs...>) {
+      static_assert(std::is_same<Obj, decay_t<Obj>>::value, "decay_t<Fn> should be the same type as Fn.");
+      (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
+
+      using Cw = std::constant_wrapper<Val, Fn>;
+      m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, std::forward<CArgs>(args)...);
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+      }
+    }
+
+    /// @todo @note experimental @implements <https://wg21.link/P2511>
+    template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
+      typename Obj_cv = add_cv_like_sig_t<Obj>,
+      bool RightRef = unwrap_signature<Signature>::hasRRef>
+        requires (!Config::isView)
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+    function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+      std::initializer_list<Init> il, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible_v<Obj_cv, decltype(il), CArgs...>) {
+      static_assert(std::is_same<Obj, decay_t<Obj>>::value, "decay_t<Fn> should be the same type as Fn.");
+      (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
+
+      using Cw = std::constant_wrapper<Val, Fn>;
+      m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, il, std::forward<CArgs>(args)...);
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+      }
+    }
 
 #endif // C++ >= 26
 
