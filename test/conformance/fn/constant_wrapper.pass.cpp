@@ -12,6 +12,7 @@ struct ExplicitThis {
 };
 
 struct InitFunction_list_init_struct {
+    InitFunction_list_init_struct() = delete;
     InitFunction_list_init_struct(std::initializer_list<int>& il) : buf(il) {}
     std::vector<int> buf;
     int operator()() {
@@ -54,6 +55,16 @@ static_assert(
     !std::is_constructible_v<ebd::fn<void() const>, std::constant_wrapper<NonConstInvocable{}>, int*>);
 static_assert(
     !std::is_constructible_v<ebd::fn<void() noexcept>, std::constant_wrapper<NonConstInvocable{}>, int*>);
+
+// in-place
+static_assert(std::is_constructible_v<
+    ebd::fn<int(), sizeof(B)>,
+    std::constant_wrapper<&B::sum>, std::in_place_type_t<B>, std::initializer_list<int>&>);
+static_assert(
+    !std::is_constructible_v<ebd::fn<int(), sizeof(B)>, std::constant_wrapper<&B::sum>, std::in_place_type_t<B>>);
+static_assert(!std::is_constructible_v<
+    ebd::fn<int(), sizeof(B)>,
+    std::constant_wrapper<&B::sum>, std::in_place_type_t<B>, std::initializer_list<float>&>);
 
 TEST(Conformance_fn, constant_wrapper_pass) {
     {
