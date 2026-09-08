@@ -3048,8 +3048,8 @@ namespace crtp_mixins {
       }
     }
 
+    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
     // Create owning function wrapper with given `std::constant_wrapper` and object params.
-    /// @todo @note experimental @implements <https://wg21.link/P2511>
     template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<decay_t<Obj>>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
@@ -3068,7 +3068,8 @@ namespace crtp_mixins {
       }
     }
 
-    /// @todo @note experimental @implements <https://wg21.link/P2511>
+    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
+    // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
     template <auto Val, typename Fn, typename Obj, typename... CArgs,
       typename Obj_cv = add_cv_like_sig_t<Obj>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
@@ -3090,7 +3091,9 @@ namespace crtp_mixins {
       }
     }
 
-    /// @todo @note experimental @implements <https://wg21.link/P2511>
+    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
+    // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
+    // The object is constructed in-place from `std::initializer_list` and the specified arguments.
     template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
       typename Obj_cv = add_cv_like_sig_t<Obj>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
