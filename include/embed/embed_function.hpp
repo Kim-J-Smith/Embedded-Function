@@ -3070,14 +3070,14 @@ namespace crtp_mixins {
 
     /// @todo @note experimental @implements <https://wg21.link/P2511>
     template <auto Val, typename Fn, typename Obj, typename... CArgs,
-      typename Tp = add_cv_like_sig_t<Obj>,
+      typename Obj_cv = add_cv_like_sig_t<Obj>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
         && std::is_constructible_v<Obj, CArgs...>
-        && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
     function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
-    noexcept(std::is_nothrow_constructible_v<Tp, CArgs...>) {
-      static_assert(std::is_same<Obj, decay_t<Obj>>::value, "decay_t<Obj> should be the same type as Obj.");
+    noexcept(std::is_nothrow_constructible_v<Obj_cv, CArgs...>) {
+      static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
       (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
 
       using Cw = std::constant_wrapper<Val, Fn>;
@@ -3099,8 +3099,8 @@ namespace crtp_mixins {
         && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
     function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
       std::initializer_list<Init> il, CArgs&&... args)
-    noexcept(std::is_nothrow_constructible_v<Obj_cv, decltype(il), CArgs...>) {
-      static_assert(std::is_same<Obj, decay_t<Obj>>::value, "decay_t<Obj> should be the same type as Obj.");
+    noexcept(std::is_nothrow_constructible_v<Obj_cv, decltype(il)&, CArgs...>) {
+      static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
       (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
 
       using Cw = std::constant_wrapper<Val, Fn>;
