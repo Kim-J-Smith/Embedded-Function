@@ -3567,7 +3567,7 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 #if EMBED_CXX_VERSION >= 201703L
 
 /// @brief make_fn[11]: In-place make function.
-/// @return `decltype(make_fn(std::declval<Functor>()))`
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <typename Functor, typename... CArgs>
 EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
@@ -3587,7 +3587,7 @@ noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
 }
 
 /// @brief make_fn[11]: In-place make function. (std::initializer_list)
-/// @return `decltype(make_fn(std::declval<Functor>()))`
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto
 make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
@@ -3626,7 +3626,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept {
 }
 
 /// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
-/// @return `fn<Auto-Deduction>`
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <auto Val, typename Fn, typename Tp,
   bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Tp>, Tp&&>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
@@ -3636,9 +3636,12 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(
   static constexpr std::size_t buffer_size = sizeof(Tp);
   static constexpr std::size_t alignment = detail::enough_alignment<alignof(Tp)>::value;
 
-  return detail::make_function_impl<
-    /* Fn = */ fn<signature, buffer_size, alignment>, /* NoThrow = */ NoThrow
-  >(Cw{}, std::forward<Tp>(obj));
+  using FnWrapper = detail::conditional_t<
+    std::is_copy_constructible<detail::decay_t<Tp>>::value,
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
+
+  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, std::forward<Tp>(obj));
 }
 
 #endif // C++ >= 26

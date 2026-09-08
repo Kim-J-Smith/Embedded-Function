@@ -28,7 +28,15 @@ static int func_iii_add_noexcept(int a, int b) noexcept {
 }
 
 struct NonConstInvocable {
-  void operator()(int*) noexcept {}
+    void operator()(int*) noexcept {}
+};
+
+struct MoveOnly {
+    MoveOnly() = default;
+    MoveOnly(const MoveOnly&) = delete;
+    MoveOnly(MoveOnly&&) = default;
+
+    int add_42(int n) const { return 42 + n; }
 };
 
 using A = ebd_test_member_fn;
@@ -142,6 +150,17 @@ TEST(Conformance_fn, constant_wrapper_pass) {
 
             ebd::fn<int(int) const noexcept> f3(std::cw<+[](int a, int b) noexcept { return a + b; }>, a);
             ASSERT_EQ(f3(3), 45);
+        }
+    }
+    {
+        {
+            // move-only
+            auto f = ebd::make_fn(std::cw<&MoveOnly::add_42>, MoveOnly{});
+            static_assert(!f.is_copyable());
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+            ASSERT_EQ(f(3), 45);
+            ASSERT_EQ(f(4), 46);
         }
     }
 
