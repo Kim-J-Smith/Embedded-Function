@@ -3004,11 +3004,11 @@ namespace crtp_mixins {
     }
 
     // Create function reference with given `std::constant_wrapper` and object params.
-    template <auto Val, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
+    template <auto Val, typename Fn, typename Obj>
       requires Config::isView
-        && (!std::is_rvalue_reference_v<Up&&>)
-        && is_invocable_using<const Fn&, add_cv_like_sig_t<Tp>&>::value
-    constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
+        && (!std::is_rvalue_reference_v<Obj&&>)
+        && is_invocable_using<const Fn&, add_cv_like_sig_t<remove_reference_t<Obj>>&>::value
+    constexpr function(std::constant_wrapper<Val, Fn>, Obj&& obj) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
@@ -3021,11 +3021,11 @@ namespace crtp_mixins {
     }
 
     // Create function reference with given `std::constant_wrapper` and pointer params.
-    template <auto Val, typename Fn, typename Tp, typename Tp_cv = add_cv_like_sig_t<Tp>>
+    template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<Obj>>
       requires Config::isView
-        && std::is_convertible_v<Tp*, Tp_cv*>
-        && is_invocable_using<const Fn&, Tp_cv*>::value
-    constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept
+        && std::is_convertible_v<Obj*, Obj_cv*>
+        && is_invocable_using<const Fn&, Obj_cv*>::value
+    constexpr function(std::constant_wrapper<Val, Fn>, Obj* obj) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
