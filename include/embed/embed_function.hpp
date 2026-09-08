@@ -3646,7 +3646,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(
   return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, std::forward<Tp>(obj));
 }
 
-/// @brief make_fn[14]: ...
+/// @brief make_fn[14]: Make function from `std::cw<callable>` and in-place constructed object.
 /// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <auto Val, typename Fn, typename Obj, typename... CArgs,
   bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Obj>, CArgs...>>
@@ -3667,7 +3667,8 @@ noexcept(NoThrow) {
   return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, std::forward<CArgs>(args)...);
 }
 
-/// @brief make_fn[15]: ...
+/// @brief make_fn[15]: Make function from `std::cw<callable>` and in-place constructed object.
+/// (std::initializer_list)
 /// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
   bool NoThrow = std::is_nothrow_constructible_v<Obj, std::initializer_list<Init>&, CArgs...>>
