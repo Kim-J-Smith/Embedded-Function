@@ -246,8 +246,7 @@ auto f = ebd::make_fn<ebd::fn_ref[, Signature]>(Callable_Object);
 // In place build functor within buffer. Functor should be unambiguously callable (non-overload).
 // Since C++17.
 auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, CArgs...);
-auto f = ebd::make_fn[<FnWrapper[, Signature]>](
-  std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...);
+auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...);
 ```
 
 ```cpp
