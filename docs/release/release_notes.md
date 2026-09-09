@@ -3,7 +3,7 @@
 - Fixed a bug where `ebd::make_fn(std::cw<...>, obj)` could not deduce the correct `const`-qualifier of the signature.
 
 **⚠️ Breaking Changes**
-- `ebd::make_fn(std::cw<...>, obj)` and `ebd::make_fn<...>(std::cw<...>, obj)` now deduce a `const`-qualified signature when the bound object is passed by value. For example, for a `std::cw` of an `int(*)(int, int)` function, the deduced signature changed from `int(int)` to `int(int) const` because the first parameter `int` is not a reference. The qualifiers of the object type are preserved only when the first parameter of the callable is a reference type.
+- `ebd::make_fn(std::cw<NTTP-Callable>, obj)` and `ebd::make_fn<...>(std::cw<NTTP-Callable>, obj)` now deduce a `const`-qualified signature when the first parameter of the `NTTP-Callable` is not a reference. For example, for a `std::cw` of an `int(*)(int, int)` function, the deduced signature changed from `int(int)` to `int(int) const` because the first parameter `int` is not a reference. The qualifiers of the object type are preserved only when the first parameter of the callable is a reference type.
 
 **✨ New Features**
 - Owning polymorphic function wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) can now be constructed from `{std::cw<...>, std::in_place_type<T>, CArgs...}` and `{std::cw<...>, std::in_place_type<T>, {std::initializer_list}, CArgs...}` since C++26, as an **experimental** exploration of [P2511: Beyond operator(): NTTP callables in type-erased call wrappers](https://wg21.link/P2511). The object is constructed in place inside the wrapper buffer and binds to the first parameter of the callable.

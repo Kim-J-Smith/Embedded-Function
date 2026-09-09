@@ -1268,7 +1268,7 @@ inline namespace fn_traits {
   template <typename This, typename Ret, typename... Args>                  \
   struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {          \
     using type = Ret(Args...) C V REF NOEXCEPT;                             \
-    /* Non-ref means that only one copy of the object is used. */           \
+    /* Non-ref parameter means that only one copy of the object is used. */ \
     using sig_without_ref = conditional_t<std::is_reference<int REF>::value,\
       Ret(Args...) C V NOEXCEPT, Ret(Args...) const V NOEXCEPT>;            \
   };
@@ -2176,12 +2176,13 @@ namespace command {
       m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
     }
 
-    template <typename Cw, typename Functor, typename DecFunctor = decay_t<Functor>, typename... CArgs>
+    template <typename Cw, typename Functor, typename... CArgs>
     void cw_inplace_init(erasure_base_t* target, CArgs&&... args)
-        noexcept(std::is_nothrow_constructible_v<DecFunctor, CArgs...>) {
-      manager_impl_t::template emplace_create<DecFunctor>(target, std::forward<CArgs>(args)...);
-      m_invoker = &invoker_impl_t::inplace_cw::template invoke<Cw, DecFunctor>;
-      m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
+        noexcept(std::is_nothrow_constructible_v<Functor, CArgs...>) {
+      // `Functor` is the same as `decay_t<Functor>`.
+      manager_impl_t::template emplace_create<Functor>(target, std::forward<CArgs>(args)...);
+      m_invoker = &invoker_impl_t::inplace_cw::template invoke<Cw, Functor>;
+      m_manager = manager_impl_t::inplace::template get_manager<Functor, Config::isCopyable>();
     }
 
 #endif // C++ >= 26
@@ -3649,7 +3650,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(
 /// @brief make_fn[14]: Make function from `std::cw<callable>` and in-place constructed object.
 /// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <auto Val, typename Fn, typename Obj, typename... CArgs,
-  bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Obj>, CArgs...>>
+  bool NoThrow = std::is_nothrow_constructible_v<Obj, CArgs...>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
 noexcept(NoThrow) {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;

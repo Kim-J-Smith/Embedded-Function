@@ -11,9 +11,9 @@ struct ExplicitThis {
     }
 };
 
-struct InitFunction_list_init_struct {
-    InitFunction_list_init_struct() = delete;
-    InitFunction_list_init_struct(std::initializer_list<int>& il) : buf(il) {}
+struct ListInit {
+    ListInit() = delete;
+    ListInit(std::initializer_list<int>& il) : buf(il) {}
     std::vector<int> buf;
     int operator()() {
         int result = 0;
@@ -39,22 +39,21 @@ struct MoveOnly {
     int add_42(int n) const { return 42 + n; }
 };
 
-using A = ebd_test_member_fn;
-using B = InitFunction_list_init_struct;
+using Normal = ebd_test_member_fn;
 
 }
 
 // member function
 static_assert(
-    std::is_constructible_v<ebd::fn<int(int, int)>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+    std::is_constructible_v<ebd::fn<int(int, int)>, std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
 static_assert(
-    !std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+    !std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<int(int, int) const>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+    !std::is_constructible_v<ebd::fn<int(int, int) const>, std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<int(int, int) noexcept>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+    !std::is_constructible_v<ebd::fn<int(int, int) noexcept>, std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<int(int, int) const noexcept>, std::constant_wrapper<&A::mem_fn_ii_add>, A>);
+    !std::is_constructible_v<ebd::fn<int(int, int) const noexcept>, std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
 
 // non-const-invocable functor
 static_assert(
@@ -66,13 +65,13 @@ static_assert(
 
 // in-place
 static_assert(std::is_constructible_v<
-    ebd::fn<int(), sizeof(B)>,
-    std::constant_wrapper<&B::sum>, std::in_place_type_t<B>, std::initializer_list<int>&>);
+    ebd::fn<int(), sizeof(ListInit)>,
+    std::constant_wrapper<&ListInit::sum>, std::in_place_type_t<ListInit>, std::initializer_list<int>&>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<int(), sizeof(B)>, std::constant_wrapper<&B::sum>, std::in_place_type_t<B>>);
+    !std::is_constructible_v<ebd::fn<int(), sizeof(ListInit)>, std::constant_wrapper<&ListInit::sum>, std::in_place_type_t<ListInit>>);
 static_assert(!std::is_constructible_v<
-    ebd::fn<int(), sizeof(B)>,
-    std::constant_wrapper<&B::sum>, std::in_place_type_t<B>, std::initializer_list<float>&>);
+    ebd::fn<int(), sizeof(ListInit)>,
+    std::constant_wrapper<&ListInit::sum>, std::in_place_type_t<ListInit>, std::initializer_list<float>&>);
 
 TEST(Conformance_fn, constant_wrapper_pass) {
     {
@@ -193,11 +192,11 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
         }
         {
-            ebd::fn<int(int, int), sizeof(A)> f(std::cw<&A::mem_fn_ii_add>, std::in_place_type<A>);
+            ebd::fn<int(int, int), sizeof(Normal)> f(std::cw<&Normal::mem_fn_ii_add>, std::in_place_type<Normal>);
             ASSERT_EQ(f(42, 0), 42);
             ASSERT_EQ(f(42, 1), 43);
 
-            auto f_auto = ebd::make_fn(std::cw<&A::mem_fn_ii_add>, std::in_place_type<A>);
+            auto f_auto = ebd::make_fn(std::cw<&Normal::mem_fn_ii_add>, std::in_place_type<Normal>);
             ASSERT_EQ(f_auto(42, 0), 42);
             ASSERT_EQ(f_auto(42, 1), 43);
 
@@ -205,10 +204,10 @@ TEST(Conformance_fn, constant_wrapper_pass) {
         }
     }
     {
-        ebd::fn<int(), sizeof(B)> f(std::cw<&B::sum>, std::in_place_type<B>, {1, 3, 42});
+        ebd::fn<int(), sizeof(ListInit)> f(std::cw<&ListInit::sum>, std::in_place_type<ListInit>, {1, 3, 42});
         ASSERT_EQ(f(), 46);
 
-        auto f_auto = ebd::make_fn(std::cw<&B::sum>, std::in_place_type<B>, {1, 3, 42});
+        auto f_auto = ebd::make_fn(std::cw<&ListInit::sum>, std::in_place_type<ListInit>, {1, 3, 42});
         ASSERT_EQ(f_auto(), 46);
 
         static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);

@@ -75,7 +75,7 @@ fn(100);
 ## Notes
 
 - `ebd::unique_fn` is move-only and owns the callable object it wraps.
-- `ebd::make_fn` returns `ebd::unique_fn` when the deduced callable, or the object bound to a `std::constant_wrapper` (C++26+), is not copy-constructible.
+- `ebd::make_fn` returns `ebd::unique_fn` when the bound object (the second parameter, not the NTTP-Callable in `std::cw`) is not copy-constructible.
 - The buffer size is automatically aligned to a multiple of the `Alignment` parameter.
 - If the callable object is too large or has a larger alignment than the specified `BufferSize`/`Alignment`, a `static_assert` will be triggered at compile time.
 - When called in an empty state, `ebd::unique_fn` will call `std::terminate()`.
