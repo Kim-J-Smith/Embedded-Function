@@ -198,7 +198,7 @@ Creates an owning `ebd::fn`, or `ebd::unique_fn` when `detail::decay_t<Tp>` is n
 
 ```cpp
 template <auto Val, typename Fn, typename Obj, typename... CArgs,
-          bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Obj>, CArgs...>>
+          bool NoThrow = std::is_nothrow_constructible_v<Obj, CArgs...>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>,
                              std::in_place_type_t<Obj>, CArgs&&... args) noexcept(NoThrow);
 ```
@@ -362,7 +362,7 @@ int total = cw_il();
 - `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.
 - When deduction fails, the fallback overload triggers a static assertion with guidance.
 - The `std::constant_wrapper` overloads (C++26+) return `ebd::fn`, or `ebd::unique_fn` when the bound object is not copy-constructible.
-- For the `std::constant_wrapper` overloads, the deduced signature is `const`-qualified when the bound object is passed by value; the qualifiers of the object type are preserved only when the first parameter of the callable is a reference. For example, `ebd::make_fn(std::cw<&free_func_add_ii>, a)` yields `fn<int(int) const>` (a `noexcept` callable additionally keeps `noexcept` in the deduced signature) and `ebd::make_fn(std::cw<&MyClass::method>, obj)` yields `fn<void(int, int)>` for a `void method(int, int)` member function.
+- For the `std::constant_wrapper` overloads, the deduced signature is `const`-qualified when the first parameter of the callable is not a reference type; the qualifiers of the object type are preserved only when the first parameter of the callable is a reference type. For example, `ebd::make_fn(std::cw<&free_func_add_ii>, a)` yields `fn<int(int) const>` because the first parameter `int` is not a reference type (a `noexcept` callable additionally keeps `noexcept` in the deduced signature), and `ebd::make_fn(std::cw<&MyClass::method>, obj)` yields `fn<void(int, int)>` for a `void method(int, int)` member function whose first parameter is `MyClass&`.
 
 ## See Also
 
