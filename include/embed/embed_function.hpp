@@ -1264,11 +1264,13 @@ inline namespace fn_traits {
   template <typename This, typename Signature>
   struct add_qualifier_like;
 
-#define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT)  \
-  template <typename This, typename Ret, typename... Args>                \
-  struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {        \
-    using type = Ret(Args...) C V REF NOEXCEPT;                           \
-    using sig_without_ref = Ret(Args...) C V NOEXCEPT;                    \
+#define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT)    \
+  template <typename This, typename Ret, typename... Args>                  \
+  struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {          \
+    using type = Ret(Args...) C V REF NOEXCEPT;                             \
+    /* Non-ref parameter means that only one copy of the object is used. */ \
+    using sig_without_ref = conditional_t<std::is_reference<int REF>::value,\
+      Ret(Args...) C V NOEXCEPT, Ret(Args...) const V NOEXCEPT>;            \
   };
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE)
@@ -2174,6 +2176,15 @@ namespace command {
       m_manager = manager_impl_t::inplace::template get_manager<DecFunctor, Config::isCopyable>();
     }
 
+    template <typename Cw, typename Functor, typename... CArgs>
+    void cw_inplace_init(erasure_base_t* target, CArgs&&... args)
+        noexcept(std::is_nothrow_constructible_v<Functor, CArgs...>) {
+      // `Functor` is the same as `decay_t<Functor>`.
+      manager_impl_t::template emplace_create<Functor>(target, std::forward<CArgs>(args)...);
+      m_invoker = &invoker_impl_t::inplace_cw::template invoke<Cw, Functor>;
+      m_manager = manager_impl_t::inplace::template get_manager<Functor, Config::isCopyable>();
+    }
+
 #endif // C++ >= 26
   };
 
@@ -3004,11 +3015,11 @@ namespace crtp_mixins {
     }
 
     // Create function reference with given `std::constant_wrapper` and object params.
-    template <auto Val, typename Fn, typename Up, typename Tp = remove_reference_t<Up>>
+    template <auto Val, typename Fn, typename Obj>
       requires Config::isView
-        && (!std::is_rvalue_reference_v<Up&&>)
-        && is_invocable_using<const Fn&, add_cv_like_sig_t<Tp>&>::value
-    constexpr function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept
+        && (!std::is_rvalue_reference_v<Obj&&>)
+        && is_invocable_using<const Fn&, add_cv_like_sig_t<remove_reference_t<Obj>>&>::value
+    constexpr function(std::constant_wrapper<Val, Fn>, Obj&& obj) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
@@ -3021,11 +3032,11 @@ namespace crtp_mixins {
     }
 
     // Create function reference with given `std::constant_wrapper` and pointer params.
-    template <auto Val, typename Fn, typename Tp, typename Tp_cv = add_cv_like_sig_t<Tp>>
+    template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<Obj>>
       requires Config::isView
-        && std::is_convertible_v<Tp*, Tp_cv*>
-        && is_invocable_using<const Fn&, Tp_cv*>::value
-    constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept
+        && std::is_convertible_v<Obj*, Obj_cv*>
+        && is_invocable_using<const Fn&, Obj_cv*>::value
+    constexpr function(std::constant_wrapper<Val, Fn>, Obj* obj) noexcept
     : Base_MemberVariable(nullptr) {
       using Cw = std::constant_wrapper<Val, Fn>;
       m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
@@ -3040,17 +3051,18 @@ namespace crtp_mixins {
       }
     }
 
+    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
     // Create owning function wrapper with given `std::constant_wrapper` and object params.
-    /// @note experimental @implements <https://wg21.link/P2511>
-    template <auto Val, typename Fn, typename Up, typename Tp = add_cv_like_sig_t<decay_t<Up>>,
+    template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<decay_t<Obj>>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
-        && is_invocable_using<const Fn&, conditional_t<RightRef, Tp&&, Tp&>>::value
-    function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept(std::is_nothrow_constructible_v<Tp, Up&&>) {
-      (void)assertions_for_functor<BufferSize, Config, Signature, Up, Up&&, erasure_t>{};
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+    function(std::constant_wrapper<Val, Fn>, Obj&& obj)
+    noexcept(std::is_nothrow_constructible_v<Obj_cv, Obj&&>) {
+      (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj&&, erasure_t>{};
 
       using Cw = std::constant_wrapper<Val, Fn>;
-      m_command.template cw_init<Cw>(&m_erasure, std::forward<Up>(obj));
+      m_command.template cw_init<Cw>(&m_erasure, std::forward<Obj>(obj));
 
       // Mandates are as follows.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
@@ -3059,12 +3071,53 @@ namespace crtp_mixins {
       }
     }
 
-    /// Explore new overload constructor with  `constant_wrapper` +`in_place_type_t`.
-    /// TODO: @todo Finish this job in `v2.4.x`.
-    /// function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&...)
-    /// function(std::constant_wrapper<Val, Fn>,
-    ///          std::in_place_type_t<Obj>,
-    ///          std::initializer_list<U>, CArgs&&...)
+    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
+    // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
+    template <auto Val, typename Fn, typename Obj, typename... CArgs,
+      typename Obj_cv = add_cv_like_sig_t<Obj>,
+      bool RightRef = unwrap_signature<Signature>::hasRRef>
+        requires (!Config::isView)
+        && std::is_constructible_v<Obj, CArgs...>
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+    function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible_v<Obj_cv, CArgs...>) {
+      static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
+      (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
+
+      using Cw = std::constant_wrapper<Val, Fn>;
+      m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, std::forward<CArgs>(args)...);
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+      }
+    }
+
+    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
+    // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
+    // The object is constructed in-place from `std::initializer_list` and the specified arguments.
+    template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
+      typename Obj_cv = add_cv_like_sig_t<Obj>,
+      bool RightRef = unwrap_signature<Signature>::hasRRef>
+        requires (!Config::isView)
+        && std::is_constructible_v<Obj, std::initializer_list<Init>&, CArgs...>
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+    function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+      std::initializer_list<Init> il, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible_v<Obj_cv, decltype(il)&, CArgs...>) {
+      static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
+      (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
+
+      using Cw = std::constant_wrapper<Val, Fn>;
+      m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, il, std::forward<CArgs>(args)...);
+
+      // Mandates are as follows.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+      }
+    }
 
 #endif // C++ >= 26
 
@@ -3517,7 +3570,7 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 #if EMBED_CXX_VERSION >= 201703L
 
 /// @brief make_fn[11]: In-place make function.
-/// @return `decltype(make_fn(std::declval<Functor>()))`
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <typename Functor, typename... CArgs>
 EMBED_NODISCARD inline auto make_fn(std::in_place_type_t<Functor>, CArgs&&... args)
 noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
@@ -3537,7 +3590,7 @@ noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
 }
 
 /// @brief make_fn[11]: In-place make function. (std::initializer_list)
-/// @return `decltype(make_fn(std::declval<Functor>()))`
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto
 make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... args)
@@ -3576,7 +3629,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept {
 }
 
 /// @brief make_fn[13]: Make function from `std::cw<callable>` and `obj`/`&obj`, binding the first parameter.
-/// @return `fn<Auto-Deduction>`
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <auto Val, typename Fn, typename Tp,
   bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Tp>, Tp&&>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
@@ -3586,14 +3639,61 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(
   static constexpr std::size_t buffer_size = sizeof(Tp);
   static constexpr std::size_t alignment = detail::enough_alignment<alignof(Tp)>::value;
 
-  return detail::make_function_impl<
-    /* Fn = */ fn<signature, buffer_size, alignment>, /* NoThrow = */ NoThrow
-  >(Cw{}, std::forward<Tp>(obj));
+  using FnWrapper = detail::conditional_t<
+    std::is_copy_constructible<detail::decay_t<Tp>>::value,
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
+
+  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, std::forward<Tp>(obj));
+}
+
+/// @brief make_fn[14]: Make function from `std::cw<callable>` and in-place constructed object.
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
+template <auto Val, typename Fn, typename Obj, typename... CArgs,
+  bool NoThrow = std::is_nothrow_constructible_v<Obj, CArgs...>>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
+noexcept(NoThrow) {
+  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using Cw = std::constant_wrapper<Val, Fn>;
+  using Ip = std::in_place_type_t<Obj>;
+  static constexpr std::size_t buffer_size = sizeof(Obj);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Obj)>::value;
+
+  using FnWrapper = detail::conditional_t<
+    std::is_copy_constructible<Obj>::value,
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
+
+  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, std::forward<CArgs>(args)...);
+}
+
+/// @brief make_fn[15]: Make function from `std::cw<callable>` and in-place constructed object.
+/// (std::initializer_list)
+/// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
+template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
+  bool NoThrow = std::is_nothrow_constructible_v<Obj, std::initializer_list<Init>&, CArgs...>>
+EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+  std::initializer_list<Init> il, CArgs&&... args)
+noexcept(NoThrow) {
+  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using Cw = std::constant_wrapper<Val, Fn>;
+  using Ip = std::in_place_type_t<Obj>;
+  static constexpr std::size_t buffer_size = sizeof(Obj);
+  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Obj)>::value;
+
+  using FnWrapper = detail::conditional_t<
+    std::is_copy_constructible<Obj>::value,
+    ebd::fn<signature, buffer_size, alignment>,
+    ebd::unique_fn<signature, buffer_size, alignment>>;
+
+  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, il, std::forward<CArgs>(args)...);
 }
 
 #endif // C++ >= 26
 
-/// @brief make_fn[14]: Make function with specified wrapper.
+/// @brief make_fn[16]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, BufferSize, Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(

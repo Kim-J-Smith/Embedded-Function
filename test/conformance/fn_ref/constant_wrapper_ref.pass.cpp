@@ -400,7 +400,7 @@ TEST(Conformance_fn_ref, constant_wrapper_ref_pass) {
 
     int a = 0;
     auto f2 = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_free_func_iii_add>, a);
-    static_assert(std::is_same_v<decltype(f2), ebd::fn_ref<int(int)>>);
+    static_assert(std::is_same_v<decltype(f2), ebd::fn_ref<int(int) const>>);
     ASSERT_EQ(f2(42), 42);
 
     auto f3 = ebd::make_fn<ebd::fn_ref>(std::cw<&ebd_test_free_func_iii_add_noexcept>, a);

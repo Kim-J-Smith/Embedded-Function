@@ -10,7 +10,7 @@
   <a href="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml">
     <img src="https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/test.yml/badge.svg">
     <img src="https://img.shields.io/badge/GCC_5.1~16.2-support-B46F1B?style=flat&logo=gnu" alt="gcc-5.1~16.2 - support">
-    <img src="https://img.shields.io/badge/Clang_3.7~22.1-support-045891?style=flat&logo=llvm" alt="clang-3.7~22.1 - support">
+    <img src="https://img.shields.io/badge/Clang_3.7~23.1-support-045891?style=flat&logo=llvm" alt="clang-3.7~23.1 - support">
     <img src="https://img.shields.io/badge/MSVC_19.10~19.51-support-5C2D91?style=flat" alt="msvc-19.10~19.51 - support">
   </a>
 </p>
@@ -246,16 +246,17 @@ auto f = ebd::make_fn<ebd::fn_ref[, Signature]>(Callable_Object);
 // In place build functor within buffer. Functor should be unambiguously callable (non-overload).
 // Since C++17.
 auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, CArgs...);
-auto f = ebd::make_fn[<FnWrapper[, Signature]>](
-  std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...);
+auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...);
 ```
 
 ```cpp
-// Create ebd::fn from std::constant_wrapper. 
+// Create ebd::fn (or ebd::unique_fn when the bound object is move-only) from std::constant_wrapper.
 // Since C++26
 auto f = ebd::make_fn(std::cw<&free_function>);
 auto f = ebd::make_fn(std::cw<&Class::member_function>, obj);
 auto f = ebd::make_fn(std::cw<&Class::member_function>, &obj);
+auto f = ebd::make_fn(std::cw<&Class::member_function>, std::in_place_type<Class>, CArgs...);
+auto f = ebd::make_fn(std::cw<&Class::member_function>, std::in_place_type<Class>, {/*std::initializer_list*/}, CArgs...);
 ```
 
 ## 🔗 Back to function pointer
