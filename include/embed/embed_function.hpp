@@ -1932,6 +1932,7 @@ namespace invocation {
 #endif
 
 #undef EMBED_DETAIL_INVOKER_IMPL_DEFINE
+#undef EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL
 #undef EMBED_DETAIL_CW_INVOKER_IMPL
 
 } // end namespace invocation
