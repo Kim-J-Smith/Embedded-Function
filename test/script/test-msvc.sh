@@ -22,7 +22,7 @@ config_cmake_and_run_test() {
     echo "Test use macros: $3"
     echo "============================================================"
 
-    cmake -B build -S . -G "$2" \
+    cmake -B build -S . -G "Ninja" \
         -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
         -DCMAKE_CXX_STANDARD="$1" \
         -DTEST_USE_MACROS="$3"
