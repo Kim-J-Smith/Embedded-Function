@@ -119,9 +119,9 @@ function(std::constant_wrapper<Val, Fn>, Obj&& obj) noexcept;
 template <auto Val, typename Fn, typename Obj, typename... CArgs>
 function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args) noexcept;
 
-template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init>
+template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U>
 function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
-         std::initializer_list<Init> il, CArgs&&... args) noexcept;
+         std::initializer_list<U> il, CArgs&&... args) noexcept;
 ```
 
 Constructs a function wrapper from a `std::constant_wrapper` (P3948), available when `__cpp_lib_constant_wrapper >= 202603L`. The exact overload set depends on the configuration:

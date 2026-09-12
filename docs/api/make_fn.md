@@ -208,10 +208,10 @@ Creates an owning wrapper by constructing the object in place inside the wrapper
 ### 16. In-place object with `std::constant_wrapper` and `std::initializer_list` (C++26+)
 
 ```cpp
-template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
-          bool NoThrow = std::is_nothrow_constructible_v<Obj, std::initializer_list<Init>&, CArgs...>>
+template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U,
+          bool NoThrow = std::is_nothrow_constructible_v<Obj, std::initializer_list<U>&, CArgs...>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
-                             std::initializer_list<Init> il, CArgs&&... args) noexcept(NoThrow);
+                             std::initializer_list<U> il, CArgs&&... args) noexcept(NoThrow);
 ```
 
 Same as overload 15, but the object is constructed from an `std::initializer_list` followed by `args`.

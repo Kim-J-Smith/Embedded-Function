@@ -3098,14 +3098,14 @@ namespace crtp_mixins {
     /// @todo TODO: experimental @implements <https://wg21.link/P2511>
     // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
     // The object is constructed in-place from `std::initializer_list` and the specified arguments.
-    template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
+    template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U,
       typename Obj_cv = add_cv_like_sig_t<Obj>,
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
-        && std::is_constructible_v<Obj, std::initializer_list<Init>&, CArgs...>
+        && std::is_constructible_v<Obj, std::initializer_list<U>&, CArgs...>
         && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
     function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
-      std::initializer_list<Init> il, CArgs&&... args)
+      std::initializer_list<U> il, CArgs&&... args)
     noexcept(std::is_nothrow_constructible_v<Obj_cv, decltype(il)&, CArgs...>) {
       static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
       (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
@@ -3672,10 +3672,10 @@ noexcept(NoThrow) {
 /// @brief make_fn[15]: Make function from `std::cw<callable>` and in-place constructed object.
 /// (std::initializer_list)
 /// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
-template <auto Val, typename Fn, typename Obj, typename... CArgs, typename Init,
-  bool NoThrow = std::is_nothrow_constructible_v<Obj, std::initializer_list<Init>&, CArgs...>>
+template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U,
+  bool NoThrow = std::is_nothrow_constructible_v<Obj, std::initializer_list<U>&, CArgs...>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
-  std::initializer_list<Init> il, CArgs&&... args)
+  std::initializer_list<U> il, CArgs&&... args)
 noexcept(NoThrow) {
   using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
   using signature = detail::skip_first_arg_sig_t<sig_raw>;
