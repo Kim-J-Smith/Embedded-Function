@@ -12,6 +12,7 @@
 
 **🛠️ Optimizations and Improvements**
 - Unified the template parameter naming and the documentation comments of the `std::constant_wrapper` support, and corrected the `@return` documentation of the `ebd::make_fn` overloads.
+- Switched the MSVC CI tests to the Ninja generator (`test/script/test-msvc.bat`), which speeds up the CI test builds.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
