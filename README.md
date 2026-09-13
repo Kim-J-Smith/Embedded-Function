@@ -17,6 +17,26 @@
 
 > *A **lightweight** and **heap-free** polymorphic function wrapper collection.*
 
+## 📖 Table of Contents
+
+- [Overview](#-overview)
+- [Quick start](#-quick-start)
+- [Wrapper definition syntax](#-wrapper-definition-syntax)
+- [Design goals](#-design-goals-driving-the-design)
+- [Core function wrappers](#-core-function-wrappers)
+  - [Summary table](#summary-table)
+  - [Convertibility](#convertibility)
+  - [Memory layout](#memory-layout-overview)
+- [Automatic deduction](#-automatic-deduction)
+- [Back to function pointer](#-back-to-function-pointer)
+- [C++20 Module support](#-c20-module-support)
+- [Debug diagnostics hook](#️-debug-diagnostics-hook)
+- [Compatibility](#-compatibility)
+- [Test](#-test)
+- [Performance optimization](#-performance-optimization)
+- [Benchmark](#️-benchmark)
+- [Similar implementations](#-similar-implementations)
+
 ## 📌 Overview
 
 *Embedded Function* is a **lightweight** and **no-heap-allocation** function wrapper collection implemented based on the C++11 standard, optimized([see below](#-performance-optimization)) for resource-constrained or high-performance environments.
