@@ -3080,8 +3080,8 @@ namespace crtp_mixins {
         requires (!Config::isView)
         && std::is_constructible_v<Obj, CArgs...>
         && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
-    function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
-    noexcept(std::is_nothrow_constructible_v<Obj_cv, CArgs...>) {
+    explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible_v<Obj, CArgs...>) {
       static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
       (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
 
@@ -3104,9 +3104,9 @@ namespace crtp_mixins {
         requires (!Config::isView)
         && std::is_constructible_v<Obj, std::initializer_list<U>&, CArgs...>
         && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
-    function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+    explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
       std::initializer_list<U> il, CArgs&&... args)
-    noexcept(std::is_nothrow_constructible_v<Obj_cv, decltype(il)&, CArgs...>) {
+    noexcept(std::is_nothrow_constructible_v<Obj, decltype(il)&, CArgs...>) {
       static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
       (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj, erasure_t>{};
 

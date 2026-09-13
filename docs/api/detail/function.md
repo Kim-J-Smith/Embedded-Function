@@ -114,14 +114,14 @@ constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept;
 
 // Owning wrappers (ebd::fn, ebd::unique_fn, ebd::classic_fn, ebd::safe_fn)
 template <auto Val, typename Fn, typename Obj>
-function(std::constant_wrapper<Val, Fn>, Obj&& obj) noexcept;
+explicit function(std::constant_wrapper<Val, Fn>, Obj&& obj) noexcept(/*obj-constructor-nothrow*/);
 
 template <auto Val, typename Fn, typename Obj, typename... CArgs>
-function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args) noexcept;
+explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args) noexcept(/*obj-constructor-nothrow*/);
 
 template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U>
-function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
-         std::initializer_list<U> il, CArgs&&... args) noexcept;
+explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+         std::initializer_list<U> il, CArgs&&... args) noexcept(/*obj-constructor-nothrow*/);
 ```
 
 Constructs a function wrapper from a `std::constant_wrapper` (P3948), available when `__cpp_lib_constant_wrapper >= 202603L`. The exact overload set depends on the configuration:
