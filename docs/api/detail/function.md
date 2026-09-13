@@ -113,14 +113,21 @@ template <auto Val, typename Fn, typename Tp>
 constexpr function(std::constant_wrapper<Val, Fn>, Tp* obj) noexcept;
 
 // Owning wrappers (ebd::fn, ebd::unique_fn, ebd::classic_fn, ebd::safe_fn)
-template <auto Val, typename Fn, typename Up>
-function(std::constant_wrapper<Val, Fn>, Up&& obj) noexcept;
+template <auto Val, typename Fn, typename Obj>
+explicit function(std::constant_wrapper<Val, Fn>, Obj&& obj) noexcept(/*obj-constructor-nothrow*/);
+
+template <auto Val, typename Fn, typename Obj, typename... CArgs>
+explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args) noexcept(/*obj-constructor-nothrow*/);
+
+template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U>
+explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+         std::initializer_list<U> il, CArgs&&... args) noexcept(/*obj-constructor-nothrow*/);
 ```
 
 Constructs a function wrapper from a `std::constant_wrapper` (P3948), available when `__cpp_lib_constant_wrapper >= 202603L`. The exact overload set depends on the configuration:
 
-- View wrappers (`ebd::fn_ref`): support construction from a bare `std::constant_wrapper` (free function or other callable), from a `std::constant_wrapper` plus an object (lvalue `obj`, bound by reference as the first parameter, which is removed from the signature), and from a `std::constant_wrapper` plus an object pointer (`Tp*`, which must not be null for member pointers). All three constructors are `constexpr`.
-- Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`): support construction from a `std::constant_wrapper` plus an object (or object pointer). The object is stored inside the wrapper buffer, and its type must satisfy the same buffer size/alignment constraints as any other functor. This constructor is **NOT** `constexpr`: the object is constructed via placement `new` in the internal `unsigned char` buffer, which cannot be performed in a constant expression.
+- View wrappers (`ebd::fn_ref`): support construction from a bare `std::constant_wrapper` (free function or other callable), from a `std::constant_wrapper` plus an object (lvalue `obj`, bound by reference as the first parameter, which is removed from the signature), and from a `std::constant_wrapper` plus an object pointer (`Tp*`, which must not be null for member pointers). All three constructors are `constexpr`. The in-place forms (owning wrappers only) are not available for view wrappers.
+- Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`): support construction from a `std::constant_wrapper` plus an object (or object pointer), and in-place construction of the object from `std::in_place_type_t<Obj>` plus constructor arguments, optionally with a leading `std::initializer_list`. The object is stored inside the wrapper buffer and is passed as the first argument of the wrapped callable, and its type must satisfy the same buffer size/alignment constraints as any other functor. `Obj` must be a decayed type (`std::is_same_v<Obj, std::decay_t<Obj>>`) and must be constructible from the given arguments, otherwise the constructor is removed from the overload set. The `noexcept` specification follows whether the object is nothrow-constructible from those arguments. These constructors are **NOT** `constexpr`: the object is constructed via placement `new` in the internal `unsigned char` buffer, which cannot be performed in a constant expression.
 
 A `static_assert` rejects null `Val` when `Fn` is a (member) function pointer.
 

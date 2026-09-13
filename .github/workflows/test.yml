@@ -90,9 +90,9 @@ jobs:
       # Run MSVC tests
       - name: Run MSVC tests
         working-directory: test
-        shell: bash
+        shell: cmd
         run: |
-          bash ./script/test-msvc.sh "Visual Studio 17 2022"
+          ./script/test-msvc.bat 14 17 20 23
 
   # VS 2026
   windows-vs-2026:
@@ -107,6 +107,6 @@ jobs:
       # Run MSVC tests
       - name: Run MSVC tests
         working-directory: test
-        shell: bash
+        shell: cmd
         run: |
-          bash ./script/test-msvc.sh "Visual Studio 18 2026"
+          ./script/test-msvc.bat 14 17 20 23
