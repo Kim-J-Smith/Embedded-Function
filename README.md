@@ -1,7 +1,7 @@
-﻿# Embedded Function
+# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.4.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.4.1">
+  <img src="https://img.shields.io/badge/Version-2.4.2-yellow?style=for-the-badge&logo=github" alt="Version - 2.4.2">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -16,6 +16,26 @@
 </p>
 
 > *A **lightweight** and **heap-free** polymorphic function wrapper collection.*
+
+## 📖 Table of Contents
+
+- [Overview](#-overview)
+- [Quick start](#-quick-start)
+- [Wrapper definition syntax](#-wrapper-definition-syntax)
+- [Design goals](#-design-goals-driving-the-design)
+- [Core function wrappers](#-core-function-wrappers)
+  - [Summary table](#summary-table)
+  - [Convertibility](#convertibility)
+  - [Memory layout](#memory-layout-overview)
+- [Automatic deduction](#-automatic-deduction)
+- [Back to function pointer](#-back-to-function-pointer)
+- [C++20 Module support](#-c20-module-support)
+- [Debug diagnostics hook](#️-debug-diagnostics-hook)
+- [Compatibility](#-compatibility)
+- [Test](#-test)
+- [Performance optimization](#-performance-optimization)
+- [Benchmark](#️-benchmark)
+- [Similar implementations](#-similar-implementations)
 
 ## 📌 Overview
 
@@ -330,6 +350,9 @@ auto main() -> int {
     fn1(); fn2(); fn3(); fn4(); fn5();
 }
 ```
+
+> [!CAUTION]
+> *An MSVC 14.51 regression triggers an ICE when using modules. See [issue #174](https://github.com/Kim-J-Smith/Embedded-Function/issues/174).*
 
 ## 🛠️ Debug diagnostics hook
 

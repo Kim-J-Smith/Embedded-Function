@@ -1,18 +1,14 @@
 **🔧 Fixed Bugs**
-- Fixed a bug where `ebd::make_fn(std::cw<...>, obj)` failed to compile when `obj` was move-only; it now returns `ebd::unique_fn`. (#170)
-- Fixed a bug where `ebd::make_fn(std::cw<...>, obj)` could not deduce the correct `const`-qualifier of the signature. (#170)
-- Fixed an internal macro hygiene issue where `EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL` was left defined after use; it is now undefined together with the other internal invoker macros. (#171)
+- Fixed a bug where MSVC mistakenly regarded the empty-state invoker (`empty::invoke`, which throws `std::bad_function_call` or terminates) as a hot path and peeled it into a per-call guard in the calling code. The invoker is now marked with the new internal `EMBED_DETAIL_COLD` macro (`__attribute__((cold))` where available, `__declspec(noinline)` on MSVC, and nothing otherwise), so the hot call path stays free of empty-state checks. See `docs/perf/x86_64_msvc_asm_analysis.md`.
 
 **⚠️ Breaking Changes**
-- `ebd::make_fn(std::cw<NTTP-Callable>, obj)` and `ebd::make_fn<...>(std::cw<NTTP-Callable>, obj)` now deduce a `const`-qualified signature when the first parameter of the `NTTP-Callable` is not a reference type. For example, for a `std::cw` of an `int(*)(int, int)` function, the deduced signature changed from `int(int)` to `int(int) const` because the first parameter `int` is not a reference type. The qualifiers of the object type are preserved only when the first parameter of the callable is a reference type. (#170)
+- None.
 
 **✨ New Features**
-- Owning polymorphic function wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) can now be constructed from `{std::cw<...>, std::in_place_type<T>, CArgs...}` and `{std::cw<...>, std::in_place_type<T>, {std::initializer_list}, CArgs...}` since C++26, as an **experimental** exploration of [P2511: Beyond operator(): NTTP callables in type-erased call wrappers](https://wg21.link/P2511). The object is constructed in place inside the wrapper buffer and binds to the first parameter of the callable. (#170)
-- Added `ebd::make_fn(std::cw<...>, std::in_place_type<T>, CArgs...)` and `ebd::make_fn(std::cw<...>, std::in_place_type<T>, std::initializer_list<U>, CArgs...)`, which deduce the wrapper type, the signature, the buffer size and the alignment. Both return `ebd::fn`, or `ebd::unique_fn` when the object is not copy-constructible. (#170)
+- None.
 
 **🛠️ Optimizations and Improvements**
-- Unified the template parameter naming and the documentation comments of the `std::constant_wrapper` support, and corrected the `@return` documentation of the `ebd::make_fn` overloads. (#170)
-- Switched the MSVC CI tests to the Ninja generator (`test/script/test-msvc.bat`), which speeds up the CI test builds. (#172)
+- Updated the assembly analysis documents under `docs/perf/`: the x86_64 MSVC, RISC-V GCC and ARM GCC analyses now compare register argument passing against the stack spills of `std::function` and cover destruction/copy, the `ebd::fn_ref` zero-stack analysis was extended with a full comparison and a summary table, and a new `docs/perf/x86_64_gcc_asm_analysis.md` document was added.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.

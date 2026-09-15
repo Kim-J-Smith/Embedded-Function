@@ -3,7 +3,7 @@
  *
  * @date        2026-9-1
  *
- * @version     2.4.1
+ * @version     2.4.2
  *
  * @copyright   Copyright (c) 2025-2026 Kim-J-Smith
  *              All rights reserved.
@@ -308,6 +308,14 @@
 # define EMBED_DETAIL_NOT_NULL(T) _Notnull_ T
 #else
 # define EMBED_DETAIL_NOT_NULL(T) T
+#endif
+
+#if EMBED_HAS_ATTRIBUTE(cold)
+# define EMBED_DETAIL_COLD __attribute__((cold))
+#elif defined(_MSC_VER) && !defined(__clang__)
+# define EMBED_DETAIL_COLD __declspec(noinline)
+#else
+# define EMBED_DETAIL_COLD
 #endif
 
 #if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
@@ -1865,6 +1873,7 @@ namespace invocation {
                                                                                       \
     /* Using when M_erasure is empty. */                                              \
     struct empty {                                                                    \
+      EMBED_DETAIL_COLD /* MSVC mistakenly regarded this function as the hot path. */ \
       static Ret invoke(erasure_pass_t, smart_forward_t<Args>...) NOEXCEPT {          \
         throw_or_terminate<Config::isThrowing>();                                     \
         /* Unreachable: throw_or_terminate() is [[noreturn]] */                       \
@@ -3760,6 +3769,7 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 #endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NOT_NULL
 #undef EMBED_DETAIL_NOT_NULL
 #undef EMBED_DETAIL_MSVC_INTRINSIC
+#undef EMBED_DETAIL_COLD
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
 // EMBED_CXX_VERSION and EMBED_CXX_ENABLE_EXCEPTION are reserved.
