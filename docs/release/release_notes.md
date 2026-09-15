@@ -1,5 +1,5 @@
 **🔧 Fixed Bugs**
-- None.
+- Fixed a bug where MSVC mistakenly regarded the empty-state invoker (`empty::invoke`, which throws `std::bad_function_call` or terminates) as a hot path and peeled it into a per-call guard in the calling code. The invoker is now marked with the new internal `EMBED_DETAIL_COLD` macro (`__attribute__((cold))` where available, `__declspec(noinline)` on MSVC, and nothing otherwise), so the hot call path stays free of empty-state checks. See `docs/perf/x86_64_msvc_asm_analysis.md`.
 
 **⚠️ Breaking Changes**
 - None.
@@ -8,7 +8,7 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Updated the assembly analysis documents under `docs/perf/`: the x86_64 MSVC, RISC-V GCC and ARM GCC analyses now compare register argument passing against the stack spills of `std::function` and cover destruction/copy, the `ebd::fn_ref` zero-stack analysis was extended with a full comparison and a summary table, and a new `docs/perf/x86_64_gcc_asm_analysis.md` document was added.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
