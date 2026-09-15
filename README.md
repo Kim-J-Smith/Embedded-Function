@@ -352,7 +352,7 @@ auto main() -> int {
 ```
 
 > [!CAUTION]
-> *An MSVC 14.51 regression triggers an ICE when using modules. (#174) See [DevCom 11151612](https://developercommunity.visualstudio.com/t/C-Modules-ICE:-fbt-resolvecpp:192:-so/11151612).*
+> *An MSVC 14.51 regression triggers an ICE when using modules. See [issue #174](https://github.com/Kim-J-Smith/Embedded-Function/issues/174).*
 
 ## 🛠️ Debug diagnostics hook
 
