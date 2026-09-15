@@ -1,4 +1,4 @@
-﻿# Embedded Function
+# Embedded Function
 
 <p align="center">
   <img src="https://img.shields.io/badge/Version-2.4.2-yellow?style=for-the-badge&logo=github" alt="Version - 2.4.2">
@@ -350,6 +350,9 @@ auto main() -> int {
     fn1(); fn2(); fn3(); fn4(); fn5();
 }
 ```
+
+> [!CAUTION]
+> *An MSVC 14.51 regression triggers an ICE when using modules. (#174) See [DevCom 11151612](https://developercommunity.visualstudio.com/t/C-Modules-ICE:-fbt-resolvecpp:192:-so/11151612).*
 
 ## 🛠️ Debug diagnostics hook
 
