@@ -11,18 +11,18 @@ static int add(int a, int b) { return a + b; }
 static int sub(int a, int b) { return a - b; }
 
 auto main() -> int {
-	auto ebd_add = ebd::make_fn<ebd::classic_fn>(add);
-	auto ebd_sub = ebd::make_fn<ebd::classic_fn>(sub);
+    auto ebd_add = ebd::make_fn<ebd::classic_fn>(add);
+    auto ebd_sub = ebd::make_fn<ebd::classic_fn>(sub);
 
-	auto std_add = std::function<int(int, int)>{ add };
-	auto std_sub = std::function<int(int, int)>{ sub };
+    auto std_add = std::function<int(int, int)>{ add };
+    auto std_sub = std::function<int(int, int)>{ sub };
 
-	volatile int res = 0;
+    volatile int res = 0;
 
-	res = ebd_add(0x2233, 0x1122);
-	res = ebd_sub(0x2233, 0x1122);
-	res = std_add(0x2233, 0x1122);
-	res = std_sub(0x2233, 0x1122);
+    res = ebd_add(0x2233, 0x1122);
+    res = ebd_sub(0x2233, 0x1122);
+    res = std_add(0x2233, 0x1122);
+    res = std_sub(0x2233, 0x1122);
 }
 ```
 
@@ -33,15 +33,9 @@ riscv32-wch-elf-g++ -march=rv32imac -mabi=ilp32 -msmall-data-limit=8 \
                     -msave-restore -std=c++11 -Os    # WCH RISC-V Embedded GCC 15.2.0
 ```
 
-`make_fn<ebd::classic_fn>(add)` deduces an `ebd::classic_fn` whose underlying
-type is `detail::function<16u, 16u, ...>`, as the symbol names below show. Only 4
-bytes are needed for a function pointer, but the owning alignment defaults to
-`alignof(std::max_align_t)`, which is 16 on this target (`long double` is 16
-bytes), so the buffer is padded to 16 and the whole wrapper is 32 bytes against
-16 bytes for the `std::function` used here.
+`make_fn<ebd::classic_fn>(add)` deduces an `ebd::classic_fn` whose underlying type is `detail::function<16u, 16u, ...>`, as the symbol names below show. Only 4 bytes are needed for a function pointer, but the owning alignment defaults to `alignof(std::max_align_t)`, which is 16 on this target (`long double` is 16 bytes), so the buffer is padded to 16 and the whole wrapper is 32 bytes against 16 bytes for the `std::function` used here.
 
-Both wrappers dispatch through two levels: a per-type invoker stored inside the
-object, and then the callable itself.
+Both wrappers dispatch through two levels: a per-type invoker stored inside the object, and then the callable itself.
 
 ### `ebd::classic_fn`: arguments stay in registers
 
@@ -54,6 +48,7 @@ object, and then the callable itself.
    10134:	12260613          	addi	a2,a2,290	# 1122 ; arg#2
    10138:	23358593          	addi	a1,a1,563	# 2233 ; arg#1
    1013c:	1088                	addi	a0,sp,96            ; the erased object
+   ; There is no judgment for detecting the empty state.
    1013e:	9782                	jalr	a5
 
 ; second level: InvokerImpl<16u, 16u, ...>::inplace::invoke<int (*)(int, int)>(ErasurePass, int, int)
@@ -63,10 +58,7 @@ object, and then the callable itself.
    101d6:	8782                	jr	a5                   ; tail call to `add`/`sub`
 ```
 
-7 instructions, 18 bytes: each immediate needs its own `lui`/`addi` pair, so the
-call site is one instruction longer than on ARM even though it is six bytes
-shorter. The first `ebd_add()` call is emitted as a direct `jal` to the very same
-invoker.
+7 instructions, 18 bytes: each immediate needs its own `lui`/`addi` pair, so the call site is one instruction longer than on ARM even though it is six bytes shorter. The first `ebd_add()` call is emitted as a direct `jal` to the very same invoker.
 
 ### `std::function`: arguments are spilled to memory
 
@@ -97,14 +89,9 @@ invoker.
    10202:	8782                	jr	a5
 ```
 
-13 instructions, 30 bytes on the hot path, plus a 2-byte compressed
-`__throw_bad_function_call` (`c.jal`).
+13 instructions, 30 bytes on the hot path, plus a 2-byte compressed `__throw_bad_function_call` (`c.jal`).
 
-`std::function<R(Args...)>::operator()` takes `Args...` by value and forwards
-them as `Args&&`, so every scalar argument is materialized in memory and passed
-by address, only to be loaded again by the callee. `ebd` selects
-`smart_forward_t<Args>`, which degenerates to by-value for register-passable
-types, so its invoker stays `Ret (*)(ErasurePass, int, int)`.
+`std::function<R(Args...)>::operator()` takes `Args...` by value and forwards them as `Args&&`, so every scalar argument is materialized in memory and passed by address, only to be loaded again by the callee. `ebd` selects `smart_forward_t<Args>`, which degenerates to by-value for register-passable types, so its invoker stays `Ret (*)(ErasurePass, int, int)`.
 
 ### Summary
 
@@ -116,8 +103,7 @@ types, so its invoker stays `Ret (*)(ErasurePass, int, int)`.
 | call site | 7 instructions, 18 bytes | 13 instructions, 30 bytes + 2 cold |
 | `sizeof` / `alignof` | 32 / 16 | 16 / 4 |
 
-GCC emits no empty-state test here: nothing compares `m_invoker` against a
-sentinel, and with this source no `empty::invoke` symbol is emitted at all.
+GCC emits no empty-state test here: nothing compares `m_invoker` against a sentinel, and with this source no `empty::invoke` symbol is emitted at all.
 
 ### Destruction and copy
 

@@ -310,18 +310,18 @@
 # define EMBED_DETAIL_NOT_NULL(T) T
 #endif
 
+#if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
+# define EMBED_DETAIL_MSVC_INTRINSIC [[msvc::intrinsic]]
+#else
+# define EMBED_DETAIL_MSVC_INTRINSIC
+#endif
+
 #if EMBED_HAS_ATTRIBUTE(cold)
 # define EMBED_DETAIL_COLD __attribute__((cold))
 #elif defined(_MSC_VER) && !defined(__clang__)
 # define EMBED_DETAIL_COLD __declspec(noinline)
 #else
 # define EMBED_DETAIL_COLD
-#endif
-
-#if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
-# define EMBED_DETAIL_MSVC_INTRINSIC [[msvc::intrinsic]]
-#else
-# define EMBED_DETAIL_MSVC_INTRINSIC
 #endif
 
 namespace ebd EMBED_ABI_VISIBILITY(default) {

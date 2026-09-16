@@ -11,18 +11,18 @@ static int add(int a, int b) { return a + b; }
 static int sub(int a, int b) { return a - b; }
 
 auto main() -> int {
-	auto ebd_add = ebd::make_fn<ebd::classic_fn>(add);
-	auto ebd_sub = ebd::make_fn<ebd::classic_fn>(sub);
+    auto ebd_add = ebd::make_fn<ebd::classic_fn>(add);
+    auto ebd_sub = ebd::make_fn<ebd::classic_fn>(sub);
 
-	auto std_add = std::function<int(int, int)>{ add };
-	auto std_sub = std::function<int(int, int)>{ sub };
+    auto std_add = std::function<int(int, int)>{ add };
+    auto std_sub = std::function<int(int, int)>{ sub };
 
-	volatile int res = 0;
+    volatile int res = 0;
 
-	res = ebd_add(0x2233, 0x1122);
-	res = ebd_sub(0x2233, 0x1122);
-	res = std_add(0x2233, 0x1122);
-	res = std_sub(0x2233, 0x1122);
+    res = ebd_add(0x2233, 0x1122);
+    res = ebd_sub(0x2233, 0x1122);
+    res = std_add(0x2233, 0x1122);
+    res = std_sub(0x2233, 0x1122);
 }
 ```
 
@@ -32,14 +32,7 @@ auto main() -> int {
 arm-none-eabi-g++ -Os -std=c++11    # GNU Tools for STM32 14.3.rel1 (GCC 14.3.1)
 ```
 
-The default target is `-mcpu=arm7tdmi -march=armv4t` in ARM state. Without the
-register form of `blx` (ARMv5T and later) an indirect call costs two instructions
-(`mov lr, pc` + `bx`); on `-mcpu=cortex-m4` the same source emits a single
-`blx r3`. `make_fn<ebd::classic_fn>(add)` deduces an `ebd::classic_fn`
-(`detail::function<8u, 8u, ...>`): a function pointer needs 4 bytes but the
-owning alignment is 8, so the wrapper is 16 bytes, exactly like the
-`std::function` used here. Both dispatch through two levels: a per-type invoker
-stored inside the object, and then the callable itself.
+The default target is `-mcpu=arm7tdmi -march=armv4t` in ARM state. Without the register form of `blx` (ARMv5T and later) an indirect call costs two instructions (`mov lr, pc` + `bx`); on `-mcpu=cortex-m4` the same source emits a single `blx r3`. `make_fn<ebd::classic_fn>(add)` deduces an `ebd::classic_fn` (`detail::function<8u, 8u, ...>`): a function pointer needs 4 bytes but the owning alignment is 8, so the wrapper is 16 bytes, exactly like the `std::function` used here. Both dispatch through two levels: a per-type invoker stored inside the object, and then the callable itself.
 
 ### `ebd::classic_fn`: arguments stay in registers
 
@@ -50,6 +43,7 @@ stored inside the object, and then the callable itself.
     82e4:	e59d3034 	ldr	r3, [sp, #52]	@ 0x34                 ; m_invoker
     82e8:	e28d0028 	add	r0, sp, #40	@ 0x28                 ; the erased object
     82ec:	e1a0e00f 	mov	lr, pc
+    ; There is no judgment for detecting the empty state.
     82f0:	e12fff13 	bx	r3
 
 ; second level: InvokerImpl<8u, 8u, ...>::inplace::invoke<int (*)(int, int)>(ErasurePass, int, int)
@@ -91,13 +85,9 @@ stored inside the object, and then the callable itself.
     861c:	e12fff13 	bx	r3
 ```
 
-13 instructions, 52 bytes on the hot path, plus a 4-byte cold
-`__throw_bad_function_call`.
+13 instructions, 52 bytes on the hot path, plus a 4-byte cold `__throw_bad_function_call`.
 
-`std::function<R(Args...)>::operator()` takes `Args...` by value and forwards
-them as `Args&&`, so every scalar argument is materialized in memory and passed
-by address. `ebd` selects `smart_forward_t<Args>`, which degenerates to by-value
-for register-passable types, so its invoker stays `Ret (*)(ErasurePass, int, int)`.
+`std::function<R(Args...)>::operator()` takes `Args...` by value and forwards them as `Args&&`, so every scalar argument is materialized in memory and passed by address. `ebd` selects `smart_forward_t<Args>`, which degenerates to by-value for register-passable types, so its invoker stays `Ret (*)(ErasurePass, int, int)`.
 
 ### Summary
 
@@ -109,8 +99,7 @@ for register-passable types, so its invoker stays `Ret (*)(ErasurePass, int, int
 | call site | 6 instructions, 24 bytes | 13 instructions, 52 bytes + 4 cold |
 | `sizeof` / `alignof` | 16 / 8 | 16 / 4 |
 
-GCC emits no empty-state test here: nothing compares `m_invoker` against a
-sentinel, and no `empty::invoke` symbol is emitted at all for this source.
+GCC emits no empty-state test here: nothing compares `m_invoker` against a sentinel, and no `empty::invoke` symbol is emitted at all for this source.
 
 ### Destruction and copy
 

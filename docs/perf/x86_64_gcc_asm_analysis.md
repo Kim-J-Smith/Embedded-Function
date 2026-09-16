@@ -11,18 +11,18 @@ static int add(int a, int b) { return a + b; }
 static int sub(int a, int b) { return a - b; }
 
 auto main() -> int {
-	auto ebd_add = ebd::make_fn<ebd::classic_fn>(add);
-	auto ebd_sub = ebd::make_fn<ebd::classic_fn>(sub);
+    auto ebd_add = ebd::make_fn<ebd::classic_fn>(add);
+    auto ebd_sub = ebd::make_fn<ebd::classic_fn>(sub);
 
-	auto std_add = std::function<int(int, int)>{ add };
-	auto std_sub = std::function<int(int, int)>{ sub };
+    auto std_add = std::function<int(int, int)>{ add };
+    auto std_sub = std::function<int(int, int)>{ sub };
 
-	volatile int res = 0;
+    volatile int res = 0;
 
-	res = ebd_add(0x2233, 0x1122);
-	res = ebd_sub(0x2233, 0x1122);
-	res = std_add(0x2233, 0x1122);
-	res = std_sub(0x2233, 0x1122);
+    res = ebd_add(0x2233, 0x1122);
+    res = ebd_sub(0x2233, 0x1122);
+    res = std_add(0x2233, 0x1122);
+    res = std_sub(0x2233, 0x1122);
 }
 ```
 
@@ -32,9 +32,7 @@ auto main() -> int {
 g++ -std=c++11 -Os     # x86-64 gcc (trunk) 17.0.0, System V ABI
 ```
 
-Both wrappers are 32 bytes on the stack and both dispatch through two levels: a
-per-type invoker stored inside the object, and then the callable itself. The
-per-call argument path and the code size per call site are what differ.
+Both wrappers are 32 bytes on the stack and both dispatch through two levels: a per-type invoker stored inside the object, and then the callable itself. The per-call argument path and the code size per call site are what differ.
 
 ### `ebd::classic_fn`: arguments stay in registers
 
@@ -42,6 +40,7 @@ per-call argument path and the code size per call site are what differ.
         mov     edx, 4386                  ; arg#2 -> register
         mov     esi, 8755                  ; arg#1 -> register
         lea     rdi, [rsp+64]              ; the erased object
+        ; There is no judgment for detecting the empty state.
         call    [QWORD PTR [rsp+88]]       ; m_invoker
 
 ; second level: InvokerImpl<...>::inplace::invoke<int (*)(int, int)>(ErasurePass, int, int)
@@ -52,12 +51,9 @@ per-call argument path and the code size per call site are what differ.
         jmp     rax                        ; tail call to `add`/`sub`
 ```
 
-19 bytes for the call shown. The first of the two `ebd` calls is emitted as a
-direct call to the very same invoker; the second goes through memory.
+19 bytes for the call shown. The first of the two `ebd` calls is emitted as a direct call to the very same invoker; the second goes through memory.
 
-`smart_forward_t` turns register-passable parameters into by-value parameters, so
-the invoker is typed `Ret (*)(ErasurePass, int, int)` instead of
-`Ret (*)(ErasurePass, int&&, int&&)`. No scalar argument touches memory.
+`smart_forward_t` turns register-passable parameters into by-value parameters, so the invoker is typed `Ret (*)(ErasurePass, int, int)` instead of `Ret (*)(ErasurePass, int&&, int&&)`. No scalar argument touches memory.
 
 ### `std::function`: arguments are spilled to memory
 
@@ -80,12 +76,9 @@ the invoker is typed `Ret (*)(ErasurePass, int, int)` instead of
         jmp     rax
 ```
 
-43 bytes per call site, 48 bytes including the out-of-line
-`__throw_bad_function_call` that GCC places between the branch and its target.
+43 bytes per call site, 48 bytes including the out-of-line `__throw_bad_function_call` that GCC places between the branch and its target.
 
-`std::function<R(Args...)>::operator()` takes `Args...` by value and forwards
-them as `Args&&`, so every scalar argument is materialized in memory and passed
-by address, only to be loaded again by the callee.
+`std::function<R(Args...)>::operator()` takes `Args...` by value and forwards them as `Args&&`, so every scalar argument is materialized in memory and passed by address, only to be loaded again by the callee.
 
 ### Summary
 
@@ -97,9 +90,7 @@ by address, only to be loaded again by the callee.
 | call site size | 19 bytes | 43 bytes (48 with the throw call) |
 | `sizeof` / `alignof` | 32 / 16 | 32 / 8 |
 
-No empty-state test appears in the generated code for `ebd`: the empty
-constructor stores `empty::invoke` as `m_invoker`, and calling it throws.
-`std::function` re-tests `_M_manager` on every invocation.
+No empty-state test appears in the generated code for `ebd`: the empty constructor stores `empty::invoke` as `m_invoker`, and calling it throws. `std::function` re-tests `_M_manager` on every invocation.
 
 ### Destruction and copy
 

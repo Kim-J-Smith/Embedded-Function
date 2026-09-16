@@ -1,5 +1,5 @@
 **🔧 Fixed Bugs**
-- Fixed a bug where MSVC mistakenly regarded the empty-state invoker (`empty::invoke`, which throws `std::bad_function_call` or terminates) as a hot path and peeled it into a per-call guard in the calling code. The invoker is now marked with the new internal `EMBED_DETAIL_COLD` macro (`__attribute__((cold))` where available, `__declspec(noinline)` on MSVC, and nothing otherwise), so the hot call path stays free of empty-state checks. See `docs/perf/x86_64_msvc_asm_analysis.md`.
+- Fixed a bug where MSVC mistakenly regarded the empty-state invoker (`empty::invoke`, which throws `std::bad_function_call` or terminates) as a hot path and peeled it into a per-call guard in the calling code. The `empty::invoke` is now marked with the new internal `EMBED_DETAIL_COLD` macro to address this issue.
 
 **⚠️ Breaking Changes**
 - None.

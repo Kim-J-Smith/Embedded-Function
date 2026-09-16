@@ -20,10 +20,7 @@ bool func(std::function<bool(int, int)> f) {
 g++ -std=c++11 -Os     # x86-64 gcc (trunk) 17.0.0, System V ABI
 ```
 
-`ebd::fn_ref<bool(int, int)>` is 16 bytes and trivially copyable, so it is passed
-in two registers: `rdi` carries the reference storage and `rsi` carries
-`m_invoker`. Nothing is constructed in this translation unit, so no invoker,
-manager or vtable symbol is emitted here.
+`ebd::fn_ref<bool(int, int)>` is 16 bytes and trivially copyable, so it is passed in two registers: `rdi` carries the reference storage and `rsi` carries `m_invoker`. Nothing is constructed in this translation unit, so no invoker, manager or vtable symbol is emitted here.
 
 ### `ebd::fn_ref`: a tail call, zero stack
 
@@ -32,13 +29,11 @@ manager or vtable symbol is emitted here.
         mov     rax, rsi      ; m_invoker
         mov     edx, 2        ; arg#2
         mov     esi, 1        ; arg#1
+        ; There is no judgment for detecting the empty state.
         jmp     rax           ; tail call; rdi already holds the erased callable
 ```
 
-`rdi` is the invoker's own first parameter, so it needs no shuffling: GCC moves
-the invoker out of `rsi` into `rax`, puts the two immediates in `esi` and `edx`,
-and the call becomes a `jmp`. Four instructions, no stack frame, no empty-state
-test, no `ret`.
+`rdi` is the invoker's own first parameter, so it needs no shuffling: GCC moves the invoker out of `rsi` into `rax`, puts the two immediates in `esi` and `edx`, and the call becomes a `jmp`. Four instructions, no stack frame, no empty-state test, no `ret`.
 
 ### `std::function`: a stack frame per call
 
@@ -58,10 +53,7 @@ test, no `ret`.
         ret
 ```
 
-`std::function` is not trivially copyable, so it is passed by invisible reference
-in `rdi`; every call allocates a 24-byte frame, spills both scalar arguments,
-passes their addresses, tests `_M_manager` for the empty state, and ends with a
-`ret` of its own. Ten instructions against four.
+`std::function` is not trivially copyable, so it is passed by invisible reference in `rdi`; every call allocates a 24-byte frame, spills both scalar arguments, passes their addresses, tests `_M_manager` for the empty state, and ends with a `ret` of its own. Ten instructions against four.
 
 ### Summary
 
@@ -74,7 +66,4 @@ passes their addresses, tests `_M_manager` for the empty state, and ends with a
 | passed in | `rdi` + `rsi` | invisible reference (`rdi`) |
 | `sizeof` / `alignof` | 16 / 8 | 32 / 8 |
 
-The zero-stack property is a calling-convention coincidence: in view mode the
-erased callable *is* the first register of the wrapper and is also the invoker's
-first parameter, so it is already in place. An owning wrapper passes a pointer to
-its buffer instead, which has to be materialized with an instruction of its own.
+The zero-stack property is a calling-convention coincidence: in view mode the erased callable *is* the first register of the wrapper and is also the invoker's first parameter, so it is already in place. An owning wrapper passes a pointer to its buffer instead, which has to be materialized with an instruction of its own.

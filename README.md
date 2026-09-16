@@ -35,6 +35,7 @@
 - [Test](#-test)
 - [Performance optimization](#-performance-optimization)
 - [Benchmark](#️-benchmark)
+- [Future learning & evolution reference](#-future-learning--evolution-reference)
 - [Similar implementations](#-similar-implementations)
 
 ## 📌 Overview
@@ -416,7 +417,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 > [!IMPORTANT]
 > For owning polymorphic function wrappers (`fn`, `unique_fn`, etc.), empty and trivial functors are treated as *stateless* types. Consequently, their `this` pointer value will change on every invocation, as a fresh temporary is constructed on the stack for each call. Define macro `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` to disable this optimization.
 
-> Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
+> Click [x64-msvc](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-gcc](./docs/perf/riscv_gcc_asm_analysis.md), [arm32-gcc](./docs/perf/arm_gcc_asm_analysis.md) and [x64-gcc](./docs/perf/x86_64_gcc_asm_analysis.md) to see more details.
 
 ## ⏱️ Benchmark
 
