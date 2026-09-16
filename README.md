@@ -1,7 +1,7 @@
-﻿# Embedded Function
+# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.4.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.4.1">
+  <img src="https://img.shields.io/badge/Version-2.4.2-yellow?style=for-the-badge&logo=github" alt="Version - 2.4.2">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -16,6 +16,27 @@
 </p>
 
 > *A **lightweight** and **heap-free** polymorphic function wrapper collection.*
+
+## 📖 Table of Contents
+
+- [Overview](#-overview)
+- [Quick start](#-quick-start)
+- [Wrapper definition syntax](#-wrapper-definition-syntax)
+- [Design goals](#-design-goals-driving-the-design)
+- [Core function wrappers](#-core-function-wrappers)
+  - [Summary table](#summary-table)
+  - [Convertibility](#convertibility)
+  - [Memory layout](#memory-layout-overview)
+- [Automatic deduction](#-automatic-deduction)
+- [Back to function pointer](#-back-to-function-pointer)
+- [C++20 Module support](#-c20-module-support)
+- [Debug diagnostics hook](#️-debug-diagnostics-hook)
+- [Compatibility](#-compatibility)
+- [Test](#-test)
+- [Performance optimization](#-performance-optimization)
+- [Benchmark](#️-benchmark)
+- [Future learning & evolution reference](#-future-learning--evolution-reference)
+- [Similar implementations](#-similar-implementations)
 
 ## 📌 Overview
 
@@ -331,6 +352,9 @@ auto main() -> int {
 }
 ```
 
+> [!CAUTION]
+> *An MSVC 14.51 regression triggers an ICE when using modules. See [issue #174](https://github.com/Kim-J-Smith/Embedded-Function/issues/174).*
+
 ## 🛠️ Debug diagnostics hook
 
 `EMBED_FN_HOOK_DEBUG(message)` is a user-defined macro hook for capturing diagnostic output in debug builds. Define it **before** including the header:
@@ -393,7 +417,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 > [!IMPORTANT]
 > For owning polymorphic function wrappers (`fn`, `unique_fn`, etc.), empty and trivial functors are treated as *stateless* types. Consequently, their `this` pointer value will change on every invocation, as a fresh temporary is constructed on the stack for each call. Define macro `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` to disable this optimization.
 
-> Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
+> Click [x64-msvc](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-gcc](./docs/perf/riscv_gcc_asm_analysis.md), [arm32-gcc](./docs/perf/arm_gcc_asm_analysis.md) and [x64-gcc](./docs/perf/x86_64_gcc_asm_analysis.md) to see more details.
 
 ## ⏱️ Benchmark
 

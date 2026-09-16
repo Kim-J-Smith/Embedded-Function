@@ -233,7 +233,7 @@ template <template <class, std::size_t, std::size_t> class Fn,
           std::size_t Alignment = detail::is_ebd_fn<Fn<int(), 0, alignof(int*)>>::config::isView ?
               detail::default_values::non_owning::alignment : Deduction::get_alignment(),
           typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
-          bool NoThrow = noexcept(FnWrapper(std::declval<Args>()...))>
+          bool NoThrow = detail::is_nothrow_constructible_lwg2116<FnWrapper, Args...>::value
 EMBED_NODISCARD inline FnWrapper make_fn(Args&&... args) noexcept(NoThrow);
 ```
 
