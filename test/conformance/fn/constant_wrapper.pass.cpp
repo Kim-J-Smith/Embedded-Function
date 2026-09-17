@@ -50,9 +50,19 @@ struct NeedsConversion {
   int operator()(Int x, Int y, Int z) const noexcept { return x.i + y.i + z.i; }
 };
 
+struct LeftRightCallable {
+    int add_42_left(int n) const & noexcept { return n + 42; };
+    int add_42_right(int n) const && noexcept { return n + 42; };
+};
+
+static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable, int>);
+static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable&, int>);
+static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable&&, int>);
+
 using CwNeedConversion = std::constant_wrapper<NeedsConversion{}>;
 using CwMemberFunction = std::constant_wrapper<&Normal::mem_fn_ii_add>;
 using CwNonConstInvocable = std::constant_wrapper<NonConstInvocable{}>;
+using CwLeftRightCallable = std::constant_wrapper<LeftRightCallable{}>;
 
 }
 
@@ -242,6 +252,18 @@ TEST(Conformance_fn, constant_wrapper_pass) {
         {
             // move-only
             auto f = ebd::make_fn(std::cw<&MoveOnly::add_42>, MoveOnly{});
+            static_assert(std::is_invocable_v<decltype(f), int>);
+            static_assert(std::is_invocable_v<decltype(f) const, int>);
+            static_assert(std::is_invocable_v<decltype(f) &, int>);
+            static_assert(std::is_invocable_v<decltype(f) &&, int>);
+            static_assert(std::is_invocable_v<decltype(f) const&, int>);
+            static_assert(std::is_invocable_v<decltype(f) const&&, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f), int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) const, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) &, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) &&, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) const&, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) const&&, int>);
             static_assert(!f.is_copyable());
             ASSERT_EQ(f(1), 43);
             ASSERT_EQ(f(2), 44);
@@ -320,6 +342,21 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ebd::fn<Int(int, int) const noexcept> f(std::cw<NeedsConversion{}>, 3);
             ASSERT_EQ(f(42, -3).i, 42);
             ASSERT_EQ(f(42, 0).i, 45);
+        }
+    }
+
+    {
+        {
+            ebd::fn<int(int) &> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+        }
+        {
+            ebd::fn<int(int) &&> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f)(0), 42);
+            ASSERT_EQ(std::move(f)(1), 43);
+            ASSERT_EQ(std::move(f)(2), 44);
         }
     }
 }

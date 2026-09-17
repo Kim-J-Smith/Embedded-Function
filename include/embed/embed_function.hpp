@@ -1275,9 +1275,10 @@ inline namespace fn_traits {
 #define EMBED_DETAIL_ADD_QUALIFIER_WITH_THIS_DEFINE(C, V, REF, NOEXCEPT)    \
   template <typename This, typename Ret, typename... Args>                  \
   struct add_qualifier_like<This C V REF, Ret(Args...) NOEXCEPT> {          \
-    using type = Ret(Args...) C V REF NOEXCEPT;                             \
     /* Non-ref parameter means that only one copy of the object is used. */ \
-    using sig_without_ref = conditional_t<std::is_reference<int REF>::value,\
+    using type = conditional_t<std::is_reference<int REF>::value,           \
+      Ret(Args...) C V REF NOEXCEPT, Ret(Args...) const V REF NOEXCEPT>;    \
+    using no_ref_type = conditional_t<std::is_reference<int REF>::value,    \
       Ret(Args...) C V NOEXCEPT, Ret(Args...) const V NOEXCEPT>;            \
   };
 
@@ -1666,17 +1667,30 @@ inline namespace fn_traits {
 
 #define EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE(C, V, REF, NOEXCEPT) \
   template <typename Ret, typename First, typename... Args>         \
-  struct skip_first_arg_sig<Ret(First, Args...) C V REF NOEXCEPT> { \
-    using type = typename add_qualifier_like<                       \
-      First, Ret(Args...) NOEXCEPT>::sig_without_ref;               \
-  };
+  struct skip_first_arg_sig<Ret(First, Args...) C V REF NOEXCEPT>   \
+  : add_qualifier_like<First, Ret(Args...) NOEXCEPT> {};
 
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE)
 
 #undef EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE
 
-  template <typename Signature>
-  using skip_first_arg_sig_t = typename skip_first_arg_sig<Signature>::type;
+  template <typename T>
+  struct is_noref_member_function : std::false_type {};
+
+#define EMBED_DETAIL_IS_NOREF_MEMBER_FUNCTION_DEFINE(C, V, REF, NOEXCEPT) \
+  template <typename Ret, typename Class, typename... Args>               \
+  struct is_noref_member_function<Ret(Class::*)(Args...) C V REF NOEXCEPT>\
+  : bool_constant<!std::is_reference<int REF>::value> {};
+
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_IS_NOREF_MEMBER_FUNCTION_DEFINE)
+
+#undef EMBED_DETAIL_IS_NOREF_MEMBER_FUNCTION_DEFINE
+
+  template <typename Signature, typename Fn>
+  using skip_first_arg_sig_t = conditional_t<
+    is_noref_member_function<Fn>::value,
+    typename skip_first_arg_sig<Signature>::no_ref_type,
+    typename skip_first_arg_sig<Signature>::type>;
 
 #if __cpp_fold_expressions >= 201603L && EMBED_CXX_VERSION >= 201703L
   template <bool... Vals>
@@ -2809,6 +2823,8 @@ namespace crtp_mixins {
 
     template <typename T>
     using add_cv_like_sig_t = typename unwrap_signature<Signature>::template add_cv_like<T>;
+    template <typename T>
+    using add_cvref_like_sig_t = typename unwrap_signature<Signature>::template add_cvref_like<T>;
 
     // Set empty if self is in owning mode.
     template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig,
@@ -3065,6 +3081,7 @@ namespace crtp_mixins {
       bool RightRef = unwrap_signature<Signature>::hasRRef>
         requires (!Config::isView)
         && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+        && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
     function(std::constant_wrapper<Val, Fn>, Obj&& obj)
     noexcept(std::is_nothrow_constructible_v<Obj_cv, Obj&&>) {
       (void)assertions_for_functor<BufferSize, Config, Signature, Obj, Obj&&, erasure_t>{};
@@ -3087,6 +3104,7 @@ namespace crtp_mixins {
         requires (!Config::isView)
         && std::is_constructible_v<Obj, CArgs...>
         && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+        && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
     explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
     noexcept(std::is_nothrow_constructible_v<Obj, CArgs...>) {
       static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
@@ -3111,6 +3129,7 @@ namespace crtp_mixins {
         requires (!Config::isView)
         && std::is_constructible_v<Obj, std::initializer_list<U>&, CArgs...>
         && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+        && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
     explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
       std::initializer_list<U> il, CArgs&&... args)
     noexcept(std::is_nothrow_constructible_v<Obj, decltype(il)&, CArgs...>) {
@@ -3641,18 +3660,19 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept {
 template <auto Val, typename Fn, typename Tp,
   bool NoThrow = std::is_nothrow_constructible_v<detail::decay_t<Tp>, Tp&&>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
-  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using namespace detail;
+  using sig_raw = typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using signature = skip_first_arg_sig_t<sig_raw, remove_cvref_t<Fn>>;
   using Cw = std::constant_wrapper<Val, Fn>;
   static constexpr std::size_t buffer_size = sizeof(Tp);
-  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Tp)>::value;
+  static constexpr std::size_t alignment = enough_alignment<alignof(Tp)>::value;
 
-  using FnWrapper = detail::conditional_t<
-    std::is_copy_constructible<detail::decay_t<Tp>>::value,
+  using FnWrapper = conditional_t<
+    std::is_copy_constructible<decay_t<Tp>>::value,
     ebd::fn<signature, buffer_size, alignment>,
     ebd::unique_fn<signature, buffer_size, alignment>>;
 
-  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, std::forward<Tp>(obj));
+  return make_function_impl<FnWrapper, NoThrow>(Cw{}, std::forward<Tp>(obj));
 }
 
 /// @brief make_fn[14]: Make function from `std::cw<callable>` and in-place constructed object.
@@ -3661,19 +3681,20 @@ template <auto Val, typename Fn, typename Obj, typename... CArgs,
   bool NoThrow = std::is_nothrow_constructible_v<Obj, CArgs...>>
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
 noexcept(NoThrow) {
-  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using namespace detail;
+  using sig_raw = typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using signature = skip_first_arg_sig_t<sig_raw, remove_cvref_t<Fn>>;
   using Cw = std::constant_wrapper<Val, Fn>;
   using Ip = std::in_place_type_t<Obj>;
   static constexpr std::size_t buffer_size = sizeof(Obj);
-  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Obj)>::value;
+  static constexpr std::size_t alignment = enough_alignment<alignof(Obj)>::value;
 
-  using FnWrapper = detail::conditional_t<
+  using FnWrapper = conditional_t<
     std::is_copy_constructible<Obj>::value,
     ebd::fn<signature, buffer_size, alignment>,
     ebd::unique_fn<signature, buffer_size, alignment>>;
 
-  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, std::forward<CArgs>(args)...);
+  return make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, std::forward<CArgs>(args)...);
 }
 
 /// @brief make_fn[15]: Make function from `std::cw<callable>` and in-place constructed object.
@@ -3684,19 +3705,20 @@ template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U,
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
   std::initializer_list<U> il, CArgs&&... args)
 noexcept(NoThrow) {
-  using sig_raw = typename detail::is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using signature = detail::skip_first_arg_sig_t<sig_raw>;
+  using namespace detail;
+  using sig_raw = typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
+  using signature = skip_first_arg_sig_t<sig_raw, remove_cvref_t<Fn>>;
   using Cw = std::constant_wrapper<Val, Fn>;
   using Ip = std::in_place_type_t<Obj>;
   static constexpr std::size_t buffer_size = sizeof(Obj);
-  static constexpr std::size_t alignment = detail::enough_alignment<alignof(Obj)>::value;
+  static constexpr std::size_t alignment = enough_alignment<alignof(Obj)>::value;
 
-  using FnWrapper = detail::conditional_t<
+  using FnWrapper = conditional_t<
     std::is_copy_constructible<Obj>::value,
     ebd::fn<signature, buffer_size, alignment>,
     ebd::unique_fn<signature, buffer_size, alignment>>;
 
-  return detail::make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, il, std::forward<CArgs>(args)...);
+  return make_function_impl<FnWrapper, NoThrow>(Cw{}, Ip{}, il, std::forward<CArgs>(args)...);
 }
 
 #endif // C++ >= 26
