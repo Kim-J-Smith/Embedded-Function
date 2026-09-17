@@ -1,6 +1,7 @@
 **🔧 Fixed Bugs**
 - Fixed a bug where MSVC mistakenly regarded the empty-state invoker (`empty::invoke`, which throws `std::bad_function_call` or terminates) as a hot path and peeled it into a per-call guard in the calling code. The `empty::invoke` is now marked with the new internal `EMBED_DETAIL_COLD` macro to address this issue.
-- Fixed a bug where a callable given through `std::constant_wrapper` lost its ref-qualifier in the deduced signature, so `ebd::fn<int(int)>` accepted an `&`-qualified callable. The `std::constant_wrapper` + object constructors now additionally require the callable to be invocable with the object carrying the cvref qualifiers of the signature.
+- Fixed a bug where a callable given through `std::constant_wrapper` lost its ref-qualifier in the deduced signature.
+- Fixed a bug where `ebd::fn<int(int)>` accepted an `&`-qualified callable. The `std::constant_wrapper` + object constructors now additionally require the callable to be invocable with the object carrying the same qualifiers of the signature.
 
 **⚠️ Breaking Changes**
 - `make_fn(std::cw<&T::f>, T{})` now preserves the ref-qualifier of the member function in the deduced signature, so an `&`- or `&&`-qualified `T::f` yields `fn<..., Ret(Args...) const & noexcept>` or `fn<..., Ret(Args...) const && noexcept>` instead of collapsing both to `fn<..., Ret(Args...) const noexcept>`. This is the fix above; it changes the deduced type.

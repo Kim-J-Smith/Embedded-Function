@@ -358,6 +358,42 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ASSERT_EQ(std::move(f)(1), 43);
             ASSERT_EQ(std::move(f)(2), 44);
         }
+        {
+            ebd::fn<int(int) const &> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+        }
+        {
+            ebd::fn<int(int) const &&> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f)(0), 42);
+            ASSERT_EQ(std::move(f)(1), 43);
+            ASSERT_EQ(std::move(f)(2), 44);
+        }
+        {
+            ebd::fn<int(int) & noexcept> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+        }
+        {
+            ebd::fn<int(int) && noexcept> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f)(0), 42);
+            ASSERT_EQ(std::move(f)(1), 43);
+            ASSERT_EQ(std::move(f)(2), 44);
+        }
+        {
+            ebd::fn<int(int) const & noexcept> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+        }
+        {
+            ebd::fn<int(int) const && noexcept> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f)(0), 42);
+            ASSERT_EQ(std::move(f)(1), 43);
+            ASSERT_EQ(std::move(f)(2), 44);
+        }
     }
 }
 
