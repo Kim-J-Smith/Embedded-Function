@@ -2832,12 +2832,13 @@ namespace crtp_mixins {
     using add_cvref_like_sig_t = typename unwrap_signature<Signature>::template add_cvref_like<T>;
 
     // Set empty if self is in owning mode.
-    template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig,
-      EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/>
-    static EMBED_INLINE void set_empty_if_owning(function<Buf, Align, Cfg, Sig>& self) noexcept
-    { self.m_command.set_empty(); }
     template <typename T>
-    static EMBED_INLINE void set_empty_if_owning(T&) noexcept { /* nothing */ }
+    EMBED_INLINE static void set_empty_if_owning(T&) noexcept { /* default: do nothing */ }
+
+    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
+      EMBED_DETAIL_REQUIRES_END((!Cfg::isView) /*OWNING-ONLY*/)
+    EMBED_INLINE static void set_empty_if_owning(function<Buf, Align, Cfg, Sig>& self) noexcept
+    { self.m_command.set_empty(); }
 
   public:
 
