@@ -343,6 +343,17 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ASSERT_EQ(f(42, -3).i, 42);
             ASSERT_EQ(f(42, 0).i, 45);
         }
+        {
+            ebd::fn<int(Int, Int) const noexcept, sizeof(int)> f(std::cw<NeedsConversion{}>, 3);
+            ASSERT_EQ(f(42, -3), 42);
+            ASSERT_EQ(f(42, 0), 45);
+
+            auto f_auto = ebd::make_fn(std::cw<NeedsConversion{}>, 3);
+            ASSERT_EQ(f_auto(42, -3), 42);
+            ASSERT_EQ(f_auto(42, 0), 45);
+
+            static_assert(std::is_same_v<decltype(f), decltype(f_auto)>);
+        }
     }
 
     {
@@ -383,16 +394,30 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ASSERT_EQ(std::move(f)(2), 44);
         }
         {
-            ebd::fn<int(int) const & noexcept> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ebd::fn<int(int) const & noexcept, sizeof(LeftRightCallable)> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
             ASSERT_EQ(f(0), 42);
             ASSERT_EQ(f(1), 43);
             ASSERT_EQ(f(2), 44);
+
+            auto f_auto = ebd::make_fn(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f_auto(0), 42);
+            ASSERT_EQ(f_auto(1), 43);
+            ASSERT_EQ(f_auto(2), 44);
+
+            static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
         }
         {
-            ebd::fn<int(int) const && noexcept> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ebd::fn<int(int) const && noexcept, sizeof(LeftRightCallable)> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
             ASSERT_EQ(std::move(f)(0), 42);
             ASSERT_EQ(std::move(f)(1), 43);
             ASSERT_EQ(std::move(f)(2), 44);
+
+            auto f_auto = ebd::make_fn(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f_auto)(0), 42);
+            ASSERT_EQ(std::move(f_auto)(1), 43);
+            ASSERT_EQ(std::move(f_auto)(2), 44);
+
+            static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
         }
     }
 }
