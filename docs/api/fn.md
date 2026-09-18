@@ -98,7 +98,7 @@ int total = fn3(); // total == 6
 // A free-function constant_wrapper can also be stored (see ebd::make_fn).
 ```
 
-`ebd::fn` can be constructed from a `std::constant_wrapper` (P3948) together with an object, which is stored by value in the wrapper buffer, or by in-place constructing that object from `std::in_place_type<T>` plus constructor arguments. This is available when `__cpp_lib_constant_wrapper >= 202603L` (C++26).
+`ebd::fn` can be constructed from a `std::constant_wrapper` (P3948) together with an object, which is stored by value in the wrapper buffer, or by in-place constructing that object from `std::in_place_type<T>` plus constructor arguments. This is available when `__cpp_lib_constant_wrapper >= 202603L` (C++26). The callable must be invocable with the object carrying the cv/ref-qualifiers of the chosen signature, so a non-const `&`-qualified member function requires a ref-qualified signature such as `ebd::fn<int(int) &>`.
 
 ## Notes
 

@@ -41,27 +41,50 @@ struct MoveOnly {
 
 using Normal = ebd_test_member_fn;
 
+struct Int {
+  int i;
+  constexpr Int(int ii) noexcept : i(ii) {}
+};
+
+struct NeedsConversion {
+  int operator()(Int x, Int y, Int z) const noexcept { return x.i + y.i + z.i; }
+};
+
+struct LeftRightCallable {
+    int add_42_left(int n) const & noexcept { return n + 42; };
+    int add_42_right(int n) const && noexcept { return n + 42; };
+};
+
+static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable, int>);
+static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable&, int>);
+static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable&&, int>);
+
+using CwNeedConversion = std::constant_wrapper<NeedsConversion{}>;
+using CwMemberFunction = std::constant_wrapper<&Normal::mem_fn_ii_add>;
+using CwNonConstInvocable = std::constant_wrapper<NonConstInvocable{}>;
+using CwLeftRightCallable = std::constant_wrapper<LeftRightCallable{}>;
+
 }
 
 // member function
 static_assert(
-    std::is_constructible_v<ebd::fn<int(int, int)>, std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
+    std::is_constructible_v<ebd::fn<int(int, int)>, CwMemberFunction, Normal>);
 static_assert(
-    !std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
+    !std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,CwMemberFunction, Normal>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<int(int, int) const>, std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
+    !std::is_constructible_v<ebd::fn<int(int, int) const>, CwMemberFunction, Normal>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<int(int, int) noexcept>, std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
+    !std::is_constructible_v<ebd::fn<int(int, int) noexcept>, CwMemberFunction, Normal>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<int(int, int) const noexcept>, std::constant_wrapper<&Normal::mem_fn_ii_add>, Normal>);
+    !std::is_constructible_v<ebd::fn<int(int, int) const noexcept>, CwMemberFunction, Normal>);
 
 // non-const-invocable functor
 static_assert(
-    !std::is_constructible_v<ebd::fn<void()>, std::constant_wrapper<NonConstInvocable{}>, int*>);
+    !std::is_constructible_v<ebd::fn<void()>, CwNonConstInvocable, int*>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<void() const>, std::constant_wrapper<NonConstInvocable{}>, int*>);
+    !std::is_constructible_v<ebd::fn<void() const>, CwNonConstInvocable, int*>);
 static_assert(
-    !std::is_constructible_v<ebd::fn<void() noexcept>, std::constant_wrapper<NonConstInvocable{}>, int*>);
+    !std::is_constructible_v<ebd::fn<void() noexcept>, CwNonConstInvocable, int*>);
 
 // in-place
 static_assert(std::is_constructible_v<
@@ -72,6 +95,80 @@ static_assert(
 static_assert(!std::is_constructible_v<
     ebd::fn<int(), sizeof(ListInit)>,
     std::constant_wrapper<&ListInit::sum>, std::in_place_type_t<ListInit>, std::initializer_list<float>&>);
+
+/// need-conversion
+
+// non-qualifier
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int)>, CwNeedConversion, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int)>, CwNeedConversion, Int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, int)>, CwNeedConversion, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, Int)>, CwNeedConversion, Int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int)>, CwNeedConversion, std::in_place_type_t<int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int)>, CwNeedConversion, std::in_place_type_t<Int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, int)>, CwNeedConversion, std::in_place_type_t<int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, Int)>, CwNeedConversion, std::in_place_type_t<Int>, int>);
+
+// const-qualifier
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) const>, CwNeedConversion, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) const>, CwNeedConversion, Int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, int) const>, CwNeedConversion, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, Int) const>, CwNeedConversion, Int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) const>, CwNeedConversion, std::in_place_type_t<int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) const>, CwNeedConversion, std::in_place_type_t<Int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, int) const>, CwNeedConversion, std::in_place_type_t<int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, Int) const>, CwNeedConversion, std::in_place_type_t<Int>, int>);
+
+// noexcept-qualifier
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) noexcept>, CwNeedConversion, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) noexcept>, CwNeedConversion, Int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, int) noexcept>, CwNeedConversion, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, Int) noexcept>, CwNeedConversion, Int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) noexcept>, CwNeedConversion, std::in_place_type_t<int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) noexcept>, CwNeedConversion, std::in_place_type_t<Int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, int) noexcept>, CwNeedConversion, std::in_place_type_t<int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, Int) noexcept>, CwNeedConversion, std::in_place_type_t<Int>, int>);
+
+// const & noexcept-qualifier
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) const noexcept>, CwNeedConversion, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) const noexcept>, CwNeedConversion, Int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, int) const noexcept>, CwNeedConversion, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, Int) const noexcept>, CwNeedConversion, Int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) const noexcept>, CwNeedConversion, std::in_place_type_t<int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(int, int) const noexcept>, CwNeedConversion, std::in_place_type_t<Int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, int) const noexcept>, CwNeedConversion, std::in_place_type_t<int>, int>);
+static_assert(
+    std::is_constructible_v<ebd::fn<Int(Int, Int) const noexcept>, CwNeedConversion, std::in_place_type_t<Int>, int>);
 
 TEST(Conformance_fn, constant_wrapper_pass) {
     {
@@ -155,6 +252,18 @@ TEST(Conformance_fn, constant_wrapper_pass) {
         {
             // move-only
             auto f = ebd::make_fn(std::cw<&MoveOnly::add_42>, MoveOnly{});
+            static_assert(std::is_invocable_v<decltype(f), int>);
+            static_assert(std::is_invocable_v<decltype(f) const, int>);
+            static_assert(std::is_invocable_v<decltype(f) &, int>);
+            static_assert(std::is_invocable_v<decltype(f) &&, int>);
+            static_assert(std::is_invocable_v<decltype(f) const&, int>);
+            static_assert(std::is_invocable_v<decltype(f) const&&, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f), int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) const, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) &, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) &&, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) const&, int>);
+            static_assert(!std::is_nothrow_invocable_v<decltype(f) const&&, int>);
             static_assert(!f.is_copyable());
             ASSERT_EQ(f(1), 43);
             ASSERT_EQ(f(2), 44);
@@ -211,6 +320,105 @@ TEST(Conformance_fn, constant_wrapper_pass) {
         ASSERT_EQ(f_auto(), 46);
 
         static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
+    }
+
+    {
+        {
+            ebd::fn<Int(int, int)> f(std::cw<NeedsConversion{}>, 3);
+            ASSERT_EQ(f(42, -3).i, 42);
+            ASSERT_EQ(f(42, 0).i, 45);
+        }
+        {
+            ebd::fn<Int(int, int) const> f(std::cw<NeedsConversion{}>, 3);
+            ASSERT_EQ(f(42, -3).i, 42);
+            ASSERT_EQ(f(42, 0).i, 45);
+        }
+        {
+            ebd::fn<Int(int, int) noexcept> f(std::cw<NeedsConversion{}>, 3);
+            ASSERT_EQ(f(42, -3).i, 42);
+            ASSERT_EQ(f(42, 0).i, 45);
+        }
+        {
+            ebd::fn<Int(int, int) const noexcept> f(std::cw<NeedsConversion{}>, 3);
+            ASSERT_EQ(f(42, -3).i, 42);
+            ASSERT_EQ(f(42, 0).i, 45);
+        }
+        {
+            ebd::fn<int(Int, Int) const noexcept, sizeof(int)> f(std::cw<NeedsConversion{}>, 3);
+            ASSERT_EQ(f(42, -3), 42);
+            ASSERT_EQ(f(42, 0), 45);
+
+            auto f_auto = ebd::make_fn(std::cw<NeedsConversion{}>, 3);
+            ASSERT_EQ(f_auto(42, -3), 42);
+            ASSERT_EQ(f_auto(42, 0), 45);
+
+            static_assert(std::is_same_v<decltype(f), decltype(f_auto)>);
+        }
+    }
+
+    {
+        {
+            ebd::fn<int(int) &> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+        }
+        {
+            ebd::fn<int(int) &&> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f)(0), 42);
+            ASSERT_EQ(std::move(f)(1), 43);
+            ASSERT_EQ(std::move(f)(2), 44);
+        }
+        {
+            ebd::fn<int(int) const &> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+        }
+        {
+            ebd::fn<int(int) const &&> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f)(0), 42);
+            ASSERT_EQ(std::move(f)(1), 43);
+            ASSERT_EQ(std::move(f)(2), 44);
+        }
+        {
+            ebd::fn<int(int) & noexcept> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+        }
+        {
+            ebd::fn<int(int) && noexcept> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f)(0), 42);
+            ASSERT_EQ(std::move(f)(1), 43);
+            ASSERT_EQ(std::move(f)(2), 44);
+        }
+        {
+            ebd::fn<int(int) const & noexcept, sizeof(LeftRightCallable)> f(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f(0), 42);
+            ASSERT_EQ(f(1), 43);
+            ASSERT_EQ(f(2), 44);
+
+            auto f_auto = ebd::make_fn(std::cw<&LeftRightCallable::add_42_left>, LeftRightCallable{});
+            ASSERT_EQ(f_auto(0), 42);
+            ASSERT_EQ(f_auto(1), 43);
+            ASSERT_EQ(f_auto(2), 44);
+
+            static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
+        }
+        {
+            ebd::fn<int(int) const && noexcept, sizeof(LeftRightCallable)> f(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f)(0), 42);
+            ASSERT_EQ(std::move(f)(1), 43);
+            ASSERT_EQ(std::move(f)(2), 44);
+
+            auto f_auto = ebd::make_fn(std::cw<&LeftRightCallable::add_42_right>, LeftRightCallable{});
+            ASSERT_EQ(std::move(f_auto)(0), 42);
+            ASSERT_EQ(std::move(f_auto)(1), 43);
+            ASSERT_EQ(std::move(f_auto)(2), 44);
+
+            static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
+        }
     }
 }
 

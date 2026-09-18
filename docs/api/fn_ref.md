@@ -101,7 +101,7 @@ process_data(100, &handle_result);
 - The buffer size is fixed to `detail::default_values::non_owning::buffer_size`, which is sufficient to store function pointers.
 - `ebd::fn_ref` now can be initialized with rvalue references, although it may create a dangling reference. (same as `std::function_ref`)
 - The `std::constant_wrapper` (C++26+) in-place constructors (`std::constant_wrapper` + `std::in_place_type_t`) are only available for owning wrappers; `ebd::fn_ref` can only bind an existing object by reference.
-- When an `ebd::fn_ref` is created by `ebd::make_fn` from a `std::cw<NTTP-Callable>` plus an object and the first parameter of `NTTP-Callable` is not a reference type, the deduced signature is `const`-qualified, e.g. `ebd::make_fn<ebd::fn_ref>(std::cw<&free_func_add_ii>, a)` yields `ebd::fn_ref<int(int) const>`.
+- When an `ebd::fn_ref` is created by `ebd::make_fn` from a `std::cw<NTTP-Callable>` plus an object and the first parameter of `NTTP-Callable` is not a reference type, the deduced signature is `const`-qualified, e.g. `ebd::make_fn<ebd::fn_ref>(std::cw<&free_func_add_ii>, a)` yields `ebd::fn_ref<int(int) const>`. Ref-qualifiers transferred from a reference first parameter are dropped, since `ebd::fn_ref` signatures cannot be ref-qualified.
 
 ## Compare `ebd::fn_ref` with `std::function_ref`
 
