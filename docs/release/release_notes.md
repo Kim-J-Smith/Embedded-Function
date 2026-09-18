@@ -5,6 +5,7 @@
 
 **⚠️ Breaking Changes**
 - `make_fn(std::cw<&T::f>, T{})` now preserves the ref-qualifier of the member function in the deduced signature, so an `&`- or `&&`-qualified `T::f` yields `fn<..., Ret(Args...) const & noexcept>` or `fn<..., Ret(Args...) const && noexcept>` instead of collapsing both to `fn<..., Ret(Args...) const noexcept>`. This is the fix above; it changes the deduced type.
+- Callables with a by-value explicit object parameter (`this T self`) now deduce a `const`-qualified signature, e.g. `fn<..., Ret(Args...) const noexcept>` instead of `fn<..., Ret(Args...) noexcept>`.
 
 **✨ New Features**
 - None.
