@@ -1665,14 +1665,14 @@ inline namespace fn_traits {
   template <typename Signature>
   struct skip_first_param_sig;
 
-#define EMBED_DETAIL_SKIP_FIRST_ARG_PARAM_DEFINE(C, V, REF, NOEXCEPT) \
+#define EMBED_DETAIL_SKIP_FIRST_PARAM_SIG_DEFINE(C, V, REF, NOEXCEPT) \
   template <typename Ret, typename First, typename... Args>           \
   struct skip_first_param_sig<Ret(First, Args...) C V REF NOEXCEPT>   \
   : add_qualifier_like<First, Ret(Args...) NOEXCEPT> {};
 
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_SKIP_FIRST_ARG_PARAM_DEFINE)
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_SKIP_FIRST_PARAM_SIG_DEFINE)
 
-#undef EMBED_DETAIL_SKIP_FIRST_ARG_PARAM_DEFINE
+#undef EMBED_DETAIL_SKIP_FIRST_PARAM_SIG_DEFINE
 
   template <typename T>
   struct is_noref_member_function : std::false_type {};
