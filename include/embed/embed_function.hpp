@@ -1663,16 +1663,16 @@ inline namespace fn_traits {
   struct is_cfg_noexcept : bool_constant<Cfg::assertNoThrow || Cfg::isView> {};
 
   template <typename Signature>
-  struct skip_first_arg_sig;
+  struct skip_first_param_sig;
 
-#define EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE(C, V, REF, NOEXCEPT) \
-  template <typename Ret, typename First, typename... Args>         \
-  struct skip_first_arg_sig<Ret(First, Args...) C V REF NOEXCEPT>   \
+#define EMBED_DETAIL_SKIP_FIRST_ARG_PARAM_DEFINE(C, V, REF, NOEXCEPT) \
+  template <typename Ret, typename First, typename... Args>           \
+  struct skip_first_param_sig<Ret(First, Args...) C V REF NOEXCEPT>   \
   : add_qualifier_like<First, Ret(Args...) NOEXCEPT> {};
 
-  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE)
+  EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_SKIP_FIRST_ARG_PARAM_DEFINE)
 
-#undef EMBED_DETAIL_SKIP_FIRST_ARG_SIG_DEFINE
+#undef EMBED_DETAIL_SKIP_FIRST_ARG_PARAM_DEFINE
 
   template <typename T>
   struct is_noref_member_function : std::false_type {};
@@ -1686,11 +1686,15 @@ inline namespace fn_traits {
 
 #undef EMBED_DETAIL_IS_NOREF_MEMBER_FUNCTION_DEFINE
 
+  // Skip the first parameter of the function signature, and move the qualifiers of
+  // the first parameter to the function signature. For example, `int(int&)` will
+  // be changed to `int() &`. If the `Fn` is a member function that is not qualified
+  // with `&` or `&&`, the `&` and `&&` of the first parameter will be ignored.
   template <typename Signature, typename Fn>
-  using skip_first_arg_sig_t = conditional_t<
+  using skip_first_param_sig_t = conditional_t<
     is_noref_member_function<Fn>::value,
-    typename skip_first_arg_sig<Signature>::no_ref_type,
-    typename skip_first_arg_sig<Signature>::type>;
+    typename skip_first_param_sig<Signature>::no_ref_type,
+    typename skip_first_param_sig<Signature>::type>;
 
 #if __cpp_fold_expressions >= 201603L && EMBED_CXX_VERSION >= 201703L
   template <bool... Vals>
@@ -3662,7 +3666,7 @@ template <auto Val, typename Fn, typename Tp,
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow) {
   using namespace detail;
   using sig_raw = typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using signature = skip_first_arg_sig_t<sig_raw, remove_cvref_t<Fn>>;
+  using signature = skip_first_param_sig_t<sig_raw, remove_cvref_t<Fn>>;
   using Cw = std::constant_wrapper<Val, Fn>;
   static constexpr std::size_t buffer_size = sizeof(Tp);
   static constexpr std::size_t alignment = enough_alignment<alignof(Tp)>::value;
@@ -3683,7 +3687,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_
 noexcept(NoThrow) {
   using namespace detail;
   using sig_raw = typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using signature = skip_first_arg_sig_t<sig_raw, remove_cvref_t<Fn>>;
+  using signature = skip_first_param_sig_t<sig_raw, remove_cvref_t<Fn>>;
   using Cw = std::constant_wrapper<Val, Fn>;
   using Ip = std::in_place_type_t<Obj>;
   static constexpr std::size_t buffer_size = sizeof(Obj);
@@ -3707,7 +3711,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_
 noexcept(NoThrow) {
   using namespace detail;
   using sig_raw = typename is_ebd_fn<decltype(make_fn(std::declval<Fn>()))>::signature;
-  using signature = skip_first_arg_sig_t<sig_raw, remove_cvref_t<Fn>>;
+  using signature = skip_first_param_sig_t<sig_raw, remove_cvref_t<Fn>>;
   using Cw = std::constant_wrapper<Val, Fn>;
   using Ip = std::in_place_type_t<Obj>;
   static constexpr std::size_t buffer_size = sizeof(Obj);
