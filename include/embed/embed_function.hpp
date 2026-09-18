@@ -1161,7 +1161,7 @@ inline namespace fn_traits {
   constexpr std::size_t get_aligned_size(std::size_t size) {
     static_assert(Alignment >= alignof(void(*)()), "The alignment must be greater than `alignof(void(*)())`.");
     static_assert((Alignment & (Alignment-1)) == 0, "The alignment must be a power of two.");
-    return size == 0 ? Alignment : ((size - 1) / Alignment + 1) * Alignment;
+    return size == 0 ? Alignment : (((size - 1) / Alignment) + 1) * Alignment;
   }
 
   // Check whether throwing operations are acceptable.
