@@ -1686,10 +1686,11 @@ inline namespace fn_traits {
 
 #undef EMBED_DETAIL_IS_NOREF_MEMBER_FUNCTION_DEFINE
 
-  // Skip the first parameter of the function signature, and move the qualifiers of
-  // the first parameter to the function signature. For example, `int(int&)` will
-  // be changed to `int() &`. If the `Fn` is a member function that is not qualified
-  // with `&` or `&&`, the `&` and `&&` of the first parameter will be ignored.
+  // Skip the first parameter of the function signature, and move the
+  // qualifiers of the first parameter to the function signature. For
+  // example, `skip_first_param_sig<int(int&)>::type` equals `int() &`.
+  // If the `Fn` is a member function that is not qualified with `&`
+  // or `&&`, the `&` and `&&` of the first parameter will be ignored.
   template <typename Signature, typename Fn>
   using skip_first_param_sig_t = conditional_t<
     is_noref_member_function<Fn>::value,
