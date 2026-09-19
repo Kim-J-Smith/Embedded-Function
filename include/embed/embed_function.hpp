@@ -2153,9 +2153,9 @@ namespace command {
     }
 
     // Initialize owning function wrapper. (Enable if Functor is NOT stateless.)
-    template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    enable_if_t<!is_stateless</*IsView*/false, DecFunctor, Args...>::value>
-    init(erasure_base_t* target, Functor&& obj)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END((!is_stateless</*IsView*/false, DecFunctor, Args...>::value))
+    void init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
@@ -2163,9 +2163,9 @@ namespace command {
     }
 
     // Initialize owning function wrapper. (Enable if Functor is stateless.)
-    template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless</*IsView*/false, DecFunctor, Args...>::value>
-    init(erasure_base_t*, Functor&&) noexcept {
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(is_stateless</*IsView*/false, DecFunctor, Args...>::value)
+    EMBED_CXX20_CONSTEXPR void init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
         is_statically_callable<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
@@ -2238,31 +2238,33 @@ namespace command {
     void move(erasure_base_t*, erasure_base_t*) = delete;
     void destroy(erasure_base_t*) = delete;
 
-    // Initialize non-owning function wrapper. (Enable if the functor is function pointer(FP))
-    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    enable_if_t<IsStoredOrigin> /* Enable if the functor is function pointer(FP) */
-    init(erasure_base_t* target, Functor&& obj) noexcept {
+    // Initialize non-owning function wrapper. (FP)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(IsStoredOrigin) // requires the type of `Functor` is function pointer
+    void init(erasure_base_t* target, Functor&& obj) noexcept {
       // Since the `is_stored_origin<Functor>` is true, then it must
       // be function pointer which have nothing about ownership.
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Initialize non-owning function wrapper. (Enable if the functor is neither FP nor stateless-fn)
-    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR
-    enable_if_t<!IsStoredOrigin && !is_stateless</*IsView*/true, DecFunctor, Args...>::value>
-    init(erasure_base_t* target, Functor&& obj) noexcept {
+    // Initialize non-owning function wrapper. (Not FP and not stateless)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(
+        (!IsStoredOrigin) && (!is_stateless</*IsView*/true, DecFunctor, Args...>::value)
+      ) // requires the type of `Functor` is neither function pointer or stateless functor
+    EMBED_CXX20_CONSTEXPR void init(erasure_base_t* target, Functor&& obj) noexcept {
       // User has to make sure the callable object must remain alive while the function_ref is in use.
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Initialize non-owning function wrapper. (Enable if the functor is stateless-fn)
-    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR
-    enable_if_t<!IsStoredOrigin && is_stateless</*IsView*/true, DecFunctor, Args...>::value>
-    init(erasure_base_t*, Functor&&) noexcept {
+    // Initialize non-owning function wrapper. (Not FP and is stateless)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(
+        (!IsStoredOrigin) && is_stateless</*IsView*/true, DecFunctor, Args...>::value
+      ) // requires the type of `Functor` is not function pointer but stateless functor
+    EMBED_CXX20_CONSTEXPR void init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
         is_statically_callable<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
