@@ -1585,43 +1585,59 @@ inline namespace fn_traits {
   using get_correct_signature_t =
     typename get_correct_signature<Fn<Sig, sizeof(int*), alignof(int*)>, Sig>::type;
 
-  // Check if `T` is the stateless standard operator wrapper.
-  template <typename T> struct is_std_op_wrapper : std::false_type {};
-  template <typename T> struct is_std_op_wrapper<std::equal_to<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::not_equal_to<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::greater<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::less<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::greater_equal<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::less_equal<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::plus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::minus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::multiplies<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::divides<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::modulus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::negate<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_and<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_or<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_not<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_and<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_or<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
+  // Check if `T` is the standard stateless function object type.
+  template <typename T> struct is_standard_stateless_function_object : std::false_type {};
+
+#define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(type) \
+  template <typename T> struct is_standard_stateless_function_object<std::type<T>> : std::true_type {};
+#define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(type) \
+  template <> struct is_standard_stateless_function_object<std::type> : std::true_type {};
+
+  // C++11 standard stateless function object types.
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(equal_to)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(not_equal_to)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(greater)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(less)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(greater_equal)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(less_equal)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(plus)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(minus)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(multiplies)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(divides)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(modulus)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(negate)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(logical_and)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(logical_or)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(logical_not)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(bit_and)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(bit_or)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(bit_xor)
+
 #if EMBED_CXX_VERSION >= 201402L
-  template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
-#endif
+  // C++14 standard stateless function object types.
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(bit_not)
+#endif // C++ >= 14
+
 #if EMBED_CXX_VERSION >= 202002L
-  template <> struct is_std_op_wrapper<std::identity>: std::true_type {};
+  // C++20 standard stateless function object types.
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(identity)
 # if __cpp_lib_ranges >= 201911L
-  template <> struct is_std_op_wrapper<std::ranges::equal_to> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::not_equal_to> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::less> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::greater> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::less_equal> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::greater_equal> : std::true_type {};
-# endif // ^^^ __cpp_lib_ranges >= 201911L
+  // C++20 [Ranges]
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::equal_to)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::not_equal_to)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::less)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::greater)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::less_equal)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::greater_equal)
+# endif
 # if __cpp_lib_three_way_comparison >= 201907L
-  template <> struct is_std_op_wrapper<std::compare_three_way> : std::true_type {};
-# endif // ^^^ __cpp_lib_three_way_comparison >= 201907L
-#endif
+  // C++20 [Three way comparison]
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(compare_three_way)
+# endif
+#endif // C++ >= 20
+
+#undef EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1
+#undef EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0
 
   // Check whether the functor is stateless.
   // Lambda has trivially default constructor since C++20.
@@ -1633,14 +1649,14 @@ inline namespace fn_traits {
 #ifndef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
       || (std::is_empty<Fn>::value && std::is_default_constructible<Fn>::value)
 #else // ^^^ Empty trivial functors are treated as stateless.
-      || is_std_op_wrapper<Fn>::value
+      || is_standard_stateless_function_object<Fn>::value
 #endif
     )
   > {};
 
   template <typename Fn, typename... Args>
   struct is_stateless</*IsView =*/true, Fn, Args...> : bool_constant<
-    is_statically_callable<Fn, Args...>::value || is_std_op_wrapper<Fn>::value
+    is_statically_callable<Fn, Args...>::value || is_standard_stateless_function_object<Fn>::value
   > {};
 
   // Log error for make_fn.
