@@ -40,9 +40,7 @@
 
 ## 📌 Overview
 
-*Embedded Function* is a **lightweight** and **no-heap-allocation** function wrapper collection implemented based on the C++11 standard, optimized([see below](#-performance-optimization)) for resource-constrained or high-performance environments.
-
-The library is [freestanding](https://cppreference.com/w/cpp/freestanding), making it feasible for embedded development or kernel design of an operating system.
+*Embedded Function* provides a set of **no-heap-allocation** polymorphic function wrappers implemented based on the C++11 standard, [optimized](#-performance-optimization) for resource-constrained, low-latency and high-performance environments.
 
 In a [single header file](./include/embed/embed_function.hpp), **five** function wrappers are provided as follows (the customizable [`ebd::basic_fn`](./docs/api/basic_fn.md) is the fifth):
 
@@ -52,7 +50,7 @@ namespace ebd {
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
   class fn;
 
-// Owning polymorphic function wrapper.
+// Owning move-only polymorphic function wrapper.
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
   class unique_fn;
 
@@ -60,7 +58,7 @@ template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
   class classic_fn;
 
-// Non-owning polymorphic function wrapper.
+// Non-owning polymorphic function wrapper without empty state.
 template <class Signature, size_t /*Unused*/ = 0, size_t /*Unused*/ = 0>
   class fn_ref;
 }
