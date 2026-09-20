@@ -12,6 +12,8 @@
 
 **🛠️ Optimizations and Improvements**
 - Updated the assembly analysis documents under `docs/perf/`: the x86_64 MSVC, RISC-V GCC and ARM GCC analyses now compare register argument passing against the stack spills of `std::function` and cover destruction/copy, the `ebd::fn_ref` zero-stack analysis was extended with a full comparison and a summary table, and a new `docs/perf/x86_64_gcc_asm_analysis.md` document was added.
+- Renamed some internal traits, tags and the `cxx_traits` namespace to make them more readable.
+- More internal functions now use `requires` instead of `enable_if` when compiled as *C++20* or later.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.

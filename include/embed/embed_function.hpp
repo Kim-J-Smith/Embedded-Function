@@ -328,7 +328,7 @@ namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
 
 /// @brief Here are some standard traits that are not supported in C++11.
-inline namespace cxx_traits {
+inline namespace cxx {
 
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1558>.
   template <typename... Args> struct make_void { using type = void; };
@@ -368,33 +368,33 @@ inline namespace cxx_traits {
   template <bool Val>
   using bool_constant = std::integral_constant<bool, Val>;
 
-  // (undocumented) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
-  class invoke_tag_normal {};
-  class invoke_tag_memfn_ref_like {};
-  class invoke_tag_memfn_pointer_like {};
-  class invoke_tag_memobj_ref_like {};
-  class invoke_tag_memobj_pointer_like {};
+  // (nonstandard) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
+  class tag_call_normal {};
+  class tag_call_memfn_ref_like {};
+  class tag_call_memfn_pointer_like {};
+  class tag_call_memobj_ref_like {};
+  class tag_call_memobj_pointer_like {};
 
-  // (undocumented) Unwrap the `std::reference_wrapper` recursively.
+  // (nonstandard) Unwrap the `std::reference_wrapper` recursively.
   template <typename T, typename U = remove_cvref_t<T>>
-  struct inv_unwrap {
+  struct unwrap_ref_wrapper {
     using type = T;
     using unwrap_once = T;
   };
 
   template <typename T, typename UnderType>
-  struct inv_unwrap<T, std::reference_wrapper<UnderType>> {
-    using type = typename inv_unwrap<UnderType&>::type;
+  struct unwrap_ref_wrapper<T, std::reference_wrapper<UnderType>> {
+    using type = typename unwrap_ref_wrapper<UnderType&>::type;
     using unwrap_once = UnderType&;
   };
 
   template <typename T>
-  using inv_unwrap_t = typename inv_unwrap<T>::type;
+  using unwrap_ref_wrapper_t = typename unwrap_ref_wrapper<T>::type;
 
   template <typename T>
-  using unwrap_once_t = typename inv_unwrap<T>::unwrap_once;
+  using unwrap_once_t = typename unwrap_ref_wrapper<T>::unwrap_once;
 
-  // (undocumented) Unwrap and forward std::reference_wrapper.
+  // (nonstandard) Unwrap and forward std::reference_wrapper.
   template <typename T>
   EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
     std::is_same<T, unwrap_once_t<T>>::value, T&&
@@ -409,55 +409,55 @@ inline namespace cxx_traits {
 
   template <typename T, typename Under = unwrap_once_t<T>,
     EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
-  > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  > EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
   unwrap_forward(remove_reference_t<T>&& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
   }
 
   template <typename T, typename Under = unwrap_once_t<T>,
     EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
-  > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  > EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
   unwrap_forward(remove_reference_t<T>& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
   }
 
-  // (undocumented) Provide success type for invoke_result.
+  // (nonstandard) Provide success type for invoke_result.
   template <typename T, typename Tag>
   struct success_type {
     using type  = T;
     using tag   = Tag;
   };
 
-  // (undocumented) Trigger the SFINAE.
+  // (nonstandard) Trigger the SFINAE.
   struct failure_type {};
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // object with the given reference-like argument.
   template <typename MemObj, typename Arg>
   struct invoke_result_of_memobj_ref_like_helper {
     template<typename> static failure_type test(...) { return {}; }
     template<typename T> static success_type<
       /* type = */ decltype(std::declval<T>().*std::declval<MemObj>()),
-      /* tag = */ invoke_tag_memobj_ref_like
+      /* tag = */ tag_call_memobj_ref_like
     > test(int) { return {}; }
 
     using type = decltype(test<Arg>(0));
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // object with the given pointer-like argument.
   template <typename MemObj, typename Arg>
   struct invoke_result_of_memobj_pointer_like_helper {
     template<typename> static failure_type test(...) { return {}; }
     template<typename T> static success_type<
       /* type = */ decltype((*std::declval<T>()).*std::declval<MemObj>()),
-      /* tag = */ invoke_tag_memobj_pointer_like
+      /* tag = */ tag_call_memobj_pointer_like
     > test(int) { return {}; }
 
     using type = decltype(test<Arg>(0));
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // object with the given argument (reference-like or pointer-like).
   template <typename T, typename U>
   struct invoke_result_of_memobj;  // Undefined
@@ -474,7 +474,7 @@ inline namespace cxx_traits {
     >::type;
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // function with the given arguments. And the first argument is
   // reference-like object.
   template <typename MemFunc, typename Arg, typename... ArgsType>
@@ -484,13 +484,13 @@ inline namespace cxx_traits {
       /* type = */ decltype((std::declval<T>().*std::declval<MemFunc>())(
         std::declval<ArgsType>()...
       )),
-      /* tag = */ invoke_tag_memfn_ref_like
+      /* tag = */ tag_call_memfn_ref_like
     > test(int) { return {}; }
 
     using type = decltype(test<Arg>(0));
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // function with the given arguments. And the first argument is
   // pointer-like object.
   template <typename MemFunc, typename Arg, typename... ArgsType>
@@ -500,13 +500,13 @@ inline namespace cxx_traits {
       /* type = */ decltype(((*std::declval<T>()).*std::declval<MemFunc>())(
         std::declval<ArgsType>()...
       )),
-      /* tag = */ invoke_tag_memfn_pointer_like
+      /* tag = */ tag_call_memfn_pointer_like
     > test(int) { return {}; }
 
     using type = decltype(test<Arg>(0));
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // function with the given arguments.
   template <typename... T>
   struct invoke_result_of_memfunc;  // Undefined
@@ -523,20 +523,20 @@ inline namespace cxx_traits {
     >::type;
   };
 
-  // (undocumented) Get invoke result of normal function with the given arguments.
+  // (nonstandard) Get invoke result of normal function with the given arguments.
   template <typename Functor, typename... ArgsType>
   struct invoke_result_of_normal {
     template<typename> static failure_type test(...) { return {}; }
     template<typename T> static success_type<
       /* type = */ decltype(std::declval<T>()(
         std::declval<ArgsType>()...)),
-      /* tag = */ invoke_tag_normal
+      /* tag = */ tag_call_normal
     > test(int) { return {}; }
 
     using type = decltype(test<Functor>(0));
   };
 
-  // (undocumented) Implement the `invoke_result`.
+  // (nonstandard) Implement the `invoke_result`.
   template <bool, bool, typename Func, typename... Args>
   struct invoke_result_impl {
     using type = failure_type;
@@ -550,7 +550,7 @@ inline namespace cxx_traits {
   > {
     using type = typename invoke_result_of_memobj<
       typename std::decay<PointerToMemObj>::type,
-      inv_unwrap_t<Arg>
+      unwrap_ref_wrapper_t<Arg>
     >::type;
   };
 
@@ -562,7 +562,7 @@ inline namespace cxx_traits {
   > {
     using type = typename invoke_result_of_memfunc<
       typename std::decay<PointerToMemFunc>::type,
-      inv_unwrap_t<Arg>, ArgsType...
+      unwrap_ref_wrapper_t<Arg>, ArgsType...
     >::type;
   };
 
@@ -590,42 +590,42 @@ inline namespace cxx_traits {
     Func, ArgsT...
   >::type {};
 
-  // (undocumented) Check whether the INVOKE expression itself can throw.
+  // (nonstandard) Check whether the INVOKE expression itself can throw.
   template <typename Tag, typename...>
   struct call_is_nothrow_impl {
     static constexpr bool value = false;
   };
 
   template <typename NormalFunc, typename... Args>
-  struct call_is_nothrow_impl<invoke_tag_normal, NormalFunc, Args...> {
+  struct call_is_nothrow_impl<tag_call_normal, NormalFunc, Args...> {
     static constexpr bool value = noexcept(
       std::declval<NormalFunc>()(std::declval<Args>()...));
   };
 
   template <typename MemObj, typename Arg>
-  struct call_is_nothrow_impl<invoke_tag_memobj_ref_like, MemObj, Arg> {
-    using U = inv_unwrap_t<Arg>;
+  struct call_is_nothrow_impl<tag_call_memobj_ref_like, MemObj, Arg> {
+    using U = unwrap_ref_wrapper_t<Arg>;
     static constexpr bool value = noexcept(
       std::declval<U>().*std::declval<MemObj>());
   };
 
   template <typename MemObj, typename Arg>
-  struct call_is_nothrow_impl<invoke_tag_memobj_pointer_like, MemObj, Arg> {
+  struct call_is_nothrow_impl<tag_call_memobj_pointer_like, MemObj, Arg> {
     static constexpr bool value = noexcept(
       (*std::declval<Arg>()).*std::declval<MemObj>());
   };
 
   template <typename Memfunc, typename Arg, typename... Args>
   struct call_is_nothrow_impl<
-    invoke_tag_memfn_ref_like, Memfunc, Arg, Args...> {
-    using U = inv_unwrap_t<Arg>;
+    tag_call_memfn_ref_like, Memfunc, Arg, Args...> {
+    using U = unwrap_ref_wrapper_t<Arg>;
     static constexpr bool value = noexcept(
       (std::declval<U>().*std::declval<Memfunc>()) (std::declval<Args>()...));
   };
 
   template <typename Memfunc, typename Arg, typename... Args>
   struct call_is_nothrow_impl<
-    invoke_tag_memfn_pointer_like, Memfunc, Arg, Args...> {
+    tag_call_memfn_pointer_like, Memfunc, Arg, Args...> {
     static constexpr bool value = noexcept(
       ((*std::declval<Arg>()).*std::declval<Memfunc>()) (std::declval<Args>()...));
   };
@@ -659,7 +659,7 @@ inline namespace cxx_traits {
 #endif
   > {};
 
-  // (undocumented) Implement the is_invocable, is_nothrow_invocable, etc.
+  // (nonstandard) Implement the is_invocable, is_nothrow_invocable, etc.
   template <typename Res, typename Ret,
     bool RetIsVoid = std::is_void<Ret>::value, typename Enable = void>
   struct is_invocable_impl : public std::false_type
@@ -720,7 +720,7 @@ inline namespace cxx_traits {
   > {};
 
   /// @fn invoke_impl
-  // (undocumented) Distribute the call of callable objects, including normal
+  // (nonstandard) Distribute the call of callable objects, including normal
   // functions, pointer to member functions, and pointer to member objects
   // (distinguish reference-like/pointer-like class object callers).
 
@@ -728,7 +728,7 @@ inline namespace cxx_traits {
   // Used for free function, static member function, and functors (classes that overload operator()).
   template <typename RetT, typename Func, typename... Args>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_normal, Func&& fn, Args&&... args)
+  invoke_impl(tag_call_normal, Func&& fn, Args&&... args)
     noexcept(is_nothrow_invocable_r<RetT, Func, Args...>::value)
   { return std::forward<Func>(fn)(std::forward<Args>(args)...); }
 
@@ -736,7 +736,7 @@ inline namespace cxx_traits {
   // Note: The `std::reference_wrapper` is also regarded as "reference".
   template <typename RetT, typename MemObj, typename Arg>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_memobj_ref_like, MemObj&& obj, Arg&& arg)
+  invoke_impl(tag_call_memobj_ref_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
   { return unwrap_forward<Arg>(arg).*std::forward<MemObj>(obj); }
 
@@ -744,7 +744,7 @@ inline namespace cxx_traits {
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
   template <typename RetT, typename MemObj, typename Arg>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_memobj_pointer_like, MemObj&& obj, Arg&& arg)
+  invoke_impl(tag_call_memobj_pointer_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
   { return (*std::forward<Arg>(arg)).*std::forward<MemObj>(obj); }
 
@@ -752,7 +752,7 @@ inline namespace cxx_traits {
   // Note: The `std::reference_wrapper` is also regarded as "reference".
   template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
+  invoke_impl(tag_call_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
     return (unwrap_forward<Arg>(arg).*std::forward<MemFunc>(memfn))(
       std::forward<ArgsType>(args)...
@@ -763,7 +763,7 @@ inline namespace cxx_traits {
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
   template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_memfn_pointer_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
+  invoke_impl(tag_call_memfn_pointer_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
     return ((*std::forward<Arg>(arg)).*std::forward<MemFunc>(memfn))(
       std::forward<ArgsType>(args)...
@@ -771,11 +771,12 @@ inline namespace cxx_traits {
   }
 
   // See <https://cppreference.com/w/cpp/utility/functional/invoke.html>.
-  template <typename Result, typename Callee, typename... Args>
-  EMBED_CXX14_CONSTEXPR enable_if_t<
-    is_invocable_r<Result, Callee, Args...>::value
-    && std::is_void<Result>::value>
-  invoke_r(Callee&& fn, Args&&... args)
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename Result, typename Callee, typename... Args)
+    EMBED_DETAIL_REQUIRES_END(
+      is_invocable_r<Result, Callee, Args...>::value
+      && std::is_void<Result>::value
+    ) // requires the `Callee` to be invacable while `Result` is `void`
+  EMBED_CXX14_CONSTEXPR void invoke_r(Callee&& fn, Args&&... args)
   noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
@@ -785,19 +786,20 @@ inline namespace cxx_traits {
       std::forward<Args>(args)...);
   }
 
-  template <typename Result, typename Callee, typename... Args>
-  EMBED_CXX14_CONSTEXPR enable_if_t<
-    is_invocable_r<Result, Callee, Args...>::value
-    && !std::is_void<Result>::value, Result>
-  invoke_r(Callee&& fn, Args&&... args)
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename Result, typename Callee, typename... Args)
+    EMBED_DETAIL_REQUIRES_END(
+      is_invocable_r<Result, Callee, Args...>::value
+      && (!std::is_void<Result>::value)
+    ) // requires the `Callee` to be invacable while `Result` is NOT `void`
+  EMBED_CXX14_CONSTEXPR Result invoke_r(Callee&& fn, Args&&... args)
   noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
 
     // Assert no dangling.
     static_assert(!reference_converts_from_temporary<Result, invoke_t>::value,
-      "Returning from invoke_r would bind a temporary object to the reference return type,"
-      " which would result in a dangling reference.");
+      "Returning from invoke_r would bind a temporary object to the reference "
+      "return type, which would result in a dangling reference.");
 
     return invoke_impl<invoke_t>(tag_t{}, std::forward<Callee>(fn),
       std::forward<Args>(args)...);
@@ -824,7 +826,7 @@ inline namespace cxx_traits {
 #endif
   }
 
-} // end namespace cxx_traits
+} // end namespace cxx
 
   // Forward declaration.
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
@@ -1161,7 +1163,7 @@ inline namespace fn_traits {
   constexpr std::size_t get_aligned_size(std::size_t size) {
     static_assert(Alignment >= alignof(void(*)()), "The alignment must be greater than `alignof(void(*)())`.");
     static_assert((Alignment & (Alignment-1)) == 0, "The alignment must be a power of two.");
-    return size == 0 ? Alignment : ((size - 1) / Alignment + 1) * Alignment;
+    return size == 0 ? Alignment : (((size - 1) / Alignment) + 1) * Alignment;
   }
 
   // Check whether throwing operations are acceptable.
@@ -1585,43 +1587,59 @@ inline namespace fn_traits {
   using get_correct_signature_t =
     typename get_correct_signature<Fn<Sig, sizeof(int*), alignof(int*)>, Sig>::type;
 
-  // Check if `T` is the stateless standard operator wrapper.
-  template <typename T> struct is_std_op_wrapper : std::false_type {};
-  template <typename T> struct is_std_op_wrapper<std::equal_to<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::not_equal_to<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::greater<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::less<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::greater_equal<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::less_equal<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::plus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::minus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::multiplies<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::divides<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::modulus<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::negate<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_and<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_or<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::logical_not<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_and<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_or<T>> : std::true_type {};
-  template <typename T> struct is_std_op_wrapper<std::bit_xor<T>> : std::true_type {};
+  // Check if `T` is the standard stateless function object type.
+  template <typename T> struct is_standard_stateless_function_object : std::false_type {};
+
+#define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(type) \
+  template <typename T> struct is_standard_stateless_function_object<std::type<T>> : std::true_type {};
+#define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(type) \
+  template <> struct is_standard_stateless_function_object<std::type> : std::true_type {};
+
+  // C++11 standard stateless function object types.
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(equal_to)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(not_equal_to)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(greater)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(less)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(greater_equal)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(less_equal)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(plus)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(minus)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(multiplies)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(divides)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(modulus)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(negate)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(logical_and)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(logical_or)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(logical_not)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(bit_and)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(bit_or)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(bit_xor)
+
 #if EMBED_CXX_VERSION >= 201402L
-  template <typename T> struct is_std_op_wrapper<std::bit_not<T>> : std::true_type {};
-#endif
+  // C++14 standard stateless function object types.
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(bit_not)
+#endif // C++ >= 14
+
 #if EMBED_CXX_VERSION >= 202002L
-  template <> struct is_std_op_wrapper<std::identity>: std::true_type {};
+  // C++20 standard stateless function object types.
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(identity)
 # if __cpp_lib_ranges >= 201911L
-  template <> struct is_std_op_wrapper<std::ranges::equal_to> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::not_equal_to> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::less> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::greater> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::less_equal> : std::true_type {};
-  template <> struct is_std_op_wrapper<std::ranges::greater_equal> : std::true_type {};
-# endif // ^^^ __cpp_lib_ranges >= 201911L
+  // C++20 [Ranges]
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::equal_to)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::not_equal_to)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::less)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::greater)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::less_equal)
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::greater_equal)
+# endif
 # if __cpp_lib_three_way_comparison >= 201907L
-  template <> struct is_std_op_wrapper<std::compare_three_way> : std::true_type {};
-# endif // ^^^ __cpp_lib_three_way_comparison >= 201907L
-#endif
+  // C++20 [Three way comparison]
+  EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(compare_three_way)
+# endif
+#endif // C++ >= 20
+
+#undef EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1
+#undef EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0
 
   // Check whether the functor is stateless.
   // Lambda has trivially default constructor since C++20.
@@ -1633,14 +1651,14 @@ inline namespace fn_traits {
 #ifndef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
       || (std::is_empty<Fn>::value && std::is_default_constructible<Fn>::value)
 #else // ^^^ Empty trivial functors are treated as stateless.
-      || is_std_op_wrapper<Fn>::value
+      || is_standard_stateless_function_object<Fn>::value
 #endif
     )
   > {};
 
   template <typename Fn, typename... Args>
   struct is_stateless</*IsView =*/true, Fn, Args...> : bool_constant<
-    is_statically_callable<Fn, Args...>::value || is_std_op_wrapper<Fn>::value
+    is_statically_callable<Fn, Args...>::value || is_standard_stateless_function_object<Fn>::value
   > {};
 
   // Log error for make_fn.
@@ -1780,19 +1798,19 @@ namespace erasure_type {
 
     template <typename T>
     T& access() noexcept
-    { return *::ebd::detail::launder(static_cast<T*>(access())); }
+    { return *cxx::launder(static_cast<T*>(access())); }
 
     template <typename T>
     const T& access() const noexcept
-    { return *::ebd::detail::launder(static_cast<const T*>(access())); }
+    { return *cxx::launder(static_cast<const T*>(access())); }
 
     template <typename T>
     volatile T& access() volatile noexcept
-    { return *::ebd::detail::launder(static_cast<volatile T*>(access())); }
+    { return *cxx::launder(static_cast<volatile T*>(access())); }
 
     template <typename T>
     const volatile T& access() const volatile noexcept
-    { return *::ebd::detail::launder(static_cast<const volatile T*>(access())); }
+    { return *cxx::launder(static_cast<const volatile T*>(access())); }
   };
 
   // ABI for passing either pointer or value.
@@ -1842,16 +1860,16 @@ namespace invocation {
   struct view_cw {                                                                    \
     template <typename Cw>                                                            \
     static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT {       \
-      return invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);                   \
+      return cxx::invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);              \
     }                                                                                 \
     template <typename Cw, typename Obj, bool CallPointer>                            \
     static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
       if constexpr (CallPointer) {                                                    \
         auto* obj_ptr = static_cast<Obj C V*>(base.val.fill_ptr);                     \
-        return invoke_r<Ret>(Cw::value, obj_ptr, std::forward<Args>(args)...);        \
+        return cxx::invoke_r<Ret>(Cw::value, obj_ptr, std::forward<Args>(args)...);   \
       } else {                                                                        \
         auto& obj = *static_cast<Obj C V*>(base.val.fill_ptr);                        \
-        return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);            \
+        return cxx::invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);       \
       }                                                                               \
     }                                                                                 \
   }; /* end view_cw */                                                                \
@@ -1864,7 +1882,7 @@ namespace invocation {
       using Fn = conditional_t<is_rvalue_ref,                                         \
         remove_reference_t<decltype(fn)>&&,                                           \
         remove_reference_t<decltype(fn)>&>;                                           \
-      return invoke_r<Ret>(                                                           \
+      return cxx::invoke_r<Ret>(                                                      \
         Cw::value, static_cast<Fn>(fn), std::forward<Args>(args)...);                 \
     }                                                                                 \
   }; /* end inplace_cw */
@@ -1906,7 +1924,7 @@ namespace invocation {
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
           remove_reference_t<decltype(fn)>&>;                                         \
-        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);       \
+        return cxx::invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);  \
       }                                                                               \
     };                                                                                \
                                                                                       \
@@ -1917,7 +1935,7 @@ namespace invocation {
         EMBED_DETAIL_REQUIRES_END(is_stored_origin<Functor, true>::value)             \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
         auto* fn = reinterpret_cast<Functor>(base.val.fill_func_ptr);                 \
-        return invoke_r<Ret>(fn, std::forward<Args>(args)...);                        \
+        return cxx::invoke_r<Ret>(fn, std::forward<Args>(args)...);                   \
       }                                                                               \
                                                                                       \
       /* Using when the `Functor` is NOT function pointer. */                         \
@@ -1926,7 +1944,7 @@ namespace invocation {
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
         auto& fn = *static_cast<Functor C V*>(base.val.fill_ptr);                     \
         using Fn = remove_reference_t<decltype(fn)>&;                                 \
-        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);       \
+        return cxx::invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);  \
       }                                                                               \
     };                                                                                \
                                                                                       \
@@ -1938,7 +1956,7 @@ namespace invocation {
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
           remove_reference_t<decltype(fn)>&>;                                         \
-        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);       \
+        return cxx::invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);  \
       }                                                                               \
     };                                                                                \
                                                                                       \
@@ -2153,9 +2171,9 @@ namespace command {
     }
 
     // Initialize owning function wrapper. (Enable if Functor is NOT stateless.)
-    template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    enable_if_t<!is_stateless</*IsView*/false, DecFunctor, Args...>::value>
-    init(erasure_base_t* target, Functor&& obj)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END((!is_stateless</*IsView*/false, DecFunctor, Args...>::value))
+    void init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::inplace::template invoke<DecFunctor>;
@@ -2163,9 +2181,9 @@ namespace command {
     }
 
     // Initialize owning function wrapper. (Enable if Functor is stateless.)
-    template <typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR enable_if_t<is_stateless</*IsView*/false, DecFunctor, Args...>::value>
-    init(erasure_base_t*, Functor&&) noexcept {
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(is_stateless</*IsView*/false, DecFunctor, Args...>::value)
+    EMBED_CXX20_CONSTEXPR void init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
         is_statically_callable<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
@@ -2238,31 +2256,33 @@ namespace command {
     void move(erasure_base_t*, erasure_base_t*) = delete;
     void destroy(erasure_base_t*) = delete;
 
-    // Initialize non-owning function wrapper. (Enable if the functor is function pointer(FP))
-    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    enable_if_t<IsStoredOrigin> /* Enable if the functor is function pointer(FP) */
-    init(erasure_base_t* target, Functor&& obj) noexcept {
+    // Initialize non-owning function wrapper. (FP)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(IsStoredOrigin) // requires the type of `Functor` is function pointer
+    void init(erasure_base_t* target, Functor&& obj) noexcept {
       // Since the `is_stored_origin<Functor>` is true, then it must
       // be function pointer which have nothing about ownership.
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Initialize non-owning function wrapper. (Enable if the functor is neither FP nor stateless-fn)
-    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR
-    enable_if_t<!IsStoredOrigin && !is_stateless</*IsView*/true, DecFunctor, Args...>::value>
-    init(erasure_base_t* target, Functor&& obj) noexcept {
+    // Initialize non-owning function wrapper. (Not FP and not stateless)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(
+        (!IsStoredOrigin) && (!is_stateless</*IsView*/true, DecFunctor, Args...>::value)
+      ) // requires the type of `Functor` is neither function pointer or stateless functor
+    EMBED_CXX20_CONSTEXPR void init(erasure_base_t* target, Functor&& obj) noexcept {
       // User has to make sure the callable object must remain alive while the function_ref is in use.
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
-    // Initialize non-owning function wrapper. (Enable if the functor is stateless-fn)
-    template <bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>>
-    EMBED_CXX20_CONSTEXPR
-    enable_if_t<!IsStoredOrigin && is_stateless</*IsView*/true, DecFunctor, Args...>::value>
-    init(erasure_base_t*, Functor&&) noexcept {
+    // Initialize non-owning function wrapper. (Not FP and is stateless)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(
+        (!IsStoredOrigin) && is_stateless</*IsView*/true, DecFunctor, Args...>::value
+      ) // requires the type of `Functor` is not function pointer but stateless functor
+    EMBED_CXX20_CONSTEXPR void init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
         is_statically_callable<DecFunctor, Args...>::value,
         typename invoker_impl_t::static_call,
@@ -2832,12 +2852,13 @@ namespace crtp_mixins {
     using add_cvref_like_sig_t = typename unwrap_signature<Signature>::template add_cvref_like<T>;
 
     // Set empty if self is in owning mode.
-    template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig,
-      EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/>
-    static EMBED_INLINE void set_empty_if_owning(function<Buf, Align, Cfg, Sig>& self) noexcept
-    { self.m_command.set_empty(); }
     template <typename T>
-    static EMBED_INLINE void set_empty_if_owning(T&) noexcept { /* nothing */ }
+    EMBED_INLINE static void set_empty_if_owning(T&) noexcept { /* default: do nothing */ }
+
+    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
+      EMBED_DETAIL_REQUIRES_END((!Cfg::isView) /*OWNING-ONLY*/)
+    EMBED_INLINE static void set_empty_if_owning(function<Buf, Align, Cfg, Sig>& self) noexcept
+    { self.m_command.set_empty(); }
 
   public:
 
