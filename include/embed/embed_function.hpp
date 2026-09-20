@@ -369,11 +369,11 @@ inline namespace cxx_traits {
   using bool_constant = std::integral_constant<bool, Val>;
 
   // (nonstandard) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
-  class invoke_tag_normal {};
-  class invoke_tag_memfn_ref_like {};
-  class invoke_tag_memfn_pointer_like {};
-  class invoke_tag_memobj_ref_like {};
-  class invoke_tag_memobj_pointer_like {};
+  class tag_call_normal {};
+  class tag_call_memfn_ref_like {};
+  class tag_call_memfn_pointer_like {};
+  class tag_call_memobj_ref_like {};
+  class tag_call_memobj_pointer_like {};
 
   // (nonstandard) Unwrap the `std::reference_wrapper` recursively.
   template <typename T, typename U = remove_cvref_t<T>>
@@ -438,7 +438,7 @@ inline namespace cxx_traits {
     template<typename> static failure_type test(...) { return {}; }
     template<typename T> static success_type<
       /* type = */ decltype(std::declval<T>().*std::declval<MemObj>()),
-      /* tag = */ invoke_tag_memobj_ref_like
+      /* tag = */ tag_call_memobj_ref_like
     > test(int) { return {}; }
 
     using type = decltype(test<Arg>(0));
@@ -451,7 +451,7 @@ inline namespace cxx_traits {
     template<typename> static failure_type test(...) { return {}; }
     template<typename T> static success_type<
       /* type = */ decltype((*std::declval<T>()).*std::declval<MemObj>()),
-      /* tag = */ invoke_tag_memobj_pointer_like
+      /* tag = */ tag_call_memobj_pointer_like
     > test(int) { return {}; }
 
     using type = decltype(test<Arg>(0));
@@ -484,7 +484,7 @@ inline namespace cxx_traits {
       /* type = */ decltype((std::declval<T>().*std::declval<MemFunc>())(
         std::declval<ArgsType>()...
       )),
-      /* tag = */ invoke_tag_memfn_ref_like
+      /* tag = */ tag_call_memfn_ref_like
     > test(int) { return {}; }
 
     using type = decltype(test<Arg>(0));
@@ -500,7 +500,7 @@ inline namespace cxx_traits {
       /* type = */ decltype(((*std::declval<T>()).*std::declval<MemFunc>())(
         std::declval<ArgsType>()...
       )),
-      /* tag = */ invoke_tag_memfn_pointer_like
+      /* tag = */ tag_call_memfn_pointer_like
     > test(int) { return {}; }
 
     using type = decltype(test<Arg>(0));
@@ -530,7 +530,7 @@ inline namespace cxx_traits {
     template<typename T> static success_type<
       /* type = */ decltype(std::declval<T>()(
         std::declval<ArgsType>()...)),
-      /* tag = */ invoke_tag_normal
+      /* tag = */ tag_call_normal
     > test(int) { return {}; }
 
     using type = decltype(test<Functor>(0));
@@ -597,27 +597,27 @@ inline namespace cxx_traits {
   };
 
   template <typename NormalFunc, typename... Args>
-  struct call_is_nothrow_impl<invoke_tag_normal, NormalFunc, Args...> {
+  struct call_is_nothrow_impl<tag_call_normal, NormalFunc, Args...> {
     static constexpr bool value = noexcept(
       std::declval<NormalFunc>()(std::declval<Args>()...));
   };
 
   template <typename MemObj, typename Arg>
-  struct call_is_nothrow_impl<invoke_tag_memobj_ref_like, MemObj, Arg> {
+  struct call_is_nothrow_impl<tag_call_memobj_ref_like, MemObj, Arg> {
     using U = inv_unwrap_t<Arg>;
     static constexpr bool value = noexcept(
       std::declval<U>().*std::declval<MemObj>());
   };
 
   template <typename MemObj, typename Arg>
-  struct call_is_nothrow_impl<invoke_tag_memobj_pointer_like, MemObj, Arg> {
+  struct call_is_nothrow_impl<tag_call_memobj_pointer_like, MemObj, Arg> {
     static constexpr bool value = noexcept(
       (*std::declval<Arg>()).*std::declval<MemObj>());
   };
 
   template <typename Memfunc, typename Arg, typename... Args>
   struct call_is_nothrow_impl<
-    invoke_tag_memfn_ref_like, Memfunc, Arg, Args...> {
+    tag_call_memfn_ref_like, Memfunc, Arg, Args...> {
     using U = inv_unwrap_t<Arg>;
     static constexpr bool value = noexcept(
       (std::declval<U>().*std::declval<Memfunc>()) (std::declval<Args>()...));
@@ -625,7 +625,7 @@ inline namespace cxx_traits {
 
   template <typename Memfunc, typename Arg, typename... Args>
   struct call_is_nothrow_impl<
-    invoke_tag_memfn_pointer_like, Memfunc, Arg, Args...> {
+    tag_call_memfn_pointer_like, Memfunc, Arg, Args...> {
     static constexpr bool value = noexcept(
       ((*std::declval<Arg>()).*std::declval<Memfunc>()) (std::declval<Args>()...));
   };
@@ -728,7 +728,7 @@ inline namespace cxx_traits {
   // Used for free function, static member function, and functors (classes that overload operator()).
   template <typename RetT, typename Func, typename... Args>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_normal, Func&& fn, Args&&... args)
+  invoke_impl(tag_call_normal, Func&& fn, Args&&... args)
     noexcept(is_nothrow_invocable_r<RetT, Func, Args...>::value)
   { return std::forward<Func>(fn)(std::forward<Args>(args)...); }
 
@@ -736,7 +736,7 @@ inline namespace cxx_traits {
   // Note: The `std::reference_wrapper` is also regarded as "reference".
   template <typename RetT, typename MemObj, typename Arg>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_memobj_ref_like, MemObj&& obj, Arg&& arg)
+  invoke_impl(tag_call_memobj_ref_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
   { return unwrap_forward<Arg>(arg).*std::forward<MemObj>(obj); }
 
@@ -744,7 +744,7 @@ inline namespace cxx_traits {
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
   template <typename RetT, typename MemObj, typename Arg>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_memobj_pointer_like, MemObj&& obj, Arg&& arg)
+  invoke_impl(tag_call_memobj_pointer_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
   { return (*std::forward<Arg>(arg)).*std::forward<MemObj>(obj); }
 
@@ -752,7 +752,7 @@ inline namespace cxx_traits {
   // Note: The `std::reference_wrapper` is also regarded as "reference".
   template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
+  invoke_impl(tag_call_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
     return (unwrap_forward<Arg>(arg).*std::forward<MemFunc>(memfn))(
       std::forward<ArgsType>(args)...
@@ -763,7 +763,7 @@ inline namespace cxx_traits {
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
   template <typename RetT, typename MemFunc, typename Arg, typename... ArgsType>
   EMBED_CXX14_CONSTEXPR RetT
-  invoke_impl(invoke_tag_memfn_pointer_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
+  invoke_impl(tag_call_memfn_pointer_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
     return ((*std::forward<Arg>(arg)).*std::forward<MemFunc>(memfn))(
       std::forward<ArgsType>(args)...
