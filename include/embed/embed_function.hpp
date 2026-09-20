@@ -368,14 +368,14 @@ inline namespace cxx_traits {
   template <bool Val>
   using bool_constant = std::integral_constant<bool, Val>;
 
-  // (undocumented) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
+  // (nonstandard) Tags that used in `invoke_result`, `invoke`, `invoke_r`, etc.
   class invoke_tag_normal {};
   class invoke_tag_memfn_ref_like {};
   class invoke_tag_memfn_pointer_like {};
   class invoke_tag_memobj_ref_like {};
   class invoke_tag_memobj_pointer_like {};
 
-  // (undocumented) Unwrap the `std::reference_wrapper` recursively.
+  // (nonstandard) Unwrap the `std::reference_wrapper` recursively.
   template <typename T, typename U = remove_cvref_t<T>>
   struct inv_unwrap {
     using type = T;
@@ -394,7 +394,7 @@ inline namespace cxx_traits {
   template <typename T>
   using unwrap_once_t = typename inv_unwrap<T>::unwrap_once;
 
-  // (undocumented) Unwrap and forward std::reference_wrapper.
+  // (nonstandard) Unwrap and forward std::reference_wrapper.
   template <typename T>
   EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
     std::is_same<T, unwrap_once_t<T>>::value, T&&
@@ -421,17 +421,17 @@ inline namespace cxx_traits {
     return unwrap_forward<Under>(obj.get());
   }
 
-  // (undocumented) Provide success type for invoke_result.
+  // (nonstandard) Provide success type for invoke_result.
   template <typename T, typename Tag>
   struct success_type {
     using type  = T;
     using tag   = Tag;
   };
 
-  // (undocumented) Trigger the SFINAE.
+  // (nonstandard) Trigger the SFINAE.
   struct failure_type {};
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // object with the given reference-like argument.
   template <typename MemObj, typename Arg>
   struct invoke_result_of_memobj_ref_like_helper {
@@ -444,7 +444,7 @@ inline namespace cxx_traits {
     using type = decltype(test<Arg>(0));
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // object with the given pointer-like argument.
   template <typename MemObj, typename Arg>
   struct invoke_result_of_memobj_pointer_like_helper {
@@ -457,7 +457,7 @@ inline namespace cxx_traits {
     using type = decltype(test<Arg>(0));
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // object with the given argument (reference-like or pointer-like).
   template <typename T, typename U>
   struct invoke_result_of_memobj;  // Undefined
@@ -474,7 +474,7 @@ inline namespace cxx_traits {
     >::type;
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // function with the given arguments. And the first argument is
   // reference-like object.
   template <typename MemFunc, typename Arg, typename... ArgsType>
@@ -490,7 +490,7 @@ inline namespace cxx_traits {
     using type = decltype(test<Arg>(0));
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // function with the given arguments. And the first argument is
   // pointer-like object.
   template <typename MemFunc, typename Arg, typename... ArgsType>
@@ -506,7 +506,7 @@ inline namespace cxx_traits {
     using type = decltype(test<Arg>(0));
   };
 
-  // (undocumented) Get the invoke result of pointer to member
+  // (nonstandard) Get the invoke result of pointer to member
   // function with the given arguments.
   template <typename... T>
   struct invoke_result_of_memfunc;  // Undefined
@@ -523,7 +523,7 @@ inline namespace cxx_traits {
     >::type;
   };
 
-  // (undocumented) Get invoke result of normal function with the given arguments.
+  // (nonstandard) Get invoke result of normal function with the given arguments.
   template <typename Functor, typename... ArgsType>
   struct invoke_result_of_normal {
     template<typename> static failure_type test(...) { return {}; }
@@ -536,7 +536,7 @@ inline namespace cxx_traits {
     using type = decltype(test<Functor>(0));
   };
 
-  // (undocumented) Implement the `invoke_result`.
+  // (nonstandard) Implement the `invoke_result`.
   template <bool, bool, typename Func, typename... Args>
   struct invoke_result_impl {
     using type = failure_type;
@@ -590,7 +590,7 @@ inline namespace cxx_traits {
     Func, ArgsT...
   >::type {};
 
-  // (undocumented) Check whether the INVOKE expression itself can throw.
+  // (nonstandard) Check whether the INVOKE expression itself can throw.
   template <typename Tag, typename...>
   struct call_is_nothrow_impl {
     static constexpr bool value = false;
@@ -659,7 +659,7 @@ inline namespace cxx_traits {
 #endif
   > {};
 
-  // (undocumented) Implement the is_invocable, is_nothrow_invocable, etc.
+  // (nonstandard) Implement the is_invocable, is_nothrow_invocable, etc.
   template <typename Res, typename Ret,
     bool RetIsVoid = std::is_void<Ret>::value, typename Enable = void>
   struct is_invocable_impl : public std::false_type
@@ -720,7 +720,7 @@ inline namespace cxx_traits {
   > {};
 
   /// @fn invoke_impl
-  // (undocumented) Distribute the call of callable objects, including normal
+  // (nonstandard) Distribute the call of callable objects, including normal
   // functions, pointer to member functions, and pointer to member objects
   // (distinguish reference-like/pointer-like class object callers).
 
