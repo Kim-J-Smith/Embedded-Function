@@ -20,12 +20,17 @@ call "%VCVARS64_BAT%"
 
 for %%S in (%CXX_STANDARDS%) do (
     call :config_cmake_and_run_test %%S "Ninja" ""
-    if errorlevel 1 exit /b 1
+    if errorlevel 1 goto fail
     call :config_cmake_and_run_test %%S "Ninja" "EBD_TEST_USE_FALLBACK"
-    if errorlevel 1 exit /b 1
+    if errorlevel 1 goto fail
 )
 
 exit /b 0
+
+rem Workaround for cmd.exe bug.
+rem See https://github.com/PowerShell/PowerShell/issues/17936.
+:fail
+exit /b 1
 
 rem %1: C++ standard version
 rem %2: C/C++ compiler generator (-G)
