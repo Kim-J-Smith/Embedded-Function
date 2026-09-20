@@ -42,7 +42,7 @@
 
 *Embedded Function* provides a set of **no-heap-allocation** polymorphic function wrappers implemented based on the C++11 standard, [optimized](#-performance-optimization) for resource-constrained, low-latency and high-performance environments.
 
-In a [single header file](./include/embed/embed_function.hpp), **five** function wrappers are provided as follows (the customizable [`ebd::basic_fn`](./docs/api/basic_fn.md) is the fifth):
+In a [single header file](./include/embed/embed_function.hpp), **five** [function wrappers](#-core-function-wrappers) are provided as follows:
 
 ```cpp
 namespace ebd {
