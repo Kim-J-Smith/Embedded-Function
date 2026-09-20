@@ -48,19 +48,24 @@ In a [single header file](./include/embed/embed_function.hpp), **five** function
 namespace ebd {
 // Owning polymorphic copyable function wrapper.
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
-  class fn;
+  using fn = basic_fn</*...*/>;
 
 // Owning move-only polymorphic function wrapper.
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
-  class unique_fn;
+  using unique_fn = basic_fn</*...*/>;
 
 // Classic owning polymorphic function wrapper. (like `std::function`)
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
-  class classic_fn;
+  using classic_fn = basic_fn</*...*/>;
 
 // Non-owning polymorphic function wrapper without empty state.
 template <class Signature, size_t /*Unused*/ = 0, size_t /*Unused*/ = 0>
-  class fn_ref;
+  using fn_ref = basic_fn</*...*/>;
+
+// Basic polymorphic function wrapper.
+template <class Signature, size_t BufferSize, size_t Alignment,
+          bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow>
+  using basic_fn = detail::function</*...*/>;
 }
 ```
 
