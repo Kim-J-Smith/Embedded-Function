@@ -328,7 +328,7 @@ namespace ebd EMBED_ABI_VISIBILITY(default) {
 namespace detail {
 
 /// @brief Here are some standard traits that are not supported in C++11.
-inline namespace cxx_traits {
+inline namespace cxx {
 
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1558>.
   template <typename... Args> struct make_void { using type = void; };
@@ -824,7 +824,7 @@ inline namespace cxx_traits {
 #endif
   }
 
-} // end namespace cxx_traits
+} // end namespace cxx
 
   // Forward declaration.
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
