@@ -377,22 +377,22 @@ inline namespace cxx_traits {
 
   // (nonstandard) Unwrap the `std::reference_wrapper` recursively.
   template <typename T, typename U = remove_cvref_t<T>>
-  struct inv_unwrap {
+  struct unwrap_ref_wrapper {
     using type = T;
     using unwrap_once = T;
   };
 
   template <typename T, typename UnderType>
-  struct inv_unwrap<T, std::reference_wrapper<UnderType>> {
-    using type = typename inv_unwrap<UnderType&>::type;
+  struct unwrap_ref_wrapper<T, std::reference_wrapper<UnderType>> {
+    using type = typename unwrap_ref_wrapper<UnderType&>::type;
     using unwrap_once = UnderType&;
   };
 
   template <typename T>
-  using inv_unwrap_t = typename inv_unwrap<T>::type;
+  using unwrap_ref_wrapper_t = typename unwrap_ref_wrapper<T>::type;
 
   template <typename T>
-  using unwrap_once_t = typename inv_unwrap<T>::unwrap_once;
+  using unwrap_once_t = typename unwrap_ref_wrapper<T>::unwrap_once;
 
   // (nonstandard) Unwrap and forward std::reference_wrapper.
   template <typename T>
@@ -409,14 +409,14 @@ inline namespace cxx_traits {
 
   template <typename T, typename Under = unwrap_once_t<T>,
     EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
-  > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  > EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
   unwrap_forward(remove_reference_t<T>&& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
   }
 
   template <typename T, typename Under = unwrap_once_t<T>,
     EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
-  > EMBED_NODISCARD EMBED_INLINE constexpr inv_unwrap_t<T>&&
+  > EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
   unwrap_forward(remove_reference_t<T>& obj) noexcept {
     return unwrap_forward<Under>(obj.get());
   }
@@ -550,7 +550,7 @@ inline namespace cxx_traits {
   > {
     using type = typename invoke_result_of_memobj<
       typename std::decay<PointerToMemObj>::type,
-      inv_unwrap_t<Arg>
+      unwrap_ref_wrapper_t<Arg>
     >::type;
   };
 
@@ -562,7 +562,7 @@ inline namespace cxx_traits {
   > {
     using type = typename invoke_result_of_memfunc<
       typename std::decay<PointerToMemFunc>::type,
-      inv_unwrap_t<Arg>, ArgsType...
+      unwrap_ref_wrapper_t<Arg>, ArgsType...
     >::type;
   };
 
@@ -604,7 +604,7 @@ inline namespace cxx_traits {
 
   template <typename MemObj, typename Arg>
   struct call_is_nothrow_impl<tag_call_memobj_ref_like, MemObj, Arg> {
-    using U = inv_unwrap_t<Arg>;
+    using U = unwrap_ref_wrapper_t<Arg>;
     static constexpr bool value = noexcept(
       std::declval<U>().*std::declval<MemObj>());
   };
@@ -618,7 +618,7 @@ inline namespace cxx_traits {
   template <typename Memfunc, typename Arg, typename... Args>
   struct call_is_nothrow_impl<
     tag_call_memfn_ref_like, Memfunc, Arg, Args...> {
-    using U = inv_unwrap_t<Arg>;
+    using U = unwrap_ref_wrapper_t<Arg>;
     static constexpr bool value = noexcept(
       (std::declval<U>().*std::declval<Memfunc>()) (std::declval<Args>()...));
   };
