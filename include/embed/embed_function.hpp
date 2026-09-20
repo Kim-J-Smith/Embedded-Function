@@ -771,11 +771,12 @@ inline namespace cxx {
   }
 
   // See <https://cppreference.com/w/cpp/utility/functional/invoke.html>.
-  template <typename Result, typename Callee, typename... Args>
-  EMBED_CXX14_CONSTEXPR enable_if_t<
-    is_invocable_r<Result, Callee, Args...>::value
-    && std::is_void<Result>::value>
-  invoke_r(Callee&& fn, Args&&... args)
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename Result, typename Callee, typename... Args)
+    EMBED_DETAIL_REQUIRES_END(
+      is_invocable_r<Result, Callee, Args...>::value
+      && std::is_void<Result>::value
+    ) // requires the `Callee` to be invacable while `Result` is `void`
+  EMBED_CXX14_CONSTEXPR void invoke_r(Callee&& fn, Args&&... args)
   noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
@@ -785,19 +786,20 @@ inline namespace cxx {
       std::forward<Args>(args)...);
   }
 
-  template <typename Result, typename Callee, typename... Args>
-  EMBED_CXX14_CONSTEXPR enable_if_t<
-    is_invocable_r<Result, Callee, Args...>::value
-    && !std::is_void<Result>::value, Result>
-  invoke_r(Callee&& fn, Args&&... args)
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename Result, typename Callee, typename... Args)
+    EMBED_DETAIL_REQUIRES_END(
+      is_invocable_r<Result, Callee, Args...>::value
+      && (!std::is_void<Result>::value)
+    ) // requires the `Callee` to be invacable while `Result` is NOT `void`
+  EMBED_CXX14_CONSTEXPR Result invoke_r(Callee&& fn, Args&&... args)
   noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
 
     // Assert no dangling.
     static_assert(!reference_converts_from_temporary<Result, invoke_t>::value,
-      "Returning from invoke_r would bind a temporary object to the reference return type,"
-      " which would result in a dangling reference.");
+      "Returning from invoke_r would bind a temporary object to the reference "
+      "return type, which would result in a dangling reference.");
 
     return invoke_impl<invoke_t>(tag_t{}, std::forward<Callee>(fn),
       std::forward<Args>(args)...);
@@ -1796,19 +1798,19 @@ namespace erasure_type {
 
     template <typename T>
     T& access() noexcept
-    { return *::ebd::detail::launder(static_cast<T*>(access())); }
+    { return *cxx::launder(static_cast<T*>(access())); }
 
     template <typename T>
     const T& access() const noexcept
-    { return *::ebd::detail::launder(static_cast<const T*>(access())); }
+    { return *cxx::launder(static_cast<const T*>(access())); }
 
     template <typename T>
     volatile T& access() volatile noexcept
-    { return *::ebd::detail::launder(static_cast<volatile T*>(access())); }
+    { return *cxx::launder(static_cast<volatile T*>(access())); }
 
     template <typename T>
     const volatile T& access() const volatile noexcept
-    { return *::ebd::detail::launder(static_cast<const volatile T*>(access())); }
+    { return *cxx::launder(static_cast<const volatile T*>(access())); }
   };
 
   // ABI for passing either pointer or value.
@@ -1858,16 +1860,16 @@ namespace invocation {
   struct view_cw {                                                                    \
     template <typename Cw>                                                            \
     static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT {       \
-      return invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);                   \
+      return cxx::invoke_r<Ret>(Cw::value, std::forward<Args>(args)...);              \
     }                                                                                 \
     template <typename Cw, typename Obj, bool CallPointer>                            \
     static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
       if constexpr (CallPointer) {                                                    \
         auto* obj_ptr = static_cast<Obj C V*>(base.val.fill_ptr);                     \
-        return invoke_r<Ret>(Cw::value, obj_ptr, std::forward<Args>(args)...);        \
+        return cxx::invoke_r<Ret>(Cw::value, obj_ptr, std::forward<Args>(args)...);   \
       } else {                                                                        \
         auto& obj = *static_cast<Obj C V*>(base.val.fill_ptr);                        \
-        return invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);            \
+        return cxx::invoke_r<Ret>(Cw::value, obj, std::forward<Args>(args)...);       \
       }                                                                               \
     }                                                                                 \
   }; /* end view_cw */                                                                \
@@ -1880,7 +1882,7 @@ namespace invocation {
       using Fn = conditional_t<is_rvalue_ref,                                         \
         remove_reference_t<decltype(fn)>&&,                                           \
         remove_reference_t<decltype(fn)>&>;                                           \
-      return invoke_r<Ret>(                                                           \
+      return cxx::invoke_r<Ret>(                                                      \
         Cw::value, static_cast<Fn>(fn), std::forward<Args>(args)...);                 \
     }                                                                                 \
   }; /* end inplace_cw */
@@ -1922,7 +1924,7 @@ namespace invocation {
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
           remove_reference_t<decltype(fn)>&>;                                         \
-        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);       \
+        return cxx::invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);  \
       }                                                                               \
     };                                                                                \
                                                                                       \
@@ -1933,7 +1935,7 @@ namespace invocation {
         EMBED_DETAIL_REQUIRES_END(is_stored_origin<Functor, true>::value)             \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
         auto* fn = reinterpret_cast<Functor>(base.val.fill_func_ptr);                 \
-        return invoke_r<Ret>(fn, std::forward<Args>(args)...);                        \
+        return cxx::invoke_r<Ret>(fn, std::forward<Args>(args)...);                   \
       }                                                                               \
                                                                                       \
       /* Using when the `Functor` is NOT function pointer. */                         \
@@ -1942,7 +1944,7 @@ namespace invocation {
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
         auto& fn = *static_cast<Functor C V*>(base.val.fill_ptr);                     \
         using Fn = remove_reference_t<decltype(fn)>&;                                 \
-        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);       \
+        return cxx::invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);  \
       }                                                                               \
     };                                                                                \
                                                                                       \
@@ -1954,7 +1956,7 @@ namespace invocation {
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
           remove_reference_t<decltype(fn)>&>;                                         \
-        return invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);       \
+        return cxx::invoke_r<Ret>(static_cast<Fn>(fn), std::forward<Args>(args)...);  \
       }                                                                               \
     };                                                                                \
                                                                                       \
