@@ -418,7 +418,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 `ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., trivially copyable classes with `static operator()`). This reduces memory access operations and improves cache efficiency.
 
 > [!IMPORTANT]
-> For owning polymorphic function wrappers (`fn`, `unique_fn`, etc.), empty and trivial functors are treated as *stateless* types. Consequently, their `this` pointer value will change on every invocation, as a fresh temporary is constructed on the stack for each call. Define macro `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` to disable this optimization.
+> For owning polymorphic function wrappers (`fn`, `unique_fn`, etc.), functors that are both trivial and empty are treated as *stateless* types. Consequently, their `this` pointer value will change on every invocation, as a fresh temporary is constructed on the stack for each call. Define macro `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` to disable this optimization.
 
 > Click [x64-msvc](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-gcc](./docs/perf/riscv_gcc_asm_analysis.md), [arm32-gcc](./docs/perf/arm_gcc_asm_analysis.md) and [x64-gcc](./docs/perf/x86_64_gcc_asm_analysis.md) to see more details.
 
