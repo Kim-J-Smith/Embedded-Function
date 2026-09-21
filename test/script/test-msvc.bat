@@ -18,11 +18,12 @@ if not defined VCVARS64_BAT (
 echo find "%VCVARS64_BAT%"
 call "%VCVARS64_BAT%"
 
-for %%S in (%CXX_STANDARDS%) do (
-    call :config_cmake_and_run_test %%S "Ninja" ""
-    if errorlevel 1 goto fail
-    call :config_cmake_and_run_test %%S "Ninja" "EBD_TEST_USE_FALLBACK"
-    if errorlevel 1 goto fail
+for %%M in ("", "EBD_TEST_USE_FALLBACK") do (
+    for %%S in (%CXX_STANDARDS%) do (
+        call :config_cmake_and_run_test %%S "Ninja" %%M
+        if errorlevel 1 goto fail
+    )
+    rmdir /s /q ".\build\"
 )
 
 exit /b 0

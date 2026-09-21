@@ -41,12 +41,13 @@ config_cmake_and_run_test() {
 test_gcc() {
     environment_setup
     echo; echo "-- FINISH ENVIRONMENT SETUP --"; echo;
-    for compiler_version in "${COMPILER_VERSIONS[@]}"; do
-        for cxx_standard in "${CXX_STANDARDS[@]}"; do
-            for test_use_macros in "${TEST_USE_MACROS_HELPER[@]}"; do
+    for test_use_macros in "${TEST_USE_MACROS_HELPER[@]}"; do
+        for compiler_version in "${COMPILER_VERSIONS[@]}"; do
+            for cxx_standard in "${CXX_STANDARDS[@]}"; do
                 config_cmake_and_run_test "$cxx_standard" "$compiler_version" "$test_use_macros"
             done
         done
+        rm -rf ./build/
     done
 }
 
