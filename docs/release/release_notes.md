@@ -1,18 +1,20 @@
 **🔧 Fixed Bugs**
-- Fixed a bug where `ebd::make_fn(std::cw<...>, obj)` failed to compile when `obj` was move-only; it now returns `ebd::unique_fn`. (#170)
-- Fixed a bug where `ebd::make_fn(std::cw<...>, obj)` could not deduce the correct `const`-qualifier of the signature. (#170)
-- Fixed an internal macro hygiene issue where `EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL` was left defined after use; it is now undefined together with the other internal invoker macros. (#171)
+- Fixed a bug where MSVC mistakenly regarded the empty-state invoker (`empty::invoke`, which throws `std::bad_function_call` or terminates) as a hot path and peeled it into a per-call guard in the calling code. The `empty::invoke` is now marked with the new internal `EMBED_DETAIL_COLD` macro to address this issue. (#173)
+- Fixed a bug where a callable given through `std::constant_wrapper` lost its ref-qualifier in the deduced signature. (#180)
+- Fixed a bug where `ebd::fn<int(int)>` accepted an `&`-qualified callable. The `std::constant_wrapper` + object constructors now additionally require the callable to be invocable with the object carrying the same qualifiers of the signature. (#180)
 
 **⚠️ Breaking Changes**
-- `ebd::make_fn(std::cw<NTTP-Callable>, obj)` and `ebd::make_fn<...>(std::cw<NTTP-Callable>, obj)` now deduce a `const`-qualified signature when the first parameter of the `NTTP-Callable` is not a reference type. For example, for a `std::cw` of an `int(*)(int, int)` function, the deduced signature changed from `int(int)` to `int(int) const` because the first parameter `int` is not a reference type. The qualifiers of the object type are preserved only when the first parameter of the callable is a reference type. (#170)
+- `make_fn(std::cw<&T::f>, T{})` now preserves the ref-qualifier of the member function in the deduced signature, so an `&`- or `&&`-qualified `T::f` yields `fn<..., Ret(Args...) const & noexcept>` or `fn<..., Ret(Args...) const && noexcept>` instead of collapsing both to `fn<..., Ret(Args...) const noexcept>`. This is the fix above; it changes the deduced type. (#180)
+- Callables with a by-value explicit object parameter (`this T self`) now deduce a `const`-qualified signature, e.g. `fn<..., Ret(Args...) const noexcept>` instead of `fn<..., Ret(Args...) noexcept>`. (#180)
+- The ref-qualifier transfer also applies to a `std::constant_wrapper` of a free function (or a member object pointer) whose first parameter is a reference: `make_fn(std::cw<&free_func>, obj)` with `free_func(Obj&, ...)` now yields a ref-qualified signature such as `fn<..., Ret(Args...) &>`, and an explicitly specified non-ref-qualified signature such as `fn<..., Ret(Args...)>` is now rejected. (#180)
 
 **✨ New Features**
-- Owning polymorphic function wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) can now be constructed from `{std::cw<...>, std::in_place_type<T>, CArgs...}` and `{std::cw<...>, std::in_place_type<T>, {std::initializer_list}, CArgs...}` since C++26, as an **experimental** exploration of [P2511: Beyond operator(): NTTP callables in type-erased call wrappers](https://wg21.link/P2511). The object is constructed in place inside the wrapper buffer and binds to the first parameter of the callable. (#170)
-- Added `ebd::make_fn(std::cw<...>, std::in_place_type<T>, CArgs...)` and `ebd::make_fn(std::cw<...>, std::in_place_type<T>, std::initializer_list<U>, CArgs...)`, which deduce the wrapper type, the signature, the buffer size and the alignment. Both return `ebd::fn`, or `ebd::unique_fn` when the object is not copy-constructible. (#170)
+- None.
 
 **🛠️ Optimizations and Improvements**
-- Unified the template parameter naming and the documentation comments of the `std::constant_wrapper` support, and corrected the `@return` documentation of the `ebd::make_fn` overloads. (#170)
-- Switched the MSVC CI tests to the Ninja generator (`test/script/test-msvc.bat`), which speeds up the CI test builds. (#172)
+- Updated the assembly analysis documents under `docs/perf/`: the x86_64 MSVC, RISC-V GCC and ARM GCC analyses now compare register argument passing against the stack spills of `std::function` and cover destruction/copy, the `ebd::fn_ref` zero-stack analysis was extended with a full comparison and a summary table, and a new `docs/perf/x86_64_gcc_asm_analysis.md` document was added. (#173)
+- Renamed some internal traits, tags and the `cxx_traits` namespace to make them more readable. (#181)
+- More internal functions now use `requires` instead of `enable_if` when compiled as *C++20* or later. (#181)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.

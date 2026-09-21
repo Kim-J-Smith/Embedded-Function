@@ -1,7 +1,7 @@
-﻿# Embedded Function
+# Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.4.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.4.1">
+  <img src="https://img.shields.io/badge/Version-2.4.2-yellow?style=for-the-badge&logo=github" alt="Version - 2.4.2">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -17,31 +17,55 @@
 
 > *A **lightweight** and **heap-free** polymorphic function wrapper collection.*
 
+## 📖 Table of Contents
+
+- [Overview](#-overview)
+- [Quick start](#-quick-start)
+- [Wrapper definition syntax](#-wrapper-definition-syntax)
+- [Design goals](#-design-goals-driving-the-design)
+- [Core function wrappers](#-core-function-wrappers)
+  - [Summary table](#summary-table)
+  - [Convertibility](#convertibility)
+  - [Memory layout](#memory-layout-overview)
+- [Automatic deduction](#-automatic-deduction)
+- [Back to function pointer](#-back-to-function-pointer)
+- [C++20 Module support](#-c20-module-support)
+- [Debug diagnostics hook](#️-debug-diagnostics-hook)
+- [Compatibility](#-compatibility)
+- [Test](#-test)
+- [Performance optimization](#-performance-optimization)
+- [Benchmark](#️-benchmark)
+- [Future learning & evolution reference](#-future-learning--evolution-reference)
+- [Similar implementations](#-similar-implementations)
+
 ## 📌 Overview
 
-*Embedded Function* is a **lightweight** and **no-heap-allocation** function wrapper collection implemented based on the C++11 standard, optimized([see below](#-performance-optimization)) for resource-constrained or high-performance environments.
+*Embedded Function* provides a set of **no-heap-allocation** polymorphic function wrappers implemented based on the C++11 standard, [optimized](#-performance-optimization) for resource-constrained, low-latency and high-performance environments.
 
-The library is [freestanding](https://cppreference.com/w/cpp/freestanding), making it feasible for embedded development or kernel design of an operating system.
-
-In a [single header file](./include/embed/embed_function.hpp), **five** function wrappers are provided as follows (the customizable [`ebd::basic_fn`](./docs/api/basic_fn.md) is the fifth):
+In a [single header file](./include/embed/embed_function.hpp), **five** [function wrappers](#-core-function-wrappers) are provided as follows:
 
 ```cpp
 namespace ebd {
 // Owning polymorphic copyable function wrapper.
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
-  class fn;
+  using fn = basic_fn</*...*/>;
 
-// Owning polymorphic function wrapper.
+// Owning move-only polymorphic function wrapper.
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
-  class unique_fn;
+  using unique_fn = basic_fn</*...*/>;
 
 // Classic owning polymorphic function wrapper. (like `std::function`)
 template <class Signature, size_t BufferSize = /*DefaultSize*/, size_t Alignment = /*DefaultAlignment*/>
-  class classic_fn;
+  using classic_fn = basic_fn</*...*/>;
 
-// Non-owning polymorphic function wrapper.
+// Non-owning polymorphic function wrapper without empty state.
 template <class Signature, size_t /*Unused*/ = 0, size_t /*Unused*/ = 0>
-  class fn_ref;
+  using fn_ref = basic_fn</*...*/>;
+
+// Basic polymorphic function wrapper.
+template <class Signature, size_t BufferSize, size_t Alignment,
+          bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow>
+  using basic_fn = detail::function</*...*/>;
 }
 ```
 
@@ -331,6 +355,9 @@ auto main() -> int {
 }
 ```
 
+> [!CAUTION]
+> *An MSVC 14.51 regression triggers an ICE when using modules. See [issue #174](https://github.com/Kim-J-Smith/Embedded-Function/issues/174).*
+
 ## 🛠️ Debug diagnostics hook
 
 `EMBED_FN_HOOK_DEBUG(message)` is a user-defined macro hook for capturing diagnostic output in debug builds. Define it **before** including the header:
@@ -391,13 +418,11 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 `ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` do not store the functor or its pointer if the functor is stateless (e.g., trivially copyable classes with `static operator()`). This reduces memory access operations and improves cache efficiency.
 
 > [!IMPORTANT]
-> For owning polymorphic function wrappers (`fn`, `unique_fn`, etc.), empty and trivial functors are treated as *stateless* types. Consequently, their `this` pointer value will change on every invocation, as a fresh temporary is constructed on the stack for each call. Define macro `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` to disable this optimization.
+> For owning polymorphic function wrappers (`fn`, `unique_fn`, etc.), functors that are both trivial and empty are treated as *stateless* types. Consequently, their `this` pointer value will change on every invocation, as a fresh temporary is constructed on the stack for each call. Define macro `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` to disable this optimization.
 
-> Click [x64-asm](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-asm](./docs/perf/riscv_gcc_asm_analysis.md) and [arm32-asm](./docs/perf/arm_gcc_asm_analysis.md) to see more details.
+> Click [x64-msvc](./docs/perf/x86_64_msvc_asm_analysis.md), [rv32-gcc](./docs/perf/riscv_gcc_asm_analysis.md), [arm32-gcc](./docs/perf/arm_gcc_asm_analysis.md) and [x64-gcc](./docs/perf/x86_64_gcc_asm_analysis.md) to see more details.
 
 ## ⏱️ Benchmark
-
-**Embedded-Function has 5%~30% performance enhancement over `std::function`.**
 
 > *( `Compiler`: GCC-16 `Standard`: C++23 `Config`: -O2 `Tool`: [iboB/picobench](https://github.com/iboB/picobench) )*
 
@@ -406,18 +431,18 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 - **fu2**: [Naios/function2](https://github.com/Naios/function2)
 - **pro**: [ngcpp/proxy](https://github.com/ngcpp/proxy)
 
-### Functor.TrivialParameters:
+**Comparison Table** *(Dimension = 1,000,000)*
 
- Name (* = baseline)      |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
---------------------------|--------:|----------:|--------:|-------:|----------:
- functor_trivial_`std` *  |    1000 |     0.004 |       3 |      - |250878073.3
- functor_trivial_`ebd`    |    1000 |     0.001 |       0 |  0.231 |1085776330.1
- functor_trivial_`fu2`    |    1000 |     0.003 |       3 |  0.829 |302571860.8
- functor_trivial_`pro`    |    1000 |     0.003 |       3 |  0.804 |312012480.5
- functor_trivial_`std` *  | 1000000 |     3.858 |       3 |      - |259225310.3
- functor_trivial_`ebd`    | 1000000 |     0.865 |       0 |  0.224 |1155748694.0
- functor_trivial_`fu2`    | 1000000 |     3.157 |       3 |  0.818 |316715483.1
- functor_trivial_`pro`    | 1000000 |     3.158 |       3 |  0.819 |316677871.8
+  Benchmark case   | `std` | `ebd` | `fu2` | `pro` | `std`/`ebd`
+-------------------|-------|-------|-------|-------|-----------
+AssignmentBenchmark<br>.CopyAssignmentSmallTrivial | 27.232ms | 18.674ms | 16.641ms | 22.818ms | **1.45x**
+AssignmentBenchmark<br>.CopyAssignmentStateless | 28.326ms | 5.597ms | 9.324ms | 7.771ms | **5.06x**
+AssignmentBenchmark<br>.CopyAssignmentSameType | 26.601ms | 16.709ms | 25.738ms | 25.796ms | **1.59x**
+CreateBenchmark<br>.CaptureLambda | 3.730ms | 2.174ms | 4.349ms | 3.107ms | **1.72x**
+CreateBenchmark<br>.NonTrivialFunctor | 14.008ms | 1.858ms | 4.039ms | 3.107ms | **7.54x**
+FreeFunction<br>.ScalarParameters | 5.594ms | 3.415ms | 5.905ms | 5.281ms | **1.62x**
+Functor<br>.ScalarParameters | 3.724ms | 0.730ms | 3.107ms | 3.415ms | **5.10x**
+MoveOnlyFunction<br>.Params.Array | 0.617ms | 0.370ms | 1.858ms | 1.859ms | **1.67x**
 
 > See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
 
