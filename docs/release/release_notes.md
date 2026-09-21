@@ -6,12 +6,13 @@
 **⚠️ Breaking Changes**
 - `make_fn(std::cw<&T::f>, T{})` now preserves the ref-qualifier of the member function in the deduced signature, so an `&`- or `&&`-qualified `T::f` yields `fn<..., Ret(Args...) const & noexcept>` or `fn<..., Ret(Args...) const && noexcept>` instead of collapsing both to `fn<..., Ret(Args...) const noexcept>`. This is the fix above; it changes the deduced type. (#180)
 - Callables with a by-value explicit object parameter (`this T self`) now deduce a `const`-qualified signature, e.g. `fn<..., Ret(Args...) const noexcept>` instead of `fn<..., Ret(Args...) noexcept>`. (#180)
+- The ref-qualifier transfer also applies to a `std::constant_wrapper` of a free function (or a member object pointer) whose first parameter is a reference: `make_fn(std::cw<&free_func>, obj)` with `free_func(Obj&, ...)` now yields a ref-qualified signature such as `fn<..., Ret(Args...) &>`, and an explicitly specified non-ref-qualified signature such as `fn<..., Ret(Args...)>` is now rejected. (#180)
 
 **✨ New Features**
 - None.
 
 **🛠️ Optimizations and Improvements**
-- Updated the assembly analysis documents under `docs/perf/`: the x86_64 MSVC, RISC-V GCC and ARM GCC analyses now compare register argument passing against the stack spills of `std::function` and cover destruction/copy, the `ebd::fn_ref` zero-stack analysis was extended with a full comparison and a summary table, and a new `docs/perf/x86_64_gcc_asm_analysis.md` document was added. (#180)
+- Updated the assembly analysis documents under `docs/perf/`: the x86_64 MSVC, RISC-V GCC and ARM GCC analyses now compare register argument passing against the stack spills of `std::function` and cover destruction/copy, the `ebd::fn_ref` zero-stack analysis was extended with a full comparison and a summary table, and a new `docs/perf/x86_64_gcc_asm_analysis.md` document was added. (#173)
 - Renamed some internal traits, tags and the `cxx_traits` namespace to make them more readable. (#181)
 - More internal functions now use `requires` instead of `enable_if` when compiled as *C++20* or later. (#181)
 

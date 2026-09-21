@@ -3642,7 +3642,7 @@ noexcept(std::is_nothrow_constructible<Functor, CArgs...>::value) {
   >(std::in_place_type<Functor>, std::forward<CArgs>(args)...);
 }
 
-/// @brief make_fn[11]: In-place make function. (std::initializer_list)
+/// @brief make_fn[11.5]: In-place make function. (std::initializer_list)
 /// @return `fn<Auto-Deduction>` or `unique_fn<Auto-Deduction>`
 template <typename Functor, typename U, typename... CArgs>
 EMBED_NODISCARD inline auto

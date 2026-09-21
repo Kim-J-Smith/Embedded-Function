@@ -13,7 +13,7 @@ It can:
 
 ## Overloads
 
-### 1. Copyable functor with explicit signature
+### make_fn[0]: Copyable functor with explicit signature
 
 ```cpp
 template <typename Signature, typename Functor,
@@ -26,7 +26,7 @@ make_fn(Functor&& functor) noexcept(NoThrow);
 
 Creates an `ebd::fn` for a class-type callable when the signature is specified explicitly. The buffer size is automatically deduced as `sizeof(Class)`, and the alignment as `alignof(Class)` (never less than `detail::default_values::owning::alignment`).
 
-### 2. Move-only functor with explicit signature
+### make_fn[1]: Move-only functor with explicit signature
 
 ```cpp
 template <typename Signature, typename Functor,
@@ -38,7 +38,7 @@ make_fn(Functor&& functor) noexcept(NoThrow);
 
 Creates an `ebd::unique_fn` for a move-only functor when the signature is specified explicitly.
 
-### 3. Empty wrapper with explicit signature
+### make_fn[2]: Empty wrapper with explicit signature
 
 ```cpp
 template <typename Signature,
@@ -50,7 +50,7 @@ make_fn(std::nullptr_t = nullptr) noexcept;
 
 Creates an empty `ebd::fn` with the given signature and buffer size.
 
-### 4. Function pointer with deduced signature
+### make_fn[3]: Function pointer with deduced signature
 
 ```cpp
 template <typename Ret, typename... Args>
@@ -60,7 +60,7 @@ make_fn(Ret (*func_ptr)(Args...)) noexcept;
 
 Creates an `ebd::fn` from a free-function pointer and deduces both signature and buffer size.
 
-### 4b. noexcept function pointer with deduced signature (C++17+)
+### make_fn[3.5]: noexcept function pointer with deduced signature (C++17+)
 
 ```cpp
 template <typename Ret, typename... Args>
@@ -70,7 +70,7 @@ make_fn(Ret (*func_ptr)(Args...) noexcept) noexcept;
 
 Creates an `ebd::fn` from a noexcept free-function pointer. The noexcept qualifier is preserved in the signature. Only available when noexcept is part of the type system (C++17 or `__cpp_noexcept_function_type >= 201510L`).
 
-### 5. Function pointer with explicit signature
+### make_fn[4]: Function pointer with explicit signature
 
 ```cpp
 template <typename Signature,
@@ -81,7 +81,7 @@ make_fn(FunctionPtr func_ptr) noexcept;
 
 Creates an `ebd::fn` from a free-function pointer using the specified signature.
 
-### 6. Copy from another wrapper
+### make_fn[5]: Copy from another wrapper
 
 ```cpp
 template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
@@ -92,7 +92,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow);
 
 Creates a wrapper by copying another `ebd::detail::function`.
 
-### 7. Move from another wrapper
+### make_fn[6]: Move from another wrapper
 
 ```cpp
 template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
@@ -103,7 +103,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow);
 
 Creates a wrapper by moving another `ebd::detail::function`.
 
-### 8. Lambda or uniquely callable functor
+### make_fn[7]: Lambda or uniquely callable functor
 
 ```cpp
 template <typename Lambda,
@@ -121,7 +121,7 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow);
 
 Creates a wrapper from a lambda or other functor with exactly one viable `operator()`. The signature is deduced automatically; the buffer size and alignment are deduced from `sizeof(Class)` and `alignof(Class)` respectively. For a functor with a by-value explicit object parameter (`this T self`, C++23), the deduced signature is `const`-qualified (e.g. `fn<int(int) const>`), since the object is copied and can be invoked as `const`.
 
-### 9. Pointer to member function
+### make_fn[8]: Pointer to member function
 
 ```cpp
 template <typename Class, typename Ret, typename... Args>
@@ -135,7 +135,7 @@ make_fn(Ret(Class::* memfunc)(Args...) C V REF NOEXCEPT) noexcept
 
 Creates an `ebd::fn` from a pointer to member function. Cv/ref/noexcept qualifiers are preserved in the generated signature family.
 
-### 10. Member function pointer with explicit signature
+### make_fn[9]: Member function pointer with explicit signature
 
 ```cpp
 template <typename Signature,
@@ -147,7 +147,7 @@ make_fn(MemFuncPtr memfunc_ptr) noexcept;
 
 Creates an `ebd::fn` from a pointer to member function using the specified signature.
 
-### 11. Pointer to member object
+### make_fn[10]: Pointer to member object
 
 ```cpp
 template <typename Class, typename T,
@@ -159,7 +159,7 @@ EMBED_NODISCARD inline auto make_fn(T Class::* ptr_memobj) noexcept
 
 Creates an `ebd::fn` that reads a member object from an instance. The noexcept qualifier is deduced from the member access expression.
 
-### 12. In-place construction (C++17+)
+### make_fn[11] / make_fn[11.5]: In-place construction (C++17+)
 
 ```cpp
 template <typename Functor, typename... CArgs>
@@ -175,7 +175,7 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 
 Constructs the callable directly inside the wrapper buffer. The returned wrapper type is deduced from the functor, and the buffer size and alignment are deduced from `sizeof(Functor)` and `alignof(Functor)` respectively.
 
-### 13. From `std::constant_wrapper` (C++26+)
+### make_fn[12]: From `std::constant_wrapper` (C++26+)
 
 ```cpp
 template <auto Val, typename Fn>
@@ -184,7 +184,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>) noexcept;
 
 Creates an owning `ebd::fn` from a `std::constant_wrapper` (P3948) of a free function or other callable. The signature is deduced automatically, and the buffer size and alignment are deduced from `sizeof(Cw)` and `alignof(Cw)` respectively (never less than `detail::default_values::owning::alignment`). Only available when `__cpp_lib_constant_wrapper >= 202603L`.
 
-### 14. From `std::constant_wrapper` of a member pointer and an object (C++26+)
+### make_fn[13]: From `std::constant_wrapper` of a member pointer and an object (C++26+)
 
 ```cpp
 template <auto Val, typename Fn, typename Tp,
@@ -194,7 +194,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(
 
 Creates an owning `ebd::fn`, or `ebd::unique_fn` when `detail::decay_t<Tp>` is not copy-constructible, from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature. The cv/ref-qualifiers of that first parameter are transferred to the deduced signature (see Notes). The object is stored inside the wrapper buffer, so the buffer size and alignment are deduced from `sizeof(Tp)` and `alignof(Tp)` respectively. The `noexcept` specification is deduced from whether the object is nothrow-constructible from `Tp&&`.
 
-### 15. In-place object with `std::constant_wrapper` (C++26+)
+### make_fn[14]: In-place object with `std::constant_wrapper` (C++26+)
 
 ```cpp
 template <auto Val, typename Fn, typename Obj, typename... CArgs,
@@ -205,7 +205,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>,
 
 Creates an owning wrapper by constructing the object in place inside the wrapper buffer from `args`, and binding it to the **first parameter** of the wrapped callable. Returns `ebd::fn`, or `ebd::unique_fn` when `Obj` is not copy-constructible. The buffer size and alignment are deduced from `sizeof(Obj)` and `alignof(Obj)` respectively. `Obj` must be constructible from `args`, and the same qualifier deduction as the other `std::constant_wrapper` overloads applies (see Notes).
 
-### 16. In-place object with `std::constant_wrapper` and `std::initializer_list` (C++26+)
+### make_fn[15]: In-place object with `std::constant_wrapper` and `std::initializer_list` (C++26+)
 
 ```cpp
 template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U,
@@ -214,9 +214,9 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, std::in_place_type_
                              std::initializer_list<U> il, CArgs&&... args) noexcept(NoThrow);
 ```
 
-Same as overload 15, but the object is constructed from an `std::initializer_list` followed by `args`.
+Same as `make_fn[14]`, but the object is constructed from an `std::initializer_list` followed by `args`.
 
-### 17. Explicit wrapper type
+### make_fn[16]: Explicit wrapper type
 
 ```cpp
 template <template <class, std::size_t, std::size_t> class Fn,
