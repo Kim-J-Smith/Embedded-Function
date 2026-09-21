@@ -1590,10 +1590,10 @@ inline namespace fn_traits {
   // Check if `T` is the standard stateless function object type.
   template <typename T> struct is_standard_stateless_function_object : std::false_type {};
 
-#define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(type) \
-  template <typename T> struct is_standard_stateless_function_object<std::type<T>> : std::true_type {};
-#define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(type) \
-  template <> struct is_standard_stateless_function_object<std::type> : std::true_type {};
+#define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(func_obj) \
+  template <typename T> struct is_standard_stateless_function_object<std::func_obj<T>> : std::true_type {};
+#define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(func_obj) \
+  template <> struct is_standard_stateless_function_object<std::func_obj> : std::true_type {};
 
   // C++11 standard stateless function object types.
   EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(equal_to)
