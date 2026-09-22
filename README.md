@@ -424,7 +424,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 ## ⏱️ Benchmark
 
-> *( `Compiler`: GCC-16 `Standard`: C++23 `Config`: -O2 `Tool`: [iboB/picobench](https://github.com/iboB/picobench) )*
+> *(OS: `Ubuntu-26.04`; Compiler: `GCC-16`; Standard: `C++23`; Config: `-O2`; Tool: [`iboB/picobench`](https://github.com/iboB/picobench))*
 
 - **std**: Standard Template Library
 - **ebd**: Embedded-Function
