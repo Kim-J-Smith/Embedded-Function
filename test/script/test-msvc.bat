@@ -39,7 +39,7 @@ rem %3: Test use macros
 :config_cmake_and_run_test
 echo.
 echo ============================================================
-echo C++ standard version: %~1 ^| C++ compiler: MSVC
+echo C++ standard: %~1 ^| C++ compiler: MSVC
 echo ============================================================
 echo Build type: %BUILD_TYPE%
 echo Test use macros: %~3
