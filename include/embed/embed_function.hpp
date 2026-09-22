@@ -395,30 +395,30 @@ inline namespace cxx {
   using unwrap_once_t = typename unwrap_ref_wrapper<T>::unwrap_once;
 
   // (nonstandard) Unwrap and forward std::reference_wrapper.
-  template <typename T>
-  EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
-    std::is_same<T, unwrap_once_t<T>>::value, T&&
-  > unwrap_forward(remove_reference_t<T>&& obj) noexcept
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
+    EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
+  EMBED_NODISCARD EMBED_INLINE constexpr T&&
+  unwrap_ref_fwd(remove_reference_t<T>&& obj) noexcept
   { return static_cast<T&&>(obj); }
 
-  template <typename T>
-  EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
-    std::is_same<T, unwrap_once_t<T>>::value, T&&
-  > unwrap_forward(remove_reference_t<T>& obj) noexcept
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
+    EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
+  EMBED_NODISCARD EMBED_INLINE constexpr T&&
+  unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept
   { return static_cast<T&&>(obj); }
 
-  template <typename T, typename Under = unwrap_once_t<T>,
-    EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
-  > EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
-  unwrap_forward(remove_reference_t<T>&& obj) noexcept {
-    return unwrap_forward<Under>(obj.get());
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
+    EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
+  EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
+  unwrap_ref_fwd(remove_reference_t<T>&& obj) noexcept {
+    return unwrap_ref_fwd<Under>(obj.get());
   }
 
-  template <typename T, typename Under = unwrap_once_t<T>,
-    EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
-  > EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
-  unwrap_forward(remove_reference_t<T>& obj) noexcept {
-    return unwrap_forward<Under>(obj.get());
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
+    EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
+  EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
+  unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept {
+    return unwrap_ref_fwd<Under>(obj.get());
   }
 
   // (nonstandard) Provide success type for invoke_result.
@@ -738,7 +738,7 @@ inline namespace cxx {
   EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(tag_call_memobj_ref_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
-  { return unwrap_forward<Arg>(arg).*std::forward<MemObj>(obj); }
+  { return unwrap_ref_fwd<Arg>(arg).*std::forward<MemObj>(obj); }
 
   // Invokes the pointer to member object by the given "pointer" of class object.
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
@@ -754,7 +754,7 @@ inline namespace cxx {
   EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(tag_call_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
-    return (unwrap_forward<Arg>(arg).*std::forward<MemFunc>(memfn))(
+    return (unwrap_ref_fwd<Arg>(arg).*std::forward<MemFunc>(memfn))(
       std::forward<ArgsType>(args)...
     );
   }
