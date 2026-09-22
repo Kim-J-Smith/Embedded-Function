@@ -581,12 +581,8 @@ inline namespace cxx {
   // See <https://cppreference.com/w/cpp/types/result_of.html>.
   template <typename Func, typename... ArgsT>
   struct invoke_result : public invoke_result_impl<
-    std::is_member_function_pointer<
-      remove_reference_t<Func>
-    >::value,
-    std::is_member_object_pointer<
-      remove_reference_t<Func>
-    >::value,
+    std::is_member_function_pointer<remove_reference_t<Func>>::value,
+    std::is_member_object_pointer<remove_reference_t<Func>>::value,
     Func, ArgsT...
   >::type {};
 
