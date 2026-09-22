@@ -630,21 +630,16 @@ inline namespace cxx {
       ((*std::declval<Arg>()).*std::declval<Memfunc>()) (std::declval<Args>()...));
   };
 
-  // Uses empty class as the package of arguments.
-  template <typename... Args>
-  struct args_package {};
-
-  template <typename Func, typename ArgsTuple, typename = void>
+  template <typename, typename Fn, typename... Args>
   struct call_is_nothrow_helper : std::false_type {};
 
-  template <typename Func, typename... Args>
-  struct call_is_nothrow_helper<Func, args_package<Args...>,
-    void_t<typename invoke_result<Func, Args...>::tag>>
-  : call_is_nothrow_impl<typename invoke_result<Func, Args...>::tag, Func, Args...>
+  template <typename Fn, typename... Args>
+  struct call_is_nothrow_helper<void_t<typename invoke_result<Fn, Args...>::tag>, Fn, Args...>
+  : call_is_nothrow_impl<typename invoke_result<Fn, Args...>::tag, Fn, Args...>
   {};
 
-  template <typename Func, typename... Args>
-  using call_is_nothrow = call_is_nothrow_helper<Func, args_package<Args...>>;
+  template <typename Callee, typename... Args>
+  using call_is_nothrow = call_is_nothrow_helper<void, Callee, Args...>;
 
   // See <https://cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
   template <typename To, typename From>
@@ -891,6 +886,10 @@ inline namespace fn_traits {
   struct is_config_package<
     config_package<IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>>
   : public std::true_type {};
+
+  // Uses empty class as the package of arguments.
+  template <typename... Args>
+  struct args_package {};
 
   // Unwrap the function signature.
   template <typename T>
