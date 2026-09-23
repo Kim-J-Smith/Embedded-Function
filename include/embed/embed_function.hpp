@@ -650,64 +650,46 @@ inline namespace cxx {
 #endif
   > {};
 
-  // (nonstandard) Implement the is_invocable, is_nothrow_invocable, etc.
-  template <typename Res, typename Ret,
-    bool RetIsVoid = std::is_void<Ret>::value, typename Enable = void>
-  struct is_invocable_impl : public std::false_type
+  // (nonstandard) Helper for the is_invocable, is_nothrow_invocable, etc.
+  template <typename, typename Res, typename Ret, bool RetVoid = std::is_void<Ret>::value>
+  struct is_invocable_helper : public std::false_type
   { using nothrow = std::false_type; };
 
   template <typename Res, typename Ret>
-  struct is_invocable_impl<Res, Ret,
-    /* is_void<Ret>::value = */ true,
-    /* Enable = */ void_t<typename Res::type>>
+  struct is_invocable_helper<void_t<typename Res::type>, Res, Ret, /* RetVoid = */ true>
   : public std::true_type
   { using nothrow = std::true_type; };
 
-#if defined(__GNUC__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wctor-dtor-privacy"
-# pragma GCC diagnostic ignored "-Wreturn-type"
-#endif
-
   template <typename Res, typename Ret>
-  struct is_invocable_impl<Res, Ret,
-    /* is_void<Ret>::value = */ false,
-    /* Enable = */ void_t<typename Res::type>
-  > {
-    using invoke_t = typename Res::type;
+  struct is_invocable_helper<void_t<typename Res::type>, Res, Ret, /* RetVoid = */ false> {
+    static typename Res::type result() noexcept {
+      return std::declval<typename Res::type>();
+    }
 
-    static invoke_t testGet() noexcept { return std::declval<invoke_t>(); }
     template <typename T>
-    static void testConv(T) noexcept {}
+    static void try_receive(T) noexcept {}
 
-    template <typename, bool = true>
-    static std::false_type test(...) noexcept { return {}; }
+    template <typename, typename T>
+    struct receive_status : std::false_type { using nothrow = std::false_type; };
 
-    template <typename Rt,
-      bool NoThrow = noexcept(testConv<Rt>(testGet())),
-      typename Enable = decltype(testConv<Rt>(testGet()))
-    >
-    static bool_constant<NoThrow>
-    test(int) noexcept { return {}; }
+    template <typename T>
+    struct receive_status<void_t<decltype(try_receive<T>(result()))>, T>
+    : std::true_type { using nothrow = bool_constant<noexcept(try_receive<T>(result()))>; };
 
-    using type = decltype(test<Ret, true>(1));
-    using nothrow = decltype(test<Ret>(1));
+    using type = typename receive_status<void, Ret>::type;
+    using nothrow = typename receive_status<void, Ret>::nothrow;
   };
-
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
 
   // See <https://cppreference.com/w/cpp/types/is_invocable.html>.
   template <typename Ret, typename Func, typename... Args>
   struct is_invocable_r : public bool_constant<
-    is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
+    is_invocable_helper<void, invoke_result<Func, Args...>, Ret>::type::value
   > {};
 
   template <typename Ret, typename Func, typename... Args>
   struct is_nothrow_invocable_r : public bool_constant<
     call_is_nothrow<Func, Args...>::value
-    && is_invocable_impl<invoke_result<Func, Args...>, Ret>::nothrow::value
+    && is_invocable_helper<void, invoke_result<Func, Args...>, Ret>::nothrow::value
   > {};
 
   /// @fn invoke_impl
