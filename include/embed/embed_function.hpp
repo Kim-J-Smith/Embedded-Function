@@ -672,6 +672,7 @@ inline namespace cxx {
     template <typename, typename T>
     struct receive_status : std::false_type { using nothrow = std::false_type; };
 
+    /// TODO: Changing INVOKE<R> and is_invocable_r. See <https://wg21.link/P2255>.
     template <typename T>
     struct receive_status<void_t<decltype(try_receive<T>(result()))>, T>
     : std::true_type { using nothrow = bool_constant<noexcept(try_receive<T>(result()))>; };
