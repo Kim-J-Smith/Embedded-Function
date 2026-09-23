@@ -494,6 +494,10 @@ TEST(InitFunction, ReferenceWrapper) {
     ASSERT_EQ(f7(c_shared_ptr1, 5), 0);
     ASSERT_EQ(f7(c_shared_ptr2, 0), 5);
 
+    auto f8 = ebd::fn<int(std::reference_wrapper<int>)>{[](std::reference_wrapper<int>){return 42;}};
+    int num = 0;
+    ASSERT_EQ(f8(std::ref(num)), 42);
+
     SUCCEED();
 }
 
