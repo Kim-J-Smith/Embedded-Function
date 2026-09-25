@@ -784,7 +784,7 @@ inline namespace cxx {
   EMBED_NODISCARD EMBED_INLINE T* launder(T* ptr) noexcept {
 #if __cpp_lib_launder >= 201606L
     return std::launder(ptr);
-#elif EMBED_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 5
+#elif EMBED_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
     // `__builtin_launder` in MSVC is only accessible since C++17.
     return __builtin_launder(ptr);
 #elif defined(__GNUC__) || defined(__clang__)
