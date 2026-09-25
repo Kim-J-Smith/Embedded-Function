@@ -1218,15 +1218,6 @@ inline namespace fn_traits {
     static constexpr bool value = Config::isCopyable ? copy_ok : move_ok;
   };
 
-  // Check the move-constructor be deleted or not.
-  template <typename Functor, typename = void>
-  struct move_constructor_is_deleted : public std::true_type {};
-
-  template <typename Functor>
-  struct move_constructor_is_deleted<
-    Functor, void_t<decltype(Functor(std::declval<Functor&&>()))>
-  > : public std::false_type {};
-
   // `true` if the operator() is overloaded only once.
   template <typename Functor, typename = void>
   struct is_unique_callable : public std::false_type {};
@@ -1503,7 +1494,8 @@ inline namespace fn_traits {
 
     static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
 
-    static_assert(!move_constructor_is_deleted<Functor>::value || Config::isView,
+    /// TODO: Relax this constraint in future version.
+    static_assert(std::is_move_constructible<Functor>::value || Config::isView,
       "The move constructor of the callable object should not be deleted.");
   };
 
@@ -1806,8 +1798,10 @@ namespace erasure_type {
     ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
   };
 
+#if !defined(_MSC_VER) || defined(__clang__) || _MSC_VER >= 1927
   static_assert(std::is_trivially_copyable<ErasurePass>::value,
     EMBED_DETAIL_REPORT_IE("ErasurePass is not TrviallyCopyable."));
+#endif // MSVC 14.10~14.26 has a bug here.
 
   static_assert(sizeof(ErasurePass) <= sizeof(void*) || sizeof(ErasurePass) <= sizeof(void(*)()),
     EMBED_DETAIL_REPORT_IE("ErasurePass is too large."));
