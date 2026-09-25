@@ -395,30 +395,30 @@ inline namespace cxx {
   using unwrap_once_t = typename unwrap_ref_wrapper<T>::unwrap_once;
 
   // (nonstandard) Unwrap and forward std::reference_wrapper.
-  template <typename T>
-  EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
-    std::is_same<T, unwrap_once_t<T>>::value, T&&
-  > unwrap_forward(remove_reference_t<T>&& obj) noexcept
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
+    EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
+  EMBED_NODISCARD EMBED_INLINE constexpr T&&
+  unwrap_ref_fwd(remove_reference_t<T>&& obj) noexcept
   { return static_cast<T&&>(obj); }
 
-  template <typename T>
-  EMBED_NODISCARD EMBED_INLINE constexpr enable_if_t<
-    std::is_same<T, unwrap_once_t<T>>::value, T&&
-  > unwrap_forward(remove_reference_t<T>& obj) noexcept
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
+    EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
+  EMBED_NODISCARD EMBED_INLINE constexpr T&&
+  unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept
   { return static_cast<T&&>(obj); }
 
-  template <typename T, typename Under = unwrap_once_t<T>,
-    EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
-  > EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
-  unwrap_forward(remove_reference_t<T>&& obj) noexcept {
-    return unwrap_forward<Under>(obj.get());
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
+    EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
+  EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
+  unwrap_ref_fwd(remove_reference_t<T>&& obj) noexcept {
+    return unwrap_ref_fwd<Under>(obj.get());
   }
 
-  template <typename T, typename Under = unwrap_once_t<T>,
-    EMBED_DETAIL_REQUIRES(!std::is_same<T, Under>::value)
-  > EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
-  unwrap_forward(remove_reference_t<T>& obj) noexcept {
-    return unwrap_forward<Under>(obj.get());
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
+    EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
+  EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
+  unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept {
+    return unwrap_ref_fwd<Under>(obj.get());
   }
 
   // (nonstandard) Provide success type for invoke_result.
@@ -581,12 +581,8 @@ inline namespace cxx {
   // See <https://cppreference.com/w/cpp/types/result_of.html>.
   template <typename Func, typename... ArgsT>
   struct invoke_result : public invoke_result_impl<
-    std::is_member_function_pointer<
-      remove_reference_t<Func>
-    >::value,
-    std::is_member_object_pointer<
-      remove_reference_t<Func>
-    >::value,
+    std::is_member_function_pointer<remove_reference_t<Func>>::value,
+    std::is_member_object_pointer<remove_reference_t<Func>>::value,
     Func, ArgsT...
   >::type {};
 
@@ -630,21 +626,16 @@ inline namespace cxx {
       ((*std::declval<Arg>()).*std::declval<Memfunc>()) (std::declval<Args>()...));
   };
 
-  // Uses empty class as the package of arguments.
-  template <typename... Args>
-  struct args_package {};
-
-  template <typename Func, typename ArgsTuple, typename = void>
+  template <typename, typename Fn, typename... Args>
   struct call_is_nothrow_helper : std::false_type {};
 
-  template <typename Func, typename... Args>
-  struct call_is_nothrow_helper<Func, args_package<Args...>,
-    void_t<typename invoke_result<Func, Args...>::tag>>
-  : call_is_nothrow_impl<typename invoke_result<Func, Args...>::tag, Func, Args...>
+  template <typename Fn, typename... Args>
+  struct call_is_nothrow_helper<void_t<typename invoke_result<Fn, Args...>::tag>, Fn, Args...>
+  : call_is_nothrow_impl<typename invoke_result<Fn, Args...>::tag, Fn, Args...>
   {};
 
-  template <typename Func, typename... Args>
-  using call_is_nothrow = call_is_nothrow_helper<Func, args_package<Args...>>;
+  template <typename Callee, typename... Args>
+  using call_is_nothrow = call_is_nothrow_helper<void, Callee, Args...>;
 
   // See <https://cppreference.com/w/cpp/types/reference_converts_from_temporary.html>.
   template <typename To, typename From>
@@ -659,64 +650,47 @@ inline namespace cxx {
 #endif
   > {};
 
-  // (nonstandard) Implement the is_invocable, is_nothrow_invocable, etc.
-  template <typename Res, typename Ret,
-    bool RetIsVoid = std::is_void<Ret>::value, typename Enable = void>
-  struct is_invocable_impl : public std::false_type
+  // (nonstandard) Helper for the is_invocable, is_nothrow_invocable, etc.
+  template <typename, typename Res, typename Ret, bool RetVoid = std::is_void<Ret>::value>
+  struct is_invocable_helper : public std::false_type
   { using nothrow = std::false_type; };
 
   template <typename Res, typename Ret>
-  struct is_invocable_impl<Res, Ret,
-    /* is_void<Ret>::value = */ true,
-    /* Enable = */ void_t<typename Res::type>>
+  struct is_invocable_helper<void_t<typename Res::type>, Res, Ret, /* RetVoid = */ true>
   : public std::true_type
   { using nothrow = std::true_type; };
 
-#if defined(__GNUC__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wctor-dtor-privacy"
-# pragma GCC diagnostic ignored "-Wreturn-type"
-#endif
-
   template <typename Res, typename Ret>
-  struct is_invocable_impl<Res, Ret,
-    /* is_void<Ret>::value = */ false,
-    /* Enable = */ void_t<typename Res::type>
-  > {
-    using invoke_t = typename Res::type;
+  struct is_invocable_helper<void_t<typename Res::type>, Res, Ret, /* RetVoid = */ false> {
+    static typename Res::type result() noexcept {
+      return std::declval<typename Res::type>();
+    }
 
-    static invoke_t testGet() noexcept { return std::declval<invoke_t>(); }
     template <typename T>
-    static void testConv(T) noexcept {}
+    static void try_receive(T) noexcept {}
 
-    template <typename, bool = true>
-    static std::false_type test(...) noexcept { return {}; }
+    template <typename, typename T>
+    struct receive_status : std::false_type { using nothrow = std::false_type; };
 
-    template <typename Rt,
-      bool NoThrow = noexcept(testConv<Rt>(testGet())),
-      typename Enable = decltype(testConv<Rt>(testGet()))
-    >
-    static bool_constant<NoThrow>
-    test(int) noexcept { return {}; }
+    /// TODO: Changing INVOKE<R> and is_invocable_r. See <https://wg21.link/P2255>.
+    template <typename T>
+    struct receive_status<void_t<decltype(try_receive<T>(result()))>, T>
+    : std::true_type { using nothrow = bool_constant<noexcept(try_receive<T>(result()))>; };
 
-    using type = decltype(test<Ret, true>(1));
-    using nothrow = decltype(test<Ret>(1));
+    using type = typename receive_status<void, Ret>::type;
+    using nothrow = typename receive_status<void, Ret>::nothrow;
   };
-
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
 
   // See <https://cppreference.com/w/cpp/types/is_invocable.html>.
   template <typename Ret, typename Func, typename... Args>
   struct is_invocable_r : public bool_constant<
-    is_invocable_impl<invoke_result<Func, Args...>, Ret>::type::value
+    is_invocable_helper<void, invoke_result<Func, Args...>, Ret>::type::value
   > {};
 
   template <typename Ret, typename Func, typename... Args>
   struct is_nothrow_invocable_r : public bool_constant<
     call_is_nothrow<Func, Args...>::value
-    && is_invocable_impl<invoke_result<Func, Args...>, Ret>::nothrow::value
+    && is_invocable_helper<void, invoke_result<Func, Args...>, Ret>::nothrow::value
   > {};
 
   /// @fn invoke_impl
@@ -738,7 +712,7 @@ inline namespace cxx {
   EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(tag_call_memobj_ref_like, MemObj&& obj, Arg&& arg)
     noexcept(is_nothrow_invocable_r<RetT, MemObj, Arg>::value)
-  { return unwrap_forward<Arg>(arg).*std::forward<MemObj>(obj); }
+  { return unwrap_ref_fwd<Arg>(arg).*std::forward<MemObj>(obj); }
 
   // Invokes the pointer to member object by the given "pointer" of class object.
   // Note: The `std::unique_ptr`, `std::shared_ptr` are also regarded as "pointer".
@@ -754,7 +728,7 @@ inline namespace cxx {
   EMBED_CXX14_CONSTEXPR RetT
   invoke_impl(tag_call_memfn_ref_like, MemFunc&& memfn, Arg&& arg, ArgsType&&... args)
   noexcept(is_nothrow_invocable_r<RetT, MemFunc, Arg, ArgsType...>::value) {
-    return (unwrap_forward<Arg>(arg).*std::forward<MemFunc>(memfn))(
+    return (unwrap_ref_fwd<Arg>(arg).*std::forward<MemFunc>(memfn))(
       std::forward<ArgsType>(args)...
     );
   }
@@ -891,6 +865,10 @@ inline namespace fn_traits {
   struct is_config_package<
     config_package<IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>>
   : public std::true_type {};
+
+  // Uses empty class as the package of arguments.
+  template <typename... Args>
+  struct args_package {};
 
   // Unwrap the function signature.
   template <typename T>
