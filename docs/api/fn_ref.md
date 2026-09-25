@@ -47,6 +47,8 @@ constexpr explicit operator bool() = delete;
 void clear() = delete;
 ```
 
+A view wrapper also has no separate buffer-converting move constructor: an rvalue source binds to the buffer-converting copy constructor, which copies the reference.
+
 For detailed documentation, see [`ebd::detail::function`](./detail/function.md).
 
 ## Usage Examples
