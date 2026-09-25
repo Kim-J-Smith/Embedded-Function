@@ -8,6 +8,36 @@
 
 `ebd::detail::function` is a thin facade. Its mode-specific constructors live in `crtp_mixins::core_facade_impl` (owning/view specializations) and are inherited via `using Base_CoreFacade::Base_CoreFacade;`, so the overload set depends on `Config::isView`. Storage (`m_erasure`, `m_command`) lives in `crtp_mixins::member_variable_impl`, inherited **protected** and therefore not public. Before C++17 the inherited set excludes the default constructor, so `function() noexcept` is declared directly.
 
+The inheritance hierarchy (`function` is `final`; all bases live in `ebd::detail::crtp_mixins`):
+
+```mermaid
+graph BT;
+  F["ebd::detail::function"]
+  CF["core_facade_impl<br/>(owning / view)"]
+  MV["member_variable_impl"]
+  CC["core_components_impl<br/>(owning / view)"]
+  ASC["assignment_self_clear"]
+  OC["operator_call_impl"]
+  OD["operator_dereference_impl"]
+  LO["lifetime_operations_impl<br/>(view / owning)"]
+  D["destructor_impl"]
+  M["move_impl"]
+  C["copy_impl"]
+
+  F -->|public| CF
+  F -->|public| OC
+  F -->|public| OD
+  F -->|public| LO
+  CF -->|protected| MV
+  CF -->|public| CC
+  MV -->|public| ASC
+  LO -->|public, owning| D
+  LO -->|public, owning| M
+  LO -->|public, owning and copyable| C
+```
+
+Edges marked `owning` exist only in owning mode; the view specialization of `lifetime_operations_impl` has no bases.
+
 ## Template Parameters
 
 | Parameter | Description |
@@ -121,7 +151,7 @@ explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
 
 Constructs from a `std::constant_wrapper` (P3948), available when `__cpp_lib_constant_wrapper >= 202603L`:
 
-- View wrappers (`ebd::fn_ref`): construct from a bare `std::constant_wrapper`, from one plus an lvalue object (bound by reference, removed from the signature), or from one plus an object pointer (`Tp*`, non-null for member pointers). All are `constexpr`; the in-place forms are owning-only.
+- View wrappers (`ebd::fn_ref`): construct from a bare `std::constant_wrapper`, from a `std::constant_wrapper` plus an lvalue object (bound by reference, removed from the signature), or from a `std::constant_wrapper` plus an object pointer (`Tp*`, non-null for member pointers). All are `constexpr`; the in-place forms are owning-only.
 - Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`): construct from a `std::constant_wrapper` plus an object, or construct the object in place from `std::in_place_type_t<Obj>` plus arguments (optionally with a leading `std::initializer_list`). The object is stored in the buffer and passed as the callable's first argument; it must be decayed (`std::is_same_v<Obj, std::decay_t<Obj>>`), constructible from the arguments, and satisfy the buffer size/alignment constraints. These constructors are **not** `constexpr` (placement `new`), their `noexcept` follows the object's construction, and the callable must be invocable with the object carrying the signature's cv/ref-qualifiers (so a non-const `&`-qualified callable needs a ref-qualified signature such as `ebd::fn<int(int) &>`).
 
 A `static_assert` rejects null `Val` when `Fn` is a (member) function pointer.

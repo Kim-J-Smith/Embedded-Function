@@ -9,7 +9,7 @@
 
 **🛠️ Optimizations and Improvements**
 - Adjusted the style of some internal traits. (#184)
-- Did some small internal refactoring to improve maintainability.
+- Did some small internal refactoring to improve maintainability. (#185)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.

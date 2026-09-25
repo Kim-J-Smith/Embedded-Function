@@ -2751,6 +2751,7 @@ namespace crtp_mixins {
   : protected member_variable_impl<Size, Align, Cfg, Sig>,
     public core_components_impl</*IsView*/false, Cfg, Sig, Self>
   {
+protected:
     using Base_MemberVar = member_variable_impl<Size, Align, Cfg, Sig>;
     using Base_CoreCompo = core_components_impl</*IsView*/false, Cfg, Sig, Self>;
 
@@ -2770,6 +2771,7 @@ namespace crtp_mixins {
     template <typename T>
     using add_cvref_like_sig_t  = typename unwrap_signature<Sig>::template add_cvref_like<T>;
 
+public:
     core_facade_impl() noexcept
     : Base_MemberVar(nullptr, nullptr), Base_CoreCompo(nullptr) {}
     core_facade_impl(std::nullptr_t) noexcept
@@ -2957,6 +2959,7 @@ public:
   : protected member_variable_impl<Size, Align, Cfg, Sig>,
     public core_components_impl</*IsView*/true, Cfg, Sig, Self>
   {
+protected:
     using Base_MemberVar = member_variable_impl<Size, Align, Cfg, Sig>;
     using Base_CoreCompo = core_components_impl</*IsView*/true, Cfg, Sig, Self>;
 
@@ -2972,8 +2975,9 @@ public:
     template <typename T>
     using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
 
-    core_facade_impl() = delete;
-    core_facade_impl(std::nullptr_t) = delete;
+public:
+    core_facade_impl()                = delete; // no empty state in view mode
+    core_facade_impl(std::nullptr_t)  = delete; // no empty state in view mode
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
