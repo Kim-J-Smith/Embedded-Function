@@ -2748,7 +2748,7 @@ namespace crtp_mixins {
 
   template <typename Self, typename Sig, typename Cfg, std::size_t Size, std::size_t Align>
   struct core_facade_impl</*IsView*/false, Self, Sig, Cfg, Size, Align>
-  : public member_variable_impl<Size, Align, Cfg, Sig>,
+  : protected member_variable_impl<Size, Align, Cfg, Sig>,
     public core_components_impl</*IsView*/false, Cfg, Sig, Self>
   {
     using Base_MemberVar = member_variable_impl<Size, Align, Cfg, Sig>;
@@ -2954,7 +2954,7 @@ public:
 
   template <typename Self, typename Sig, typename Cfg, std::size_t Size, std::size_t Align>
   struct core_facade_impl</*IsView*/true, Self, Sig, Cfg, Size, Align>
-  : public member_variable_impl<Size, Align, Cfg, Sig>,
+  : protected member_variable_impl<Size, Align, Cfg, Sig>,
     public core_components_impl</*IsView*/true, Cfg, Sig, Self>
   {
     using Base_MemberVar = member_variable_impl<Size, Align, Cfg, Sig>;
