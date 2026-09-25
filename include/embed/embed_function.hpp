@@ -1801,7 +1801,7 @@ namespace erasure_type {
 #if !defined(_MSC_VER) || defined(__clang__) || _MSC_VER >= 1927
   static_assert(std::is_trivially_copyable<ErasurePass>::value,
     EMBED_DETAIL_REPORT_IE("ErasurePass is not TrviallyCopyable."));
-#endif // MSVC 14.10~14.26 has a bug here.
+#endif // ^^^ Disable this assertion as MSVC 19.10~19.26 workaround.
 
   static_assert(sizeof(ErasurePass) <= sizeof(void*) || sizeof(ErasurePass) <= sizeof(void(*)()),
     EMBED_DETAIL_REPORT_IE("ErasurePass is too large."));
