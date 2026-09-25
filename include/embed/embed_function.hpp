@@ -1798,10 +1798,14 @@ namespace erasure_type {
     ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
   };
 
-#if !defined(_MSC_VER) || defined(__clang__) || _MSC_VER >= 1927
+#if defined(_MSC_VER) && !defined(__clang__) && _MSC_VER < 1927
+  // Disable this assertion as MSVC 19.10~19.26 workaround.
+#elif defined(__INTEL_COMPILER) && __INTEL_COMPILER < 2021
+  // Disable this assertion as ICC 16~19 workaround.
+#else
   static_assert(std::is_trivially_copyable<ErasurePass>::value,
     EMBED_DETAIL_REPORT_IE("ErasurePass is not TrviallyCopyable."));
-#endif // ^^^ Disable this assertion as MSVC 19.10~19.26 workaround.
+#endif
 
   static_assert(sizeof(ErasurePass) <= sizeof(void*) || sizeof(ErasurePass) <= sizeof(void(*)()),
     EMBED_DETAIL_REPORT_IE("ErasurePass is too large."));
