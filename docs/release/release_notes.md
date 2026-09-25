@@ -8,7 +8,7 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Adjusted the style of some internal traits. (#184)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
