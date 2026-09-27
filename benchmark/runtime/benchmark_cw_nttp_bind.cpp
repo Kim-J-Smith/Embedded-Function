@@ -114,7 +114,7 @@ static void cw_cwonly_pro(picobench::state& s) {
     }
 }
 
-BENCHMARK_UNIT(NTTP_Cw.CwOnly);
+BENCHMARK_UNIT(Cw.NTTP_Bind.CwOnly);
 
 BENCHMARK_BASELINE(cw_cwonly_std);
 #if __cpp_lib_move_only_function >= 202110L
@@ -235,7 +235,7 @@ static void cw_nttp_member_pro(picobench::state& s) {
     }
 }
 
-BENCHMARK_UNIT(NTTP_Cw.MemberFunction);
+BENCHMARK_UNIT(Cw.NTTP_Bind.MemberFunction);
 
 BENCHMARK_BASELINE(cw_nttp_member_std);
 #if __cpp_lib_move_only_function >= 202110L
