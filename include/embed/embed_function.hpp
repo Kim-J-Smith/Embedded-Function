@@ -3088,12 +3088,19 @@ public:
 
 } // end namespace crtp_mixins
 
-  /// @brief A lightweight and heap-free wrapper for callable objects.
-  /// @tparam BufferSize - Specifies the size reserved to store the object.
-  /// @tparam Alignment - Specifies the alignment of buffer to store the object.
-  /// @tparam Config - Specifies the configuration attributes of the wrapper.
-  ///           See @def config_package for details.
-  /// @tparam Signature - The signature of the wrapper, e.g., @e `Ret(Args...)`.
+  /**
+   * @brief   Lightweight and heap-free wrapper for callable objects.
+   *
+   * @tparam  BufferSize  Size of the internal storage (in bytes).
+   * @tparam  Alignment   Alignment of the internal storage (in bytes).
+   * @tparam  Config      Attributes of the wrapper. See @ref `config_package`.
+   * @tparam  Signature   The signature of the wrapper, e.g., `Ret(Args...)`.
+   *
+   * @note    This class is a thin facade that assembles all CRTP mixin structs
+   *          into a single type. Its constructors, destructor, and some
+   *          operator overloads (`operator*`, `operator()`) are implemented in
+   *          the base classes.
+   */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function final
     : public crtp_mixins::core_facade_impl<
