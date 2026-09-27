@@ -26,6 +26,9 @@ endif()
 # Include header search path
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    # For the `__constant_wrapper.hpp` polyfill used by the constant_wrapper
+    # benchmarks when `std::constant_wrapper` is not available natively.
+    ${CMAKE_CURRENT_SOURCE_DIR}/../test
 )
 
 # Get the test source files.
