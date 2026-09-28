@@ -1,11 +1,12 @@
 **🔧 Fixed Bugs**
-- None.
+- Fixed the bug that occurred when using the non-existent `__builtin_launder` in GCC5 and GCC6. (#185)
+- Added workarounds for MSVC 19.10~19.26 and ICC 16~19. (#185)
 
 **⚠️ Breaking Changes**
 - None.
 
 **✨ New Features**
-- None.
+- Added a benchmark for the experimental NTTP bind (`std::constant_wrapper`) feature. (#186)
 
 **🛠️ Optimizations and Improvements**
 - Adjusted the style of some internal traits. (#184)
@@ -13,4 +14,3 @@
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
-- The `std::constant_wrapper` + `std::in_place_type_t` support is still **experimental**.
