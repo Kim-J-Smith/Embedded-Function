@@ -456,3 +456,32 @@ TEST(AssignAndConvert, InterConvert) {
         ASSERT_EQ(f3(42, 0), 42);
     }
 }
+
+// AssignAndConvert[10]
+#if EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
+namespace {
+static int count = 0;
+
+struct ThrowInCopy {
+    ThrowInCopy() = default;
+    ~ThrowInCopy() { count++; }
+    ThrowInCopy(const ThrowInCopy&) noexcept(false) { throw 7; }
+    int operator()(int) const { return 0; }
+};
+}
+
+TEST(AssignAndConvert, ThrowAssign) {
+
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    ebd::fn<int(int)> f2(std::in_place_type<ThrowInCopy>);
+    try {
+        f1 = f2;
+    } catch(...) {
+        ASSERT_EQ(count, 1);
+    }
+
+    f1.clear();
+    ASSERT_EQ(count, 1);
+}
+
+#endif // EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L

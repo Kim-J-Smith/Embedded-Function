@@ -1,6 +1,7 @@
 **🔧 Fixed Bugs**
 - Fixed the bug that occurred when using the non-existent `__builtin_launder` in GCC5 and GCC6. (#185)
 - Added workarounds for MSVC 19.10 ~ 19.26 and ICC 16 ~ 19. (#185)
+- Fixed a bug where calling `clear()` after an assignment that throws an exception would trigger double freeing. (#187)
 
 **⚠️ Breaking Changes**
 - None.
