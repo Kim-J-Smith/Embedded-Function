@@ -47,7 +47,7 @@ constexpr explicit operator bool() = delete;
 void clear() = delete;
 ```
 
-A view wrapper also has no separate buffer-converting move constructor: an rvalue source binds to the buffer-converting copy constructor, which copies the reference.
+A view wrapper can also be constructed from another wrapper with different buffer parameters. For this conversion, however, it only provides the `const function<Other...>&` overload. A temporary (rvalue) source also binds to that overload, and the reference inside is simply copied. Since a view holds only a reference, moving it and copying it are equivalent, so no separate move overload is needed.
 
 For detailed documentation, see [`ebd::detail::function`](./detail/function.md).
 

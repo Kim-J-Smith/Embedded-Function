@@ -2894,7 +2894,9 @@ public:
       // Mandates.
       (void)assertions_for_functor<Size, Cfg, Sig, Obj, Obj&&, erasure_t>{};
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313.
+        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
+        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
+        /// free functions and pointers to member functions are not considered constant expressions.
         static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
       }
 
@@ -3035,15 +3037,14 @@ public:
       : Base_MemberVar(nullptr)
     {
       using Cw = std::constant_wrapper<Val, Fn>;
-      m_command.template cw_init<Cw>();
 
-      // Mandates are as follows.
+      // Mandates.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
-        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
-        /// free functions and pointers to member functions are not considered constant expressions.
+        /// @bug GCC bug 100313.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
+
+      m_command.template cw_init<Cw>();
     }
 
     // Create function reference with given `std::constant_wrapper` and object params.
@@ -3054,13 +3055,14 @@ public:
       : Base_MemberVar(nullptr)
     {
       using Cw = std::constant_wrapper<Val, Fn>;
-      m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
 
-      // Mandates are as follows.
+      // Mandates.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
       }
+
+      m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
     }
 
     // Create function reference with given `std::constant_wrapper` and pointer params.
@@ -3071,9 +3073,8 @@ public:
       : Base_MemberVar(nullptr)
     {
       using Cw = std::constant_wrapper<Val, Fn>;
-      m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
 
-      // Mandates are as follows.
+      // Mandates.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313.
         static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
@@ -3081,6 +3082,8 @@ public:
       if constexpr (std::is_member_pointer_v<Fn>) {
         EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, "object pointer cannot be nullptr.");
       }
+
+      m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
     }
 
 #endif // C++ >= 26
