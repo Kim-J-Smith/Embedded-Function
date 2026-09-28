@@ -1,5 +1,7 @@
 #include "benchmark.hpp"
 
+#if __cpp_lib_constant_wrapper >= 202603L
+
 namespace {
 
 int add(int a, int b) noexcept { return a + b; }
@@ -249,3 +251,4 @@ BENCHMARK_NOTBASE(cw_nttp_member_ebd_nttp);
 BENCHMARK_NOTBASE(cw_nttp_member_fu2);
 BENCHMARK_NOTBASE(cw_nttp_member_pro);
 
+#endif // __cpp_lib_constant_wrapper >= 202603L

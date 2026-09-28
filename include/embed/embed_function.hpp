@@ -2881,7 +2881,7 @@ private:
     static constexpr bool RightRef = unwrap_signature<Sig>::hasRRef;
 public:
 
-    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
+    /// @implements <https://wg21.link/P2511>
     // Create owning function wrapper with given `std::constant_wrapper` and object params.
     template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<decay_t<Obj>>>
       requires is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
@@ -2901,7 +2901,7 @@ public:
       m_command.template cw_init<Cw>(&m_erasure, std::forward<Obj>(obj));
     }
 
-    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
+    /// @implements <https://wg21.link/P2511>
     // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
     template <auto Val, typename Fn, typename Obj, typename... CArgs,
       typename Obj_cv = add_cv_like_sig_t<Obj>>
@@ -2924,7 +2924,7 @@ public:
       m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, std::forward<CArgs>(args)...);
     }
 
-    /// @todo TODO: experimental @implements <https://wg21.link/P2511>
+    /// @implements <https://wg21.link/P2511>
     // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
     // The object is constructed in-place from `std::initializer_list` and the specified arguments.
     template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U,
