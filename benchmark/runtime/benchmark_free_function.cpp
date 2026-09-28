@@ -386,6 +386,46 @@ static void free_callstd_string_std(picobench::state& s) {
     }
 }
 
+#if __cpp_lib_move_only_function >= 202110L
+static void free_callstd_string_std_moveonly(picobench::state& s) {
+    std::move_only_function<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string1_std = pass_call_std_string_args_1;
+    std::move_only_function<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string2_std = pass_call_std_string_args_2;
+
+    std::string std_string_{};
+
+    for (auto _ : s) {
+        fn_std_string1_std(std_string_, std_string_, std_string_, std_string_);
+        fn_std_string2_std(std_string_, std_string_, std_string_, std_string_);
+    }
+}
+#endif // C++ >= 23
+
+#if __cpp_lib_copyable_function >= 202306L
+static void free_callstd_string_std_copyable(picobench::state& s) {
+    std::copyable_function<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string1_std = pass_call_std_string_args_1;
+    std::copyable_function<void(
+        std::string, std::string,
+        std::string, std::string
+    )> fn_std_string2_std = pass_call_std_string_args_2;
+
+    std::string std_string_{};
+
+    for (auto _ : s) {
+        fn_std_string1_std(std_string_, std_string_, std_string_, std_string_);
+        fn_std_string2_std(std_string_, std_string_, std_string_, std_string_);
+    }
+}
+#endif // C++ >= 26
+
 static void free_callstd_string_ebd(picobench::state& s) {
     ebd::fn<void(
         std::string, std::string,
@@ -443,6 +483,12 @@ static void free_callstd_string_pro(picobench::state& s) {
 }
 
 BENCHMARK_BASELINE(free_callstd_string_std);
+#if __cpp_lib_move_only_function >= 202110L
+BENCHMARK_NOTBASE(free_callstd_string_std_moveonly);
+#endif // C++ >= 23
+#if __cpp_lib_copyable_function >= 202306L
+BENCHMARK_NOTBASE(free_callstd_string_std_copyable);
+#endif // C++ >= 26
 BENCHMARK_NOTBASE(free_callstd_string_ebd);
 BENCHMARK_NOTBASE(free_callstd_string_fu2);
 BENCHMARK_NOTBASE(free_callstd_string_pro);
