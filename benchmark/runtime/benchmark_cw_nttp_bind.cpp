@@ -18,7 +18,7 @@ static void cw_cwonly_std(picobench::state& s) {
     std::function<int(int, int)> fn1 = std::cw<&add>;
     std::function<int(int, int)> fn2 = std::cw<&sub>;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn1(0x111, 0x222); (void)res1;
         volatile int res2 = fn2(0x222, 0x111); (void)res2;
     }
@@ -34,7 +34,7 @@ static void cw_cwonly_std_moveonly(picobench::state& s) {
     std::move_only_function<int(int, int) const> fn1 = std::cw<&add>;
     std::move_only_function<int(int, int) const> fn2 = std::cw<&sub>;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn1(0x111, 0x222); (void)res1;
         volatile int res2 = fn2(0x222, 0x111); (void)res2;
     }
@@ -51,7 +51,7 @@ static void cw_cwonly_std_copyable(picobench::state& s) {
     std::copyable_function<int(int, int) const> fn1 = std::cw<&add>;
     std::copyable_function<int(int, int) const> fn2 = std::cw<&sub>;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn1(0x111, 0x222); (void)res1;
         volatile int res2 = fn2(0x222, 0x111); (void)res2;
     }
@@ -67,7 +67,7 @@ static void cw_cwonly_ebd(picobench::state& s) {
     ebd::fn<int(int, int) const> fn1 = std::cw<&add>;
     ebd::fn<int(int, int) const> fn2 = std::cw<&sub>;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn1(0x111, 0x222); (void)res1;
         volatile int res2 = fn2(0x222, 0x111); (void)res2;
     }
@@ -82,7 +82,7 @@ static void cw_cwonly_fu2(picobench::state& s) {
     fu2::function<int(int, int) const> fn1 = std::cw<&add>;
     fu2::function<int(int, int) const> fn2 = std::cw<&sub>;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn1(0x111, 0x222); (void)res1;
         volatile int res2 = fn2(0x222, 0x111); (void)res2;
     }
@@ -103,7 +103,7 @@ static void cw_cwonly_pro(picobench::state& s) {
     auto fn1 = pro::make_proxy_inplace<Invoker>(std::cw<&add>);
     auto fn2 = pro::make_proxy_inplace<Invoker>(std::cw<&sub>);
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = (*fn1)(0x111, 0x222); (void)res1;
         volatile int res2 = (*fn2)(0x222, 0x111); (void)res2;
     }
@@ -135,7 +135,7 @@ static void cw_nttp_member_std(picobench::state& s) {
     C obj;
     std::function<int(const C&, int)> fn = &C::add;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn(obj, 0); (void)res1;
     }
 
@@ -150,7 +150,7 @@ static void cw_nttp_member_std_moveonly(picobench::state& s) {
     C obj;
     std::move_only_function<int(const C&, int) const> fn = &C::add;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn(obj, 0); (void)res1;
     }
 
@@ -166,7 +166,7 @@ static void cw_nttp_member_std_copyable(picobench::state& s) {
     C obj;
     std::copyable_function<int(const C&, int) const> fn = &C::add;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn(obj, 0); (void)res1;
     }
 
@@ -180,7 +180,7 @@ static void cw_nttp_member_ebd_normal(picobench::state& s) {
     C obj;
     ebd::fn<int(const C&, int) const> fn = &C::add;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn(obj, 0); (void)res1;
     }
 
@@ -192,7 +192,7 @@ static void cw_nttp_member_ebd_normal(picobench::state& s) {
 static void cw_nttp_member_ebd_nttp(picobench::state& s) {
     ebd::fn<int(int) const> fn(std::cw<&C::add>, C{});
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn(0); (void)res1;
     }
 
@@ -206,7 +206,7 @@ static void cw_nttp_member_fu2(picobench::state& s) {
     C obj;
     fu2::function<int(const C&, int) const> fn = &C::add;
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = fn(obj, 0); (void)res1;
     }
 
@@ -226,7 +226,7 @@ static void cw_nttp_member_pro(picobench::state& s) {
     C obj;
     auto fn = pro::make_proxy_inplace<Invoker>(std::mem_fn(&C::add));
 
-    for (std::size_t i = 0; i < BENCHMARK_WARNUP; i++) {
+    for (std::size_t i = 0; i < BENCHMARK_WARMUP; i++) {
         volatile int res1 = (*fn)(obj, 0); (void)res1;
     }
 
