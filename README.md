@@ -424,7 +424,7 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
 ## ⏱️ Benchmark
 
-> *(OS: `Ubuntu-26.04`; Compiler: `GCC-16`; Standard: `C++23`; Config: `-O2`; Tool: [`iboB/picobench`](https://github.com/iboB/picobench))*
+> *( OS: `Ubuntu-26.04`; Compiler: `GCC-16`; Standard: `C++26`; Config: `-O2`; Tool: [`iboB/picobench`](https://github.com/iboB/picobench) )*
 
 - **std**: Standard Template Library
 - **ebd**: Embedded-Function
@@ -435,14 +435,14 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
   Benchmark case   | `std` | `ebd` | `fu2` | `pro` | `std`/`ebd`
 -------------------|-------|-------|-------|-------|-----------
-AssignmentBenchmark<br>.CopyAssignmentSmallTrivial | 27.232ms | 18.674ms | 16.641ms | 22.818ms | **1.45x**
-AssignmentBenchmark<br>.CopyAssignmentStateless | 28.326ms | 5.597ms | 9.324ms | 7.771ms | **5.06x**
-AssignmentBenchmark<br>.CopyAssignmentSameType | 26.601ms | 16.709ms | 25.738ms | 25.796ms | **1.59x**
-CreateBenchmark<br>.CaptureLambda | 3.730ms | 2.174ms | 4.349ms | 3.107ms | **1.72x**
-CreateBenchmark<br>.NonTrivialFunctor | 14.008ms | 1.858ms | 4.039ms | 3.107ms | **7.54x**
-FreeFunction<br>.ScalarParameters | 5.594ms | 3.415ms | 5.905ms | 5.281ms | **1.62x**
-Functor<br>.ScalarParameters | 3.724ms | 0.730ms | 3.107ms | 3.415ms | **5.10x**
-MoveOnlyFunction<br>.Params.Array | 0.617ms | 0.370ms | 1.858ms | 1.859ms | **1.67x**
+AssignmentBenchmark<br>.CopyAssignmentSmallTrivial | 33.297ms | 14.932ms | 8.388ms | 34.652ms | **2.23x**
+AssignmentBenchmark<br>.CopyAssignmentStateless | 28.306ms | 4.970ms | 9.164ms | 8.085ms | **5.70x**
+AssignmentBenchmark<br>.CopyAssignmentSameType | 27.055ms | 13.683ms | 11.226ms | 22.213ms | **1.98x**
+CreateBenchmark<br>.CaptureLambda | 4.043ms | 2.484ms | 4.352ms | 3.417ms | **1.63x**
+CreateBenchmark<br>.NonTrivialFunctor | 13.685ms | 2.176ms | 4.044ms | 3.109ms | **6.29x**
+FreeFunction<br>.ScalarParameters | 6.214ms | 4.038ms | 6.521ms | 6.831ms | **1.54x**
+Functor<br>.ScalarParameters | 3.723ms | 0.933ms | 3.723ms | 3.414ms | **3.99x**
+MoveOnlyFunction<br>.Params.Array | 0.617ms | 0.617ms | 1.859ms | 2.173ms | **1.00x**
 
 > See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
 

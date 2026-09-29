@@ -26,7 +26,7 @@
 # define MSVC_IS_OK 1
 #endif
 
-#if __cpp_lib_constant_wrapper > 0
+#if __cpp_lib_constant_wrapper >= 202506L && __cpp_lib_constant_wrapper < 202603L
 // workaround for GCC 16.0
 # undef __cpp_lib_constant_wrapper
 # define __cpp_lib_constant_wrapper 202603L
