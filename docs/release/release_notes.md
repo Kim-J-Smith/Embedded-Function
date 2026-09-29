@@ -11,7 +11,7 @@
 
 **🛠️ Optimizations and Improvements**
 - Adjusted the style of some internal traits. (#184)
-- `std::is_default_constructible<ebd::fn_ref<...>>` and `std::is_constructible<ebd::fn_ref<...>, std::nullptr_t>` now yield `false` starting from C++17, instead of requiring C++20. (#185)
+- `std::is_default_constructible_v<ebd::fn_ref<...>>` and `std::is_constructible_v<ebd::fn_ref<...>, std::nullptr_t>` now yield `false` starting from C++17, instead of requiring C++20. (#185)
 - Did some small internal refactoring to improve maintainability. (#185)
 
 **📌 Notes**

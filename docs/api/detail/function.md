@@ -6,7 +6,7 @@
 
 ## Class Structure
 
-`ebd::detail::function` is a thin facade. Its mode-specific constructors live in `crtp_mixins::core_facade_impl` (owning/view specializations) and are inherited via `using Base_CoreFacade::Base_CoreFacade;`, so the overload set depends on `Config::isView`. Storage (`m_erasure`, `m_command`) lives in `crtp_mixins::member_variable_impl`, inherited **protected** and therefore not public. On compilers without inheriting constructors (`__cpp_inheriting_constructors < 201511L`), the inherited set excludes the default constructor, so `function() noexcept` is declared directly.
+`ebd::detail::function` is a thin facade. Its mode-specific constructors live in `crtp_mixins::core_facade_impl` (owning/view specializations) and are inherited via `using Base_CoreFacade::Base_CoreFacade;`, so the overload set depends on `Config::isView`. Storage (`m_erasure`, `m_command`) lives in `crtp_mixins::member_variable_impl`, inherited **protected** and therefore not public. On compilers that use the pre-P0136R1 inheriting-constructor rules (`__cpp_inheriting_constructors < 201511L`), the inherited set still excludes the default constructor (and the copy/move constructors, which `function` declares itself), so `function() noexcept` is declared directly.
 
 The inheritance hierarchy (`function` is `final`; all bases live in `ebd::detail::crtp_mixins`):
 
