@@ -2413,7 +2413,7 @@ namespace crtp_mixins {
       using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
-        // Self-clear already done in `crtp_mixins::assignment_self_clear`.
+        // Self-destroy already done in `crtp_mixins::assignment_self_clear`.
         self.m_command.set_empty();
 
         other.m_command.move(&self.m_erasure, &other.m_erasure);
@@ -2451,7 +2451,7 @@ namespace crtp_mixins {
       using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
-        // Self-clear already done in `crtp_mixins::assignment_self_clear`.
+        // Self-destroy already done in `crtp_mixins::assignment_self_clear`.
         self.m_command.set_empty();
 
         other.m_command.clone(&self.m_erasure, &other.m_erasure);
