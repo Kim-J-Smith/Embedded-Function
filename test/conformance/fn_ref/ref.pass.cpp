@@ -86,7 +86,7 @@ STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void()>, L2&>::value);
 STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void()>, ebd::fn_ref<int()>&>::value);
 
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, L3&>::value);
-#if __cpp_concepts >= 202002L
+#if __cpp_inheriting_constructors >= 201511L
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>>::value);
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, std::nullptr_t>::value);
 #endif
@@ -133,7 +133,7 @@ STATIC_ASSERT_(
 STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void(int, double)>, NonConstInvocable&>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double)>, const NonConstInvocable&>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, NonConstInvocable&>::value);
-#if __cpp_concepts >= 202002L
+#if __cpp_inheriting_constructors >= 201511L
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>>::value);
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, std::nullptr_t>::value);
 #endif

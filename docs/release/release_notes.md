@@ -1,21 +1,19 @@
 **🔧 Fixed Bugs**
-- Fixed a bug where MSVC mistakenly regarded the empty-state invoker (`empty::invoke`, which throws `std::bad_function_call` or terminates) as a hot path and peeled it into a per-call guard in the calling code. The `empty::invoke` is now marked with the new internal `EMBED_DETAIL_COLD` macro to address this issue. (#173)
-- Fixed a bug where a callable given through `std::constant_wrapper` lost its ref-qualifier in the deduced signature. (#180)
-- Fixed a bug where `ebd::fn<int(int)>` accepted an `&`-qualified callable. The `std::constant_wrapper` + object constructors now additionally require the callable to be invocable with the object carrying the same qualifiers of the signature. (#180)
+- Fixed the bug that occurred when using the non-existent `__builtin_launder` in GCC5 and GCC6. (#185)
+- Added workarounds for MSVC 19.10 ~ 19.26 and ICC 16 ~ 19. (#185)
+- Fixed a bug where calling `clear()` after an assignment that throws an exception would trigger double freeing. (#187)
 
 **⚠️ Breaking Changes**
-- `make_fn(std::cw<&T::f>, T{})` now preserves the ref-qualifier of the member function in the deduced signature, so an `&`- or `&&`-qualified `T::f` yields `fn<..., Ret(Args...) const & noexcept>` or `fn<..., Ret(Args...) const && noexcept>` instead of collapsing both to `fn<..., Ret(Args...) const noexcept>`. This is the fix above; it changes the deduced type. (#180)
-- Callables with a by-value explicit object parameter (`this T self`) now deduce a `const`-qualified signature, e.g. `fn<..., Ret(Args...) const noexcept>` instead of `fn<..., Ret(Args...) noexcept>`. (#180)
-- The ref-qualifier transfer also applies to a `std::constant_wrapper` of a free function (or a member object pointer) whose first parameter is a reference: `make_fn(std::cw<&free_func>, obj)` with `free_func(Obj&, ...)` now yields a ref-qualified signature such as `fn<..., Ret(Args...) &>`, and an explicitly specified non-ref-qualified signature such as `fn<..., Ret(Args...)>` is now rejected. (#180)
-
-**✨ New Features**
 - None.
 
+**✨ New Features**
+- Added a benchmark for the NTTP bind (`std::constant_wrapper`) feature. (#186)
+
 **🛠️ Optimizations and Improvements**
-- Updated the assembly analysis documents under `docs/perf/`: the x86_64 MSVC, RISC-V GCC and ARM GCC analyses now compare register argument passing against the stack spills of `std::function` and cover destruction/copy, the `ebd::fn_ref` zero-stack analysis was extended with a full comparison and a summary table, and a new `docs/perf/x86_64_gcc_asm_analysis.md` document was added. (#173)
-- Renamed some internal traits, tags and the `cxx_traits` namespace to make them more readable. (#181)
-- More internal functions now use `requires` instead of `enable_if` when compiled as *C++20* or later. (#181)
+- Adjusted the style of some internal traits. (#184)
+- `std::is_default_constructible_v<ebd::fn_ref<...>>` and `std::is_constructible_v<ebd::fn_ref<...>, std::nullptr_t>` now yield `false` starting from C++17, instead of requiring C++20. (#185)
+- Did some small internal refactoring to improve maintainability. (#185)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
-- The `std::constant_wrapper` + `std::in_place_type_t` support is still **experimental**.
+- GCC 16.0 defines `__cpp_lib_constant_wrapper` to a value below `202603L`, so the library keeps this feature disabled there. Users of GCC 16.0 can opt in by defining `__cpp_lib_constant_wrapper=202603L` before including the header; the test suite and benchmarks apply this workaround in `test/__constant_wrapper.hpp`.
