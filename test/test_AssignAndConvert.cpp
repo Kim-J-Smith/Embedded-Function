@@ -457,25 +457,43 @@ TEST(AssignAndConvert, InterConvert) {
     }
 }
 
-// AssignAndConvert[10]
 #if EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
 namespace {
-static int count = 0;
+int count = 0;
 
 struct ThrowInCopy {
     ThrowInCopy() = default;
     ~ThrowInCopy() { count++; }
     ThrowInCopy(const ThrowInCopy&) noexcept(false) { throw 7; }
+    ThrowInCopy(ThrowInCopy&&) noexcept(false) { throw 8; }
     int operator()(int) const { return 0; }
 };
 }
 
-TEST(AssignAndConvert, ThrowAssign) {
+// AssignAndConvert[10]
+TEST(AssignAndConvert, ThrowInCopyAssignment) {
 
     ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
     ebd::fn<int(int)> f2(std::in_place_type<ThrowInCopy>);
+    count = 0;
     try {
         f1 = f2;
+    } catch(...) {
+        ASSERT_EQ(count, 1);
+    }
+
+    f1.clear();
+    ASSERT_EQ(count, 1);
+}
+
+// AssignAndConvert[11]
+TEST(AssignAndConvert, ThrowInMoveAssignment) {
+
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    ebd::fn<int(int)> f2(std::in_place_type<ThrowInCopy>);
+    count = 0;
+    try {
+        f1 = std::move(f2);
     } catch(...) {
         ASSERT_EQ(count, 1);
     }

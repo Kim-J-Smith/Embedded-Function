@@ -1,5 +1,5 @@
 **🔧 Fixed Bugs**
-- None.
+- Fixed a double-free bug by reordering base classes of `lifetime_operations_impl`. (#189)
 
 **⚠️ Breaking Changes**
 - None.
@@ -8,7 +8,7 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Added tests for throwing copy/move constructors and assignments. (#189)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
