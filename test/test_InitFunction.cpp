@@ -995,3 +995,45 @@ TEST(InitFunction, testQualifier_Stateful) {
         ASSERT_EQ(std::move(f2)(1), base + OVL_VOLATILE);
     }
 }
+
+#if EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
+namespace {
+int count = 0;
+
+struct ThrowInCopy {
+    ThrowInCopy() = default;
+    ~ThrowInCopy() { count++; }
+    ThrowInCopy(const ThrowInCopy&) noexcept(false) { throw 7; }
+    ThrowInCopy(ThrowInCopy&&) noexcept(false) { throw 8; }
+    int operator()(int) const { return 0; }
+};
+}
+
+// InitFunction[45]
+TEST(InitFunction, ThrowInCopyCtor) {
+
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    count = 0;
+    try {
+        ebd::fn<int(int)> f2 = f1;
+        (void)f2;
+    } catch(...) {
+        ASSERT_EQ(count, 0);
+    }
+}
+
+// InitFunction[46]
+TEST(InitFunction, ThrowInMoveCtor) {
+
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    count = 0;
+    try {
+        ebd::fn<int(int)> f2 = std::move(f1);
+        (void)f2;
+    } catch(...) {
+        ASSERT_EQ(count, 0);
+    }
+}
+
+#endif // EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
+

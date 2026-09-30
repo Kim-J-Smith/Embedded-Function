@@ -2476,8 +2476,8 @@ namespace crtp_mixins {
   struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ false, Config, Self
   >
-    : public destructor_impl<Config, Self>,
-      public move_impl<Config, Self>
+    : public move_impl<Config, Self>,
+      public destructor_impl<Config, Self>
   {
     lifetime_operations_impl()                                      = default;
     ~lifetime_operations_impl()                                     = default;
@@ -2493,9 +2493,9 @@ namespace crtp_mixins {
   struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ true, Config, Self
   >
-    : public destructor_impl<Config, Self>,
-      public move_impl<Config, Self>,
-      public copy_impl<Config, Self>
+    : public move_impl<Config, Self>,
+      public copy_impl<Config, Self>,
+      public destructor_impl<Config, Self>
   { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
 
   // Implement the 'operator*' for function.
