@@ -2571,20 +2571,8 @@ namespace crtp_mixins {
   struct EMBED_DETAIL_FORCE_EBO member_variable_impl : public assignment_self_clear<
     /* Self = */ function<Size, Align, Config, Signature>, Config, Config::isView
   > {
-#if defined(__GNUC__) || defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wuninitialized"
-# ifndef __clang__
-#  pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-# endif // ^^^ GCC only
-#endif
-
     // The `m_erasure` is sometimes uninitialized.
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
-
-#if defined(__GNUC__) || defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
 
     // Zero initialize the `m_erasure` and `m_command`.
     constexpr member_variable_impl(std::nullptr_t) noexcept
@@ -2832,6 +2820,7 @@ public:
       )
     core_facade_impl(Functor&& functor)
       noexcept(is_nothrow_construct_from_functor<Functor&&>::value)
+      : Base_MemberVar(nullptr, nullptr)
     {
       (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
 
