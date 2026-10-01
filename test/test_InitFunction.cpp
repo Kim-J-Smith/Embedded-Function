@@ -1037,3 +1037,20 @@ TEST(InitFunction, ThrowInMoveCtor) {
 
 #endif // EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
 
+namespace {
+int construct_count = 0;
+struct NonTrivialDefaultCtor {
+    NonTrivialDefaultCtor() noexcept { construct_count++; }
+    NonTrivialDefaultCtor(const NonTrivialDefaultCtor&) = default;
+    int operator()() const noexcept { return 42; }
+};
+}
+
+// InitFunction[47]
+TEST(InitFunction, NonTrivialDefaultConstructibleFunctorIsStateful) {
+    ebd::fn<int() const> f = NonTrivialDefaultCtor{};
+    construct_count = 0;
+    ASSERT_EQ(f(), 42);
+    ASSERT_EQ(construct_count, 0);
+}
+

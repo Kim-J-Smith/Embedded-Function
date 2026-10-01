@@ -1619,7 +1619,7 @@ inline namespace fn_traits {
     std::is_trivially_copyable<Fn>::value && (
       is_statically_callable<Fn, Args...>::value
 #ifndef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
-      || (std::is_empty<Fn>::value && std::is_default_constructible<Fn>::value)
+      || (std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value)
 #else // ^^^ Empty trivial functors are treated as stateless.
       || is_standard_stateless_function_object<Fn>::value
 #endif
