@@ -1,5 +1,6 @@
 **🔧 Fixed Bugs**
 - Fixed a double-free bug by reordering base classes of `lifetime_operations_impl`. (#189)
+- Fixed a bug where treating non-trivial functor as *stateless*.
 
 **⚠️ Breaking Changes**
 - None.
