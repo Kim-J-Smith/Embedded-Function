@@ -1103,6 +1103,7 @@ inline namespace fn_traits {
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_alignment_is_enough : bool_constant<
     !is_stored_origin<DecFn, Cfg::isView>::value
+    /// TODO: In MSVC, sizeof(pointer-to-member) % alignof(pointer-to-member) != 0
     || (alignof(DecFn) <= alignof(Erasure) && (sizeof(DecFn) % alignof(DecFn) == 0))
   > {};
 
@@ -1135,7 +1136,8 @@ inline namespace fn_traits {
   // Get aligned size. Rounds up to the nearest Alignment size.
   template <std::size_t Alignment>
   constexpr std::size_t get_aligned_size(std::size_t size) {
-    static_assert(Alignment >= alignof(void(*)()), "The alignment must be greater than `alignof(void(*)())`.");
+    static_assert(Alignment >= alignof(void(*)()),
+      "The alignment must be greater than or equal to `alignof(void(*)())`.");
     static_assert((Alignment & (Alignment-1)) == 0, "The alignment must be a power of two.");
     return size == 0 ? Alignment : (((size - 1) / Alignment) + 1) * Alignment;
   }
@@ -1478,7 +1480,7 @@ inline namespace fn_traits {
       "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
       "                             ^^^^^^^^^^^^^^^^^\n"
       "                                     |\n"
-      "         The value should be greater than `sizeof(CallableObject)`\n\n"
+      "      The value should be greater than or equal to `sizeof(CallableObject)`\n\n"
       "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, etc."
     );
 
