@@ -1785,17 +1785,23 @@ namespace erasure_type {
 
   // ABI for passing either pointer or value.
   union ErasurePass {
-    ErasureBase* const                ptr_;
-    ErasureBase const* const          ptr_const;
-    ErasureBase volatile* const       ptr_volatile;
-    ErasureBase const volatile* const ptr_constvolatile;
-    ErasureRefStorage                 val;
+    ErasureBase* const  ptr;
+    ErasureRefStorage   val;
 
-    ErasurePass(ErasureBase* erased) noexcept : ptr_(erased) {}
-    ErasurePass(ErasureBase const* erased) noexcept : ptr_const(erased) {}
-    ErasurePass(ErasureBase volatile* erased) noexcept : ptr_volatile(erased) {}
-    ErasurePass(ErasureBase const volatile* erased) noexcept : ptr_constvolatile(erased) {}
-    ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
+    using Ptr_t = ErasureBase*;
+    using Val_t = ErasureRefStorage&;
+
+    // These `const_cast`s only strip cv-qualifiers to fit the union member;
+    // the qualifiers are restored from the function signature before access.
+    ErasurePass(ErasureBase* erased) noexcept : ptr(erased) {}
+    ErasurePass(ErasureBase const* erased) noexcept : ptr(const_cast<Ptr_t>(erased)) {}
+    ErasurePass(ErasureBase volatile* erased) noexcept : ptr(const_cast<Ptr_t>(erased)) {}
+    ErasurePass(ErasureBase const volatile* erased) noexcept : ptr(const_cast<Ptr_t>(erased)) {}
+
+    ErasurePass(ErasureRefStorage& erased) noexcept : val(erased) {}
+    ErasurePass(ErasureRefStorage const& erased) noexcept : val(const_cast<Val_t>(erased)) {}
+    ErasurePass(ErasureRefStorage volatile& erased) noexcept : val(const_cast<Val_t>(erased)) {}
+    ErasurePass(ErasureRefStorage const volatile& erased) noexcept : val(const_cast<Val_t>(erased)) {}
   };
 
 #if defined(_MSC_VER) && !defined(__clang__) && _MSC_VER < 1927
@@ -1853,7 +1859,7 @@ namespace invocation {
   struct inplace_cw {                                                                 \
     template <typename Cw, typename Functor>                                          \
     static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
-      auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## V);                \
+      auto* erased = static_cast<erasure_t C V*>(base.ptr);                           \
       auto& fn = erased->template access<Functor>();                                  \
       using Fn = conditional_t<is_rvalue_ref,                                         \
         remove_reference_t<decltype(fn)>&&,                                           \
@@ -1895,7 +1901,7 @@ namespace invocation {
     struct inplace {                                                                  \
       template <typename Functor>                                                     \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
-        auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## V);              \
+        auto* erased = static_cast<erasure_t C V*>(base.ptr);                         \
         auto& fn = erased->template access<Functor>();                                \
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
@@ -2354,10 +2360,9 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
     Ret operator()(Args... args) const V NOEXCEPT {                         \
-      using erasure_t = typename Self::erasure_t;                           \
       auto* const self = static_cast<Self const V*>(this);                  \
       auto& command = self->m_command;                                      \
-      auto& erasure = const_cast<erasure_t&>(self->m_erasure);              \
+      auto& erasure = self->m_erasure;                                      \
       auto& ref_storage = erasure.m_core.ref_storage;                       \
     /* Pass the `m_erasure` by value in non-owning mode to avoid ODR use. */\
     /* Because the ODR use forces compilers to reserve stack memory. */     \

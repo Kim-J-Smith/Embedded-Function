@@ -85,11 +85,46 @@ TEST(AssignAndConvert, __SafeFnAssign) {
 
 // AssignAndConvert[4]
 TEST(AssignAndConvert, ConstToNonConst) {
-    ebd::fn<void()> f_non_const;
-    ebd::fn<void() const> f_const;
+    {
+        ebd::fn<int()> f_non_const;
+        ebd::fn<int() const> f_const = +[]{ return 42; };
 
-    f_non_const = f_const; // OK
-    // f_const = f_non_const; // Error
+        f_non_const = f_const; // OK
+        // f_const = f_non_const; // Error
+        ASSERT_EQ(f_non_const(), 42);
+    }
+    {
+        ebd::unique_fn<int()> f_non_const;
+        ebd::unique_fn<int() const> f_const = +[]{ return 42; };
+
+        f_non_const = std::move(f_const); // OK
+        // f_const = f_non_const; // Error
+        ASSERT_EQ(f_non_const(), 42);
+    }
+    {
+        ebd::classic_fn<int()> f_non_const;
+        ebd::classic_fn<int() const> f_const = +[]{ return 42; };
+
+        f_non_const = f_const; // OK
+        // f_const = f_non_const; // Error
+        ASSERT_EQ(f_non_const(), 42);
+    }
+    {
+        ebd::__safe_fn<int()> f_non_const;
+        ebd::__safe_fn<int() const> f_const = +[]{ return 42; };
+
+        f_non_const = f_const; // OK
+        // f_const = f_non_const; // Error
+        ASSERT_EQ(f_non_const(), 42);
+    }
+    {
+        ebd::fn_ref<int()> f_non_const = +[]{ return 43; };
+        ebd::fn_ref<int() const> f_const = +[]{ return 42; };
+
+        f_non_const = f_const; // OK
+        // f_const = f_non_const; // Error
+        ASSERT_EQ(f_non_const(), 42);
+    }
 }
 
 // AssignAndConvert[5]
@@ -149,103 +184,116 @@ TEST(AssignAndConvert, StatelessAssign) {
 // AssignAndConvert[6]
 TEST(AssignAndConvert, VolatileToNonVolatile) {
     {
-        ebd::fn<void()> f_non_volatile;
-        ebd::fn<void() volatile> f_volatile;
+        ebd::fn<int()> f_non_volatile;
+        ebd::fn<int() volatile> f_volatile = +[]{ return 42; };
 
         f_non_volatile = f_volatile; // OK
         // f_volatile = f_non_volatile; // Error
+        ASSERT_EQ(f_non_volatile(), 42);
     }
     {
-        ebd::unique_fn<void()> f_non_volatile;
-        ebd::unique_fn<void() volatile> f_volatile;
+        ebd::unique_fn<int()> f_non_volatile;
+        ebd::unique_fn<int() volatile> f_volatile = +[]{ return 42; };
 
         f_non_volatile = std::move(f_volatile); // OK
         // f_volatile = f_non_volatile; // Error
+        ASSERT_EQ(f_non_volatile(), 42);
     }
     {
-        ebd::classic_fn<void()> f_non_volatile;
-        ebd::classic_fn<void() volatile> f_volatile;
+        ebd::classic_fn<int()> f_non_volatile;
+        ebd::classic_fn<int() volatile> f_volatile = +[]{ return 42; };
 
         f_non_volatile = f_volatile; // OK
         // f_volatile = f_non_volatile; // Error
+        ASSERT_EQ(f_non_volatile(), 42);
     }
     {
-        ebd::__safe_fn<void()> f_non_volatile;
-        ebd::__safe_fn<void() volatile> f_volatile;
+        ebd::__safe_fn<int()> f_non_volatile;
+        ebd::__safe_fn<int() volatile> f_volatile = +[]{ return 42; };
 
         f_non_volatile = f_volatile; // OK
         // f_volatile = f_non_volatile; // Error
+        ASSERT_EQ(f_non_volatile(), 42);
     }
     {
-        ebd::fn_ref<void()> f_non_volatile = +[]{};
-        ebd::fn_ref<void() volatile> f_volatile = +[]{};
+        ebd::fn_ref<int()> f_non_volatile = +[]{ return 43; };
+        ebd::fn_ref<int() volatile> f_volatile = +[]{ return 42; };
 
         f_non_volatile = f_volatile; // OK
         // f_volatile = f_non_volatile; // Error
+        ASSERT_EQ(f_non_volatile(), 42);
     }
 }
 
 // AssignAndConvert[7]
 TEST(AssignAndConvert, NonRefToLeftValueRef) {
     {
-        ebd::fn<void()> f_non_ref;
-        ebd::fn<void() &> f_ref;
+        ebd::fn<int()> f_non_ref = +[]{ return 42; };
+        ebd::fn<int() &> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
+        ASSERT_EQ(f_ref(), 42);
     }
     {
-        ebd::unique_fn<void()> f_non_ref;
-        ebd::unique_fn<void() &> f_ref;
+        ebd::unique_fn<int()> f_non_ref = +[]{ return 42; };
+        ebd::unique_fn<int() &> f_ref;
 
         f_ref = std::move(f_non_ref); // OK
         // f_non_ref = f_ref; // Error
+        ASSERT_EQ(f_ref(), 42);
     }
     {
-        ebd::classic_fn<void()> f_non_ref;
-        ebd::classic_fn<void() &> f_ref;
+        ebd::classic_fn<int()> f_non_ref = +[]{ return 42; };
+        ebd::classic_fn<int() &> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
+        ASSERT_EQ(f_ref(), 42);
     }
     {
-        ebd::__safe_fn<void()> f_non_ref;
-        ebd::__safe_fn<void() &> f_ref;
+        ebd::__safe_fn<int()> f_non_ref = +[]{ return 42; };
+        ebd::__safe_fn<int() &> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
+        ASSERT_EQ(f_ref(), 42);
     }
 }
 
 // AssignAndConvert[8]
 TEST(AssignAndConvert, NonRefToRightValueRef) {
     {
-        ebd::fn<void()> f_non_ref;
-        ebd::fn<void() &&> f_ref;
+        ebd::fn<int()> f_non_ref = +[]{ return 42; };
+        ebd::fn<int() &&> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
+        ASSERT_EQ(std::move(f_ref)(), 42);
     }
     {
-        ebd::unique_fn<void()> f_non_ref;
-        ebd::unique_fn<void() &&> f_ref;
+        ebd::unique_fn<int()> f_non_ref = +[]{ return 42; };
+        ebd::unique_fn<int() &&> f_ref;
 
         f_ref = std::move(f_non_ref); // OK
         // f_non_ref = f_ref; // Error
+        ASSERT_EQ(std::move(f_ref)(), 42);
     }
     {
-        ebd::classic_fn<void()> f_non_ref;
-        ebd::classic_fn<void() &&> f_ref;
+        ebd::classic_fn<int()> f_non_ref = +[]{ return 42; };
+        ebd::classic_fn<int() &&> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
+        ASSERT_EQ(std::move(f_ref)(), 42);
     }
     {
-        ebd::__safe_fn<void()> f_non_ref;
-        ebd::__safe_fn<void() &&> f_ref;
+        ebd::__safe_fn<int()> f_non_ref = +[]{ return 42; };
+        ebd::__safe_fn<int() &&> f_ref;
 
         f_ref = f_non_ref; // OK
         // f_non_ref = f_ref; // Error
+        ASSERT_EQ(std::move(f_ref)(), 42);
     }
 }
 
