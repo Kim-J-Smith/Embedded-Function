@@ -2684,7 +2684,7 @@ namespace crtp_mixins {
         return;
       }
 
-      Self tmp_fn;
+      Self tmp_fn; // RAII for temporary object.
       using command_t = typename Self::command_t;
 
       // Move source from `self` to `tmp_fn`.

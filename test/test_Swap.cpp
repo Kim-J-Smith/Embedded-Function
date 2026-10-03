@@ -170,16 +170,18 @@ struct CountInDestroy {
 TEST(TestSwap, ThrowInSwap) {
     ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
     ebd::fn<int(int)> f2(std::in_place_type<CountInDestroy>);
-    int c = 0;
     count = 0;
     try {
+        // tmp <- f2: destroy 1
+        // f2 <- f1: throw exception
+        // RAII of tmp: destroy 1
         f2.swap(f1);
     } catch (...) {
-        c = count;
+        ASSERT_EQ(count, 2);
     }
 
     f2.clear();
-    ASSERT_EQ(count, c);
+    ASSERT_EQ(count, 2);
 }
 
 #endif // EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
