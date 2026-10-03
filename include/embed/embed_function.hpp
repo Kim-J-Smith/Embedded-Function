@@ -2379,9 +2379,8 @@ namespace crtp_mixins {
     destructor_impl& operator=(const destructor_impl&)  = default;
 
     ~destructor_impl() noexcept(Config::assertNoThrow) {
-      using erasure_t = typename Self::erasure_t;
-      auto& self = static_cast<const Self&>(*this);
-      self.m_command.destroy(&const_cast<erasure_t&>(self.m_erasure));
+      auto& self = static_cast<Self&>(*this);
+      self.m_command.destroy(&self.m_erasure);
     }
   };
 
@@ -2572,20 +2571,8 @@ namespace crtp_mixins {
   struct EMBED_DETAIL_FORCE_EBO member_variable_impl : public assignment_self_clear<
     /* Self = */ function<Size, Align, Config, Signature>, Config, Config::isView
   > {
-#if defined(__GNUC__) || defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wuninitialized"
-# ifndef __clang__
-#  pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-# endif // ^^^ GCC only
-#endif
-
     // The `m_erasure` is sometimes uninitialized.
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
-
-#if defined(__GNUC__) || defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
 
     // Zero initialize the `m_erasure` and `m_command`.
     constexpr member_variable_impl(std::nullptr_t) noexcept
@@ -2697,21 +2684,26 @@ namespace crtp_mixins {
         return;
       }
 
-      typename Self::erasure_t tmp_nil{}; // Empty temporary var
+      Self tmp_fn; // RAII for temporary object.
+      using command_t = typename Self::command_t;
 
-      // Move source from `m_erasure` to `tmp_nil`.
-      self.m_command.move(&tmp_nil, &self.m_erasure);
+      // Move source from `self` to `tmp_fn`.
+      self.m_command.move(&tmp_fn.m_erasure, &self.m_erasure);
       self.m_command.destroy(&self.m_erasure);
+      std::memcpy(&tmp_fn.m_command, &self.m_command, sizeof(command_t));
+      self.m_command.set_empty();
 
-      // Move source from `fn.m_erasure` to `m_erasure`.
+      // Move source from `fn` to `self`.
       fn.m_command.move(&self.m_erasure, &fn.m_erasure);
       fn.m_command.destroy(&fn.m_erasure);
+      std::memcpy(&self.m_command, &fn.m_command, sizeof(command_t));
+      fn.m_command.set_empty();
 
-      // Move source from `tmp_nil` to `fn.m_erasure`.
-      self.m_command.move(&fn.m_erasure, &tmp_nil);
-      self.m_command.destroy(&tmp_nil);
-
-      std::swap(self.m_command, fn.m_command);
+      // Move source from `tmp_fn` to `fn`.
+      tmp_fn.m_command.move(&fn.m_erasure, &tmp_fn.m_erasure);
+      tmp_fn.m_command.destroy(&tmp_fn.m_erasure);
+      std::memcpy(&fn.m_command, &tmp_fn.m_command, sizeof(command_t));
+      tmp_fn.m_command.set_empty();
     }
   };
 
@@ -2828,6 +2820,7 @@ public:
       )
     core_facade_impl(Functor&& functor)
       noexcept(is_nothrow_construct_from_functor<Functor&&>::value)
+      : Base_MemberVar(nullptr, nullptr)
     {
       (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
 
