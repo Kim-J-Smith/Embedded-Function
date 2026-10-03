@@ -662,9 +662,9 @@ inline namespace cxx {
 
   template <typename Res, typename Ret>
   struct is_invocable_helper<void_t<typename Res::type>, Res, Ret, /* RetVoid = */ false> {
-    static typename Res::type result() noexcept {
-      return std::declval<typename Res::type>();
-    }
+    using Res_t = typename Res::type;
+
+    static Res_t result() noexcept { return std::declval<Res_t>(); }
 
     template <typename T>
     static void try_receive(T) noexcept {}
@@ -672,10 +672,11 @@ inline namespace cxx {
     template <typename, typename T>
     struct receive_status : std::false_type { using nothrow = std::false_type; };
 
-    /// TODO: Changing INVOKE<R> and is_invocable_r. See <https://wg21.link/P2255>.
     template <typename T>
-    struct receive_status<void_t<decltype(try_receive<T>(result()))>, T>
-    : std::true_type { using nothrow = bool_constant<noexcept(try_receive<T>(result()))>; };
+    struct receive_status<void_t<decltype(try_receive<T>(result()))>, T> {
+      using type = bool_constant<!reference_converts_from_temporary<Ret, Res_t>::value>;
+      using nothrow = bool_constant<noexcept(try_receive<T>(result())) && type::value>;
+    };
 
     using type = typename receive_status<void, Ret>::type;
     using nothrow = typename receive_status<void, Ret>::nothrow;
@@ -769,11 +770,6 @@ inline namespace cxx {
   noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
-
-    // Assert no dangling.
-    static_assert(!reference_converts_from_temporary<Result, invoke_t>::value,
-      "Returning from invoke_r would bind a temporary object to the reference "
-      "return type, which would result in a dangling reference.");
 
     return invoke_impl<invoke_t>(tag_t{}, std::forward<Callee>(fn),
       std::forward<Args>(args)...);

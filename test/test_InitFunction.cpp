@@ -4,6 +4,32 @@
 #include <memory>
 #include <vector>
 
+// P2255R2: `INVOKE<R>` is ill-formed if the result would bind a temporary
+// to the reference return type, so such wrappers must not be constructible.
+// This mirrors `cxx::reference_converts_from_temporary` in the library.
+#if __cpp_lib_reference_from_temporary >= 202202L
+# define EBD_TEST_HAS_REF_FROM_TEMP 1
+#elif defined(EBD_TEST_USE_FALLBACK)
+# define EBD_TEST_HAS_REF_FROM_TEMP 0
+#elif defined(__has_builtin)
+# if __has_builtin(__reference_converts_from_temporary)
+#  define EBD_TEST_HAS_REF_FROM_TEMP 1
+# else
+#  define EBD_TEST_HAS_REF_FROM_TEMP 0
+# endif
+#else
+# define EBD_TEST_HAS_REF_FROM_TEMP 0
+#endif
+
+#if EBD_TEST_HAS_REF_FROM_TEMP
+static_assert(!std::is_constructible<ebd::fn<int&&()>, int(*)()>::value,
+    "P2255R2: binding a temporary to `int&&` must be rejected.");
+static_assert(!std::is_constructible<ebd::fn<int const&()>, int(*)()>::value,
+    "P2255R2: binding a temporary to `int&` must be rejected.");
+#endif
+
+#undef EBD_TEST_HAS_REF_FROM_TEMP
+
 // InitFunction[0]
 TEST(InitFunction, fn_freeFunction_v) {
     ebd::fn<void(int, int)> f = ebd_test_free_func_vii;
