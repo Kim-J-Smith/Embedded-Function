@@ -1824,7 +1824,10 @@ namespace invocation {
   struct static_call {                                                          \
     template <typename Functor>                                                 \
     static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT { \
-      return Functor::operator()(std::forward<Args>(args)...);                  \
+      if constexpr (std::is_void_v<Ret>)                                        \
+        Functor::operator()(std::forward<Args>(args)...);                       \
+      else                                                                      \
+        return Functor::operator()(std::forward<Args>(args)...);                \
     }                                                                           \
   }; /* end static_call */
 #else

@@ -1080,3 +1080,74 @@ TEST(InitFunction, NonTrivialDefaultConstructibleFunctorIsStateful) {
     ASSERT_EQ(construct_count, 0);
 }
 
+// InitFunction[48]
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+namespace {
+int static_call_count = 0;
+struct StaticCallReturnVoid {
+    static int operator()(int) { static_call_count++; return 42; }
+};
+}
+TEST(InitFunction, StaticCallReturnVoid) {
+    {
+        // fn
+        ebd::fn<void(int)> f = StaticCallReturnVoid{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::fn<int&&(int)>, StaticCallReturnVoid>);
+        static_assert(!std::is_constructible_v<ebd::fn<int const&(int)>, StaticCallReturnVoid>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::fn<int(int)>, StaticCallReturnVoid>);
+    }
+    {
+        // unique_fn
+        ebd::unique_fn<void(int)> f = StaticCallReturnVoid{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::unique_fn<int&&(int)>, StaticCallReturnVoid>);
+        static_assert(!std::is_constructible_v<ebd::unique_fn<int const&(int)>, StaticCallReturnVoid>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::unique_fn<int(int)>, StaticCallReturnVoid>);
+    }
+    {
+        // classic_fn
+        ebd::classic_fn<void(int)> f = StaticCallReturnVoid{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::classic_fn<int&&(int)>, StaticCallReturnVoid>);
+        static_assert(!std::is_constructible_v<ebd::classic_fn<int const&(int)>, StaticCallReturnVoid>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::classic_fn<int(int)>, StaticCallReturnVoid>);
+    }
+    {
+        // __safe_fn
+        ebd::__safe_fn<void(int)> f = StaticCallReturnVoid{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::__safe_fn<int&&(int)>, StaticCallReturnVoid>);
+        static_assert(!std::is_constructible_v<ebd::__safe_fn<int const&(int)>, StaticCallReturnVoid>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::__safe_fn<int(int)>, StaticCallReturnVoid>);
+    }
+    {
+        // fn_ref
+        ebd::fn_ref<void(int)> f = StaticCallReturnVoid{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::fn_ref<int&&(int)>, StaticCallReturnVoid>);
+        static_assert(!std::is_constructible_v<ebd::fn_ref<int const&(int)>, StaticCallReturnVoid>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::fn_ref<int(int)>, StaticCallReturnVoid>);
+    }
+}
+#endif
