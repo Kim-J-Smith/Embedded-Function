@@ -70,7 +70,11 @@ struct ThrowDeath_must_fail {
     void operator()() noexcept {}
 };
 void ebd_test_fail() {
-    []{ebd::make_fn(ThrowDeath_must_fail{});}();
+#if EMBED_CXX_VERSION >= 201703L
+    []{(void)ebd::make_fn(std::in_place_type<ThrowDeath_must_fail>);}();
+#else
+    (void)ThrowDeath_must_fail{};
+#endif
 }
 TEST(ThrowDeath, fail_make_fn) {
     EBD_EXPECT_THROW(ebd_test_fail(), std::exception);

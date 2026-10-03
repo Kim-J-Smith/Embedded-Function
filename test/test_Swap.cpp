@@ -148,3 +148,58 @@ TEST(TestSwap, ADL_Swap) {
         ASSERT_EQ(f2(), 42);
     }
 }
+
+#if EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
+namespace {
+int count = 0;
+
+struct ThrowInCopy {
+    ThrowInCopy() = default;
+    ThrowInCopy(const ThrowInCopy&) noexcept(false) { throw 7; }
+    ThrowInCopy(ThrowInCopy&&) noexcept(false) { throw 8; }
+    int operator()(int) const { return 0; }
+};
+
+struct CountInDestroy {
+    CountInDestroy() = default;
+    ~CountInDestroy() { count++; }
+    int operator()(int) const { return 0; }
+};
+}
+
+TEST(TestSwap, ThrowInSwap) {
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    ebd::fn<int(int)> f2(std::in_place_type<CountInDestroy>);
+    count = 0;
+    try {
+        // tmp <- f2: destroy 1
+        // f2 <- f1: throw exception
+        // RAII of tmp: destroy 1
+        f2.swap(f1);
+    } catch (...) {
+        ASSERT_EQ(count, 2);
+    }
+
+    f2.clear();
+    ASSERT_EQ(count, 2);
+}
+
+#endif // EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
+
+namespace {
+int free_count = 0;
+struct CountInFree {
+    ~CountInFree() { free_count++; }
+    int operator()() const noexcept { return 42; }
+};
+}
+
+TEST(TestSwap, NonDoubleFree) {
+    ebd::fn<int()> f1 = CountInFree{};
+    ebd::fn<int()> f2 = CountInFree{};
+
+    free_count = 0;
+    f1.swap(f2);
+    ASSERT_EQ(free_count, 3);
+}
+
