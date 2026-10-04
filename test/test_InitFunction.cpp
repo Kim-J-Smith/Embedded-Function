@@ -1159,7 +1159,7 @@ TEST(InitFunction, NonVoidStaticCallBindToVoid) {
 namespace {
 struct R {
     int val;
-    R(long v) : val(v) {} // implicit path
+    R(long v) : val(static_cast<int>(v)) {} // implicit path
     explicit R(int v) : val(v + 42) {} // explicit path
 };
 }
