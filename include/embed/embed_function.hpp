@@ -3,7 +3,7 @@
  *
  * @date        2026-9-1
  *
- * @version     2.4.3
+ * @version     2.4.4
  *
  * @copyright   Copyright (c) 2025-2026 Kim-J-Smith
  *              All rights reserved.
@@ -662,9 +662,9 @@ inline namespace cxx {
 
   template <typename Res, typename Ret>
   struct is_invocable_helper<void_t<typename Res::type>, Res, Ret, /* RetVoid = */ false> {
-    static typename Res::type result() noexcept {
-      return std::declval<typename Res::type>();
-    }
+    using Res_t = typename Res::type;
+
+    static Res_t result() noexcept { return std::declval<Res_t>(); }
 
     template <typename T>
     static void try_receive(T) noexcept {}
@@ -672,10 +672,11 @@ inline namespace cxx {
     template <typename, typename T>
     struct receive_status : std::false_type { using nothrow = std::false_type; };
 
-    /// TODO: Changing INVOKE<R> and is_invocable_r. See <https://wg21.link/P2255>.
     template <typename T>
-    struct receive_status<void_t<decltype(try_receive<T>(result()))>, T>
-    : std::true_type { using nothrow = bool_constant<noexcept(try_receive<T>(result()))>; };
+    struct receive_status<void_t<decltype(try_receive<T>(result()))>, T> {
+      using type = bool_constant<!reference_converts_from_temporary<Ret, Res_t>::value>;
+      using nothrow = bool_constant<noexcept(try_receive<T>(result())) && type::value>;
+    };
 
     using type = typename receive_status<void, Ret>::type;
     using nothrow = typename receive_status<void, Ret>::nothrow;
@@ -745,35 +746,30 @@ inline namespace cxx {
   }
 
   // See <https://cppreference.com/w/cpp/utility/functional/invoke.html>.
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename Result, typename Callee, typename... Args)
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename Ret, typename Callee, typename... Args)
     EMBED_DETAIL_REQUIRES_END(
-      is_invocable_r<Result, Callee, Args...>::value
-      && std::is_void<Result>::value
-    ) // requires the `Callee` to be invacable while `Result` is `void`
+      is_invocable_r<Ret, Callee, Args...>::value
+      && std::is_void<Ret>::value
+    ) // requires the `Callee` to be invacable while `Ret` is `void`
   EMBED_CXX14_CONSTEXPR void invoke_r(Callee&& fn, Args&&... args)
-  noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
+  noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
 
-    // The `Result` is void, so there is no return.
+    // The `Ret` is void, so there is no return.
     invoke_impl<invoke_t>(tag_t{}, std::forward<Callee>(fn),
       std::forward<Args>(args)...);
   }
 
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename Result, typename Callee, typename... Args)
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename Ret, typename Callee, typename... Args)
     EMBED_DETAIL_REQUIRES_END(
-      is_invocable_r<Result, Callee, Args...>::value
-      && (!std::is_void<Result>::value)
-    ) // requires the `Callee` to be invacable while `Result` is NOT `void`
-  EMBED_CXX14_CONSTEXPR Result invoke_r(Callee&& fn, Args&&... args)
-  noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
+      is_invocable_r<Ret, Callee, Args...>::value
+      && (!std::is_void<Ret>::value)
+    ) // requires the `Callee` to be invacable while `Ret` is NOT `void`
+  EMBED_CXX14_CONSTEXPR Ret invoke_r(Callee&& fn, Args&&... args)
+  noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
-
-    // Assert no dangling.
-    static_assert(!reference_converts_from_temporary<Result, invoke_t>::value,
-      "Returning from invoke_r would bind a temporary object to the reference "
-      "return type, which would result in a dangling reference.");
 
     return invoke_impl<invoke_t>(tag_t{}, std::forward<Callee>(fn),
       std::forward<Args>(args)...);
@@ -1107,6 +1103,7 @@ inline namespace fn_traits {
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_alignment_is_enough : bool_constant<
     !is_stored_origin<DecFn, Cfg::isView>::value
+    /// TODO: In MSVC, sizeof(pointer-to-member) % alignof(pointer-to-member) != 0
     || (alignof(DecFn) <= alignof(Erasure) && (sizeof(DecFn) % alignof(DecFn) == 0))
   > {};
 
@@ -1139,7 +1136,8 @@ inline namespace fn_traits {
   // Get aligned size. Rounds up to the nearest Alignment size.
   template <std::size_t Alignment>
   constexpr std::size_t get_aligned_size(std::size_t size) {
-    static_assert(Alignment >= alignof(void(*)()), "The alignment must be greater than `alignof(void(*)())`.");
+    static_assert(Alignment >= alignof(void(*)()),
+      "The alignment must be greater than or equal to `alignof(void(*)())`.");
     static_assert((Alignment & (Alignment-1)) == 0, "The alignment must be a power of two.");
     return size == 0 ? Alignment : (((size - 1) / Alignment) + 1) * Alignment;
   }
@@ -1482,7 +1480,7 @@ inline namespace fn_traits {
       "        FnWrapper<Signature, Bigger-BufferSize> f = CallableObject;\n"
       "                             ^^^^^^^^^^^^^^^^^\n"
       "                                     |\n"
-      "         The value should be greater than `sizeof(CallableObject)`\n\n"
+      "      The value should be greater than or equal to `sizeof(CallableObject)`\n\n"
       "`FnWrapper` can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, etc."
     );
 
@@ -1619,7 +1617,7 @@ inline namespace fn_traits {
     std::is_trivially_copyable<Fn>::value && (
       is_statically_callable<Fn, Args...>::value
 #ifndef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
-      || (std::is_empty<Fn>::value && std::is_default_constructible<Fn>::value)
+      || (std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value)
 #else // ^^^ Empty trivial functors are treated as stateless.
       || is_standard_stateless_function_object<Fn>::value
 #endif
@@ -1785,17 +1783,23 @@ namespace erasure_type {
 
   // ABI for passing either pointer or value.
   union ErasurePass {
-    ErasureBase* const                ptr_;
-    ErasureBase const* const          ptr_const;
-    ErasureBase volatile* const       ptr_volatile;
-    ErasureBase const volatile* const ptr_constvolatile;
-    ErasureRefStorage                 val;
+    ErasureBase* const  ptr;
+    ErasureRefStorage   val;
 
-    ErasurePass(ErasureBase* erased) noexcept : ptr_(erased) {}
-    ErasurePass(ErasureBase const* erased) noexcept : ptr_const(erased) {}
-    ErasurePass(ErasureBase volatile* erased) noexcept : ptr_volatile(erased) {}
-    ErasurePass(ErasureBase const volatile* erased) noexcept : ptr_constvolatile(erased) {}
-    ErasurePass(ErasureRefStorage erased) noexcept : val(erased) {}
+    using Ptr_t = ErasureBase*;
+    using Val_t = ErasureRefStorage&;
+
+    // These `const_cast`s only strip cv-qualifiers to fit the union member;
+    // the qualifiers are restored from the function signature before access.
+    ErasurePass(ErasureBase* erased) noexcept : ptr(erased) {}
+    ErasurePass(ErasureBase const* erased) noexcept : ptr(const_cast<Ptr_t>(erased)) {}
+    ErasurePass(ErasureBase volatile* erased) noexcept : ptr(const_cast<Ptr_t>(erased)) {}
+    ErasurePass(ErasureBase const volatile* erased) noexcept : ptr(const_cast<Ptr_t>(erased)) {}
+
+    ErasurePass(ErasureRefStorage& erased) noexcept : val(erased) {}
+    ErasurePass(ErasureRefStorage const& erased) noexcept : val(const_cast<Val_t>(erased)) {}
+    ErasurePass(ErasureRefStorage volatile& erased) noexcept : val(const_cast<Val_t>(erased)) {}
+    ErasurePass(ErasureRefStorage const volatile& erased) noexcept : val(const_cast<Val_t>(erased)) {}
   };
 
 #if defined(_MSC_VER) && !defined(__clang__) && _MSC_VER < 1927
@@ -1822,7 +1826,10 @@ namespace invocation {
   struct static_call {                                                          \
     template <typename Functor>                                                 \
     static Ret invoke(erasure_pass_t, smart_forward_t<Args>... args) NOEXCEPT { \
-      return Functor::operator()(std::forward<Args>(args)...);                  \
+      if constexpr (std::is_void_v<Ret>)                                        \
+        Functor::operator()(std::forward<Args>(args)...);                       \
+      else                                                                      \
+        return Functor::operator()(std::forward<Args>(args)...);                \
     }                                                                           \
   }; /* end static_call */
 #else
@@ -1853,7 +1860,7 @@ namespace invocation {
   struct inplace_cw {                                                                 \
     template <typename Cw, typename Functor>                                          \
     static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {  \
-      auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## V);                \
+      auto* erased = static_cast<erasure_t C V*>(base.ptr);                           \
       auto& fn = erased->template access<Functor>();                                  \
       using Fn = conditional_t<is_rvalue_ref,                                         \
         remove_reference_t<decltype(fn)>&&,                                           \
@@ -1895,7 +1902,7 @@ namespace invocation {
     struct inplace {                                                                  \
       template <typename Functor>                                                     \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
-        auto* erased = static_cast<erasure_t C V*>(base.ptr_ ## C ## V);              \
+        auto* erased = static_cast<erasure_t C V*>(base.ptr);                         \
         auto& fn = erased->template access<Functor>();                                \
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
@@ -2354,10 +2361,9 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(operator_call_impl)                            \
                                                                             \
     Ret operator()(Args... args) const V NOEXCEPT {                         \
-      using erasure_t = typename Self::erasure_t;                           \
       auto* const self = static_cast<Self const V*>(this);                  \
       auto& command = self->m_command;                                      \
-      auto& erasure = const_cast<erasure_t&>(self->m_erasure);              \
+      auto& erasure = self->m_erasure;                                      \
       auto& ref_storage = erasure.m_core.ref_storage;                       \
     /* Pass the `m_erasure` by value in non-owning mode to avoid ODR use. */\
     /* Because the ODR use forces compilers to reserve stack memory. */     \
@@ -2379,9 +2385,8 @@ namespace crtp_mixins {
     destructor_impl& operator=(const destructor_impl&)  = default;
 
     ~destructor_impl() noexcept(Config::assertNoThrow) {
-      using erasure_t = typename Self::erasure_t;
-      auto& self = static_cast<const Self&>(*this);
-      self.m_command.destroy(&const_cast<erasure_t&>(self.m_erasure));
+      auto& self = static_cast<Self&>(*this);
+      self.m_command.destroy(&self.m_erasure);
     }
   };
 
@@ -2476,8 +2481,8 @@ namespace crtp_mixins {
   struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ false, Config, Self
   >
-    : public destructor_impl<Config, Self>,
-      public move_impl<Config, Self>
+    : public move_impl<Config, Self>,
+      public destructor_impl<Config, Self>
   {
     lifetime_operations_impl()                                      = default;
     ~lifetime_operations_impl()                                     = default;
@@ -2493,9 +2498,9 @@ namespace crtp_mixins {
   struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ true, Config, Self
   >
-    : public destructor_impl<Config, Self>,
-      public move_impl<Config, Self>,
-      public copy_impl<Config, Self>
+    : public move_impl<Config, Self>,
+      public copy_impl<Config, Self>,
+      public destructor_impl<Config, Self>
   { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
 
   // Implement the 'operator*' for function.
@@ -2572,20 +2577,8 @@ namespace crtp_mixins {
   struct EMBED_DETAIL_FORCE_EBO member_variable_impl : public assignment_self_clear<
     /* Self = */ function<Size, Align, Config, Signature>, Config, Config::isView
   > {
-#if defined(__GNUC__) || defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wuninitialized"
-# ifndef __clang__
-#  pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-# endif // ^^^ GCC only
-#endif
-
     // The `m_erasure` is sometimes uninitialized.
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
-
-#if defined(__GNUC__) || defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
 
     // Zero initialize the `m_erasure` and `m_command`.
     constexpr member_variable_impl(std::nullptr_t) noexcept
@@ -2680,6 +2673,8 @@ namespace crtp_mixins {
     }
 
     // Swap the contents of two function objects. (Inplace mode)
+    /// @todo TODO: If the target's DESTRUCTOR THROWS, the remaining steps
+    /// of that phase are skipped and BOTH wrappers are left non-empty.
     void swap(core_components_impl& fn_raw) noexcept(Config::assertNoThrow) {
       // Avoid self swap.
       if (this == std::addressof(fn_raw)) { return; }
@@ -2697,21 +2692,26 @@ namespace crtp_mixins {
         return;
       }
 
-      typename Self::erasure_t tmp_nil{}; // Empty temporary var
+      Self tmp_fn; // RAII for temporary object.
+      using command_t = typename Self::command_t;
 
-      // Move source from `m_erasure` to `tmp_nil`.
-      self.m_command.move(&tmp_nil, &self.m_erasure);
+      // Move source from `self` to `tmp_fn`.
+      self.m_command.move(&tmp_fn.m_erasure, &self.m_erasure);
       self.m_command.destroy(&self.m_erasure);
+      std::memcpy(&tmp_fn.m_command, &self.m_command, sizeof(command_t));
+      self.m_command.set_empty();
 
-      // Move source from `fn.m_erasure` to `m_erasure`.
+      // Move source from `fn` to `self`.
       fn.m_command.move(&self.m_erasure, &fn.m_erasure);
       fn.m_command.destroy(&fn.m_erasure);
+      std::memcpy(&self.m_command, &fn.m_command, sizeof(command_t));
+      fn.m_command.set_empty();
 
-      // Move source from `tmp_nil` to `fn.m_erasure`.
-      self.m_command.move(&fn.m_erasure, &tmp_nil);
-      self.m_command.destroy(&tmp_nil);
-
-      std::swap(self.m_command, fn.m_command);
+      // Move source from `tmp_fn` to `fn`.
+      tmp_fn.m_command.move(&fn.m_erasure, &tmp_fn.m_erasure);
+      tmp_fn.m_command.destroy(&tmp_fn.m_erasure);
+      std::memcpy(&fn.m_command, &tmp_fn.m_command, sizeof(command_t));
+      tmp_fn.m_command.set_empty();
     }
   };
 
@@ -2828,6 +2828,7 @@ public:
       )
     core_facade_impl(Functor&& functor)
       noexcept(is_nothrow_construct_from_functor<Functor&&>::value)
+      : Base_MemberVar(nullptr, nullptr)
     {
       (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
 

@@ -1,19 +1,24 @@
 **🔧 Fixed Bugs**
-- Fixed the bug that occurred when using the non-existent `__builtin_launder` in GCC5 and GCC6. (#185)
-- Added workarounds for MSVC 19.10 ~ 19.26 and ICC 16 ~ 19. (#185)
-- Fixed a bug where calling `clear()` after an assignment that throws an exception would trigger double freeing. (#187)
+- Fixed a double-free bug by reordering base classes of `lifetime_operations_impl`. (#189)
+- Fixed a bug where treating non-trivial functor as *stateless*. (#190)
+- Fixed a double-free bug in `swap()` when a move constructor throws. (#191)
+- Fixed undefined behavior caused by reading inactive members of the `ErasurePass` union. (#192)
+- Fixed `is_invocable_r` to reject callables that would bind a temporary to a reference return type, as specified by [P2255R2](https://wg21.link/P2255). (#194)
+- Fixed a compile error when adapting a callable with a static `operator()` returning non-`void` to a function wrapper whose return type is `void` (C++23 static call operator path). (#194)
 
 **⚠️ Breaking Changes**
 - None.
 
 **✨ New Features**
-- Added a benchmark for the NTTP bind (`std::constant_wrapper`) feature. (#186)
+- None.
 
 **🛠️ Optimizations and Improvements**
-- Adjusted the style of some internal traits. (#184)
-- `std::is_default_constructible_v<ebd::fn_ref<...>>` and `std::is_constructible_v<ebd::fn_ref<...>, std::nullptr_t>` now yield `false` starting from C++17, instead of requiring C++20. (#185)
-- Did some small internal refactoring to improve maintainability. (#185)
+- Added tests for throwing copy/move constructors and assignments. (#189)
+- Added tests for the `swap()` exception-safety fix. (#191)
+- Added tests for the P2255R2 dangling-reference rejection, including the builtin trait path. (#194)
+- Added tests for adapting a non-`void` static call operator to a `void`-returning function wrapper. (#194)
+- Optimized some assertion messages. (#194)
+- Added tests for `INVOKE<R>` implicit conversion semantics. (#194)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
-- GCC 16.0 defines `__cpp_lib_constant_wrapper` to a value below `202603L`, so the library keeps this feature disabled there. Users of GCC 16.0 can opt in by defining `__cpp_lib_constant_wrapper=202603L` before including the header; the test suite and benchmarks apply this workaround in `test/__constant_wrapper.hpp`.

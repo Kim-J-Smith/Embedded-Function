@@ -4,6 +4,41 @@
 #include <memory>
 #include <vector>
 
+// P2255R2: `INVOKE<R>` is ill-formed if the result would bind a temporary
+// to the reference return type, so such wrappers must not be constructible.
+// This mirrors `cxx::reference_converts_from_temporary` in the library.
+#if __cpp_lib_reference_from_temporary >= 202202L
+# define EBD_TEST_HAS_REF_FROM_TEMP 1
+#elif defined(EBD_TEST_USE_FALLBACK)
+# define EBD_TEST_HAS_REF_FROM_TEMP 0
+#elif defined(__has_builtin)
+# if __has_builtin(__reference_converts_from_temporary)
+#  define EBD_TEST_HAS_REF_FROM_TEMP 1
+# else
+#  define EBD_TEST_HAS_REF_FROM_TEMP 0
+# endif
+#else
+# define EBD_TEST_HAS_REF_FROM_TEMP 0
+#endif
+
+#if EBD_TEST_HAS_REF_FROM_TEMP
+static_assert(!std::is_constructible<ebd::fn<int&&()>, int(*)()>::value,
+    "P2255R2: binding a temporary to `int&&` must be rejected.");
+static_assert(!std::is_constructible<ebd::fn<int const&()>, int(*)()>::value,
+    "P2255R2: binding a temporary to `int&` must be rejected.");
+#endif
+
+#undef EBD_TEST_HAS_REF_FROM_TEMP
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+namespace {
+    int static_call_count = 0;
+    struct StaticallyCallable {
+        static int operator()(int) { static_call_count++; return 42; }
+    };
+}
+#endif // C++ >= 23
+
 // InitFunction[0]
 TEST(InitFunction, fn_freeFunction_v) {
     ebd::fn<void(int, int)> f = ebd_test_free_func_vii;
@@ -994,4 +1029,197 @@ TEST(InitFunction, testQualifier_Stateful) {
         ebd::unique_fn<int(int) volatile> f2 = c;
         ASSERT_EQ(std::move(f2)(1), base + OVL_VOLATILE);
     }
+}
+
+#if EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
+namespace {
+int count = 0;
+
+struct ThrowInCopy {
+    ThrowInCopy() = default;
+    ~ThrowInCopy() { count++; }
+    ThrowInCopy(const ThrowInCopy&) noexcept(false) { throw 7; }
+    ThrowInCopy(ThrowInCopy&&) noexcept(false) { throw 8; }
+    int operator()(int) const { return 0; }
+};
+}
+
+// InitFunction[45]
+TEST(InitFunction, ThrowInCopyCtor) {
+
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    count = 0;
+    try {
+        ebd::fn<int(int)> f2 = f1;
+        (void)f2;
+    } catch(...) {
+        ASSERT_EQ(count, 0);
+    }
+}
+
+// InitFunction[46]
+TEST(InitFunction, ThrowInMoveCtor) {
+
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    count = 0;
+    try {
+        ebd::fn<int(int)> f2 = std::move(f1);
+        (void)f2;
+    } catch(...) {
+        ASSERT_EQ(count, 0);
+    }
+}
+
+#endif // EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
+
+namespace {
+int construct_count = 0;
+struct NonTrivialDefaultCtor {
+    NonTrivialDefaultCtor() noexcept { construct_count++; }
+    NonTrivialDefaultCtor(const NonTrivialDefaultCtor&) = default;
+    int operator()() const noexcept { return 42; }
+};
+}
+
+// InitFunction[47]
+TEST(InitFunction, NonTrivialDefaultConstructibleFunctorIsStateful) {
+    ebd::fn<int() const> f = NonTrivialDefaultCtor{};
+    construct_count = 0;
+    ASSERT_EQ(f(), 42);
+    ASSERT_EQ(construct_count, 0);
+}
+
+// InitFunction[48]
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+TEST(InitFunction, NonVoidStaticCallBindToVoid) {
+    {
+        // fn
+        ebd::fn<void(int)> f = StaticallyCallable{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::fn<int&&(int)>, StaticallyCallable>);
+        static_assert(!std::is_constructible_v<ebd::fn<int const&(int)>, StaticallyCallable>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::fn<int(int)>, StaticallyCallable>);
+    }
+    {
+        // unique_fn
+        ebd::unique_fn<void(int)> f = StaticallyCallable{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::unique_fn<int&&(int)>, StaticallyCallable>);
+        static_assert(!std::is_constructible_v<ebd::unique_fn<int const&(int)>, StaticallyCallable>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::unique_fn<int(int)>, StaticallyCallable>);
+    }
+    {
+        // classic_fn
+        ebd::classic_fn<void(int)> f = StaticallyCallable{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::classic_fn<int&&(int)>, StaticallyCallable>);
+        static_assert(!std::is_constructible_v<ebd::classic_fn<int const&(int)>, StaticallyCallable>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::classic_fn<int(int)>, StaticallyCallable>);
+    }
+    {
+        // __safe_fn
+        ebd::__safe_fn<void(int)> f = StaticallyCallable{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::__safe_fn<int&&(int)>, StaticallyCallable>);
+        static_assert(!std::is_constructible_v<ebd::__safe_fn<int const&(int)>, StaticallyCallable>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::__safe_fn<int(int)>, StaticallyCallable>);
+    }
+    {
+        // fn_ref
+        ebd::fn_ref<void(int)> f = StaticallyCallable{};
+        static_call_count = 0;
+        f(1);
+        ASSERT_EQ(static_call_count, 1);
+    #if __cpp_lib_reference_from_temporary >= 202202L
+        static_assert(!std::is_constructible_v<ebd::fn_ref<int&&(int)>, StaticallyCallable>);
+        static_assert(!std::is_constructible_v<ebd::fn_ref<int const&(int)>, StaticallyCallable>);
+    #endif
+        static_assert(std::is_constructible_v<ebd::fn_ref<int(int)>, StaticallyCallable>);
+    }
+}
+#endif
+
+// InitFunction[49]
+namespace {
+struct R {
+    int val;
+    R(long v) : val(static_cast<int>(v)) {} // implicit path
+    explicit R(int v) : val(v + 42) {} // explicit path
+};
+}
+TEST(InitFunction, ImplicitReturnConv) {
+    {
+        ebd::fn<R(int, int)> f = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f(1, 2).val, 3);
+        ASSERT_EQ(f(1, 3).val, 4);
+        ASSERT_EQ(f(2, 3).val, 5);
+    }
+    {
+        ebd::unique_fn<R(int, int)> f = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f(1, 2).val, 3);
+        ASSERT_EQ(f(1, 3).val, 4);
+        ASSERT_EQ(f(2, 3).val, 5);
+    }
+    {
+        ebd::classic_fn<R(int, int)> f = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f(1, 2).val, 3);
+        ASSERT_EQ(f(1, 3).val, 4);
+        ASSERT_EQ(f(2, 3).val, 5);
+    }
+    {
+        ebd::__safe_fn<R(int, int)> f = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f(1, 2).val, 3);
+        ASSERT_EQ(f(1, 3).val, 4);
+        ASSERT_EQ(f(2, 3).val, 5);
+    }
+    {
+        ebd::fn_ref<R(int, int)> f = ebd_test_free_func_iii_add;
+        ASSERT_EQ(f(1, 2).val, 3);
+        ASSERT_EQ(f(1, 3).val, 4);
+        ASSERT_EQ(f(2, 3).val, 5);
+    }
+
+#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+    {
+        ebd::fn<R(int)> f = StaticallyCallable{};
+        ASSERT_EQ(f(0).val, 42);
+        ASSERT_EQ(f(1).val, 42);
+    }
+    {
+        ebd::unique_fn<R(int)> f = StaticallyCallable{};
+        ASSERT_EQ(f(0).val, 42);
+        ASSERT_EQ(f(1).val, 42);
+    }
+    {
+        ebd::classic_fn<R(int)> f = StaticallyCallable{};
+        ASSERT_EQ(f(0).val, 42);
+        ASSERT_EQ(f(1).val, 42);
+    }
+    {
+        ebd::__safe_fn<R(int)> f = StaticallyCallable{};
+        ASSERT_EQ(f(0).val, 42);
+        ASSERT_EQ(f(1).val, 42);
+    }
+    {
+        ebd::fn_ref<R(int)> f = StaticallyCallable{};
+        ASSERT_EQ(f(0).val, 42);
+        ASSERT_EQ(f(1).val, 42);
+    }
+#endif // C++ >= 23
 }
