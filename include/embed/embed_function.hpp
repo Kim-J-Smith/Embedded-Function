@@ -746,28 +746,28 @@ inline namespace cxx {
   }
 
   // See <https://cppreference.com/w/cpp/utility/functional/invoke.html>.
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename Result, typename Callee, typename... Args)
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename Ret, typename Callee, typename... Args)
     EMBED_DETAIL_REQUIRES_END(
-      is_invocable_r<Result, Callee, Args...>::value
-      && std::is_void<Result>::value
-    ) // requires the `Callee` to be invacable while `Result` is `void`
+      is_invocable_r<Ret, Callee, Args...>::value
+      && std::is_void<Ret>::value
+    ) // requires the `Callee` to be invacable while `Ret` is `void`
   EMBED_CXX14_CONSTEXPR void invoke_r(Callee&& fn, Args&&... args)
-  noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
+  noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
 
-    // The `Result` is void, so there is no return.
+    // The `Ret` is void, so there is no return.
     invoke_impl<invoke_t>(tag_t{}, std::forward<Callee>(fn),
       std::forward<Args>(args)...);
   }
 
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename Result, typename Callee, typename... Args)
+  EMBED_DETAIL_TEMPLATE_BEGIN(typename Ret, typename Callee, typename... Args)
     EMBED_DETAIL_REQUIRES_END(
-      is_invocable_r<Result, Callee, Args...>::value
-      && (!std::is_void<Result>::value)
-    ) // requires the `Callee` to be invacable while `Result` is NOT `void`
-  EMBED_CXX14_CONSTEXPR Result invoke_r(Callee&& fn, Args&&... args)
-  noexcept(is_nothrow_invocable_r<Result, Callee, Args...>::value) {
+      is_invocable_r<Ret, Callee, Args...>::value
+      && (!std::is_void<Ret>::value)
+    ) // requires the `Callee` to be invacable while `Ret` is NOT `void`
+  EMBED_CXX14_CONSTEXPR Ret invoke_r(Callee&& fn, Args&&... args)
+  noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
 
@@ -2673,6 +2673,8 @@ namespace crtp_mixins {
     }
 
     // Swap the contents of two function objects. (Inplace mode)
+    /// @todo TODO: If the target's DESTRUCTOR THROWS, the remaining steps
+    /// of that phase are skipped and BOTH wrappers are left non-empty.
     void swap(core_components_impl& fn_raw) noexcept(Config::assertNoThrow) {
       // Avoid self swap.
       if (this == std::addressof(fn_raw)) { return; }
