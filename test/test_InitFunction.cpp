@@ -1223,3 +1223,60 @@ TEST(InitFunction, ImplicitReturnConv) {
     }
 #endif // C++ >= 23
 }
+
+// InitFunction[50]
+TEST(InitFunction, fn_MemberVariable) {
+    using C_t = ebd_test_member_fn;
+    {
+        // ebd::fn
+        C_t obj;
+        obj.member_var = 42;
+        ebd::fn<int&(C_t&)> f1 = &C_t::member_var;
+        ASSERT_EQ(f1(obj), 42);
+        ebd::fn<int&(C_t&) const> f2 = &C_t::member_var;
+        ASSERT_EQ(f2(obj), 42);
+        ebd::fn<int const&(C_t&) const> f3 = &C_t::member_var;
+        ASSERT_EQ(f3(obj), 42);
+        auto f4 = ebd::make_fn<ebd::fn>(&C_t::member_var);
+        ASSERT_EQ(f4(obj), 42);
+    }
+    {
+        // ebd::unique_fn
+        C_t obj;
+        obj.member_var = 42;
+        ebd::unique_fn<int&(C_t&)> f1 = &C_t::member_var;
+        ASSERT_EQ(f1(obj), 42);
+        ebd::unique_fn<int&(C_t&) const> f2 = &C_t::member_var;
+        ASSERT_EQ(f2(obj), 42);
+        ebd::unique_fn<int const&(C_t&) const> f3 = &C_t::member_var;
+        ASSERT_EQ(f3(obj), 42);
+        auto f4 = ebd::make_fn<ebd::unique_fn>(&C_t::member_var);
+        ASSERT_EQ(f4(obj), 42);
+    }
+    {
+        // ebd::classic_fn
+        C_t obj;
+        obj.member_var = 42;
+        ebd::classic_fn<int&(C_t&)> f1 = &C_t::member_var;
+        ASSERT_EQ(f1(obj), 42);
+        ebd::classic_fn<int&(C_t&) const> f2 = &C_t::member_var;
+        ASSERT_EQ(f2(obj), 42);
+        ebd::classic_fn<int const&(C_t&) const> f3 = &C_t::member_var;
+        ASSERT_EQ(f3(obj), 42);
+        auto f4 = ebd::make_fn<ebd::classic_fn>(&C_t::member_var);
+        ASSERT_EQ(f4(obj), 42);
+    }
+    {
+        // ebd::__safe_fn
+        C_t obj;
+        obj.member_var = 42;
+        ebd::__safe_fn<int&(C_t&)> f1 = &C_t::member_var;
+        ASSERT_EQ(f1(obj), 42);
+        ebd::__safe_fn<int&(C_t&) const> f2 = &C_t::member_var;
+        ASSERT_EQ(f2(obj), 42);
+        ebd::__safe_fn<int const&(C_t&) const> f3 = &C_t::member_var;
+        ASSERT_EQ(f3(obj), 42);
+        auto f4 = ebd::make_fn<ebd::__safe_fn>(&C_t::member_var);
+        ASSERT_EQ(f4(obj), 42);
+    }
+}
