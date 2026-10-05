@@ -1102,9 +1102,8 @@ inline namespace fn_traits {
 
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_alignment_is_enough : bool_constant<
-    !is_stored_origin<DecFn, Cfg::isView>::value
-    /// TODO: In MSVC, sizeof(pointer-to-member) % alignof(pointer-to-member) != 0
-    || (alignof(DecFn) <= alignof(Erasure) && (sizeof(DecFn) % alignof(DecFn) == 0))
+    // In MSVC, sizeof(pointer-to-member) % alignof(pointer-to-member) != 0
+    !is_stored_origin<DecFn, Cfg::isView>::value || alignof(DecFn) <= alignof(Erasure)
   > {};
 
   /// @brief Undefined class.
