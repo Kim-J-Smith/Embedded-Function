@@ -1,5 +1,5 @@
 **🔧 Fixed Bugs**
-- None.
+- Fixed a bug where `buffer_alignment_is_enough` rejecting pointer-to-member types on MSVC, where `sizeof(T) % alignof(T) != 0`.
 
 **⚠️ Breaking Changes**
 - None.
