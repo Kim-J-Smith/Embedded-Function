@@ -93,18 +93,6 @@
 # endif
 #endif
 
-#ifndef EMBED_CXX_ENABLE_EXCEPTION
-# if defined(__cpp_exceptions)
-#  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions != 0)
-# elif defined(_MSC_VER) && defined(_HAS_EXCEPTIONS)
-#  define EMBED_CXX_ENABLE_EXCEPTION (_HAS_EXCEPTIONS != 0)
-# elif (defined(__EXCEPTIONS) && __EXCEPTIONS == 1)
-#  define EMBED_CXX_ENABLE_EXCEPTION 1
-# else
-#  define EMBED_CXX_ENABLE_EXCEPTION 0
-# endif
-#endif
-
 #ifndef EMBED_ABI_VISIBILITY
 # if defined(__GNUC__) || defined(__clang__)
 #  define EMBED_ABI_VISIBILITY(x) __attribute__((visibility(#x)))
@@ -196,6 +184,16 @@
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
+#endif
+
+#ifndef EMBED_CXX_ENABLE_EXCEPTION
+# if defined(_MSC_VER) && defined(_HAS_EXCEPTIONS)
+#  define EMBED_CXX_ENABLE_EXCEPTION (_HAS_EXCEPTIONS != 0)
+# elif defined(__cpp_exceptions)
+#  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions >= 199711L)
+# else
+#  define EMBED_CXX_ENABLE_EXCEPTION 0
+# endif
 #endif
 
 // const, volatile, {& | &&}, noexcept
