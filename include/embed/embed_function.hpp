@@ -2861,7 +2861,7 @@ public:
         && is_callable_from<Fn>::value
       )
     explicit core_facade_impl(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
-      noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value)
+      noexcept(std::is_nothrow_constructible<Fn, std::initializer_list<U>&, CArgs...>::value)
     {
       // Mandates.
       static_assert(std::is_same<Fn, decay_t<Fn>>::value, "decay_t<Fn> should be the same type as Fn.");
