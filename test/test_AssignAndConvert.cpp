@@ -465,12 +465,15 @@ TEST(AssignAndConvert, InterConvert) {
         auto f1 = ebd::make_fn<ebd::unique_fn>(f);
         auto f2 = ebd::make_fn<ebd::classic_fn>(f);
         auto f3 = ebd::make_fn<ebd::fn_ref>(f);
+        auto f4 = ebd::make_fn<ebd::unique_fn, int(int, char)>(f);
         static_assert(f.get_buffer_size() == f1.get_buffer_size(), "BUG");
         static_assert(f.get_buffer_size() < f2.get_buffer_size(), "BUG");
+        static_assert(f.get_buffer_size() < f4.get_buffer_size(), "BUG");
         ASSERT_EQ(f(42, 0), 42);
         ASSERT_EQ(f1(42, 0), 42);
         ASSERT_EQ(f2(42, 0), 42);
         ASSERT_EQ(f3(42, 0), 42);
+        ASSERT_EQ(f4(42, 'A'), 42 + 'A');
     }
     {
         ebd::unique_fn<int(int, int) const> f = ebd_test_free_func_iii_add;

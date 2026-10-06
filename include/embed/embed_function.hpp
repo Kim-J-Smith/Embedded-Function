@@ -1700,8 +1700,7 @@ inline namespace fn_traits {
   template <typename FnWrapper, std::size_t Candidate, typename OtherWrapper>
   struct get_correct_buffer_size_helper</*IsWrapper=*/true, FnWrapper, Candidate, OtherWrapper> {
     static constexpr std::size_t value =
-      is_config_convertible<
-        typename is_ebd_fn<FnWrapper>::config, typename is_ebd_fn<OtherWrapper>::config>::value
+      is_convertible_from_specialization<FnWrapper, OtherWrapper>::value
       ? Candidate : sizeof(remove_cvref_t<OtherWrapper>);
   };
 
@@ -3785,18 +3784,27 @@ noexcept(NoThrow) {
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, BufferSize, Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
+  // User can specify the wrapper kind `Fn` and signature `SpecifiedSig`.
   template <class, std::size_t, std::size_t> class Fn,
   typename SpecifiedSig = void,
+
   typename... Args,
-  typename Deduction = decltype(make_fn(std::declval<Args>()...)),
-  typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
+
+  // Get the deduction results from other make_fn.
+  typename Deduction          = decltype(make_fn(std::declval<Args>()...)),
+  typename DeductionSig       = typename detail::is_ebd_fn<Deduction>::signature,
+  std::size_t DeductionBuf    = Deduction::get_buffer_size(),
+  std::size_t DeductionAlign  = Deduction::get_alignment(),
+
+  // Deduce the correct signature, alignment, and buffer size.
   typename Signature = detail::conditional_t<std::is_void<SpecifiedSig>::value,
-                           /* Auto deduce */ detail::get_correct_signature_t<Fn, RawSig>,
-          /* Use user specified signature */ SpecifiedSig>,
-  std::size_t BufferSize =
-    detail::get_correct_buffer_size<Fn<int(), 0, alignof(int*)>, Deduction::get_buffer_size(), Args...>::value,
-  std::size_t Alignment = detail::is_ebd_fn<Fn<int(), 0, alignof(int*)>>::config::isView ?
-    detail::default_values::non_owning::alignment : Deduction::get_alignment(),
+    /* Auto deduction */ detail::get_correct_signature_t<Fn, DeductionSig>,
+    /* User specified */ SpecifiedSig>,
+  std::size_t Alignment = detail::is_ebd_fn<Fn<int(), 0, alignof(int*)>>::config::isView
+    ? detail::default_values::non_owning::alignment
+    : DeductionAlign,
+  std::size_t BufferSize = detail::get_correct_buffer_size<
+      Fn<Signature, DeductionBuf, Alignment>, DeductionBuf, Args...>::value,
   typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
   bool NoThrow = detail::is_nothrow_constructible_lwg2116<FnWrapper, Args...>::value
 )
