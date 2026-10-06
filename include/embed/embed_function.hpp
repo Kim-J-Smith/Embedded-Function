@@ -2669,8 +2669,6 @@ namespace crtp_mixins {
     }
 
     // Swap the contents of two function objects. (Inplace mode)
-    /// @todo TODO: If the target's DESTRUCTOR THROWS, the remaining steps
-    /// of that phase are skipped and BOTH wrappers are left non-empty.
     void swap(core_components_impl& fn_raw) noexcept(Config::assertNoThrow) {
       // Avoid self swap.
       if (this == std::addressof(fn_raw)) { return; }
