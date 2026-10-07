@@ -301,12 +301,9 @@
 # pragma clang diagnostic push
 # pragma clang diagnostic ignored "-Wnullability-completeness"
 # pragma clang diagnostic ignored "-Wnullability-extension"
-# define EMBED_DETAIL_NOT_NULL(T) T _Nonnull
-#elif defined(_MSC_VER) && defined(_PREFAST_)
-# include <sal.h>
-# define EMBED_DETAIL_NOT_NULL(T) _Notnull_ T
+# define EMBED_DETAIL_NOT_NULL _Nonnull
 #else
-# define EMBED_DETAIL_NOT_NULL(T) T
+# define EMBED_DETAIL_NOT_NULL
 #endif
 
 #if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
@@ -2990,7 +2987,7 @@ public:
         std::is_function<Func>::value
         && is_invocable_using<Func>::value
       )
-    core_facade_impl(EMBED_DETAIL_NOT_NULL(Func*) function_ptr) noexcept {
+    core_facade_impl(Func* EMBED_DETAIL_NOT_NULL function_ptr) noexcept {
       (void)assertions_for_functor<Size, Cfg, Sig, Func*, Func*&&, erasure_t>{};
 
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, "function pointer cannot be nullptr.");
