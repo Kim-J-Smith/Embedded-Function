@@ -3,6 +3,7 @@
 - Fixed a bug where `_HAS_EXCEPTIONS` in MSVC could not affect `EMBED_CXX_ENABLE_EXCEPTION`.
 - Fixed a bug where `make_fn` fail to deduce the correct size of the buffer.
 - Fixed a bug where the noexcept constraint judgment in the in-place constructor was incorrect.
+- Fixed undefined behavior when constructing `fn_ref` from a function pointer.
 
 **⚠️ Breaking Changes**
 - None.
