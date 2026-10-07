@@ -41,6 +41,7 @@
 # pragma warning(disable: 4625 5026) // ignore "implicit delete copy/move constructor"
 # pragma warning(disable: 4626 5027) // ignore "implicit delete copy/move assignment"
 # pragma warning(disable: 26495) // ignore "variable is uninitialized"
+# pragma warning(disable: 4191) // ignore "unsafe reinterpret_cast"
 #endif
 
 #ifndef EMBED_CXX_VERSION
@@ -1943,16 +1944,7 @@ namespace invocation {
     EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                                 \
   };
 
-#if defined(_MSC_VER) && !defined(__clang__)
-# pragma warning(push)
-# pragma warning(disable: 4191) // unsafe reinterpret_cast
-#endif
-
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_INVOKER_IMPL_DEFINE)
-
-#if defined(_MSC_VER) && !defined(__clang__)
-# pragma warning(pop)
-#endif
 
 #undef EMBED_DETAIL_INVOKER_IMPL_DEFINE
 #undef EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL
@@ -2241,7 +2233,8 @@ namespace command {
     void init(erasure_base_t* target, Functor&& obj) noexcept {
       // Since the `is_stored_origin<Functor>` is true, then it must
       // be function pointer which have nothing about ownership.
-      manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
+      static_cast<erasure_t*>(target)->m_core.ref_storage.fill_func_ptr
+        = reinterpret_cast<void(*)()>(obj); // using manager_impl_t::create is UB here
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
