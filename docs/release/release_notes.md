@@ -12,7 +12,8 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Removed the MSVC SAL `_Notnull_` annotation on function pointer constructor parameters.
+- The compile-fail test suite now includes a must-pass guard.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
