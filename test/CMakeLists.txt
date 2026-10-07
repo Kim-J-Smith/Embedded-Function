@@ -243,13 +243,37 @@ foreach(macros_ ${TEST_USE_MACROS})
 endforeach()
 
 if(MSVC)
-  set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} /analyze /WX")
+  set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} /wd6326 /analyze /WX")
 else()
   set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -Werror")
 endif()
 
 message(STATUS "===---------------------- FAIL TEST BEGIN ----------------------===")
 message(STATUS "Flags: ${FAIL_TEST_CMAKE_FLAGS}")
+
+# Check the "must-pass.cpp" file
+try_compile(
+  MUST_PASS_COMPILE_RES
+  ${CMAKE_CURRENT_BINARY_DIR}/fail_test/MUST_PASS
+  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/conformance/must-pass.cpp
+  CMAKE_FLAGS "${FAIL_TEST_CMAKE_FLAGS}"
+  COMPILE_DEFINITIONS "${CMAKE_CXX_FLAGS} ${FAIL_TEST_INCLUDE_PATH_CMD}"
+  OUTPUT_VARIABLE OUTPUT_MESSAGE_VAR
+)
+
+if(NOT ${MUST_PASS_COMPILE_RES})
+  message(
+    FATAL_ERROR
+    "[  ERROR   ]: \"must-pass.cpp\" rejected!"
+    " See ${CMAKE_CURRENT_SOURCE_DIR}/conformance/must-pass.cpp\n"
+    "OUTPUT: ${OUTPUT_MESSAGE_VAR}"
+  )
+else()
+  message(
+    STATUS
+    "[  PASSED  ]: \"must-pass.cpp\" guard correctly passed"
+  )
+endif()
 
 foreach(FAIL_TEST_SRC ${EMBED_FUNCTION_FAIL_TEST_FILES})
   file(
