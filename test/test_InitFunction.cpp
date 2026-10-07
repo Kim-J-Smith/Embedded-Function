@@ -549,6 +549,7 @@ TEST(InitFunction, ReturnPointerToClass) {
 
 struct InitFunction_list_init_struct {
     InitFunction_list_init_struct(std::initializer_list<int>& il) : buf(il) {}
+    InitFunction_list_init_struct() = default;
     std::vector<int> buf;
     int operator()() {
         int result = 0;
@@ -567,6 +568,15 @@ TEST(InitFunction, make_fn_InPlaceBuildCpp17) {
     auto f3 = ebd::make_fn(std::in_place_type<ebd::fn<int()>>, []{return 1;});
 
     using lcs = InitFunction_list_init_struct;
+    static_assert(
+        std::is_nothrow_constructible<
+            ebd::__safe_fn<int(), sizeof(lcs)>,
+            std::in_place_type_t<lcs>>::value, "BUG");
+    static_assert(
+        !std::is_nothrow_constructible<
+            ebd::__safe_fn<int(), sizeof(lcs)>,
+            std::in_place_type_t<lcs>,
+            std::initializer_list<int>&>::value, "BUG");
     ebd::fn<int(), sizeof(lcs)> f4(std::in_place_type<lcs>, {1, 2, 3});
 
     auto f5 = ebd::make_fn(std::in_place_type<lcs>, {4, 5, 6});
