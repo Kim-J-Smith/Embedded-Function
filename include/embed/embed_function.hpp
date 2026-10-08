@@ -3,7 +3,7 @@
  *
  * @date        2026-9-1
  *
- * @version     2.4.4
+ * @version     2.4.5
  *
  * @copyright   Copyright (c) 2025-2026 Kim-J-Smith
  *              All rights reserved.
@@ -41,6 +41,7 @@
 # pragma warning(disable: 4625 5026) // ignore "implicit delete copy/move constructor"
 # pragma warning(disable: 4626 5027) // ignore "implicit delete copy/move assignment"
 # pragma warning(disable: 26495) // ignore "variable is uninitialized"
+# pragma warning(disable: 4191) // ignore "unsafe reinterpret_cast"
 #endif
 
 #ifndef EMBED_CXX_VERSION
@@ -90,18 +91,6 @@
 #  define EMBED_HAS_INCLUDE(x) __has_include(x)
 # else
 #  define EMBED_HAS_INCLUDE(x) 0
-# endif
-#endif
-
-#ifndef EMBED_CXX_ENABLE_EXCEPTION
-# if defined(__cpp_exceptions)
-#  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions != 0)
-# elif defined(_MSC_VER) && defined(_HAS_EXCEPTIONS)
-#  define EMBED_CXX_ENABLE_EXCEPTION (_HAS_EXCEPTIONS != 0)
-# elif (defined(__EXCEPTIONS) && __EXCEPTIONS == 1)
-#  define EMBED_CXX_ENABLE_EXCEPTION 1
-# else
-#  define EMBED_CXX_ENABLE_EXCEPTION 0
 # endif
 #endif
 
@@ -196,6 +185,16 @@
 #else
 # error The 'embed_function.hpp' requires the support of syntax features of C++11.\
  You can use the '-std=c++11' compilation option, or simply switch to a newer compiler.
+#endif
+
+#ifndef EMBED_CXX_ENABLE_EXCEPTION
+# if defined(_MSC_VER) && defined(_HAS_EXCEPTIONS)
+#  define EMBED_CXX_ENABLE_EXCEPTION (_HAS_EXCEPTIONS != 0)
+# elif defined(__cpp_exceptions)
+#  define EMBED_CXX_ENABLE_EXCEPTION (__cpp_exceptions >= 199711L)
+# else
+#  define EMBED_CXX_ENABLE_EXCEPTION 0
+# endif
 #endif
 
 // const, volatile, {& | &&}, noexcept
@@ -302,12 +301,9 @@
 # pragma clang diagnostic push
 # pragma clang diagnostic ignored "-Wnullability-completeness"
 # pragma clang diagnostic ignored "-Wnullability-extension"
-# define EMBED_DETAIL_NOT_NULL(T) T _Nonnull
-#elif defined(_MSC_VER) && defined(_PREFAST_)
-# include <sal.h>
-# define EMBED_DETAIL_NOT_NULL(T) _Notnull_ T
+# define EMBED_DETAIL_NOT_NULL _Nonnull
 #else
-# define EMBED_DETAIL_NOT_NULL(T) T
+# define EMBED_DETAIL_NOT_NULL
 #endif
 
 #if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
@@ -1102,9 +1098,8 @@ inline namespace fn_traits {
 
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_alignment_is_enough : bool_constant<
-    !is_stored_origin<DecFn, Cfg::isView>::value
-    /// TODO: In MSVC, sizeof(pointer-to-member) % alignof(pointer-to-member) != 0
-    || (alignof(DecFn) <= alignof(Erasure) && (sizeof(DecFn) % alignof(DecFn) == 0))
+    // In MSVC, sizeof(pointer-to-member) % alignof(pointer-to-member) != 0
+    !is_stored_origin<DecFn, Cfg::isView>::value || alignof(DecFn) <= alignof(Erasure)
   > {};
 
   /// @brief Undefined class.
@@ -1703,8 +1698,7 @@ inline namespace fn_traits {
   template <typename FnWrapper, std::size_t Candidate, typename OtherWrapper>
   struct get_correct_buffer_size_helper</*IsWrapper=*/true, FnWrapper, Candidate, OtherWrapper> {
     static constexpr std::size_t value =
-      is_config_convertible<
-        typename is_ebd_fn<FnWrapper>::config, typename is_ebd_fn<OtherWrapper>::config>::value
+      is_convertible_from_specialization<FnWrapper, OtherWrapper>::value
       ? Candidate : sizeof(remove_cvref_t<OtherWrapper>);
   };
 
@@ -1947,16 +1941,7 @@ namespace invocation {
     EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                                 \
   };
 
-#if defined(_MSC_VER) && !defined(__clang__)
-# pragma warning(push)
-# pragma warning(disable: 4191) // unsafe reinterpret_cast
-#endif
-
   EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_INVOKER_IMPL_DEFINE)
-
-#if defined(_MSC_VER) && !defined(__clang__)
-# pragma warning(pop)
-#endif
 
 #undef EMBED_DETAIL_INVOKER_IMPL_DEFINE
 #undef EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL
@@ -2245,7 +2230,8 @@ namespace command {
     void init(erasure_base_t* target, Functor&& obj) noexcept {
       // Since the `is_stored_origin<Functor>` is true, then it must
       // be function pointer which have nothing about ownership.
-      manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
+      static_cast<erasure_t*>(target)->m_core.ref_storage.fill_func_ptr
+        = reinterpret_cast<void(*)()>(obj); // using manager_impl_t::create is UB here
       m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
     }
 
@@ -2673,8 +2659,6 @@ namespace crtp_mixins {
     }
 
     // Swap the contents of two function objects. (Inplace mode)
-    /// @todo TODO: If the target's DESTRUCTOR THROWS, the remaining steps
-    /// of that phase are skipped and BOTH wrappers are left non-empty.
     void swap(core_components_impl& fn_raw) noexcept(Config::assertNoThrow) {
       // Avoid self swap.
       if (this == std::addressof(fn_raw)) { return; }
@@ -2867,7 +2851,7 @@ public:
         && is_callable_from<Fn>::value
       )
     explicit core_facade_impl(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
-      noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value)
+      noexcept(std::is_nothrow_constructible<Fn, std::initializer_list<U>&, CArgs...>::value)
     {
       // Mandates.
       static_assert(std::is_same<Fn, decay_t<Fn>>::value, "decay_t<Fn> should be the same type as Fn.");
@@ -3003,7 +2987,7 @@ public:
         std::is_function<Func>::value
         && is_invocable_using<Func>::value
       )
-    core_facade_impl(EMBED_DETAIL_NOT_NULL(Func*) function_ptr) noexcept {
+    core_facade_impl(Func* EMBED_DETAIL_NOT_NULL function_ptr) noexcept {
       (void)assertions_for_functor<Size, Cfg, Sig, Func*, Func*&&, erasure_t>{};
 
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, "function pointer cannot be nullptr.");
@@ -3788,18 +3772,27 @@ noexcept(NoThrow) {
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, BufferSize, Alignment>`
 EMBED_DETAIL_TEMPLATE_BEGIN(
+  // User can specify the wrapper kind `Fn` and signature `SpecifiedSig`.
   template <class, std::size_t, std::size_t> class Fn,
   typename SpecifiedSig = void,
+
   typename... Args,
-  typename Deduction = decltype(make_fn(std::declval<Args>()...)),
-  typename RawSig = typename detail::is_ebd_fn<Deduction>::signature,
+
+  // Get the deduction results from other make_fn.
+  typename Deduction          = decltype(make_fn(std::declval<Args>()...)),
+  typename DeductionSig       = typename detail::is_ebd_fn<Deduction>::signature,
+  std::size_t DeductionBuf    = Deduction::get_buffer_size(),
+  std::size_t DeductionAlign  = Deduction::get_alignment(),
+
+  // Deduce the correct signature, alignment, and buffer size.
   typename Signature = detail::conditional_t<std::is_void<SpecifiedSig>::value,
-                           /* Auto deduce */ detail::get_correct_signature_t<Fn, RawSig>,
-          /* Use user specified signature */ SpecifiedSig>,
-  std::size_t BufferSize =
-    detail::get_correct_buffer_size<Fn<int(), 0, alignof(int*)>, Deduction::get_buffer_size(), Args...>::value,
-  std::size_t Alignment = detail::is_ebd_fn<Fn<int(), 0, alignof(int*)>>::config::isView ?
-    detail::default_values::non_owning::alignment : Deduction::get_alignment(),
+    /* Auto deduction */ detail::get_correct_signature_t<Fn, DeductionSig>,
+    /* User specified */ SpecifiedSig>,
+  std::size_t Alignment = detail::is_ebd_fn<Fn<int(), 0, alignof(int*)>>::config::isView
+    ? detail::default_values::non_owning::alignment
+    : DeductionAlign,
+  std::size_t BufferSize = detail::get_correct_buffer_size<
+      Fn<Signature, DeductionBuf, Alignment>, DeductionBuf, Args...>::value,
   typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
   bool NoThrow = detail::is_nothrow_constructible_lwg2116<FnWrapper, Args...>::value
 )

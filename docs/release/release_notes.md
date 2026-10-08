@@ -1,10 +1,9 @@
 **🔧 Fixed Bugs**
-- Fixed a double-free bug by reordering base classes of `lifetime_operations_impl`. (#189)
-- Fixed a bug where treating non-trivial functor as *stateless*. (#190)
-- Fixed a double-free bug in `swap()` when a move constructor throws. (#191)
-- Fixed undefined behavior caused by reading inactive members of the `ErasurePass` union. (#192)
-- Fixed `is_invocable_r` to reject callables that would bind a temporary to a reference return type, as specified by [P2255R2](https://wg21.link/P2255). (#194)
-- Fixed a compile error when adapting a callable with a static `operator()` returning non-`void` to a function wrapper whose return type is `void` (C++23 static call operator path). (#194)
+- Fixed a bug where `buffer_alignment_is_enough` rejecting pointer-to-member types on MSVC, where `sizeof(T) % alignof(T) != 0`. (#195)
+- Fixed a bug where `_HAS_EXCEPTIONS` in MSVC could not affect `EMBED_CXX_ENABLE_EXCEPTION`. (#196)
+- Fixed a bug where `make_fn` fail to deduce the correct size of the buffer. (#197)
+- Fixed a bug where the noexcept constraint judgment in the in-place constructor was incorrect. (#199)
+- Fixed undefined behavior when constructing `fn_ref` from a function pointer. (#200)
 
 **⚠️ Breaking Changes**
 - None.
@@ -13,12 +12,8 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- Added tests for throwing copy/move constructors and assignments. (#189)
-- Added tests for the `swap()` exception-safety fix. (#191)
-- Added tests for the P2255R2 dangling-reference rejection, including the builtin trait path. (#194)
-- Added tests for adapting a non-`void` static call operator to a `void`-returning function wrapper. (#194)
-- Optimized some assertion messages. (#194)
-- Added tests for `INVOKE<R>` implicit conversion semantics. (#194)
+- Removed the MSVC SAL `_Notnull_` annotation on function pointer constructor parameters. (#201)
+- The compile-fail test suite now includes a must-pass guard. (#201)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
