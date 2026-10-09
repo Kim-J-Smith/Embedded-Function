@@ -26,9 +26,6 @@
 /// If this macro is defined, it will be called to print debug message in debug mode.
 /// @example `fputs(message, stderr)`
 
-/// @b EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
-/// If this macro is defined, empty trivial functors are not treated as stateless.
-
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 
@@ -1611,11 +1608,7 @@ inline namespace fn_traits {
   struct is_stateless : bool_constant<
     std::is_trivially_copyable<Fn>::value && (
       is_statically_callable<Fn, Args...>::value
-#ifndef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
-      || (std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value)
-#else // ^^^ Empty trivial functors are treated as stateless.
       || is_standard_stateless_function_object<Fn>::value
-#endif
     )
   > {};
 
@@ -3864,7 +3857,6 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 # undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
 # undef EMBED_FN_HOOK_DEBUG
-# undef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
