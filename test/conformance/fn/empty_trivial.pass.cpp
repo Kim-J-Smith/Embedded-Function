@@ -20,9 +20,5 @@ TEST(Conformance_fn, empty_trivial_pass) {
     ebd::fn<uintptr_t()> f = F{};
     volatile uintptr_t a = f();
     volatile uintptr_t b = func(f);
-#ifdef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
-    ASSERT_EQ(a, b);
-#else
     ASSERT_NE(a, b);
-#endif
 }
