@@ -9,6 +9,7 @@
 
 **🛠️ Optimizations and Improvements**
 - Added `[[msvc::intrinsic]]` to the internal function to enhance the performance in `Debug` build mode.
+- Optimized benchmark case `StdOperatorWrapper.FunctionWrapperAsParams`.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
