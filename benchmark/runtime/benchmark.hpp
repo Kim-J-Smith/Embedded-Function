@@ -20,6 +20,20 @@
 #define BENCHMARK_NOTBASE(funcname) \
     PICOBENCH(funcname).samples(BENCHMARK_REPEAT).iterations(BENCHMARK_TIMES)
 
+#if defined(__clang__)
+# define BENCHMARK_OPAQUE_NOINLINE __attribute__((noinline, optnone))
+#elif defined(_MSC_VER)
+# define BENCHMARK_OPAQUE_NOINLINE __declspec(noinline)
+#elif defined(__GNUC__)
+# define BENCHMARK_OPAQUE_NOINLINE __attribute__((noinline, noipa))
+#else
+# define BENCHMARK_OPAQUE_NOINLINE
+#endif
+
+template <typename T>
+BENCHMARK_OPAQUE_NOINLINE
+static T benchmark_opaque_noninline(T obj) { return obj; }
+
 struct benchmark_trivial_struct {
     void* pod;
 };

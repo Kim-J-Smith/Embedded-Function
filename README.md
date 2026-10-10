@@ -432,14 +432,17 @@ Go to the `<root>/test/` directory, and follow the instructions in [`test/README
 
   Benchmark case   | `std` | `ebd` | `fu2` | `pro` | `std`/`ebd`
 -------------------|-------|-------|-------|-------|-----------
-AssignmentBenchmark<br>.CopyAssignmentSmallTrivial | 33.297ms | 14.932ms | 8.388ms | 34.652ms | **2.23x**
-AssignmentBenchmark<br>.CopyAssignmentStateless | 28.306ms | 4.970ms | 9.164ms | 8.085ms | **5.70x**
-AssignmentBenchmark<br>.CopyAssignmentSameType | 27.055ms | 13.683ms | 11.226ms | 22.213ms | **1.98x**
+AssignmentBenchmark<br>.CopyAssignmentSmallTrivial | 27.229ms | 27.528ms | 24.359ms | 21.148ms | **0.99x**
+AssignmentBenchmark<br>.CopyAssignmentStateless | 33.609ms | 4.977ms | 9.322ms | 8.704ms | **6.75x**
+AssignmentBenchmark<br>.CopyAssignmentSameType | 27.060ms | 21.937ms | 26.496ms | 29.851ms | **1.23x**
 CreateBenchmark<br>.CaptureLambda | 4.043ms | 2.484ms | 4.352ms | 3.417ms | **1.63x**
-CreateBenchmark<br>.NonTrivialFunctor | 13.685ms | 2.176ms | 4.044ms | 3.109ms | **6.29x**
-FreeFunction<br>.ScalarParameters | 6.214ms | 4.038ms | 6.521ms | 6.831ms | **1.54x**
-Functor<br>.ScalarParameters | 3.723ms | 0.933ms | 3.723ms | 3.414ms | **3.99x**
-MoveOnlyFunction<br>.Params.Array | 0.617ms | 0.617ms | 1.859ms | 2.173ms | **1.00x**
+CreateBenchmark<br>.NonTrivialFunctor | 13.683ms | 2.176ms | 4.044ms | 3.110ms | **6.29x**
+FreeFunction<br>.ScalarParameters | 5.904ms | 3.106ms | 5.905ms | 6.213ms | **1.90x**
+Functor<br>.ScalarParameters | 3.415ms | 0.722ms | 3.106ms | 3.723ms | **4.73x**
+MoveOnlyFunction<br>.Params.Array | 0.617ms | 0.617ms | 1.858ms | 2.174ms | **1.00x**
+StdOperatorWrapper<br>.FunctionWrapperAsParams | 9.329ms | 5.600ms | 12.133ms | 9.020ms | **1.67x**
+
+raw data: [actions/runs/38058855633](https://github.com/Kim-J-Smith/Embedded-Function/actions/runs/38058855633)
 
 > See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
 
