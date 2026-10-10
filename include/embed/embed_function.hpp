@@ -126,7 +126,7 @@
 #ifndef EMBED_INLINE
 # if EMBED_HAS_ATTRIBUTE(always_inline)
 #  define EMBED_INLINE inline __attribute__((always_inline))
-# elif defined(_MSC_VER) || defined(__IAR_SYSTEMS_ICC__)
+# elif defined(_MSC_VER)
 #  define EMBED_INLINE __forceinline
 # else
 #  define EMBED_INLINE inline
