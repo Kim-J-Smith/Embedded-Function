@@ -3,7 +3,7 @@
  *
  * @date        2026-9-1
  *
- * @version     2.4.5
+ * @version     2.4.6
  *
  * @copyright   Copyright (c) 2025-2026 Kim-J-Smith
  *              All rights reserved.
@@ -25,9 +25,6 @@
 /// @b EMBED_FN_HOOK_DEBUG(message)
 /// If this macro is defined, it will be called to print debug message in debug mode.
 /// @example `fputs(message, stderr)`
-
-/// @b EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
-/// If this macro is defined, empty trivial functors are not treated as stateless.
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
@@ -129,7 +126,7 @@
 #ifndef EMBED_INLINE
 # if EMBED_HAS_ATTRIBUTE(always_inline)
 #  define EMBED_INLINE inline __attribute__((always_inline))
-# elif defined(_MSC_VER) || defined(__IAR_SYSTEMS_ICC__)
+# elif defined(_MSC_VER)
 #  define EMBED_INLINE __forceinline
 # else
 #  define EMBED_INLINE inline
@@ -393,26 +390,13 @@ inline namespace cxx {
   // (nonstandard) Unwrap and forward std::reference_wrapper.
   EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
     EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
-  EMBED_NODISCARD EMBED_INLINE constexpr T&&
-  unwrap_ref_fwd(remove_reference_t<T>&& obj) noexcept
-  { return static_cast<T&&>(obj); }
-
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
-    EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
-  EMBED_NODISCARD EMBED_INLINE constexpr T&&
+  EMBED_DETAIL_MSVC_INTRINSIC EMBED_INLINE constexpr T&&
   unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept
   { return static_cast<T&&>(obj); }
 
   EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
     EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
-  EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
-  unwrap_ref_fwd(remove_reference_t<T>&& obj) noexcept {
-    return unwrap_ref_fwd<Under>(obj.get());
-  }
-
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
-    EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
-  EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
+  EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
   unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept {
     return unwrap_ref_fwd<Under>(obj.get());
   }
@@ -1611,11 +1595,7 @@ inline namespace fn_traits {
   struct is_stateless : bool_constant<
     std::is_trivially_copyable<Fn>::value && (
       is_statically_callable<Fn, Args...>::value
-#ifndef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
-      || (std::is_empty<Fn>::value && std::is_trivially_default_constructible<Fn>::value)
-#else // ^^^ Empty trivial functors are treated as stateless.
       || is_standard_stateless_function_object<Fn>::value
-#endif
     )
   > {};
 
@@ -3864,7 +3844,6 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 # undef EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
 # undef EMBED_FN_CONFIG_UNDEF_MACROS
 # undef EMBED_FN_HOOK_DEBUG
-# undef EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
