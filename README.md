@@ -289,7 +289,7 @@ auto f = ebd::make_fn(std::cw<&Class::member_function>, std::in_place_type<Class
 
 In embedded MCU development, it is often necessary to pass a C-style free function pointer as an argument, as existing libraries are typically written in C. To address this, we have implemented an `operator*` overload that simplifies converting an object of type `ebd::fn` / `ebd::unique_fn` / `ebd::classic_fn` / `ebd::fn_ref` to a C-style free function pointer.
 
-If the object encapsulated by the function wrapper is a valid function pointer, this mechanism returns the pointer; otherwise, it returns nullptr. Basically, it is equivalent to a highly restricted `target()` method.
+If the object encapsulated by the function wrapper is a valid function pointer which has exactly same signature with the wrapper, this mechanism returns the pointer; otherwise, it returns nullptr. Basically, it is equivalent to a highly restricted `target()` method.
 
 ### Example
 
