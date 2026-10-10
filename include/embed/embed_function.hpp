@@ -390,26 +390,13 @@ inline namespace cxx {
   // (nonstandard) Unwrap and forward std::reference_wrapper.
   EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
     EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
-  EMBED_NODISCARD EMBED_INLINE constexpr T&&
-  unwrap_ref_fwd(remove_reference_t<T>&& obj) noexcept
-  { return static_cast<T&&>(obj); }
-
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
-    EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
-  EMBED_NODISCARD EMBED_INLINE constexpr T&&
+  EMBED_DETAIL_MSVC_INTRINSIC EMBED_INLINE constexpr T&&
   unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept
   { return static_cast<T&&>(obj); }
 
   EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
     EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
-  EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
-  unwrap_ref_fwd(remove_reference_t<T>&& obj) noexcept {
-    return unwrap_ref_fwd<Under>(obj.get());
-  }
-
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
-    EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
-  EMBED_NODISCARD EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
+  EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
   unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept {
     return unwrap_ref_fwd<Under>(obj.get());
   }
