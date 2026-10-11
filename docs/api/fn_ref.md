@@ -33,12 +33,18 @@ function() = delete;
 function(std::nullptr_t) = delete;
 
 template <typename Fn, typename... CArgs>
-explicit function(std::in_place_type_t<Fn>, CArgs&&... args) = delete;
+explicit function(std::in_place_type_t<Fn>, CArgs&&... args); // not declared for views
 
 template <typename Fn, typename U, typename... CArgs>
-explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args) = delete;
+explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args); // not declared for views
 
 function& operator=(std::nullptr_t) = delete;
+
+// Deleted when `T` is a bare callable, i.e. not a function pointer, not a
+// `std::constant_wrapper`, and not a compatible `function` specialization
+// (a bare callable would only be assignable via a temporary view that dangles).
+template <typename T>
+function& operator=(T) = delete;
 
 constexpr bool is_empty() = delete;
 
@@ -46,6 +52,8 @@ constexpr explicit operator bool() = delete;
 
 void clear() = delete;
 ```
+
+Assigning a bare callable (`f = [] { ... };`) does not compile; construct a new view instead. Function pointers, `std::constant_wrapper`s, and compatible `function` specializations remain assignable through the defaulted copy/move `operator=`.
 
 A view wrapper can also be constructed from another wrapper with different buffer parameters. For this conversion, however, it only provides the `const function<Other...>&` overload. A temporary (rvalue) source also binds to that overload, and the reference inside is simply copied. Since a view holds only a reference, moving it and copying it are equivalent, so no separate move overload is needed.
 

@@ -68,7 +68,7 @@ The `Config` parameter is a `config_package` struct with the following boolean f
 
 ### Constructor
 
-Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) provide the full set below. View wrappers (`ebd::fn_ref`) delete the empty-state and in-place constructors, and bind functors/function pointers by reference instead.
+Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) provide the full set below. View wrappers (`ebd::fn_ref`) delete the empty-state constructors and do not declare the in-place constructors, binding functors/function pointers by reference instead.
 
 #### Default / Nullptr Constructor
 
@@ -161,10 +161,10 @@ A `static_assert` rejects null `Val` when `Fn` is a (member) function pointer.
 #### Nullptr Assignment
 
 ```cpp
-function& operator=(std::nullptr_t) noexcept;
+function& operator=(std::nullptr_t) noexcept(Config::assertNoThrow);
 ```
 
-Assigns a null pointer, clearing the function wrapper.
+Assigns a null pointer, clearing the function wrapper. Owning wrappers only (deleted for views).
 
 #### Copy Assignment
 
@@ -181,24 +181,6 @@ function& operator=(function&& other) = default;
 ```
 
 Moves another function wrapper.
-
-#### Functor Assignment
-
-```cpp
-template <typename Functor>
-function& operator=(Functor&& fn) noexcept;
-```
-
-Assigns a callable object to the function wrapper.
-
-#### Conversion Assignment
-
-```cpp
-template <std::size_t OtherSize, typename OtherCfg, typename OtherSig>
-function& operator=(const function<OtherSize, OtherCfg, OtherSig>& other);
-```
-
-Assigns from another function wrapper with a different buffer size or configuration, if compatible.
 
 ### Invocation
 
