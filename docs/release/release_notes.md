@@ -1,5 +1,5 @@
 **🔧 Fixed Bugs**
-- None.
+- Fixed non-owning wrappers calling an incorrect overload: the functor type is no longer decay-copied, so cv-qualification is preserved during invocation.
 
 **⚠️ Breaking Changes**
 - None.
