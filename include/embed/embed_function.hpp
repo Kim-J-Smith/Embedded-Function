@@ -663,6 +663,8 @@ inline namespace cxx {
   };
 
   // See <https://cppreference.com/w/cpp/types/is_invocable.html>.
+  // The semantics of `INVOKE` and `INVOKE<R>` have been updated
+  // to add judgement for dangling based on P2255R2.
   template <typename Ret, typename Func, typename... Args>
   struct is_invocable_r : public bool_constant<
     is_invocable_helper<void, invoke_result<Func, Args...>, Ret>::type::value
@@ -1591,17 +1593,10 @@ inline namespace fn_traits {
   // Check whether the functor is stateless.
   // Lambda has trivially default constructor since C++20.
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0624r2.pdf>.
-  template <bool IsView/*= false*/, typename Fn, typename... Args>
+  template <bool IsView, typename Fn, typename... Args>
   struct is_stateless : bool_constant<
-    std::is_trivially_copyable<Fn>::value && (
-      is_statically_callable<Fn, Args...>::value
-      || is_standard_stateless_function_object<Fn>::value
-    )
-  > {};
-
-  template <typename Fn, typename... Args>
-  struct is_stateless</*IsView =*/true, Fn, Args...> : bool_constant<
-    is_statically_callable<Fn, Args...>::value || is_standard_stateless_function_object<Fn>::value
+    (std::is_trivially_copyable<Fn>::value || IsView) &&
+    (is_statically_callable<Fn, Args...>::value || is_standard_stateless_function_object<Fn>::value)
   > {};
 
   // Log error for make_fn.
@@ -2205,39 +2200,39 @@ namespace command {
     void destroy(erasure_base_t*) = delete;
 
     // Initialize non-owning function wrapper. (FP)
-    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor)
       EMBED_DETAIL_REQUIRES_END(IsStoredOrigin) // requires the type of `Functor` is function pointer
     void init(erasure_base_t* target, Functor&& obj) noexcept {
       // Since the `is_stored_origin<Functor>` is true, then it must
       // be function pointer which have nothing about ownership.
       static_cast<erasure_t*>(target)->m_core.ref_storage.fill_func_ptr
         = reinterpret_cast<void(*)()>(obj); // using manager_impl_t::create is UB here
-      m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
+      m_invoker = &invoker_impl_t::view::template invoke<decay_t<Functor>>;
     }
 
     // Initialize non-owning function wrapper. (Not FP and not stateless)
-    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor)
       EMBED_DETAIL_REQUIRES_END(
-        (!IsStoredOrigin) && (!is_stateless</*IsView*/true, DecFunctor, Args...>::value)
+        (!IsStoredOrigin) && (!is_stateless</*IsView*/true, decay_t<Functor>, Args...>::value)
       ) // requires the type of `Functor` is neither function pointer or stateless functor
     EMBED_CXX20_CONSTEXPR void init(erasure_base_t* target, Functor&& obj) noexcept {
       // User has to make sure the callable object must remain alive while the function_ref is in use.
       manager_impl_t::template ref_create<>(target, std::addressof(obj));
-      m_invoker = &invoker_impl_t::view::template invoke<DecFunctor>;
+      m_invoker = &invoker_impl_t::view::template invoke<remove_reference_t<Functor>>;
     }
 
     // Initialize non-owning function wrapper. (Not FP and is stateless)
-    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor, typename DecFunctor = decay_t<Functor>)
+    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor)
       EMBED_DETAIL_REQUIRES_END(
-        (!IsStoredOrigin) && is_stateless</*IsView*/true, DecFunctor, Args...>::value
+        (!IsStoredOrigin) && is_stateless</*IsView*/true, decay_t<Functor>, Args...>::value
       ) // requires the type of `Functor` is not function pointer but stateless functor
     EMBED_CXX20_CONSTEXPR void init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
-        is_statically_callable<DecFunctor, Args...>::value,
+        is_statically_callable<decay_t<Functor>, Args...>::value,
         typename invoker_impl_t::static_call,
         typename invoker_impl_t::empty_trivial_class
       >;
-      m_invoker = &invoker_impl_target_t::template invoke<DecFunctor>;
+      m_invoker = &invoker_impl_target_t::template invoke<decay_t<Functor>>;
     }
 
 #if __cpp_lib_constant_wrapper >= 202603L
