@@ -1,15 +1,14 @@
 **🔧 Fixed Bugs**
-- Fixed potential undefined behavior caused by treating functors that are both trivial and empty as *stateless*. (#204)
+- None.
 
 **⚠️ Breaking Changes**
-- Removed the `EMBED_FN_CONFIG_EMPTY_TRIVIAL_STATEFUL` macro. Empty trivial functors are now always treated as stateful except statically callable and standard operator wrappers: owning wrappers store them, which may increase wrapper size but keeps the `this` pointer stable across invocations. (#204)
+- None.
 
 **✨ New Features**
 - None.
 
 **🛠️ Optimizations and Improvements**
-- Added `[[msvc::intrinsic]]` to the internal function to enhance the performance in `Debug` build mode. (#205)
-- Optimized benchmark case `StdOperatorWrapper.FunctionWrapperAsParams`. (#206)
+- None.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
