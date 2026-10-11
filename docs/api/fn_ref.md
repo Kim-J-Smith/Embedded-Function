@@ -53,7 +53,7 @@ constexpr explicit operator bool() = delete;
 void clear() = delete;
 ```
 
-Function pointers, `std::constant_wrapper`s, and compatible `function` specializations remain assignable through the defaulted copy/move `operator=`. A bare callable does not compile; construct a new view instead.
+Assigning a bare callable (`f = [] { ... };`) does not compile; construct a new view instead. Function pointers, `std::constant_wrapper`s, and compatible `function` specializations remain assignable through the defaulted copy/move `operator=`.
 
 A view wrapper can also be constructed from another wrapper with different buffer parameters. For this conversion, however, it only provides the `const function<Other...>&` overload. A temporary (rvalue) source also binds to that overload, and the reference inside is simply copied. Since a view holds only a reference, moving it and copying it are equivalent, so no separate move overload is needed.
 

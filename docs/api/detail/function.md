@@ -182,9 +182,6 @@ function& operator=(function&& other) = default;
 
 Moves another function wrapper.
 
-> [!NOTE]
-> No assignment operator takes a bare callable or a different `function` specialization: owning wrappers convert the right-hand side into a temporary same-specialization wrapper and move-assign it; view wrappers delete the callable path, since the temporary view would dangle, see [`ebd::fn_ref`](../fn_ref.md).
-
 ### Invocation
 
 ```cpp
