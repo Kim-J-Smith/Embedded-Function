@@ -37,8 +37,8 @@ All member functions of `ebd::detail::function` are available for `ebd::unique_f
 // Create a function wrapper for a void() signature
 ebd::unique_fn<void()> fn;
 
-// Assign a move-only lambda
-fn = []() && { /* do something */ };
+// Assign a lambda
+fn = []() { /* do something */ };
 fn();
 
 // Move the function wrapper
@@ -79,6 +79,7 @@ fn(100);
 - The buffer size is automatically aligned to a multiple of the `Alignment` parameter.
 - If the callable object is too large or has a larger alignment than the specified `BufferSize`/`Alignment`, a `static_assert` will be triggered at compile time.
 - When called in an empty state, `ebd::unique_fn` will call `std::terminate()`.
+- Lambdas cannot be ref-qualified (`[...]() && { ... }` is ill-formed); an rvalue-only callable needs a functor with `operator()() &&` and a signature such as `ebd::unique_fn<void() &&>`, called as `std::move(f)()`.
 
 ## See Also
 
