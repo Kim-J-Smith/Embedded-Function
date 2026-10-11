@@ -6,6 +6,8 @@
 
 #include "test_function.hpp"
 
+namespace {
+
 template <class Sig, std::size_t Buf, std::size_t Align = ebd::detail::default_values::owning::alignment>
 using nothrow_fn = ebd::basic_fn<Sig, Buf, Align, true, false, false, false>;
 
@@ -21,6 +23,13 @@ struct Static_call_operator_test {
 };
 
 #endif
+
+struct ConstAndNonConst {
+  int operator()() { return 1; }
+  int operator()() const { return 2; }
+};
+
+}
 
 TEST(Conformance_fn_ref, conformance_addition_pass) {
 
@@ -243,5 +252,41 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
   {
     int result = 42;
     ASSERT_EQ(ebd_test_safe_tmp_fn([result]{ return result; }), result);
+  }
+
+  {
+    ConstAndNonConst const obj;
+    ASSERT_EQ(obj(), 2);
+    ASSERT_EQ(obj.operator()(), 2);
+
+    ebd::fn_ref<int() const> ref_const = obj;
+    ASSERT_EQ(ref_const(), 2);
+
+    ebd::fn_ref<int()> ref_non_const = obj;
+    ASSERT_EQ(ref_non_const(), 2); // still call operator() const
+
+    ebd::fn<int() const> own_const = obj;
+    ASSERT_EQ(own_const(), 2);
+
+    ebd::fn<int()> own_non_const = obj;
+    ASSERT_EQ(own_non_const(), 1); // call operator()
+  }
+
+  {
+    ConstAndNonConst obj;
+    ASSERT_EQ(obj(), 1);
+    ASSERT_EQ(obj.operator()(), 1);
+
+    ebd::fn_ref<int() const> ref_const = obj;
+    ASSERT_EQ(ref_const(), 2);
+
+    ebd::fn_ref<int()> ref_non_const = obj;
+    ASSERT_EQ(ref_non_const(), 1); // call operator()
+
+    ebd::fn<int() const> own_const = obj;
+    ASSERT_EQ(own_const(), 2);
+
+    ebd::fn<int()> own_non_const = obj;
+    ASSERT_EQ(own_non_const(), 1); // call operator()
   }
 }
