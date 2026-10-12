@@ -396,7 +396,7 @@ inline namespace cxx {
 
   EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
     EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
-  EMBED_INLINE constexpr unwrap_ref_wrapper_t<T>&&
+  EMBED_INLINE EMBED_CXX20_CONSTEXPR unwrap_ref_wrapper_t<T>&&
   unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept {
     return unwrap_ref_fwd<Under>(obj.get());
   }
