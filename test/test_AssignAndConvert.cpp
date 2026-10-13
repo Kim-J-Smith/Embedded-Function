@@ -163,7 +163,8 @@ TEST(AssignAndConvert, StatelessAssign) {
         ASSERT_EQ(f3(2, 1), false);
     }
     {
-        ebd::fn_ref<bool(int, int)> f1 = std::less<int>{};
+        std::less<int> ls{};
+        ebd::fn_ref<bool(int, int)> f1 = ls;
         auto f2 = f1;
         ASSERT_EQ(f1(1, 2), true);
         ASSERT_EQ(f1(2, 1), false);

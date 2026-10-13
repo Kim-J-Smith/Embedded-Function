@@ -6,10 +6,10 @@
 - None.
 
 **✨ New Features**
-- None.
+- Added `[[clang::lifetimebound]]` to the constructor of non-owning wrappers (`fn_ref`), so that clang can diagnose dangling reference in more cases.
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Added conformance tests for the lifetimebound diagnostics.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.

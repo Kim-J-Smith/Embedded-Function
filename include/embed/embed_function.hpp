@@ -294,19 +294,26 @@
   "An internal library error has occurred: [" error "] This is unexpected.\n" \
   "PLEASE report this bug at <https://github.com/Kim-J-Smith/Embedded-Function/issues>."
 
+// [[gnu::nonnull]] is improper here because it contains [[assume]] semantics.
 #if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
 # pragma clang diagnostic push
 # pragma clang diagnostic ignored "-Wnullability-completeness"
 # pragma clang diagnostic ignored "-Wnullability-extension"
-# define EMBED_DETAIL_NOT_NULL _Nonnull
+# define EMBED_DETAIL_NONNULL _Nonnull
 #else
-# define EMBED_DETAIL_NOT_NULL
+# define EMBED_DETAIL_NONNULL
 #endif
 
 #if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
 # define EMBED_DETAIL_MSVC_INTRINSIC [[msvc::intrinsic]]
 #else
 # define EMBED_DETAIL_MSVC_INTRINSIC
+#endif
+
+#if EMBED_HAS_CXX_ATTRIBUTE(clang::lifetimebound)
+# define EMBED_DETAIL_LIFETIMEBOUND [[clang::lifetimebound]]
+#else
+# define EMBED_DETAIL_LIFETIMEBOUND
 #endif
 
 #if EMBED_HAS_ATTRIBUTE(cold)
@@ -2962,7 +2969,7 @@ public:
         std::is_function<Func>::value
         && is_invocable_using<Func>::value
       )
-    core_facade_impl(Func* EMBED_DETAIL_NOT_NULL function_ptr) noexcept {
+    core_facade_impl(Func* EMBED_DETAIL_NONNULL function_ptr) noexcept {
       (void)assertions_for_functor<Size, Cfg, Sig, Func*, Func*&&, erasure_t>{};
 
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, "function pointer cannot be nullptr.");
@@ -2981,7 +2988,7 @@ public:
         && (!std::is_member_pointer<Tp>::value)
         && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
       )
-    EMBED_CXX20_CONSTEXPR core_facade_impl(Functor&& functor) noexcept
+    EMBED_CXX20_CONSTEXPR core_facade_impl(Functor&& functor EMBED_DETAIL_LIFETIMEBOUND) noexcept
       : Base_MemberVar(nullptr)
     {
       (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
@@ -3815,8 +3822,8 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 #if EMBED_HAS_FEATURE(nullability) && defined(__clang__)
 # pragma clang diagnostic ignored "-Wunknown-pragmas" // suppress clangd warning
 # pragma clang diagnostic pop
-#endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NOT_NULL
-#undef EMBED_DETAIL_NOT_NULL
+#endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NONNULL
+#undef EMBED_DETAIL_NONNULL
 #undef EMBED_DETAIL_MSVC_INTRINSIC
 #undef EMBED_DETAIL_COLD
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
