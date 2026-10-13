@@ -206,17 +206,22 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     constexpr ebd::fn_ref<int()> f1 = l;
     ASSERT_EQ(f1(), 42);
 
-    constexpr ebd::fn_ref<int(int, int)> f2 = std::plus{};
+    static constexpr std::plus p{};
+    constexpr ebd::fn_ref<int(int, int)> f2 = p;
     ASSERT_EQ(f2(1, 2), 3);
+
+    auto foo = [](ebd::fn_ref<int(int, int)> f) { return f(42, 1); };
+    ASSERT_EQ(foo(std::minus{}), 41);
   }
 #endif
 
 #if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
   {
-    ebd::fn_ref<int(int, int)> f1 = ebd_test_static_call_operator{};
+    ebd_test_static_call_operator obj;
+    ebd::fn_ref<int(int, int)> f1 = obj;
     ASSERT_EQ(f1(0, 42), 42);
 
-    auto f2 = ebd::make_fn<ebd::fn_ref>(ebd_test_static_call_operator{});
+    auto f2 = ebd::make_fn<ebd::fn_ref>(obj);
     static_assert(std::is_same_v<decltype(f2), ebd::fn_ref<int(int, int) const noexcept>>, "BUG");
     ASSERT_EQ(f2(1, 42), 43);
   }
@@ -233,10 +238,12 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
   {
 #if EMBED_CXX_VERSION >= 202002L && __cpp_lib_ranges >= 202110L
 
-    ebd::fn_ref<bool(int, int) const> f3 = std::ranges::less{}; // stateless
+    std::ranges::less ls{};
+    ebd::fn_ref<bool(int, int) const> f3 = ls; // stateless
     ASSERT_EQ(f3(1, 2), true);
 
-    ebd::fn_ref<bool(int, int) const> f4 = std::ranges::greater_equal{}; // stateless
+    std::ranges::greater_equal ge{};
+    ebd::fn_ref<bool(int, int) const> f4 = ge; // stateless
     ASSERT_EQ(f4(4, 4), true);
     ASSERT_EQ(f4(5, 4), true);
 
