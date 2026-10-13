@@ -3825,6 +3825,7 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 #endif // ^^^ Pop the pushed warning for EMBED_DETAIL_NONNULL
 #undef EMBED_DETAIL_NONNULL
 #undef EMBED_DETAIL_MSVC_INTRINSIC
+#undef EMBED_DETAIL_LIFETIMEBOUND
 #undef EMBED_DETAIL_COLD
 #if defined(EMBED_FN_CONFIG_UNDEF_MACROS)
 // #undef most of the EMBED_* macros if EMBED_FN_CONFIG_UNDEF_MACROS is defined.
