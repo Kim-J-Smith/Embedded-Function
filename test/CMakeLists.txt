@@ -245,7 +245,7 @@ endforeach()
 if(MSVC)
   set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} /wd6326 /analyze /WX")
 else()
-  set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -Werror")
+  set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -Wall -Werror")
 endif()
 
 message(STATUS "===---------------------- FAIL TEST BEGIN ----------------------===")

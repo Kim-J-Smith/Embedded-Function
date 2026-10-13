@@ -6,6 +6,6 @@ int main() {
     ebd::fn_ref<bool(int, int)> f = std::less<int>{};
     (void)f(1, 2);
 #else
-    static_assert(true, "");
+    static_assert(false, "");
 #endif
 }

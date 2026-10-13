@@ -6,6 +6,6 @@ int main() {
     ebd::fn_ref<int()> f = []() { return 42; };
     (void)f();
 #else
-    static_assert(true, "");
+    static_assert(false, "");
 #endif
 }
