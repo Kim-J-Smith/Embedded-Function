@@ -43,7 +43,11 @@ test_gcc() {
     echo; echo "-- FINISH ENVIRONMENT SETUP --"; echo;
     for test_use_macros in "${TEST_USE_MACROS_HELPER[@]}"; do
         for compiler_version in "${COMPILER_VERSIONS[@]}"; do
-            for cxx_standard in "${CXX_STANDARDS[@]}"; do
+            CXX_STANDARDS_RUN=("${CXX_STANDARDS[@]}")
+            if ((compiler_version >= 16)); then
+                CXX_STANDARDS_RUN+=("26")
+            fi
+            for cxx_standard in "${CXX_STANDARDS_RUN[@]}"; do
                 config_cmake_and_run_test "$cxx_standard" "$compiler_version" "$test_use_macros"
             done
         done

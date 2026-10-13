@@ -43,6 +43,46 @@ jobs:
         run: |
           bash ./script/test-gcc.sh 14
 
+  # GCC 15
+  ubuntu-gcc-15:
+    if: >-
+      github.repository_owner == 'Kim-J-Smith' &&
+      github.event_name == 'pull_request' &&
+      github.base_ref == 'main'
+    runs-on: ubuntu-26.04
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run GCC tests
+      - name: Run GCC tests
+        working-directory: test
+        shell: bash
+        run: |
+          bash ./script/test-gcc.sh 15
+
+  # GCC 16
+  ubuntu-gcc-16:
+    if: >-
+      github.repository_owner == 'Kim-J-Smith' &&
+      github.event_name == 'pull_request' &&
+      github.base_ref == 'main'
+    runs-on: ubuntu-26.04
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run GCC tests
+      - name: Run GCC tests
+        working-directory: test
+        shell: bash
+        run: |
+          bash ./script/test-gcc.sh 16
+
   # Clang 18
   ubuntu-clang-18:
     if: github.repository_owner == 'Kim-J-Smith'
