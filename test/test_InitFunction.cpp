@@ -1152,7 +1152,8 @@ TEST(InitFunction, NonVoidStaticCallBindToVoid) {
     }
     {
         // fn_ref
-        ebd::fn_ref<void(int)> f = StaticallyCallable{};
+        StaticallyCallable obj{};
+        ebd::fn_ref<void(int)> f = obj;
         static_call_count = 0;
         f(1);
         ASSERT_EQ(static_call_count, 1);
@@ -1227,7 +1228,8 @@ TEST(InitFunction, ImplicitReturnConv) {
         ASSERT_EQ(f(1).val, 42);
     }
     {
-        ebd::fn_ref<R(int)> f = StaticallyCallable{};
+        StaticallyCallable obj{};
+        ebd::fn_ref<R(int)> f = obj;
         ASSERT_EQ(f(0).val, 42);
         ASSERT_EQ(f(1).val, 42);
     }
