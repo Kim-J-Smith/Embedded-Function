@@ -309,6 +309,12 @@
 # define EMBED_DETAIL_MSVC_INTRINSIC
 #endif
 
+#if EMBED_HAS_CXX_ATTRIBUTE(clang::lifetimebound)
+# define EMBED_DETAIL_LIFETIMEBOUND [[clang::lifetimebound]]
+#else
+# define EMBED_DETAIL_LIFETIMEBOUND
+#endif
+
 #if EMBED_HAS_ATTRIBUTE(cold)
 # define EMBED_DETAIL_COLD __attribute__((cold))
 #elif defined(_MSC_VER) && !defined(__clang__)
@@ -2981,7 +2987,7 @@ public:
         && (!std::is_member_pointer<Tp>::value)
         && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
       )
-    EMBED_CXX20_CONSTEXPR core_facade_impl(Functor&& functor) noexcept
+    EMBED_CXX20_CONSTEXPR core_facade_impl(Functor&& functor EMBED_DETAIL_LIFETIMEBOUND) noexcept
       : Base_MemberVar(nullptr)
     {
       (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
