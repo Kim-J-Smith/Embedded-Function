@@ -35,6 +35,7 @@
 - [Test](#-test)
 - [Performance optimization](#-performance-optimization)
 - [Benchmark](#️-benchmark)
+- [CMake integration](#️-cmake-integration)
 - [Future learning & evolution reference](#-future-learning--evolution-reference)
 - [Similar implementations](#-similar-implementations)
 
@@ -70,13 +71,10 @@ template <class Signature, size_t BufferSize, size_t Alignment,
 ```
 
 ## ⚡ Quick start
-- Clone the repository or download the `header_only.zip` in the "Release".
 
-- Add include path `<repo_root>/include`.
+*Embedded Function* provides all components in one header file `embed_function.hpp`, so you can copy [the file](./include/embed/embed_function.hpp) or download [`header_only.zip`](https://github.com/Kim-J-Smith/Embedded-Function/releases/latest/download/header_only.zip), and then add the file (along with `embed/`) to your include directory.
 
-- In program `#include "embed/embed_function.hpp"`.
-
-- Use the `ebd::fn` template class.
+Alternatively, [CMake integration](#️-cmake-integration) is also available.
 
 ```cpp
 #include <iostream>
@@ -442,6 +440,31 @@ StdOperatorWrapper<br>.FunctionWrapperAsParams | 9.329ms | 5.600ms | 12.133ms | 
 raw data: [actions/runs/38058855633](https://github.com/Kim-J-Smith/Embedded-Function/actions/runs/38058855633)
 
 > See [here](https://github.com/Kim-J-Smith/Embedded-Function/actions/workflows/benchmark.yml) for more benchmark results. Follow [`benchmark/README.md`](./benchmark/README.md) to run the benchmark in your platform.
+
+## 🏗️ CMake integration
+
+Make sure CMake 3.14+ is installed, and use:
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+  embedded_function
+  GIT_REPOSITORY https://github.com/Kim-J-Smith/Embedded-Function.git
+  GIT_TAG        v2.5.0
+  GIT_SHALLOW    TRUE
+)
+
+FetchContent_MakeAvailable(embedded_function)
+target_link_libraries(${YOUR_TARGET_NAME} PRIVATE embedded_function::functions)
+```
+
+Alternatively, after installing with `cmake -B build && cmake --install build`, use:
+
+```cmake
+find_package(embedded_function CONFIG REQUIRED)
+target_link_libraries(${YOUR_TARGET_NAME} PRIVATE embedded_function::functions)
+```
 
 ## 🧭 Future learning & evolution reference
 
