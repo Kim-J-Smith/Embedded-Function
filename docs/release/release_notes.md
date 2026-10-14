@@ -2,7 +2,7 @@
 - None.
 
 **⚠️ Breaking Changes**
-- All owning function wrappers (`fn`, `unique_fn`, etc.) now rejects callable objects whose destructor may thow exceptions.
+- All owning function wrappers (`fn`, `unique_fn`, etc.) now reject callable objects whose destructor may thow exceptions.
 
 **✨ New Features**
 - None.

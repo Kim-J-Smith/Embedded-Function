@@ -7,6 +7,6 @@ struct ThrowInDestroy {
 };
 
 int main() {
-  // callable object shouldn't throw in destructor.
+  // FAIL: callable object shouldn't throw in destructor.
   ebd::fn<void()> f = ThrowInDestroy{}; // FAIL
 }
