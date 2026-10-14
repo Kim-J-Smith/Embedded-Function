@@ -24,16 +24,3 @@ TEST(DetailTraits, reference_converts_from_temporary_impl) {
     ASSERT_EQ(ret <= can_convert || PASS_, true);
 }
 
-struct DetailTraits_Noexcept_Create {
-    DetailTraits_Noexcept_Create() = default;
-    DetailTraits_Noexcept_Create(const DetailTraits_Noexcept_Create&) = default;
-    ~DetailTraits_Noexcept_Create() noexcept(false) {}
-};
-
-template <typename Obj>
-using nothrow_constructile_ = ebd::detail::is_nothrow_construct_from_functor<Obj>;
-
-TEST(DetailTraits, is_nothrow_construct_from_functor) {
-    using T = DetailTraits_Noexcept_Create;
-    ASSERT_EQ(nothrow_constructile_<T>::value == true, true);
-}

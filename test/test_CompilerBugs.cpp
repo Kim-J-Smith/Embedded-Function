@@ -28,20 +28,18 @@ TEST(CompilerBugs, GCC_Bug_106067) {
 // Clang 3.3 ~ 20.2 has this "bug".
 // MSVC v19.20 ~ v19.50 has this "bug".
 // This "bug" will not be solved. See https://cplusplus.github.io/LWG/issue2116
-#if 0
-# define EBD_RES_EXPECT true
-#else
-# define EBD_RES_EXPECT false
-#endif
+// THIS IS NOT A BUG
 
-TEST(CompilerBugs, GCC_Bug_51452) {
+// Embedded-Function v2.5.0: Now we assume the destructor of callable object never throw.
+
+TEST(CompilerBugs, LWG2116_NonthrowDtorMakesIsNothrowConstructibleTrue) {
     auto CanConv = std::is_constructible<
         ebd::fn<int(int) &>, ebd_test_operator_unambiguous&>::value;
     auto NoThrow = std::is_nothrow_constructible<
         ebd::fn<int(int) &>, ebd_test_operator_unambiguous&>::value;
 
     EXPECT_EQ(CanConv == true, true);
-    EXPECT_EQ(NoThrow == true, EBD_RES_EXPECT);
+    EXPECT_EQ(NoThrow == true, true);
     SUCCEED();
 }
 

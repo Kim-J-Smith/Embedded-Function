@@ -70,7 +70,7 @@ using CwLeftRightCallable = std::constant_wrapper<LeftRightCallable{}>;
 static_assert(
     std::is_constructible_v<ebd::fn<int(int, int)>, CwMemberFunction, Normal>);
 static_assert(
-    !std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,CwMemberFunction, Normal>);
+    std::is_nothrow_constructible_v<ebd::fn<int(int, int)>,CwMemberFunction, Normal>);
 static_assert(
     !std::is_constructible_v<ebd::fn<int(int, int) const>, CwMemberFunction, Normal>);
 static_assert(
