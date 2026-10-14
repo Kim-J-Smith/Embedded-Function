@@ -44,7 +44,7 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     ASSERT_EQ(std::is_copy_assignable<f_t>::value == true, true);
     ASSERT_EQ(std::is_nothrow_copy_constructible<f_t>::value == false, true);
     ASSERT_EQ(std::is_nothrow_copy_assignable<f_t>::value == false, true);
-    ASSERT_EQ(std::is_nothrow_destructible<f_t>::value == false, true);
+    ASSERT_EQ(std::is_nothrow_destructible<f_t>::value == true, true);
 
     // uf_t
     ASSERT_EQ(std::is_move_constructible<uf_t>::value == true, true);
@@ -53,7 +53,7 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     ASSERT_EQ(std::is_copy_assignable<uf_t>::value == false, true);
     ASSERT_EQ(std::is_nothrow_move_constructible<uf_t>::value == false, true);
     ASSERT_EQ(std::is_nothrow_move_assignable<uf_t>::value == false, true);
-    ASSERT_EQ(std::is_nothrow_destructible<uf_t>::value == false, true);
+    ASSERT_EQ(std::is_nothrow_destructible<uf_t>::value == true, true);
 
     // cf_t (classic_fn is copyable, like fn)
     ASSERT_EQ(std::is_move_constructible<cf_t>::value == true, true);
@@ -62,7 +62,7 @@ TEST(BasicAttributes, AbilityAndNoexcept) {
     ASSERT_EQ(std::is_copy_assignable<cf_t>::value == true, true);
     ASSERT_EQ(std::is_nothrow_copy_constructible<cf_t>::value == false, true);
     ASSERT_EQ(std::is_nothrow_copy_assignable<cf_t>::value == false, true);
-    ASSERT_EQ(std::is_nothrow_destructible<cf_t>::value == false, true);
+    ASSERT_EQ(std::is_nothrow_destructible<cf_t>::value == true, true);
 
     // sf_t (__safe_fn asserts nothrow, so copy/move/destroy are nothrow)
     ASSERT_EQ(std::is_move_constructible<sf_t>::value == true, true);

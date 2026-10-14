@@ -8,7 +8,7 @@ TEST(ThrowDeath, throw_bad_function_call) {
     EBD_EXPECT_THROW(f1(), std::bad_function_call);
 }
 
-// ThrowDeath[0.5]
+// ThrowDeath[1]
 TEST(ThrowDeath, terminate_on_empty_call) {
     ebd::fn<void()> f1;
     ASSERT_EQ(f1.is_empty(), true);
@@ -31,7 +31,7 @@ TEST(ThrowDeath, terminate_on_empty_call) {
     EXPECT_DEATH(f4(), "Empty function has been called!");
 }
 
-// ThrowDeath[1] — fn/unique_fn terminate on empty; safe_fn (deprecated) also terminates
+// ThrowDeath[2] fn/unique_fn terminate on empty; safe_fn (deprecated) also terminates
 TEST(ThrowDeath, mix_throw_and_death) {
     auto f1 = ebd::make_fn(ebd_test_free_func_iii_add);
     ASSERT_EQ(f1 != nullptr, true);
@@ -60,28 +60,7 @@ TEST(ThrowDeath, mix_throw_and_death) {
     EBD_EXPECT_THROW(f3(3), std::bad_function_call);
 }
 
-#if !defined(_MSC_VER)
 // ThrowDeath[3]
-struct ThrowDeath_must_fail {
-    ThrowDeath_must_fail() = default;
-    ~ThrowDeath_must_fail() noexcept(false) {
-        EBD_THROW(std::exception{});
-    }
-    void operator()() noexcept {}
-};
-void ebd_test_fail() {
-#if EMBED_CXX_VERSION >= 201703L
-    []{(void)ebd::make_fn(std::in_place_type<ThrowDeath_must_fail>);}();
-#else
-    (void)ThrowDeath_must_fail{};
-#endif
-}
-TEST(ThrowDeath, fail_make_fn) {
-    EBD_EXPECT_THROW(ebd_test_fail(), std::exception);
-}
-#endif
-
-// ThrowDeath[4]
 TEST(ThrowDeath, RefTerminateNullInit) {
     int(*f_ptr)() = []{ return 0; };
     f_ptr = nullptr;

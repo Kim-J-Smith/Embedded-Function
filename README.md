@@ -355,9 +355,6 @@ auto main() -> int {
 }
 ```
 
-> [!CAUTION]
-> *An MSVC 14.51 regression triggers an ICE when using modules. See [issue #174](https://github.com/Kim-J-Smith/Embedded-Function/issues/174).*
-
 ## 🛠️ Debug diagnostics hook
 
 `EMBED_FN_HOOK_DEBUG(message)` is a user-defined macro hook for capturing diagnostic output in debug builds. Define it **before** including the header:

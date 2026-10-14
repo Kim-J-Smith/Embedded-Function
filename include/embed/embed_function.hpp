@@ -1068,22 +1068,6 @@ inline namespace fn_traits {
     is_convertible_from_specialization_impl<remove_reference_t<To>, remove_reference_t<From>>::value
   >::type {};
 
-  // Check whether Functor can be constructed as decay_t<Functor>
-  // without throwing an exception. And `std::is_nothrow_constructible`
-  // has bug. (It will also check the destructor)
-  // See <https://cplusplus.github.io/LWG/issue2116>.
-  template <typename Target, typename... Args>
-  struct is_nothrow_constructible_lwg2116 : bool_constant<
-    noexcept(::new (static_cast<void*>(nullptr)) Target(std::declval<Args>()...))
-  > {};
-
-  template <typename Functor, typename Class = decay_t<Functor>, typename = void>
-  struct is_nothrow_construct_from_functor : std::false_type {};
-
-  template <typename Functor, typename Class>
-  struct is_nothrow_construct_from_functor<Functor, Class, void_t<decltype(Class(std::declval<Functor>()))>>
-  : is_nothrow_constructible_lwg2116<Class, Functor> {};
-
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
   struct buffer_size_is_enough : bool_constant<
     !is_stored_origin<DecFn, Cfg::isView>::value || sizeof(DecFn) <= sizeof(Erasure)
@@ -1131,26 +1115,19 @@ inline namespace fn_traits {
   }
 
   // Check whether throwing operations are acceptable.
-  template <typename Functor, typename Object, typename Config,
-    bool IsViewOrMayThrow = Config::isView || !Config::assertNoThrow /*=true*/,
-    typename DecFunctor = decay_t<Functor>>
-    // If `Config::isView` is true or `Config::assertNoThrow` is false,
-    // then all restrictions are ignored.
-  struct assert_throwing_is_ok : std::true_type {};
+  template <bool IsView, bool AssertNothrow, typename Functor, typename DecFn = decay_t<Functor>>
+  struct lifetime_throw_is_ok : std::is_nothrow_destructible<DecFn> {};
 
-  template <typename Functor, typename Object, typename Config, typename DecFunctor>
-  struct assert_throwing_is_ok<Functor, Object, Config, /*IsViewOrMayThrow=*/false, DecFunctor> {
-    // The `value` means the `DecFunctor` is nothrow-destructible and
-    // nothrow-constructible from `Object`. If it is copy-constructible,
-    // it should be nothrow-copy-constructible. And if it is move
-    // -constructible, it should be nothrow-move-constructible.
-    static constexpr bool value = std::is_nothrow_destructible<DecFunctor>::value
-      && (std::is_nothrow_copy_constructible<DecFunctor>::value ||
-        !std::is_copy_constructible<DecFunctor>::value)
-      && (std::is_nothrow_move_constructible<DecFunctor>::value ||
-        !std::is_move_constructible<DecFunctor>::value)
-      && std::is_nothrow_constructible<DecFunctor, Object>::value;
-  };
+  template <bool AssertNothrow, typename Functor, typename DecFn>
+  struct lifetime_throw_is_ok</*IsView=*/true, AssertNothrow, Functor, DecFn> : std::true_type {};
+
+  template <typename Functor, typename DecFn>
+  struct lifetime_throw_is_ok</*IsView=*/false, /*AssertNothrow=*/true, Functor, DecFn>
+  : bool_constant<
+    std::is_nothrow_destructible<DecFn>::value
+    && (std::is_nothrow_copy_constructible<DecFn>::value || !std::is_copy_constructible<DecFn>::value)
+    && (std::is_nothrow_move_constructible<DecFn>::value || !std::is_move_constructible<DecFn>::value)
+  > {};
 
   // Utility struct to check if a callable object is not empty.
   struct check_not_empty {
@@ -1475,8 +1452,9 @@ inline namespace fn_traits {
     static_assert(buffer_alignment_is_enough<Functor, Config, ErasureT>::value,
       "The alignment of the callable object is not supported by this function wrapper.");
 
-    static_assert(assert_throwing_is_ok<Functor, Object, Config>::value,
-      "The copy constructor and move constructor of the callable object must be noexcept.");
+    static_assert(lifetime_throw_is_ok<Config::isView, Config::assertNoThrow, Functor>::value,
+      "The destructor of the callable object must be noexcept. If the `AssertObjectNoThrow` "
+      "is set to `true`, then the move/copy constructors of it are also required to be noexcept");
 
     static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
 
@@ -1945,7 +1923,7 @@ namespace management {
     struct VTable {
       void (*clone) (erasure_base_t*, erasure_base_t const*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
       void (*move) (erasure_base_t*, erasure_base_t*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
-      void (*destroy) (erasure_base_t*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
+      void (*destroy) (erasure_base_t*) EMBED_CXX17_NOEXCEPT_(true);
     };
   public:
     using manager_type = VTable const*;
@@ -2104,8 +2082,7 @@ namespace command {
       if (m_manager->move != nullptr) { m_manager->move(dst, src); }
     }
 
-    void destroy(erasure_base_t* dst) const
-    noexcept(Config::assertNoThrow) {
+    void destroy(erasure_base_t* dst) const noexcept {
       if (m_manager->destroy != nullptr) { m_manager->destroy(dst); }
     }
 
@@ -2352,7 +2329,7 @@ namespace crtp_mixins {
     destructor_impl& operator=(destructor_impl&&)       = default;
     destructor_impl& operator=(const destructor_impl&)  = default;
 
-    ~destructor_impl() noexcept(Config::assertNoThrow) {
+    ~destructor_impl() {
       auto& self = static_cast<Self&>(*this);
       self.m_command.destroy(&self.m_erasure);
     }
@@ -2626,7 +2603,7 @@ namespace crtp_mixins {
     constexpr explicit operator bool() const noexcept { return !is_empty(); }
 
     // Clear the object.
-    void clear() noexcept(Config::assertNoThrow) {
+    void clear() noexcept {
       auto& self = static_cast<Self&>(*this);
       self.m_command.destroy(&self.m_erasure);
       self.m_command.set_empty();
@@ -2635,7 +2612,7 @@ namespace crtp_mixins {
     // Overload the function specifically for the case where nullptr is
     // passed as a parameter, in order to improve the program's running
     // efficiency. (Using the `swap` method would be much slower.)
-    core_components_impl& operator=(std::nullptr_t) noexcept(Config::assertNoThrow) {
+    core_components_impl& operator=(std::nullptr_t) noexcept {
       if (!is_empty()) { clear(); }
       return *this;
     }
@@ -2652,7 +2629,8 @@ namespace crtp_mixins {
       // In this case the VTable's destroy slot is nullptr, meaning the
       // erasures are plain byte blobs that can be swapped directly
       // without construction or destruction.
-      if (self.m_command.m_manager->destroy == nullptr && fn.m_command.m_manager->destroy == nullptr) {
+      if (self.m_command.m_manager->destroy == nullptr &&
+          fn.m_command.m_manager->destroy == nullptr) {
         std::swap(self.m_erasure, fn.m_erasure);
         std::swap(self.m_command, fn.m_command);
         return;
@@ -2793,7 +2771,7 @@ public:
         && is_callable_from<Functor>::value
       )
     core_facade_impl(Functor&& functor)
-      noexcept(is_nothrow_construct_from_functor<Functor&&>::value)
+      noexcept(std::is_nothrow_constructible<decay_t<Functor>, Functor>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
       (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
@@ -3394,7 +3372,7 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename Functor,   // [Auto] Functor type.
   typename Class = detail::remove_cvref_t<Functor>,
   // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value,
+  bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Functor>, Functor>::value,
   std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value
 )
 EMBED_DETAIL_REQUIRES_END(
@@ -3544,7 +3522,7 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
     fn<Signature, BufferSize, Alignment>, unique_fn<Signature, BufferSize, Alignment>
   >,
   // [Auto] Get the nothrow guarantee in construction of functor.
-  bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value
+  bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Lambda>, Lambda>::value
 )
 EMBED_DETAIL_REQUIRES_END(
   // [Require] The functor must be unique callable.
@@ -3776,7 +3754,7 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   std::size_t BufferSize = detail::get_correct_buffer_size<
       Fn<Signature, DeductionBuf, Alignment>, DeductionBuf, Args...>::value,
   typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
-  bool NoThrow = detail::is_nothrow_constructible_lwg2116<FnWrapper, Args...>::value
+  bool NoThrow = std::is_nothrow_constructible<FnWrapper, Args...>::value
 )
 EMBED_DETAIL_REQUIRES_END(
   detail::is_ebd_fn<FnWrapper>::value
