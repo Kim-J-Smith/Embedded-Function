@@ -9,6 +9,7 @@
 
 **🛠️ Optimizations and Improvements**
 - The destructor of all owning function wrappers are declare as `noexcept` now.
+- Documented the usage of CMake integration in `README.md`.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
