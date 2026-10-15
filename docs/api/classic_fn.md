@@ -21,7 +21,7 @@
 | `IsCopyable` | `true` | The callable object must be copyable. |
 | `IsView` | `false` | This is not a view; the wrapper owns the callable object. |
 | `IsThrowing` | `true` | The wrapper will throw `std::bad_function_call` when called in an empty state. |
-| `AssertObjectNoThrow` | `false` | The callable object does not need to be nothrow-constructible or nothrow-destructible. |
+| `AssertObjectNoThrow` | `false` | The callable object's copy and move constructors do not need to be `noexcept`; its destructor must still be `noexcept`. |
 
 ## Member Functions
 

@@ -56,7 +56,7 @@ The `Config` parameter is a `config_package` struct with the following boolean f
 | `isCopyable` | Whether the function wrapper is copyable. |
 | `isView` | Whether the function wrapper is a non-owning view. |
 | `isThrowing` | Whether the wrapper throws `std::bad_function_call` when called in an empty state. |
-| `assertNoThrow` | Whether the wrapper asserts that the callable object is nothrow-constructible and nothrow-destructible. |
+| `assertNoThrow` | Whether an owning wrapper additionally asserts that the callable object's copy and move constructors are `noexcept`. A `noexcept` destructor is always required for owning wrappers; view wrappers impose no requirement, since they never destroy the target. |
 
 ## Member Types
 

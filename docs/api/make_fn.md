@@ -18,7 +18,7 @@ It can:
 ```cpp
 template <typename Signature, typename Functor,
           typename Class = detail::remove_cvref_t<Functor>,
-          bool NoThrow = detail::is_nothrow_construct_from_functor<Functor&&>::value,
+          bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Functor>, Functor>::value,
           std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value>
 EMBED_NODISCARD inline fn<Signature, sizeof(Class), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow);
@@ -115,7 +115,7 @@ template <typename Lambda,
               std::is_copy_constructible<Class>::value,
               fn<Signature, BufferSize, Alignment>,
               unique_fn<Signature, BufferSize, Alignment>>,
-          bool NoThrow = detail::is_nothrow_construct_from_functor<Lambda&&>::value>
+          bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Lambda>, Lambda>::value>
 EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow);
 ```
 
@@ -235,7 +235,7 @@ template <template <class, std::size_t, std::size_t> class Fn,
           std::size_t BufferSize =
               detail::get_correct_buffer_size<Fn<Signature, DeductionBuf, Alignment>, DeductionBuf, Args...>::value,
           typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
-          bool NoThrow = detail::is_nothrow_constructible_lwg2116<FnWrapper, Args...>::value
+          bool NoThrow = std::is_nothrow_constructible<FnWrapper, Args...>::value
 EMBED_NODISCARD inline FnWrapper make_fn(Args&&... args) noexcept(NoThrow);
 ```
 

@@ -3240,9 +3240,9 @@ public:
  *                                config argument will be ignored cause there
  *                                is no empty state in view mode.
  *
- * @tparam AssertObjectNoThrow    If `true`, the wrapper requires that the
- *                                callable object's construction, destruction,
- *                                copy, and move operations are `noexcept`.
+ * @tparam AssertObjectNoThrow    If `true`, an owning wrapper additionally
+ *                                requires the callable object's copy and move
+ *                                constructors to be `noexcept`.
  *                                Violations trigger a `static_assert`.
  *
  * @note                          Prefer using the predefined aliases (`fn`,

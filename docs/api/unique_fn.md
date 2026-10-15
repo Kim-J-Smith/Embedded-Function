@@ -21,7 +21,7 @@
 | `IsCopyable` | `false` | The callable object can be move-only (copyable objects are also accepted but only move operations will be used). |
 | `IsView` | `false` | This is not a view; the wrapper owns the callable object. |
 | `IsThrowing` | `false` | The wrapper will call `std::terminate()` when called in an empty state. |
-| `AssertObjectNoThrow` | `false` | The callable object does not need to be nothrow-constructible or nothrow-destructible. |
+| `AssertObjectNoThrow` | `false` | The callable object's copy and move constructors do not need to be `noexcept`; its destructor must still be `noexcept`. |
 
 ## Member Functions
 

@@ -14,7 +14,7 @@
 | `IsCopyable` | If `true`, the stored callable object must be copy-constructible; otherwise, move-only is sufficient. |
 | `IsView` | If `true`, the wrapper acts as a non-owning view (no copy/move/destroy of the target). |
 | `IsThrowing` | If `true`, calling an empty wrapper throws `std::bad_function_call` (if exceptions are enabled); otherwise, `std::terminate` is called. |
-| `AssertObjectNoThrow` | If `true`, the wrapper requires that the callable object's construction, destruction, copy, and move operations are `noexcept`. |
+| `AssertObjectNoThrow` | If `true`, an owning wrapper additionally requires the callable object's copy and move constructors to be `noexcept`. A `noexcept` destructor is required regardless of this flag. View wrappers (`IsView` is `true`) impose neither requirement, because they never construct or destroy the target. |
 
 ## Member Functions
 
