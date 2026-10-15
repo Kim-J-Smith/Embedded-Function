@@ -21,7 +21,7 @@ It is an alias of `ebd::detail::function` with specific configuration parameters
 | `IsCopyable` | `true` | The view is copyable (but it doesn't copy the underlying callable). |
 | `IsView` | `true` | This is a non-owning view of the callable object. |
 | `IsThrowing` | `false` | `ebd::fn_ref` has removed empty state. |
-| `AssertObjectNoThrow` | `false` | The callable object does not need to be nothrow-constructible or nothrow-destructible. |
+| `AssertObjectNoThrow` | `false` | The callable object does not need to be nothrow-constructible or nothrow-destructible, because a view never destroys the target. (Owning wrappers always require a `noexcept` destructor, regardless of this flag.) |
 
 ## Member Functions
 
