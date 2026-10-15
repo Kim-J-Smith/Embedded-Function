@@ -26,9 +26,10 @@ jobs:
       # Make header_only.zip
       - name: Make header_only.zip
         run: |
-          mkdir -p release_packages
-          zip -9 release_packages/header_only.zip -r include/
-          tar -cvf release_packages/header_only.tar.gz -I 'gzip -9' include/
+          mkdir -p release_packages/header_only/
+          cp -r include CMakeLists.txt cmake release_packages/header_only/
+          (cd release_packages && zip -9 -r header_only.zip header_only)
+          tar -cvf release_packages/header_only.tar.gz -I 'gzip -9' -C release_packages header_only
 
       # Get version number
       - name: Get version number
