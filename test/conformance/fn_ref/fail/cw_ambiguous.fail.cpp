@@ -7,7 +7,7 @@ struct AmbiguousWithConstantWrapper {
 };
 
 int main() {
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
     // ambiguous
     ebd::fn_ref<int(std::integral_constant<int, 10>)> f =
         std::cw<AmbiguousWithConstantWrapper{}>; // FAIL

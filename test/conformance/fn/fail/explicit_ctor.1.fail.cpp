@@ -14,7 +14,7 @@ struct ListInit {
 };
 
 int main() {
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
     // FAIL: The Ctor is `explicit`.
     ebd::fn<int(), sizeof(ListInit)> f = {std::cw<&ListInit::sum>, std::in_place_type<ListInit>, {1, 42}};
     f();

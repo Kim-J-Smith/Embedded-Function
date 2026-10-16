@@ -55,7 +55,7 @@ using L1          = remove_cvref_t<decltype(l1)>;
 const auto l2 = [] { return A{5}; };
 using L2          = remove_cvref_t<decltype(l2)>;
 
-#if __cpp_constexpr >= 201603L
+#if defined(__cpp_constexpr) && __cpp_constexpr >= 201603L
   constexpr auto l2_noexcept = []() noexcept { return A{5}; };
   using L2Noexcept           = remove_cvref_t<decltype(l2_noexcept)>;
 #endif
@@ -63,7 +63,7 @@ using L2          = remove_cvref_t<decltype(l2)>;
 const auto l3 = [](int x, double d) { return x + d; };
 using L3          = remove_cvref_t<decltype(l3)>;
 
-#if __cpp_constexpr >= 201603L
+#if defined(__cpp_constexpr) && __cpp_constexpr >= 201603L
   constexpr auto l3_noexcept = [](int x, double d) noexcept { return x + d; };
   using L3Noexcept           = remove_cvref_t<decltype(l3_noexcept)>;
 #endif
@@ -86,7 +86,7 @@ STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void()>, L2&>::value);
 STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void()>, ebd::fn_ref<int()>&>::value);
 
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, L3&>::value);
-#if __cpp_inheriting_constructors >= 201511L
+#if defined(__cpp_inheriting_constructors) && __cpp_inheriting_constructors >= 201511L
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>>::value);
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, std::nullptr_t>::value);
 #endif
@@ -100,7 +100,7 @@ STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void()>, L1&&>::value);
 STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void()>, L1 const&&>::value);
 STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void()>, ebd::fn_ref<int()>&>::value);
 
-#if __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
   // non-const noexcept(true)
   STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<A() noexcept>, L2Noexcept&>::value);
   STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<A() noexcept>, L2Noexcept const&>::value);
@@ -133,7 +133,7 @@ STATIC_ASSERT_(
 STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void(int, double)>, NonConstInvocable&>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double)>, const NonConstInvocable&>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, NonConstInvocable&>::value);
-#if __cpp_inheriting_constructors >= 201511L
+#if defined(__cpp_inheriting_constructors) && __cpp_inheriting_constructors >= 201511L
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>>::value);
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, std::nullptr_t>::value);
 #endif
@@ -148,7 +148,7 @@ STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void(int, double) const
 STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void(int, double) const>,
                                               ebd::fn_ref<int(int, double) const>>::value);
 
-#if __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
   // const noexcept(true)
   STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void(int, double) const noexcept>, L3Noexcept&>::value);
   STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void(int, double) const noexcept>, const L3Noexcept&>::value);
@@ -199,10 +199,10 @@ struct NeedsConversion {
 };
 
 int fn() { return 5; }
-#if __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
   constexpr auto fn_noexcept = []() noexcept { return 6; };
 
-#if 1 && __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
   const auto one = []() noexcept { return 1; };
   const auto two = []() noexcept { return 2; };
 # endif
@@ -228,7 +228,7 @@ TEST(Conformance_fn_ref, ref_pass) {
       f();
     }
   }
-#if __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
   {
     // noexcept
     ebd::fn_ref<A() noexcept> f(l2_noexcept);
@@ -245,7 +245,7 @@ TEST(Conformance_fn_ref, ref_pass) {
       ASSERT_(f(1, 2.0) == 3.0);
     }
   }
-#if __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
   {
     // const noexcept
     ebd::fn_ref<double(int, double) const noexcept> f(l3_noexcept);
@@ -265,7 +265,7 @@ TEST(Conformance_fn_ref, ref_pass) {
       ASSERT_(f() == 7);
     }
   }
-#if __cpp_lib_as_const >= 201510L
+#if defined(__cpp_lib_as_const) && __cpp_lib_as_const >= 201510L
   {
     // const correctness
     F f{5};
@@ -296,7 +296,7 @@ TEST(Conformance_fn_ref, ref_pass) {
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f2(1, 2, 3).i == 6);
     }
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
     ebd::fn_ref<Int(int, int, int) noexcept> f3(c);
     if (!TEST_IS_CONSTANT_EVALUATED) {
       ASSERT_(f3(1, 2, 3).i == 6);
@@ -308,7 +308,7 @@ TEST(Conformance_fn_ref, ref_pass) {
     }
 #endif
   }
-#if __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L && __cpp_constexpr >= 201603L
   {
     // noexcept conversion
     ebd::fn_ref<int() noexcept> f1(fn_noexcept);
@@ -354,7 +354,7 @@ TEST(Conformance_fn_ref, ref_pass) {
     }
   }
 #endif
-#if 1 && __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
   {
     // P3961R1 Less double indirection in function_ref
     // double unwrapping

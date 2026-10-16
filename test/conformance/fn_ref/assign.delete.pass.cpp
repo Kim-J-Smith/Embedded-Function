@@ -31,7 +31,7 @@
 // non const noexcept(false)
 STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void()>, ebd::fn_ref<void()>>::value);
 STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void()>, ebd::fn_ref<void() const>>::value);
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void()>, ebd::fn_ref<void() noexcept>>::value);
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void()>, ebd::fn_ref<void() const noexcept>>::value);
 #endif
@@ -39,7 +39,7 @@ STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void()>, ebd::fn_ref<void() const>
 STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void()>, void (*)()>::value);
 STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void()>, void (*)(int)>::value);
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
   STATIC_ASSERT_(std::is_assignable_v<ebd::fn_ref<void()>, std::constant_wrapper<+[] {}>>);
   STATIC_ASSERT_(std::is_constructible_v<ebd::fn_ref<void()>, std::constant_wrapper<[] {}>>);
   STATIC_ASSERT_(std::is_assignable_v<ebd::fn_ref<void()>, std::constant_wrapper<[] {}>>);
@@ -49,7 +49,7 @@ STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void()>, void (*)(int)>::value);
 // const noexcept(false)
 STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void()>>::value);
 STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void() const>>::value);
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void() noexcept>>::value);
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void() const noexcept>>::value);
 #endif
@@ -57,13 +57,13 @@ STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const>, ebd::fn_ref<void() 
 STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const>, void (*)()>::value);
 STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, void (*)(int)>::value);
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
   STATIC_ASSERT_(std::is_assignable_v<ebd::fn_ref<void() const>, std::constant_wrapper<[] { return 42; }>>);
   STATIC_ASSERT_(!std::is_assignable_v<ebd::fn_ref<void() const>, std::constant_wrapper<[](int) { return 42; }>>);
 #endif
 
 // non-const noexcept(true)
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() noexcept>, ebd::fn_ref<void()>>::value);
   STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() noexcept>, ebd::fn_ref<void() const>>::value);
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() noexcept>, ebd::fn_ref<void() noexcept>>::value);
@@ -72,7 +72,7 @@ STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, void (*)(int)>::va
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() noexcept>, void (*)() noexcept>::value);
   STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() noexcept>, void (*)(int) noexcept>::value);
 
-# if __cpp_lib_constant_wrapper >= 202603L
+# if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
     STATIC_ASSERT_(std::is_assignable_v<ebd::fn_ref<void() noexcept>, std::constant_wrapper<[] noexcept {} >>);
     STATIC_ASSERT_(!std::is_assignable_v<ebd::fn_ref<void() noexcept>, std::constant_wrapper<[](int) noexcept {}>>);
 # endif
@@ -86,7 +86,7 @@ STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const>, void (*)(int)>::va
   STATIC_ASSERT_(std::is_assignable<ebd::fn_ref<void() const noexcept>, void (*)() noexcept>::value);
   STATIC_ASSERT_(!std::is_assignable<ebd::fn_ref<void() const noexcept>, void (*)(int) noexcept>::value);
 
-# if __cpp_lib_constant_wrapper >= 202603L
+# if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 
     STATIC_ASSERT_(std::is_assignable_v<ebd::fn_ref<void() const noexcept>, std::constant_wrapper<[] noexcept {}>>);
     STATIC_ASSERT_(
@@ -99,7 +99,7 @@ static int forty_two() { return 42; }
 TEST(Conformance_fn_ref, assign_delete_pass) {
   static_cast<void>(&forty_two);
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
   {
     ebd::fn_ref<int()> f(std::cw<[] { return 41; }>);
     f = ebd::fn_ref<int()>(std::cw<[] { return 42; }>);

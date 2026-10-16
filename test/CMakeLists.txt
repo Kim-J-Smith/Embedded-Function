@@ -40,9 +40,12 @@ set(
 # Include header search path
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+include_directories(
+    SYSTEM
     ${CMAKE_CURRENT_SOURCE_DIR}/google-test/
     ${CMAKE_CURRENT_SOURCE_DIR}/google-test/include
-    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # Get the gtest sourece files.
@@ -126,7 +129,7 @@ if(MSVC)
   target_compile_options(
     gtest_lib PUBLIC
     /wd4820 # padding
-    /wd4668 # undefined macro
+    # /wd4668 # undefined macro; v2.5.0 use `defined(macro)` to resolve it
     /wd4625 # copy-constructor implicit delete
     /wd4626 # copy-assignment implicit delete
     /wd5027 # move-assignment implicit delete
@@ -143,6 +146,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     -Wpedantic
     -Wconversion
     -Wold-style-cast
+    -Wundef
     -pedantic
     -fno-permissive
     -O1 # -Wuninitialized skipped in O0.
@@ -177,6 +181,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wpedantic
     -Wconversion
     -Wold-style-cast
+    -Wundef
     -pedantic
     -fno-permissive
     -fno-exceptions
