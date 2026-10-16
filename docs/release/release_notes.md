@@ -10,9 +10,10 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- The destructor of all owning function wrappers are declare as `noexcept` now. (#221)
+- The destructor of all owning function wrappers are declared as `noexcept` now. (#221)
 - Documented the usage of CMake integration in `README.md`. (#223)
 - `-Wundef` (GCC/Clang) and C4668 (MSVC) warnings have been resolved. (#226)
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
+- `CMakeLists.txt` and `cmake/` are added to `header_only.zip`.

@@ -830,7 +830,7 @@ inline namespace fn_traits {
   struct config_package {
     // Whether the function wrapper is copyable.
     static constexpr bool isCopyable = IsCopyable;
-    // Whether the function wrapper is actually a non-onwing wrapper.
+    // Whether the function wrapper is actually a non-owning wrapper.
     static constexpr bool isView = IsView;
     // Whether the function wrapper throws `std::bad_function_call`
     // when it is called in an empty state.
