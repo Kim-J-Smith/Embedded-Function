@@ -28,7 +28,7 @@
 
 STATIC_ASSERT_(std::is_move_assignable<ebd::fn_ref<void()>>::value);
 STATIC_ASSERT_(std::is_move_assignable<ebd::fn_ref<void() const>>::value);
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(std::is_move_assignable<ebd::fn_ref<void() noexcept>>::value);
   STATIC_ASSERT_(std::is_move_assignable<ebd::fn_ref<void() const noexcept>>::value);
 #endif
@@ -61,7 +61,7 @@ TEST(Conformance_fn_ref, move_assign_pass) {
   SUCCEED();
 }
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 
 TEST(Conformance_fn_ref, move_assign_pass_0) {
   ebd::fn_ref<void()> f(std::cw<[] {}>);

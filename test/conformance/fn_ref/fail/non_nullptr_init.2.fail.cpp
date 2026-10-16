@@ -2,7 +2,7 @@
 #include "test_function.hpp"
 
 int main() {
-#if __cpp_lib_constant_wrapper < 202603L
+#if !defined(__cpp_lib_constant_wrapper) || __cpp_lib_constant_wrapper < 202603L
   static_assert(false, "");
 #else
   // ebd::fn_ref shouldn't be created from std::cw<nullptr>.

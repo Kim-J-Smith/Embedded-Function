@@ -24,7 +24,7 @@ using __safe_fn = basic_fn<Signature, BufferSize,
 
 } // namespace ebd
 
-#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+#if ( EMBED_CXX_VERSION >= 201703L || ( defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L ) )
 # define EBD_TEST_NOEXCEPT noexcept
 #else
 # define EBD_TEST_NOEXCEPT
@@ -149,7 +149,7 @@ public:
 class ebd_test_operator_unambiguous {
 public:
     int m_member_var = 0;
-#if ( __cpp_explicit_this_parameter >= 202110L ) || ( EMBED_CXX_VERSION >= 202302L )
+#if ( EMBED_CXX_VERSION >= 202302L && defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L )
     int operator()(this ebd_test_operator_unambiguous& self, int change) noexcept {
         self.m_member_var += change;
         return self.m_member_var;
@@ -259,7 +259,7 @@ public:
     int operator()(char) const { return OVL_CHAR; }
 };
 
-#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+#if (EMBED_CXX_VERSION >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
 struct ebd_test_static_call_operator {
     static int operator()(int a, int b) noexcept { return a + b; }
 };

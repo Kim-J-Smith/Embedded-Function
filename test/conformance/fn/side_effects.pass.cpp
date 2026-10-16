@@ -7,7 +7,7 @@ namespace {
         NonTriviallyCopyable() = default;
         NonTriviallyCopyable(const NonTriviallyCopyable&) noexcept { copies++; }
         int operator()(int) { return 42; }
-#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+#if (EMBED_CXX_VERSION >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
         static int operator()(long) { return 43; }
 #endif
     };
@@ -30,7 +30,7 @@ TEST(Conformance_fn, side_effects_pass) {
     ASSERT_EQ(f2(0), 42);
     ASSERT_EQ(f2(0L), 42);
 
-#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+#if (EMBED_CXX_VERSION >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
     ebd::fn<int(long)> f3 = NonTriviallyCopyable{};
     copies = 0;
     {

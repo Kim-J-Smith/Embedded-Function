@@ -8,7 +8,7 @@ struct ExplicitThis {
 };
 
 int main() {
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
     ExplicitThis obj;
     // {std::cw<&Class::method>, &obj} is invalid if method is explicit this function.
     // See <https://wg21.link/P2511#Proposal:~:text=In%20the%20first,would%20stop%20working.>.
