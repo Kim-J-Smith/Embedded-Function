@@ -790,7 +790,7 @@ TEST(InitFunction, from_large_alignment) {
     }
 }
 
-#if ( EMBED_CXX_VERSION >= 201703L || ( defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L ) )
+#if ( EMBED_CXX_VERSION >= 201703L && defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L )
 
 // InitFunction[39]
 TEST(InitFunction, noexcept_qualifier_tests) {
@@ -877,7 +877,7 @@ TEST(InitFunction, inplace_create) {
     }
 }
 
-#endif // ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+#endif // ( EMBED_CXX_VERSION >= 201703L && __cpp_noexcept_function_type >= 201510L )
 
 // InitFunction[41]
 TEST(InitFunction, from_implicit_func_ptr) {

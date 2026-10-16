@@ -24,7 +24,7 @@ using __safe_fn = basic_fn<Signature, BufferSize,
 
 } // namespace ebd
 
-#if ( EMBED_CXX_VERSION >= 201703L || ( defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L ) )
+#if ( EMBED_CXX_VERSION >= 201703L && defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L )
 # define EBD_TEST_NOEXCEPT noexcept
 #else
 # define EBD_TEST_NOEXCEPT

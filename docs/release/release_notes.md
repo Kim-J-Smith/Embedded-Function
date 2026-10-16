@@ -4,6 +4,7 @@
 **⚠️ Breaking Changes**
 - All owning function wrappers (`fn`, `unique_fn`, etc.) now reject callable objects whose destructor may thow exceptions.
 - Deducing-this (C++23) support now additionally requires the compiler to define `__cpp_explicit_this_parameter`; previously a C++23 language mode alone was enough.
+- `noexcept` function type (C++17) support now additionally requires the compiler to define `__cpp_noexcept_function_type`; previously a C++17 language mode alone was enough.
 
 **✨ New Features**
 - None.

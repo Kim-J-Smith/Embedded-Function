@@ -115,8 +115,8 @@
 #endif
 
 #ifndef EMBED_CXX17_NOEXCEPT_
-# if (EMBED_CXX_VERSION >= 201703L || \
-    (defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L))
+# if (EMBED_CXX_VERSION >= 201703L && \
+    defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L)
 #  define EMBED_CXX17_NOEXCEPT_(...) noexcept(__VA_ARGS__)
 # else
 #  define EMBED_CXX17_NOEXCEPT_(...)
@@ -209,8 +209,8 @@
   F(const, volatile, & , NOEXCEPT)\
   F(const, volatile, &&, NOEXCEPT)
 
-#if (EMBED_CXX_VERSION >= 201703L || \
-    (defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L))
+#if (EMBED_CXX_VERSION >= 201703L && \
+    defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L)
 // The noexcept-specification is a part of the function type and
 // may appear as part of any function declarator. (Since C++17)
 // See <https://cppreference.com/w/cpp/language/noexcept_spec>.
@@ -955,8 +955,8 @@ inline namespace fn_traits {
   struct is_function_ptr<Ret(*)(Args...)>
   : public std::true_type {};
 
-#if (EMBED_CXX_VERSION >= 201703L || \
-    (defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L))
+#if (EMBED_CXX_VERSION >= 201703L && \
+    defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L)
   template <typename Ret, typename... Args>
   struct is_function_ptr<Ret(*)(Args...) noexcept>
   : public std::true_type {};
@@ -3449,8 +3449,8 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
     /* NoThrow = */ true
   >(func_ptr);
 }
-#if (EMBED_CXX_VERSION >= 201703L || \
-    (defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L))
+#if (EMBED_CXX_VERSION >= 201703L && \
+    defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L)
 
 /// @brief make_fn[3.5]: Make function for noexcept function pointer.
 /// (auto deduce signature and buffer size; the `noexcept` qualifier is preserved)

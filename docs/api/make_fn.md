@@ -68,7 +68,7 @@ EMBED_NODISCARD inline fn<Ret(Args...) const noexcept, sizeof(Ret(*)(Args...) no
 make_fn(Ret (*func_ptr)(Args...) noexcept) noexcept;
 ```
 
-Creates an `ebd::fn` from a noexcept free-function pointer. The noexcept qualifier is preserved in the signature. Only available when noexcept is part of the type system (C++17 or `__cpp_noexcept_function_type >= 201510L`).
+Creates an `ebd::fn` from a noexcept free-function pointer. The noexcept qualifier is preserved in the signature. Only available when noexcept is part of the type system (C++17 and `__cpp_noexcept_function_type >= 201510L`).
 
 ### make_fn[4]: Function pointer with explicit signature
 
