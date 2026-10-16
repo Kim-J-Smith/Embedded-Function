@@ -100,7 +100,7 @@
 #endif
 
 #ifndef EMBED_CXX14_CONSTEXPR
-# if (EMBED_CXX_VERSION >= 201402L && __cpp_constexpr >= 201304L)
+# if (EMBED_CXX_VERSION >= 201402L && defined(__cpp_constexpr) && __cpp_constexpr >= 201304L)
 #  define EMBED_CXX14_CONSTEXPR constexpr
 # else
 #  define EMBED_CXX14_CONSTEXPR
@@ -108,7 +108,7 @@
 #endif
 
 #ifndef EMBED_CXX20_CONSTEXPR
-# if (EMBED_CXX_VERSION >= 202002L && __cpp_constexpr >= 202002L)
+# if (EMBED_CXX_VERSION >= 202002L && defined(__cpp_constexpr) && __cpp_constexpr >= 202002L)
 #  define EMBED_CXX20_CONSTEXPR constexpr
 # else
 #  define EMBED_CXX20_CONSTEXPR
@@ -116,7 +116,8 @@
 #endif
 
 #ifndef EMBED_CXX17_NOEXCEPT_
-# if (EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L)
+# if (EMBED_CXX_VERSION >= 201703L || \
+    (defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L))
 #  define EMBED_CXX17_NOEXCEPT_(...) noexcept(__VA_ARGS__)
 # else
 #  define EMBED_CXX17_NOEXCEPT_(...)
@@ -176,7 +177,7 @@
 # if EMBED_CXX_VERSION >= 201703L
 #  include <initializer_list>
 # endif // C++ >= 17
-# if __cpp_impl_reflection >= 202506L && EMBED_HAS_INCLUDE(<meta>)
+# if defined(__cpp_impl_reflection) && __cpp_impl_reflection >= 202506L && EMBED_HAS_INCLUDE(<meta>)
 #  include <meta>       // std::meta::is_complete_type(C++26)
 # endif // C++ >= 26
 #else
@@ -209,7 +210,8 @@
   F(const, volatile, & , NOEXCEPT)\
   F(const, volatile, &&, NOEXCEPT)
 
-#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+#if (EMBED_CXX_VERSION >= 201703L || \
+    (defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L))
 // The noexcept-specification is a part of the function type and
 // may appear as part of any function declarator. (Since C++17)
 // See <https://cppreference.com/w/cpp/language/noexcept_spec>.
@@ -628,7 +630,7 @@ inline namespace cxx {
   template <typename To, typename From>
   struct reference_converts_from_temporary
   : public bool_constant<
-#if __cpp_lib_reference_from_temporary >= 202202L
+#if defined(__cpp_lib_reference_from_temporary) && __cpp_lib_reference_from_temporary >= 202202L
     std::reference_converts_from_temporary_v<To, From>
 #elif EMBED_HAS_BUILTIN(__reference_converts_from_temporary)
     __reference_converts_from_temporary(To, From)
@@ -767,7 +769,7 @@ inline namespace cxx {
   // [ptr.launder]
   template <typename T>
   EMBED_NODISCARD EMBED_INLINE T* launder(T* ptr) noexcept {
-#if __cpp_lib_launder >= 201606L
+#if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606L
     return std::launder(ptr);
 #elif EMBED_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
     // `__builtin_launder` in MSVC is only accessible since C++17.
@@ -954,7 +956,8 @@ inline namespace fn_traits {
   struct is_function_ptr<Ret(*)(Args...)>
   : public std::true_type {};
 
-#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+#if (EMBED_CXX_VERSION >= 201703L || \
+    (defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L))
   template <typename Ret, typename... Args>
   struct is_function_ptr<Ret(*)(Args...) noexcept>
   : public std::true_type {};
@@ -1151,7 +1154,7 @@ inline namespace fn_traits {
 
 #endif // __STDC_HOSTED__
 
-#if __cpp_lib_move_only_function >= 202110L
+#if defined(__cpp_lib_move_only_function) && __cpp_lib_move_only_function >= 202110L
 
     template <typename Sig>
     static bool not_empty(const ::std::move_only_function<Sig>& f) noexcept
@@ -1159,7 +1162,7 @@ inline namespace fn_traits {
 
 #endif // ^^^ __cpp_lib_move_only_function >= 202110L
 
-#if __cpp_lib_copyable_function >= 202306L
+#if defined(__cpp_lib_copyable_function) && __cpp_lib_copyable_function >= 202306L
 
     template <typename Sig>
     static bool not_empty(const ::std::copyable_function<Sig>& f) noexcept
@@ -1191,7 +1194,8 @@ inline namespace fn_traits {
   : public std::true_type {};
 
   // Check statically callable functor. ([func.wrap.func.con]/16.2 Static operator())
-#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+#if (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
   template <typename Fn, typename... Args>
   struct is_statically_callable : bool_constant<
     requires (Args&&... args) { Fn::operator()(std::forward<Args>(args)...); }
@@ -1237,7 +1241,8 @@ inline namespace fn_traits {
 
 #undef EMBED_DETAIL_GET_UNIQUE_SIGNATURE_IMPL_DEFINE
 
-#if ( __cpp_explicit_this_parameter >= 202110L ) || ( EMBED_CXX_VERSION >= 202302L )
+#if (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L)
 
   // [dcl.fct]/6 Deducing this.
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html>.
@@ -1264,7 +1269,8 @@ inline namespace fn_traits {
 
 #endif
 
-#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+#if (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
 
   // [func.wrap.func.con]/16.2 Static operator().
   // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1169r4.html>.
@@ -1365,7 +1371,7 @@ inline namespace fn_traits {
   template <typename Signature>
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
 
-#if __cpp_lib_reflection >= 202506L
+#if defined(__cpp_lib_reflection) && __cpp_lib_reflection >= 202506L
   // Use template parameter `Val` to avoid violating ODR.
   template <typename T, bool Val = std::meta::is_complete_type(^^T)>
   consteval bool is_complete_here() noexcept { return Val; }
@@ -1491,7 +1497,7 @@ inline namespace fn_traits {
   template <typename T>
   struct is_constant_wrapper : std::false_type {};
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
   template <auto Val, typename T>
   struct is_constant_wrapper<std::constant_wrapper<Val, T>> : std::true_type {};
 #endif
@@ -1557,7 +1563,7 @@ inline namespace fn_traits {
 #if EMBED_CXX_VERSION >= 202002L
   // C++20 standard stateless function object types.
   EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(identity)
-# if __cpp_lib_ranges >= 201911L
+# if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
   // C++20 [Ranges]
   EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::equal_to)
   EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::not_equal_to)
@@ -1566,7 +1572,7 @@ inline namespace fn_traits {
   EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::less_equal)
   EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(ranges::greater_equal)
 # endif
-# if __cpp_lib_three_way_comparison >= 201907L
+# if defined(__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
   // C++20 [Three way comparison]
   EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(compare_three_way)
 # endif
@@ -1638,7 +1644,8 @@ inline namespace fn_traits {
     typename skip_first_param_sig<Signature>::no_ref_type,
     typename skip_first_param_sig<Signature>::type>;
 
-#if __cpp_fold_expressions >= 201603L && EMBED_CXX_VERSION >= 201703L
+#if (EMBED_CXX_VERSION >= 201703L && \
+    defined(__cpp_fold_expressions) && __cpp_fold_expressions >= 201603L)
   template <bool... Vals>
   struct logical_and { static constexpr bool value = (Vals && ...); };
 #else
@@ -1775,7 +1782,8 @@ namespace erasure_type {
 namespace invocation {
 
 // Implement invocation for static call operator.
-#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+#if (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
 # define EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT)             \
   struct static_call {                                                          \
     template <typename Functor>                                                 \
@@ -1792,7 +1800,7 @@ namespace invocation {
 #endif
 
 // Implement invocation for constant_wrapper.
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 # define EMBED_DETAIL_CW_INVOKER_IMPL(C, V, REF, NOEXCEPT)                            \
   struct view_cw {                                                                    \
     template <typename Cw>                                                            \
@@ -2134,7 +2142,7 @@ namespace command {
 
 #endif // C++ >= 17
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 
     /// @brief Initialize the wrapper from given std::constant_wrapper and functor.
 
@@ -2219,7 +2227,7 @@ namespace command {
       m_invoker = &invoker_impl_target_t::template invoke<decay_t<Functor>>;
     }
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 
     /// @brief Initialize the m_invoker from given std::constant_wrapper.
 
@@ -2822,7 +2830,7 @@ public:
 
 #endif // C++ >= 17
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 private:
     /// @private `true` if the `Sig` is qualified with `&&`.
     static constexpr bool RightRef = unwrap_signature<Sig>::hasRRef;
@@ -2975,7 +2983,7 @@ public:
         &m_erasure, std::forward<Functor>(functor));
     }
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 
     // Create function reference with given `std::constant_wrapper` param.
     template <auto Val, typename Fn>
@@ -3144,7 +3152,7 @@ public:
     /// Implemented in the direct base class @e `crtp_mixins::core_facade_impl`.
     using Base_CoreFacade::Base_CoreFacade;
 
-#if __cpp_inheriting_constructors < 201511L
+#if !defined(__cpp_inheriting_constructors) || __cpp_inheriting_constructors < 201511L
     // 12.9 [class.inhctor]/3 The candidate set of inherited constructors
     // does not include the default constructor.
     // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf>.
@@ -3442,7 +3450,8 @@ make_fn(Ret (*func_ptr) (Args...)) noexcept {
     /* NoThrow = */ true
   >(func_ptr);
 }
-#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+#if (EMBED_CXX_VERSION >= 201703L || \
+    (defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L))
 
 /// @brief make_fn[3.5]: Make function for noexcept function pointer.
 /// (auto deduce signature and buffer size; the `noexcept` qualifier is preserved)
@@ -3644,7 +3653,7 @@ noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs
 
 #endif // C++ >= 17
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 
 /// @brief make_fn[12]: Make function from `std::cw<fn>`.
 /// @return `fn<Auto-Deduction>`
