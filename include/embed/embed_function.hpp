@@ -3775,19 +3775,20 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
   >(std::forward<Args>(args)...);
 }
 
+#if defined(_MSC_VER) && !defined(__clang__)
+// TODO: Workaround for MSVC bug.
+// See <https://github.com/Kim-J-Smith/Embedded-Function/issues/175>.
+#else
 // When all other make_fn() fail to match the input parameters,
 // this function will be called as the fall back to avoid the
 // awful template error flood.
-#if !defined(_MSC_VER) || defined(__clang__)
-// MSVC has a bug where passing over-aligned arguments to make_fn triggers error C2718.
-// See <https://developercommunity.visualstudio.com/t/MSVC-emits-C2718-for-over-aligned-argume/11141150>.
-/// TODO: MSVC's fix is pending-release.
-template <typename Unused = void,
-  EMBED_DETAIL_REQUIRES(!detail::unwrap_signature<Unused>::isSignature)>
+EMBED_DETAIL_TEMPLATE_BEGIN(typename Unused = void)
+  EMBED_DETAIL_REQUIRES_END((!detail::unwrap_signature<Unused>::isSignature))
 EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused>(); }
+
 template <template <class, std::size_t, std::size_t> class Unused>
 EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(), 0, 8>>(); }
-#endif // !defined(_MSC_VER) || defined(__clang__)
+#endif
 
 } // end namespace ebd
 
