@@ -836,7 +836,7 @@ inline namespace fn_traits {
     // when it is called in an empty state.
     static constexpr bool isThrowing = IsThrowing;
     // Whether the owning function wrapper additionally asserts that
-    // the copy constructor and move constructor is noexcept.
+    // the copy constructor and move constructor are noexcept.
     static constexpr bool assertNoThrow = AssertObjectNoThrow;
   };
 
