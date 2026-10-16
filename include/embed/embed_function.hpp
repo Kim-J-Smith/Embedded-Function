@@ -32,7 +32,6 @@
 #if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(push)
 # pragma warning(disable: 4514) // ignore "unreferenced inline function has been removed"
-# pragma warning(disable: 4668) // ignore "undefined symbol as a preprocessor macro"
 # pragma warning(disable: 4710) // ignore "inline function not inlined"
 # pragma warning(disable: 4711) // ignore "inlined non-inline function"
 # pragma warning(disable: 4625 5026) // ignore "implicit delete copy/move constructor"
@@ -771,7 +770,7 @@ inline namespace cxx {
   EMBED_NODISCARD EMBED_INLINE T* launder(T* ptr) noexcept {
 #if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606L
     return std::launder(ptr);
-#elif EMBED_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
+#elif EMBED_HAS_BUILTIN(__builtin_launder) || (defined(__GNUC__) && __GNUC__ >= 7)
     // `__builtin_launder` in MSVC is only accessible since C++17.
     return __builtin_launder(ptr);
 #elif defined(__GNUC__) || defined(__clang__)
