@@ -7,7 +7,7 @@ struct Normal {
 };
 
 int main() {
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
     // FAIL: The Ctor is `explicit`.
     ebd::fn<int(int), sizeof(Normal)> f = {std::cw<&Normal::add_42>, std::in_place_type<Normal>};
     f(0);

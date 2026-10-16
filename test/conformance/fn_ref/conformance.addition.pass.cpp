@@ -15,7 +15,7 @@ struct empty_trivial_but_state {
   std::uintptr_t operator()() const { return reinterpret_cast<std::uintptr_t>(this); }
 };
 
-#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+#if (EMBED_CXX_VERSION >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
 
 struct Static_call_operator_test {
   int operator()(int) const { return 0; }
@@ -60,7 +60,7 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     static_assert(std::is_same<decltype(f2), ebd::fn_ref<int(int,int) const>>::value, "BUG");
   }
 
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   {
     // Auto deduce the noexcept qualifier
     auto f1 = ebd::make_fn<ebd::fn_ref>(ebd_test_free_func_noexcept);
@@ -120,7 +120,7 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     ASSERT_EQ(f2(0), OVL_VOLATILE);
   }
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 
   {
     ebd_test_member_fn obj;
@@ -200,7 +200,7 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
     ASSERT_EQ(f(4, 3), false);
   }
 
-# if (EMBED_CXX_VERSION >= 202002L && __cpp_constexpr >= 202002L)
+# if (EMBED_CXX_VERSION >= 202002L && defined(__cpp_constexpr) && __cpp_constexpr >= 202002L)
   {
     static constexpr auto l = [] { return 42; };
     constexpr ebd::fn_ref<int()> f1 = l;
@@ -215,7 +215,7 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
   }
 #endif
 
-#if (EMBED_CXX_VERSION >= 202302L && __cpp_static_call_operator >= 202207L)
+#if (EMBED_CXX_VERSION >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
   {
     ebd_test_static_call_operator obj;
     ebd::fn_ref<int(int, int)> f1 = obj;
@@ -236,7 +236,7 @@ TEST(Conformance_fn_ref, conformance_addition_pass) {
 #endif
 
   {
-#if EMBED_CXX_VERSION >= 202002L && __cpp_lib_ranges >= 202110L
+#if EMBED_CXX_VERSION >= 202002L && defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 202110L
 
     std::ranges::less ls{};
     ebd::fn_ref<bool(int, int) const> f3 = ls; // stateless

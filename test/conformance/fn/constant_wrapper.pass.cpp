@@ -1,7 +1,7 @@
 #include "__constant_wrapper.hpp"
 #include "test_function.hpp"
 
-#if __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
 
 namespace {
     

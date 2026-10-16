@@ -30,7 +30,7 @@ TEST(UnaryDereference, fn_ref_freeFunction) {
     ASSERT_EQ(*f1, &ebd_test_free_func_v);
 }
 
-#if ( EMBED_CXX_VERSION >= 201703L || __cpp_noexcept_function_type >= 201510L )
+#if ( EMBED_CXX_VERSION >= 201703L && defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L )
 
 TEST(UnaryDereference, noexcept_qualifier) {
     {

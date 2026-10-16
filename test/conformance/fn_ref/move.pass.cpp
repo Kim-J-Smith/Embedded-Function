@@ -28,7 +28,7 @@
 
 STATIC_ASSERT_(std::is_move_constructible<ebd::fn_ref<void()>>::value);
 STATIC_ASSERT_(std::is_move_constructible<ebd::fn_ref<void() const>>::value);
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(std::is_move_constructible<ebd::fn_ref<void() noexcept>>::value);
   STATIC_ASSERT_(std::is_move_constructible<ebd::fn_ref<void() const noexcept>>::value);
 #endif
@@ -54,7 +54,7 @@ static int needs_conversion_5(Int x, Int y, Int z) noexcept { return x.i + y.i +
 TEST(Conformance_fn_ref, move_pass) {
   static_cast<void>(&f2);
   static_cast<void>(&needs_conversion_5);
-#if 1 && __cpp_lib_constant_wrapper >= 202603L
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
   {
     ebd::fn_ref<void()> f(std::cw<[] {}>);
     auto f2 = std::move(f);

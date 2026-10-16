@@ -41,17 +41,17 @@ STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, void*>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, void (*)(int)>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void()>, void (A::*)()>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(A*)>, void (A::*)()>::value);
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void()>, void (*)() noexcept>::value);
 #endif
 
 // the constructor is noexcept
 STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void()>, void (*)()>::value);
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void()>, void (*)() noexcept>::value);
 #endif
 
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   // non-const noexcept(true)
   STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<A() noexcept>, A (*)() noexcept>::value);
   STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<A() noexcept>, A (*)()>::value);
@@ -70,18 +70,18 @@ STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, void
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, void (*)(int, A)>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(int, double) const>, void (A::*)()>::value);
 STATIC_ASSERT_(!std::is_constructible<ebd::fn_ref<void(A*) const>, void (A::*)()>::value);
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(std::is_constructible<ebd::fn_ref<void(int, double) const>, void (*)(int, double) noexcept>::value);
 #endif
 
 // the constructor is noexcept
 STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void(int, double) const>, void (*)(int, double)>::value);
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(
     std::is_nothrow_constructible<ebd::fn_ref<void(int, double) const>, void (*)(int, double) noexcept>::value);
 #endif
 
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   // const noexcept(true)
   STATIC_ASSERT_(
       std::is_constructible<ebd::fn_ref<void(int, double) const noexcept>, void (*)(int, double) noexcept>::value);
@@ -93,7 +93,7 @@ STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void(int, double) const
 #endif
 
 // the constructor is noexcept
-#if __cpp_noexcept_function_type >= 201510L
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L
   STATIC_ASSERT_(std::is_nothrow_constructible<ebd::fn_ref<void(int, double) const noexcept>,
                                                void (*)(int, double) noexcept>::value);
 #endif
