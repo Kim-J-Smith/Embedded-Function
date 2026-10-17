@@ -1199,7 +1199,7 @@ inline namespace fn_traits {
   struct is_statically_callable : bool_constant<
     requires (Args&&... args) { Fn::operator()(std::forward<Args>(args)...); }
   > {};
-#else
+#else // ^^^ C++ >= 23 / C++ <= 20 vvv
   template <typename Fn, typename... Args>
   struct is_statically_callable : std::false_type {};
 #endif
@@ -1266,7 +1266,7 @@ inline namespace fn_traits {
   struct get_unique_signature_impl<Fn, Ret(*)(This, Args...) noexcept>
   : public add_qualifier_like<This, Ret(Args...) noexcept> {};
 
-#endif
+#endif // C++ >= 23
 
 #if (EMBED_CXX_VERSION >= 202302L && \
     defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
@@ -1288,7 +1288,7 @@ inline namespace fn_traits {
     using type = Ret(Args...) const noexcept;
   };
 
-#endif
+#endif // C++ >= 23
 
   // Get the signature of unique callable class.
   template <typename Functor,
@@ -1793,7 +1793,7 @@ namespace invocation {
         return Functor::operator()(std::forward<Args>(args)...);                \
     }                                                                           \
   }; /* end static_call */
-#else
+#else // ^^^ C++ >= 23 / C++ <= 20 vvv
 # define EMBED_DETAIL_STATIC_CALL_INVOKER_IMPL(C, V, REF, NOEXCEPT) \
   struct static_call { /* empty struct */ };
 #endif
