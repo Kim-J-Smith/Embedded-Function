@@ -1079,17 +1079,17 @@ inline namespace fn_traits {
 
   // Check whether the parameter of invoker (after `smart_forward_t`) is same.
   template <typename T, typename U, bool = true>
-  struct has_same_invoker_param : std::false_type {};
+  struct has_same_invoker_params : std::false_type {};
 
   template <>
-  struct has_same_invoker_param<args_package<>, args_package<>, true>
+  struct has_same_invoker_params<args_package<>, args_package<>, true>
   : std::true_type {};
 
   template <typename T, typename... Ts, typename U, typename... Us>
-  struct has_same_invoker_param<args_package<T, Ts...>, args_package<U, Us...>, true>
+  struct has_same_invoker_params<args_package<T, Ts...>, args_package<U, Us...>, true>
   : bool_constant<
     std::is_same<smart_forward_t<T>, smart_forward_t<U>>::value
-    && has_same_invoker_param<
+    && has_same_invoker_params<
       args_package<Ts...>, args_package<Us...>,
       sizeof...(Ts) == sizeof...(Us)>::value
   > {};
@@ -1115,7 +1115,7 @@ inline namespace fn_traits {
 
     // Check the return type of `From` and `To` are same and argument types are "similar".
     static constexpr bool sig_ret_ok = std::is_same<sig_to_ret, sig_from_ret>::value;
-    static constexpr bool sig_args_ok = has_same_invoker_param<sig_to_args, sig_from_args>::value;
+    static constexpr bool sig_args_ok = has_same_invoker_params<sig_to_args, sig_from_args>::value;
 
     // Check the buffer size of `To` is bigger `From` or equals.
     static constexpr bool buf_ok = BufTo >= BufFrom;
