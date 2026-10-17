@@ -161,7 +161,7 @@ A `static_assert` rejects null `Val` when `Fn` is a (member) function pointer.
 #### Nullptr Assignment
 
 ```cpp
-function& operator=(std::nullptr_t) noexcept(Config::assertNoThrow);
+function& operator=(std::nullptr_t) noexcept;
 ```
 
 Assigns a null pointer, clearing the function wrapper. Owning wrappers only (deleted for views).
@@ -215,7 +215,7 @@ Returns `true` if the function wrapper is not empty, `false` otherwise.
 #### clear
 
 ```cpp
-void clear() noexcept(Config::assertNoThrow);
+void clear() noexcept;
 ```
 
 Clears the function wrapper, destroying the wrapped callable object if necessary.
