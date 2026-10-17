@@ -29,7 +29,7 @@ jobs:
           mkdir -p release_packages/header_only/
           cp -r include CMakeLists.txt cmake release_packages/header_only/
           (cd release_packages && zip -9 -r header_only.zip header_only)
-          tar -cvf release_packages/header_only.tar.gz -I 'gzip -9' -C release_packages header_only
+          (cd release_packages && tar -cvf header_only.tar.gz -I 'gzip -9' header_only)
 
       # Get version number
       - name: Get version number

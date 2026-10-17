@@ -164,7 +164,7 @@ auto main() -> int {
 
 ### Summary table
 
-| Wrapper Type | Copyable | View (Non-owning) | Throws on Empty Call | Assert No-Throw (Ctor/Dtor) | Buffer Size | Primary Use Case |
+| Wrapper Type | Copyable | View (Non-owning) | Throws on Empty Call | Assert move/copy Ctor `noexcept` | Buffer Size | Primary Use Case |
 | :----------- | :---: | :---: | :---: | :---: | :---: | :---: |
 | [`ebd::fn`](./docs/api/fn.md)    |  Yes  |   No  | No (`std::terminate()`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
 | [`ebd::unique_fn`](./docs/api/unique_fn.md)    |  No  |   No  | No (`std::terminate()`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
