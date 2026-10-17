@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.5.0-yellow?style=for-the-badge&logo=github" alt="Version - 2.5.0">
+  <img src="https://img.shields.io/badge/Version-2.5.1-yellow?style=for-the-badge&logo=github" alt="Version - 2.5.1">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -451,7 +451,7 @@ include(FetchContent)
 FetchContent_Declare(
   embedded_function
   GIT_REPOSITORY https://github.com/Kim-J-Smith/Embedded-Function.git
-  GIT_TAG        v2.5.0
+  GIT_TAG        v2.5.1
   GIT_SHALLOW    TRUE
 )
 
