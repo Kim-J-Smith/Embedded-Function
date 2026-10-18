@@ -1059,6 +1059,10 @@ inline namespace fn_traits {
 #endif
   };
 
+  // Reference type is sure to be register-passable.
+  template <typename T> struct is_register_passable<T&, void> : std::true_type {};
+  template <typename T> struct is_register_passable<T&&, void> : std::true_type {};
+
   // Avoid triggering repeated error messages caused by incompleteness.
   // According to [temp.point]/7, this specialization should only be used in error situations.
   template <typename T> // use `enable_if_t` as MSVC workaround

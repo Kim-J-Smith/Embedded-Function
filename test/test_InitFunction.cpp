@@ -1431,3 +1431,26 @@ TEST(InitFunction, SimilarSignaturePlus) {
         ASSERT_EQ(f8(42), 42);
     }
 }
+
+// InitFunction[52]
+namespace {
+    struct Incomplete;
+}
+TEST(InitFunction, IncompleteRefShouldBeAccept) {
+    {
+        ebd::fn<void(Incomplete&)> f; (void)f;
+        ebd::fn<void(Incomplete&&)> g; (void)g;
+    }
+    {
+        ebd::unique_fn<void(Incomplete&)> f; (void)f;
+        ebd::unique_fn<void(Incomplete&&)> g; (void)g;
+    }
+    {
+        ebd::classic_fn<void(Incomplete&)> f; (void)f;
+        ebd::classic_fn<void(Incomplete&&)> g; (void)g;
+    }
+    {
+        ebd::__safe_fn<void(Incomplete&)> f; (void)f;
+        ebd::__safe_fn<void(Incomplete&&)> g; (void)g;
+    }
+}
