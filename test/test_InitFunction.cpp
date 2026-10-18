@@ -1453,4 +1453,8 @@ TEST(InitFunction, IncompleteRefShouldBeAccept) {
         ebd::__safe_fn<void(Incomplete&)> f; (void)f;
         ebd::__safe_fn<void(Incomplete&&)> g; (void)g;
     }
+    {
+        ebd::fn_ref<void(Incomplete&)> f = +[](Incomplete&) {}; (void)f;
+        ebd::fn_ref<void(Incomplete&&)> g = +[](Incomplete&&) {}; (void)g;
+    }
 }
