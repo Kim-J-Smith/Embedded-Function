@@ -16,13 +16,13 @@
 
 // Lightweight and heap-free polymorphic function wrapper collection.
 
-/// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD
-/// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
-
 /// @b EMBED_FN_CONFIG_UNDEF_MACROS
 /// If this macro is defined, EMBED_* macros will be undefined at the end of this file.
 
-/// @b EMBED_FN_HOOK_DEBUG(message)
+/// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD [ATTENTION ABI BREAKING]
+/// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
+
+/// @b EMBED_FN_HOOK_DEBUG(message) [ATTENTION ODR VIOLATION]
 /// If this macro is defined, it will be called to print debug message in debug mode.
 /// @example `fputs(message, stderr)`
 
@@ -1018,6 +1018,82 @@ inline namespace fn_traits {
       && CfgTo::assertNoThrow <= CfgFrom::assertNoThrow; // Assert to non-assert is OK.
   };
 
+#if defined(__cpp_lib_reflection) && __cpp_lib_reflection >= 202506L
+  // Use template parameter `Val` to avoid violating ODR.
+  template <typename T, bool Val = std::meta::is_complete_type(^^T)>
+  consteval bool is_complete_here() noexcept { return Val; }
+#elif defined(__clang__) && EMBED_HAS_BUILTIN(__is_complete_type)
+  // Use template parameter `Val` to avoid violating ODR.
+  template <typename T, bool Val = __is_complete_type(T)>
+  constexpr bool is_complete_here() noexcept { return Val; }
+#else
+  template <typename T, typename = void>
+  constexpr bool is_complete_here_impl(...) noexcept {
+    return std::is_reference<T>::value || std::is_function<T>::value;
+  }
+
+  template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
+  constexpr bool is_complete_here_impl(int) noexcept { return true; }
+
+  // Use template parameter `Val` to avoid violating ODR.
+  template <typename T, bool Val = is_complete_here_impl<T>(0)>
+  constexpr bool is_complete_here() noexcept { return Val; }
+#endif
+
+  // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
+  // in `conditional_t`. To work around this issue and facilitate targeted
+  // optimization for each platform, we create `is_register_passable`.
+  template <typename T, typename = void>
+  struct is_register_passable {
+    static constexpr std::size_t obj_size = sizeof(T);
+
+#if defined(_WIN64) && defined(_M_X64) && !defined(_M_ARM64EC)
+    // See <https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170>
+    // and <https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-180#parameter-passing>.
+    static_assert(sizeof(void*) == 8, EMBED_DETAIL_REPORT_IE("sizeof(void*) != 8 in Windows x64."));
+    static constexpr bool size_is_ok = obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8;
+    static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
+#else
+    static constexpr bool size_is_ok = obj_size <= 2 * sizeof(void*);
+    static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
+#endif
+  };
+
+  // Avoid triggering repeated error messages caused by incompleteness.
+  // According to [temp.point]/7, this specialization should only be used in error situations.
+  template <typename T> // use `enable_if_t` as MSVC workaround
+  struct is_register_passable<T, enable_if_t<!is_complete_here<T>()>>
+  : std::false_type {};
+
+  // Used to choose either perfect forwarding or pass-by-value.
+  // Pass-by-value is faster for scalar types because they can
+  // be passed by the register rather than the stack.
+#if !defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
+  template <typename T>
+  using smart_forward_t = // vvv MSVC 19.10~19.14 workaround: avoid using `conditional_t`.
+    typename std::conditional<is_register_passable<T>::value, T, T&&>::type;
+#else
+  template <typename T>
+  using smart_forward_t = T&&;
+#endif
+
+  // Check whether the parameters of invoker (`smart_forward_t<Args>...`) are same.
+  template <typename T, typename U, bool = true>
+  struct has_same_invoker_params : std::false_type {};
+
+  template <>
+  struct has_same_invoker_params<args_package<>, args_package<>, true>
+  : std::true_type {};
+
+  template <typename T, typename... Ts, typename U, typename... Us>
+  struct has_same_invoker_params<args_package<T, Ts...>, args_package<U, Us...>, true>
+  : bool_constant<
+    std::is_same<smart_forward_t<T>, smart_forward_t<U>>::value
+    && has_same_invoker_params<
+      args_package<Ts...>, args_package<Us...>,
+      sizeof...(Ts) == sizeof...(Us)>::value
+  > {};
+
   // Implement `is_convertible_from_specialization`.
   template <typename To, typename From>
   struct is_convertible_from_specialization_impl : public std::false_type {};
@@ -1037,9 +1113,9 @@ inline namespace fn_traits {
     using sig_to_args = typename unwrap_to::args;
     using sig_from_args = typename unwrap_from::args;
 
-    // Check the arguments of `From` and `To` are same.
+    // Check the return type of `From` and `To` are same and argument types are "similar".
     static constexpr bool sig_ret_ok = std::is_same<sig_to_ret, sig_from_ret>::value;
-    static constexpr bool sig_args_ok = std::is_same<sig_to_args, sig_from_args>::value;
+    static constexpr bool sig_args_ok = has_same_invoker_params<sig_to_args, sig_from_args>::value;
 
     // Check the buffer size of `To` is bigger `From` or equals.
     static constexpr bool buf_ok = BufTo >= BufFrom;
@@ -1369,65 +1445,6 @@ inline namespace fn_traits {
   // Get the type of pointer to member function.
   template <typename Signature>
   using get_member_fn_type_t = typename get_member_fn_type<Signature>::type;
-
-#if defined(__cpp_lib_reflection) && __cpp_lib_reflection >= 202506L
-  // Use template parameter `Val` to avoid violating ODR.
-  template <typename T, bool Val = std::meta::is_complete_type(^^T)>
-  consteval bool is_complete_here() noexcept { return Val; }
-#elif defined(__clang__) && EMBED_HAS_BUILTIN(__is_complete_type)
-  // Use template parameter `Val` to avoid violating ODR.
-  template <typename T, bool Val = __is_complete_type(T)>
-  constexpr bool is_complete_here() noexcept { return Val; }
-#else
-  template <typename T, typename = void>
-  constexpr bool is_complete_here_impl(...) noexcept {
-    return std::is_reference<T>::value || std::is_function<T>::value;
-  }
-
-  template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
-  constexpr bool is_complete_here_impl(int) noexcept { return true; }
-
-  // Use template parameter `Val` to avoid violating ODR.
-  template <typename T, bool Val = is_complete_here_impl<T>(0)>
-  constexpr bool is_complete_here() noexcept { return Val; }
-#endif
-
-  // MSVC 19.21 and earlier have a bug when using `sizeof(T) <= sizeof(void*)`
-  // in `conditional_t`. To work around this issue and facilitate targeted
-  // optimization for each platform, we create `is_register_passable`.
-  template <typename T, typename = void>
-  struct is_register_passable {
-    static constexpr std::size_t obj_size = sizeof(T);
-
-#if defined(_WIN64) && defined(_M_X64) && !defined(_M_ARM64EC)
-    // See <https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170>
-    // and <https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-180#parameter-passing>.
-    static_assert(sizeof(void*) == 8, EMBED_DETAIL_REPORT_IE("sizeof(void*) != 8 in Windows x64."));
-    static constexpr bool size_is_ok = obj_size == 1 || obj_size == 2 || obj_size == 4 || obj_size == 8;
-    static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
-#else
-    static constexpr bool size_is_ok = obj_size <= 2 * sizeof(void*);
-    static constexpr bool value = is_itanium_trivial_for_calls<T>::value && size_is_ok;
-#endif
-  };
-
-  // Avoid triggering repeated error messages caused by incompleteness.
-  // According to [temp.point]/7, this specialization should only be used in error situations.
-  template <typename T> // use `enable_if_t` as MSVC workaround
-  struct is_register_passable<T, enable_if_t<!is_complete_here<T>()>>
-  : std::false_type {};
-
-  // Used to choose either perfect forwarding or pass-by-value.
-  // Pass-by-value is faster for scalar types because they can
-  // be passed by the register rather than the stack.
-#if !defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
-  template <typename T>
-  using smart_forward_t = // vvv MSVC 19.10~19.14 workaround: avoid using `conditional_t`.
-    typename std::conditional<is_register_passable<T>::value, T, T&&>::type;
-#else
-  template <typename T>
-  using smart_forward_t = T&&;
-#endif
 
   // If IsView is true, it cannot be qualified with '&' or '&&'. [P0792]
   template <bool IsView, typename Signature>

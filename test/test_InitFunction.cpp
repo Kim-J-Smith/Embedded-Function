@@ -1292,3 +1292,142 @@ TEST(InitFunction, fn_MemberVariable) {
         ASSERT_EQ(f4(obj), 42);
     }
 }
+
+// InitFunction[51]
+namespace {
+    struct NonTrivial {
+        int n;
+        NonTrivial(int num = 0) noexcept : n(num) {}
+        NonTrivial(const NonTrivial& o) noexcept { n = o.n; }
+    };
+}
+TEST(InitFunction, SimilarSignaturePlus) {
+    {
+        ebd::fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial) const> f1 =
+            [](NonTrivial a, NonTrivial b, NonTrivial c) noexcept -> NonTrivial { return a.n + b.n + c.n; };
+        ebd::fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial)> f2 = f1; // same buf
+        ebd::fn<NonTrivial(NonTrivial&&, NonTrivial, NonTrivial)> f3 = f2; // same buf
+        ebd::fn<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial)> f4 = f3; // same buf
+        ebd::fn<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial&&)> f5 = f4; // same buf
+        ASSERT_EQ(f5(1, 2, 3).n, 6);
+        ASSERT_EQ(f5(1, 2, 4).n, 7);
+        ASSERT_EQ(f5(2, 2, 4).n, 8);
+
+        ebd::fn<int(int) const> f6 = [](int n) noexcept { return n; };
+        ebd::fn<int(int)> f7 = f6;
+        auto f8 = ebd::make_fn<ebd::fn, int(int&&)>(f7);
+        ASSERT_EQ(f8(42), 42);
+#if defined(EBD_TEST_USE_FALLBACK) || defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
+        static_assert(sizeof(f8) == sizeof(f7), "BUG"); // same buf
+#else
+        static_assert(sizeof(f8) != sizeof(f7), "BUG"); // not same buf
+#endif
+    }
+    {
+        ebd::unique_fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial) const> f1 =
+            [](NonTrivial a, NonTrivial b, NonTrivial c) noexcept -> NonTrivial { return a.n + b.n + c.n; };
+        ebd::unique_fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial)> f2 = std::move(f1); // same buf
+        ebd::unique_fn<NonTrivial(NonTrivial&&, NonTrivial, NonTrivial)> f3 = std::move(f2); // same buf
+        ebd::unique_fn<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial)> f4 = std::move(f3); // same buf
+        ebd::unique_fn<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial&&)> f5 = std::move(f4); // same buf
+        ASSERT_EQ(f5(1, 2, 3).n, 6);
+        ASSERT_EQ(f5(1, 2, 4).n, 7);
+        ASSERT_EQ(f5(2, 2, 4).n, 8);
+
+        ebd::unique_fn<int(int) const> f6 = [](int n) noexcept { return n; };
+        ebd::unique_fn<int(int)> f7 = std::move(f6);
+        auto f8 = ebd::make_fn<ebd::unique_fn, int(int&&)>(std::move(f7));
+        ASSERT_EQ(f8(42), 42);
+#if defined(EBD_TEST_USE_FALLBACK) || defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
+        static_assert(sizeof(f8) == sizeof(f7), "BUG"); // same buf
+#else
+        static_assert(sizeof(f8) != sizeof(f7), "BUG"); // not same buf
+#endif
+    }
+    {
+        ebd::classic_fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial) const> f1 =
+            [](NonTrivial a, NonTrivial b, NonTrivial c) noexcept -> NonTrivial { return a.n + b.n + c.n; };
+        ebd::classic_fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial)> f2 = f1; // same buf
+        ebd::classic_fn<NonTrivial(NonTrivial&&, NonTrivial, NonTrivial)> f3 = f2; // same buf
+        ebd::classic_fn<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial)> f4 = f3; // same buf
+        ebd::classic_fn<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial&&)> f5 = f4; // same buf
+        ASSERT_EQ(f5(1, 2, 3).n, 6);
+        ASSERT_EQ(f5(1, 2, 4).n, 7);
+        ASSERT_EQ(f5(2, 2, 4).n, 8);
+
+        ebd::classic_fn<int(int) const> f6 = [](int n) noexcept { return n; };
+        ebd::classic_fn<int(int)> f7 = f6;
+        auto f8 = ebd::make_fn<ebd::classic_fn, int(int&&)>(f7);
+        ASSERT_EQ(f8(42), 42);
+#if defined(EBD_TEST_USE_FALLBACK) || defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
+        static_assert(sizeof(f8) == sizeof(f7), "BUG"); // same buf
+#else
+        static_assert(sizeof(f8) != sizeof(f7), "BUG"); // not same buf
+#endif
+    }
+    {
+        ebd::__safe_fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial) const> f1 =
+            [](NonTrivial a, NonTrivial b, NonTrivial c) noexcept -> NonTrivial { return a.n + b.n + c.n; };
+        ebd::__safe_fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial)> f2 = f1; // same buf
+        ebd::__safe_fn<NonTrivial(NonTrivial&&, NonTrivial, NonTrivial)> f3 = f2; // same buf
+        ebd::__safe_fn<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial)> f4 = f3; // same buf
+        ebd::__safe_fn<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial&&)> f5 = f4; // same buf
+        ASSERT_EQ(f5(1, 2, 3).n, 6);
+        ASSERT_EQ(f5(1, 2, 4).n, 7);
+        ASSERT_EQ(f5(2, 2, 4).n, 8);
+
+        ebd::__safe_fn<int(int) const> f6 = [](int n) noexcept { return n; };
+        ebd::__safe_fn<int(int)> f7 = f6;
+        auto f8 = ebd::make_fn<ebd::__safe_fn, int(int&&)>(f7);
+        ASSERT_EQ(f8(42), 42);
+#if defined(EBD_TEST_USE_FALLBACK) || defined(EMBED_FN_CONFIG_DISABLE_SMART_FORWARD)
+        static_assert(sizeof(f8) == sizeof(f7), "BUG"); // same buf
+#else
+        static_assert(sizeof(f8) != sizeof(f7), "BUG"); // not same buf
+#endif
+    }
+    {
+        // Non-ref <-> `&&` is OK.
+        static_assert(std::is_assignable<ebd::fn_ref<NonTrivial(NonTrivial)>&,
+                                         ebd::fn_ref<NonTrivial(NonTrivial)>>::value, "BUG");
+        static_assert(std::is_assignable<ebd::fn_ref<NonTrivial(NonTrivial&&)>&,
+                                         ebd::fn_ref<NonTrivial(NonTrivial)>>::value, "BUG");
+        static_assert(std::is_assignable<ebd::fn_ref<NonTrivial(NonTrivial)>&,
+                                         ebd::fn_ref<NonTrivial(NonTrivial&&)>>::value, "BUG");
+
+        // Non-ref <-> `&` or `&&` <-> `&` is NOT OK.
+        static_assert(!std::is_assignable<ebd::fn_ref<NonTrivial(NonTrivial&)>&,
+                                          ebd::fn_ref<NonTrivial(NonTrivial)>>::value, "BUG");
+        static_assert(!std::is_assignable<ebd::fn_ref<NonTrivial(NonTrivial)>&,
+                                          ebd::fn_ref<NonTrivial(NonTrivial&)>>::value, "BUG");
+        static_assert(!std::is_assignable<ebd::fn_ref<NonTrivial(NonTrivial&)>&,
+                                          ebd::fn_ref<NonTrivial(NonTrivial&&)>>::value, "BUG");
+        static_assert(!std::is_assignable<ebd::fn_ref<NonTrivial(NonTrivial&&)>&,
+                                          ebd::fn_ref<NonTrivial(NonTrivial&)>>::value, "BUG");
+
+        // Type must be the same.
+        static_assert(!std::is_assignable<ebd::fn_ref<void(int)>&,
+                                          ebd::fn_ref<void(long)>>::value, "BUG");
+        static_assert(!std::is_assignable<ebd::fn_ref<void(float)>&,
+                                          ebd::fn_ref<void(double)>>::value, "BUG");
+
+        // Non-const to const is still rejected in non-owning wrapper.
+        static_assert(!std::is_assignable<ebd::fn_ref<void(int) const>&,
+                                          ebd::fn_ref<void(int)>>::value, "BUG");
+
+        ebd::fn_ref<NonTrivial(NonTrivial, NonTrivial, NonTrivial) const EBD_TEST_NOEXCEPT> f1 =
+            +[](NonTrivial a, NonTrivial b, NonTrivial c) noexcept -> NonTrivial { return a.n + b.n + c.n; };
+        ebd::fn_ref<NonTrivial(NonTrivial, NonTrivial, NonTrivial)> f2 = f1;
+        ebd::fn_ref<NonTrivial(NonTrivial&&, NonTrivial, NonTrivial)> f3 = f2;
+        ebd::fn_ref<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial)> f4 = f3;
+        ebd::fn_ref<NonTrivial(NonTrivial&&, NonTrivial&&, NonTrivial&&)> f5 = f4;
+        ASSERT_EQ(f5(1, 2, 3).n, 6);
+        ASSERT_EQ(f5(1, 2, 4).n, 7);
+        ASSERT_EQ(f5(2, 2, 4).n, 8);
+
+        ebd::fn_ref<int(int) const EBD_TEST_NOEXCEPT> f6 = +[](int n) noexcept { return n; };
+        ebd::fn_ref<int(int)> f7 = f6;
+        auto f8 = ebd::make_fn<ebd::fn_ref, int(int&&)>(f7);
+        ASSERT_EQ(f8(42), 42);
+    }
+}
