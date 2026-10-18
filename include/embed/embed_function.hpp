@@ -1146,6 +1146,7 @@ inline namespace fn_traits {
   };
 
   // If the `From` type can be converted to the `To` type, then the value is `true`.
+  /// TODO: `remove_reference_t` -> `remove_cvref_t`.
   template <typename To, typename From>
   struct is_convertible_from_specialization : public bool_constant<
     is_convertible_from_specialization_impl<remove_reference_t<To>, remove_reference_t<From>>::value
