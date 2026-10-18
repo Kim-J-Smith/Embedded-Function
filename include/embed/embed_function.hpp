@@ -1077,7 +1077,7 @@ inline namespace fn_traits {
   using smart_forward_t = T&&;
 #endif
 
-  // Check whether the parameter of invoker (after `smart_forward_t`) is same.
+  // Check whether the parameters of invoker (`smart_forward_t<Args>...`) are same.
   template <typename T, typename U, bool = true>
   struct has_same_invoker_params : std::false_type {};
 

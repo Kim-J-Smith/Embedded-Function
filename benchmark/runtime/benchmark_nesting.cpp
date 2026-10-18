@@ -4,7 +4,7 @@
 #include <utility>
 
 // Five levels with different value/`&&` signatures of a non register-passable
-// payload: ebd converts (is_convertible_from_specialization), others re-wrap.
+// payload: ebd converts (is_convertible_from_specialization), others may re-wrap.
 
 struct nesting_payload {
     int v0, v1, v2, v3, v4;

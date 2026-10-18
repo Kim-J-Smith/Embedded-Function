@@ -1387,6 +1387,52 @@ TEST(InitFunction, SimilarSignaturePlus) {
 #endif
     }
     {
+        // Non-ref <-> `&&` is OK.
+        static_assert(
+            std::is_assignable<
+                ebd::fn_ref<NonTrivial(NonTrivial)>&,
+                ebd::fn_ref<NonTrivial(NonTrivial)>
+            >::value, "BUG");
+        static_assert(
+            std::is_assignable<
+                ebd::fn_ref<NonTrivial(NonTrivial&&)>&,
+                ebd::fn_ref<NonTrivial(NonTrivial)>
+            >::value, "BUG");
+        static_assert(
+            std::is_assignable<
+                ebd::fn_ref<NonTrivial(NonTrivial)>&,
+                ebd::fn_ref<NonTrivial(NonTrivial&&)>
+            >::value, "BUG");
+
+        // Non-ref <-> `&` or `&&` <-> `&` is NOT OK.
+        static_assert(
+            !std::is_assignable<
+                ebd::fn_ref<NonTrivial(NonTrivial&)>&,
+                ebd::fn_ref<NonTrivial(NonTrivial)>
+            >::value, "BUG");
+        static_assert(
+            !std::is_assignable<
+                ebd::fn_ref<NonTrivial(NonTrivial)>&,
+                ebd::fn_ref<NonTrivial(NonTrivial&)>
+            >::value, "BUG");
+        static_assert(
+            !std::is_assignable<
+                ebd::fn_ref<NonTrivial(NonTrivial&)>&,
+                ebd::fn_ref<NonTrivial(NonTrivial&&)>
+            >::value, "BUG");
+        static_assert(
+            !std::is_assignable<
+                ebd::fn_ref<NonTrivial(NonTrivial&&)>&,
+                ebd::fn_ref<NonTrivial(NonTrivial&)>
+            >::value, "BUG");
+
+        // Type must be the same.
+        static_assert(
+            !std::is_assignable<
+                ebd::fn_ref<void(int)>&,
+                ebd::fn_ref<void(long)>
+            >::value, "BUG");
+
         ebd::fn_ref<NonTrivial(NonTrivial, NonTrivial, NonTrivial) const EBD_TEST_NOEXCEPT> f1 =
             +[](NonTrivial a, NonTrivial b, NonTrivial c) noexcept -> NonTrivial { return a.n + b.n + c.n; };
         ebd::fn_ref<NonTrivial(NonTrivial, NonTrivial, NonTrivial)> f2 = f1;
