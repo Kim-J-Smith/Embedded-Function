@@ -2,8 +2,7 @@
 
 #include <type_traits>
 
-template <typename To, typename From>
-using ref_conv_temp = ebd::detail::reference_converts_from_temporary<To, From>;
+namespace ed = ebd::detail;
 
 struct DetailTraits_To_class {};
 struct DetailTraits_From_class {
@@ -19,8 +18,117 @@ TEST(DetailTraits, reference_converts_from_temporary_impl) {
 # define PASS_ false
 #endif
 
-    auto ret = ref_conv_temp<DetailTraits_To_class&&, DetailTraits_From_class>::value;
+    auto ret = ed::reference_converts_from_temporary<DetailTraits_To_class&&, DetailTraits_From_class>::value;
     auto can_convert = std::is_convertible<DetailTraits_From_class, DetailTraits_To_class&&>::value;
     ASSERT_EQ(ret <= can_convert || PASS_, true);
 }
 
+
+namespace {
+    struct NonTrivial {
+        int n;
+        NonTrivial(int num = 0) noexcept : n(num) {}
+        NonTrivial(const NonTrivial& o) noexcept { n = o.n; }
+    };
+}
+TEST(DetailTraits, is_convertible_from_specialization) {
+    // fn
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn<int(NonTrivial&&)>, ebd::fn<int(NonTrivial)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn<int(NonTrivial)>, ebd::fn<int(NonTrivial&&)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn<int(NonTrivial&&)>, ebd::fn<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn<int(NonTrivial)>, ebd::fn<int(NonTrivial&&) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn<int(NonTrivial&&) const>, ebd::fn<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn<int(NonTrivial) const>, ebd::fn<int(NonTrivial&&) const>>::value, "BUG");
+
+    // unique_fn
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::unique_fn<int(NonTrivial&&)>, ebd::unique_fn<int(NonTrivial)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::unique_fn<int(NonTrivial)>, ebd::unique_fn<int(NonTrivial&&)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::unique_fn<int(NonTrivial&&)>, ebd::unique_fn<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::unique_fn<int(NonTrivial)>, ebd::unique_fn<int(NonTrivial&&) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::unique_fn<int(NonTrivial&&) const>, ebd::unique_fn<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::unique_fn<int(NonTrivial) const>, ebd::unique_fn<int(NonTrivial&&) const>>::value, "BUG");
+
+    // classic_fn
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::classic_fn<int(NonTrivial&&)>, ebd::classic_fn<int(NonTrivial)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::classic_fn<int(NonTrivial)>, ebd::classic_fn<int(NonTrivial&&)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::classic_fn<int(NonTrivial&&)>, ebd::classic_fn<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::classic_fn<int(NonTrivial)>, ebd::classic_fn<int(NonTrivial&&) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::classic_fn<int(NonTrivial&&) const>, ebd::classic_fn<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::classic_fn<int(NonTrivial) const>, ebd::classic_fn<int(NonTrivial&&) const>>::value, "BUG");
+
+    // __safe_fn
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::__safe_fn<int(NonTrivial&&)>, ebd::__safe_fn<int(NonTrivial)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::__safe_fn<int(NonTrivial)>, ebd::__safe_fn<int(NonTrivial&&)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::__safe_fn<int(NonTrivial&&)>, ebd::__safe_fn<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::__safe_fn<int(NonTrivial)>, ebd::__safe_fn<int(NonTrivial&&) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::__safe_fn<int(NonTrivial&&) const>, ebd::__safe_fn<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::__safe_fn<int(NonTrivial) const>, ebd::__safe_fn<int(NonTrivial&&) const>>::value, "BUG");
+
+    // fn_ref
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn_ref<int(NonTrivial&&)>, ebd::fn_ref<int(NonTrivial)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn_ref<int(NonTrivial)>, ebd::fn_ref<int(NonTrivial&&)>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn_ref<int(NonTrivial&&)>, ebd::fn_ref<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn_ref<int(NonTrivial)>, ebd::fn_ref<int(NonTrivial&&) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn_ref<int(NonTrivial&&) const>, ebd::fn_ref<int(NonTrivial) const>>::value, "BUG");
+    static_assert(
+        ed::is_convertible_from_specialization<
+            ebd::fn_ref<int(NonTrivial) const>, ebd::fn_ref<int(NonTrivial&&) const>>::value, "BUG");
+}
