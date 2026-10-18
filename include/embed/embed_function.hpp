@@ -1329,11 +1329,14 @@ inline namespace fn_traits {
 
   // `true` if the operator() of Fn is deducing this.
   template <typename Fn, typename This, typename Sig, typename... Args>
-  concept deducing_this_call = requires (Fn f, Args&&... args) {
-    static_cast<typename unwrap_signature<
-      typename add_qualifier_like<This, Sig>::type
-    >::template add_cvref_like<Fn>>(f)(std::forward<Args>(args)...);
-  };
+  concept deducing_this_call =
+    // Functors with static operator() with default argument should be ruled out.
+    (!is_statically_callable<Fn, This, Args...>::value)
+    && requires (Fn f, Args&&... args) {
+      static_cast<typename unwrap_signature<
+        typename add_qualifier_like<This, Sig>::type
+      >::template add_cvref_like<Fn>>(f)(std::forward<Args>(args)...);
+    };
 
   // noexcept(false)
   template <typename Fn, typename This, typename Ret, typename... Args>
