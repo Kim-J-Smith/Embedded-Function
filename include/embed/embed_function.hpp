@@ -1146,7 +1146,7 @@ inline namespace fn_traits {
   };
 
   // If the `From` type can be converted to the `To` type, then the value is `true`.
-  /// TODO: `remove_reference_t` -> `remove_cvref_t`.
+  /// @bug TODO: `remove_reference_t` -> `remove_cvref_t`.
   template <typename To, typename From>
   struct is_convertible_from_specialization : public bool_constant<
     is_convertible_from_specialization_impl<remove_reference_t<To>, remove_reference_t<From>>::value
@@ -2206,6 +2206,7 @@ namespace command {
     // No m_manager because IsView = true.
     invoker_t m_invoker;
 
+    /// TODO: remove `clone`, `move`, and `destroy`.
     void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
     const noexcept {
       auto* destination = static_cast<erasure_t*>(dst);
@@ -2969,6 +2970,7 @@ public:
       noexcept(is_cfg_noexcept<Cfg>::value && is_cfg_noexcept<FCfg>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
+      /// TODO: Use memcpy directly.
       other.m_command.clone(&m_erasure, &other.m_erasure);
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
