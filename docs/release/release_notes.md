@@ -1,5 +1,5 @@
 **🔧 Fixed Bugs**
-- None.
+- Fixed a bug where wrappers could not be instantiated when a parameter is a reference to an incomplete type.
 
 **⚠️ Breaking Changes**
 - None.
