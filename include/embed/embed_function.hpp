@@ -1060,6 +1060,7 @@ inline namespace fn_traits {
   };
 
   // Reference type is sure to be register-passable.
+  // Avoid triggering hard error by `sizeof(T&)` when T is an incomplete type.
   template <typename T> struct is_register_passable<T&, void> : std::true_type {};
   template <typename T> struct is_register_passable<T&&, void> : std::true_type {};
 
