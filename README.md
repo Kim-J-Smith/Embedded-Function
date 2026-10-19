@@ -298,19 +298,19 @@ void free_function() {}
 struct Functor { void operator()() {} };
 
 ebd::fn<void()> f = &free_function;
-ASSERT_EQ(*f, &free_function);
+assert(*f == &free_function);
 
 ebd::fn<void(), 64> f_big = f;
-ASSERT_EQ(*f_big, nullptr);
+assert(*f_big == nullptr);
 
 f = +[]() { /* ... */ }; // lambda -> function pointer
-ASSERT_NE(*f, nullptr); // NOT equal nullptr
+assert(*f != nullptr);
 
 f = []() { /* ... */ };
-ASSERT_EQ(*f, nullptr);
+assert(*f == nullptr);
 
 f = Functor{};
-ASSERT_EQ(*f, nullptr);
+assert(*f == nullptr);
 ```
 
 ## 📦 C++20 Module support
