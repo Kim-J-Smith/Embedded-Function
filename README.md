@@ -289,7 +289,7 @@ In embedded MCU development, it is often necessary to pass a C-style free functi
 
 If the object encapsulated by the function wrapper is a valid function pointer which has exactly same signature with the wrapper, this mechanism returns the pointer; otherwise, it returns nullptr. Basically, it is equivalent to a highly restricted `target()` method.
 
-After a conversion between different wrappers (e.g. from `ebd::fn` to `ebd::unique_fn` or from `ebd::fn<Sig, 16>` to `ebd::fn<Sig, 32>`), the `operator*` of new wrapper will return `nullptr`.
+After converting from one wrapper type to another (e.g., from `ebd::fn` to `ebd::unique_fn`, or from `ebd::fn<int(), 16>` to `ebd::fn<int(), 32>`), `operator*` on the resulting wrapper returns `nullptr`.
 
 ### Example
 
