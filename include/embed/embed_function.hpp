@@ -2021,11 +2021,8 @@ namespace management {
     template <typename Functor>
     static EMBED_INLINE void trivially_clone(erasure_base_t* dst, erasure_base_t const* src)
     noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
-      std::memcpy(
-        static_cast<erasure_t*>(dst)->access(),
-        static_cast<erasure_t const*>(src)->access(),
-        sizeof(Functor) // Copy the whole `m_erasure` is unnecessary.
-      );
+      // Copy the whole `m_erasure` is unnecessary.
+      std::memcpy(dst, src, sizeof(Functor));
     }
 
     // Move trivial type-erased object from `src` to `dst`.
@@ -2554,7 +2551,7 @@ namespace crtp_mixins {
 
     member_variable_impl(std::nullptr_t, std::nullptr_t) noexcept {
       // Suppress GCC warning: "-Wmaybe-uninitialized" and "-Wuninitialized".
-      std::memset(m_erasure.access(), 0, sizeof(char));
+      std::memset(&m_erasure, 0, sizeof(char));
     }
 
     using erasure_t = erasure_type::Erasure<Config::isView, Size, Align>;
