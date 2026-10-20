@@ -2021,7 +2021,7 @@ namespace management {
     template <typename Functor>
     static EMBED_INLINE void trivially_clone(erasure_base_t* dst, erasure_base_t const* src)
     noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
-      // Copy the whole `m_erasure` is unnecessary.
+      // Copying the whole `m_erasure` is unnecessary.
       std::memcpy(dst, src, sizeof(Functor));
     }
 
