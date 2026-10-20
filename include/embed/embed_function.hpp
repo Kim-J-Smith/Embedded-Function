@@ -2206,17 +2206,6 @@ namespace command {
     // No m_manager because IsView = true.
     invoker_t m_invoker;
 
-    /// TODO: remove `clone`, `move`, and `destroy`.
-    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
-    const noexcept {
-      auto* destination = static_cast<erasure_t*>(dst);
-      auto* source = static_cast<erasure_t const*>(src);
-      std::memcpy(destination->access(), source->access(), default_values::non_owning::buffer_size);
-    }
-
-    void move(erasure_base_t*, erasure_base_t*) = delete;
-    void destroy(erasure_base_t*) = delete;
-
     // Initialize non-owning function wrapper. (FP)
     EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor)
       EMBED_DETAIL_REQUIRES_END(IsStoredOrigin) // requires the type of `Functor` is function pointer
@@ -2970,8 +2959,7 @@ public:
       noexcept(is_cfg_noexcept<Cfg>::value && is_cfg_noexcept<FCfg>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
-      /// TODO: Use memcpy directly.
-      other.m_command.clone(&m_erasure, &other.m_erasure);
+      std::memcpy(&m_erasure, &other.m_erasure, default_values::non_owning::buffer_size);
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
