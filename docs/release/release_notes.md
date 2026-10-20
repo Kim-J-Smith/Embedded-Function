@@ -1,6 +1,7 @@
 **🔧 Fixed Bugs**
 - Fixed a bug where wrappers could not be instantiated when a parameter is a reference to an incomplete type.
 - Fixed a bug where static operator() with default argument was mis-deduced as deducing-this.
+- Fixed undefined behavior caused by using an inactive union member in `clone` and during initialization.
 
 **⚠️ Breaking Changes**
 - None.
