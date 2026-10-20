@@ -2019,19 +2019,15 @@ namespace management {
 
     // Clone trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static EMBED_INLINE void trivially_clone(erasure_base_t* dst, erasure_base_t const* src)
-    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
-      std::memcpy(
-        static_cast<erasure_t*>(dst)->access(),
-        static_cast<erasure_t const*>(src)->access(),
-        sizeof(Functor) // Copy the whole `m_erasure` is unnecessary.
-      );
+    static EMBED_INLINE void
+    trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
+      // Copying the whole `m_erasure` is unnecessary.
+      std::memcpy(dst, src, sizeof(Functor));
     }
 
     // Move trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static void trivially_move(erasure_base_t* dst, erasure_base_t* src)
-      noexcept(noexcept(trivially_clone<Functor>(dst, src)))
+    static void trivially_move(erasure_base_t* dst, erasure_base_t* src) noexcept
     { trivially_clone<Functor>(dst, src); }
 
     // Using when M_erasure is empty.
@@ -2205,17 +2201,6 @@ namespace command {
 
     // No m_manager because IsView = true.
     invoker_t m_invoker;
-
-    /// TODO: remove `clone`, `move`, and `destroy`.
-    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
-    const noexcept {
-      auto* destination = static_cast<erasure_t*>(dst);
-      auto* source = static_cast<erasure_t const*>(src);
-      std::memcpy(destination->access(), source->access(), default_values::non_owning::buffer_size);
-    }
-
-    void move(erasure_base_t*, erasure_base_t*) = delete;
-    void destroy(erasure_base_t*) = delete;
 
     // Initialize non-owning function wrapper. (FP)
     EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor)
@@ -2565,7 +2550,7 @@ namespace crtp_mixins {
 
     member_variable_impl(std::nullptr_t, std::nullptr_t) noexcept {
       // Suppress GCC warning: "-Wmaybe-uninitialized" and "-Wuninitialized".
-      std::memset(m_erasure.access(), 0, sizeof(char));
+      std::memset(&m_erasure, 0, sizeof(char));
     }
 
     using erasure_t = erasure_type::Erasure<Config::isView, Size, Align>;
@@ -2967,11 +2952,10 @@ public:
         is_convertible_from_specialization<Self, function<FSize, FAlign, FCfg, FSig>>::value
       )
     core_facade_impl(const function<FSize, FAlign, FCfg, FSig>& other)
-      noexcept(is_cfg_noexcept<Cfg>::value && is_cfg_noexcept<FCfg>::value)
+      noexcept(is_cfg_noexcept<FCfg>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
-      /// TODO: Use memcpy directly.
-      other.m_command.clone(&m_erasure, &other.m_erasure);
+      std::memcpy(&m_erasure, &other.m_erasure, default_values::non_owning::buffer_size);
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
