@@ -1146,10 +1146,9 @@ inline namespace fn_traits {
   };
 
   // If the `From` type can be converted to the `To` type, then the value is `true`.
-  /// @bug TODO: `remove_reference_t` -> `remove_cvref_t`.
   template <typename To, typename From>
   struct is_convertible_from_specialization : public bool_constant<
-    is_convertible_from_specialization_impl<remove_reference_t<To>, remove_reference_t<From>>::value
+    is_convertible_from_specialization_impl<To, From>::value
   >::type {};
 
   template <typename Fn, typename Cfg, typename Erasure, typename DecFn = decay_t<Fn>>
@@ -1690,7 +1689,7 @@ inline namespace fn_traits {
   template <typename FnWrapper, std::size_t Candidate, typename OtherWrapper>
   struct get_correct_buffer_size_helper</*IsWrapper=*/true, FnWrapper, Candidate, OtherWrapper> {
     static constexpr std::size_t value =
-      is_convertible_from_specialization<FnWrapper, OtherWrapper>::value
+      is_convertible_from_specialization<FnWrapper, remove_cvref_t<OtherWrapper>>::value
       ? Candidate : sizeof(remove_cvref_t<OtherWrapper>);
   };
 
@@ -2782,15 +2781,15 @@ public:
     /// @brief Builds a Fn that targets a copy/move of the incoming function object.
     /// @param functor - A callable object with parameters of type `Args...`
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFn = decay_t<Functor>)
       EMBED_DETAIL_REQUIRES_END(
-        (!is_convertible_from_specialization<Self, Functor>::value)
+        (!is_convertible_from_specialization<Self, DecFn>::value)
         && (!is_self<Functor, Self>::value)
-        && (!is_in_place_type<decay_t<Functor>>::value)
+        && (!is_in_place_type<DecFn>::value)
         && is_callable_from<Functor>::value
       )
     core_facade_impl(Functor&& functor)
-      noexcept(std::is_nothrow_constructible<decay_t<Functor>, Functor>::value)
+      noexcept(std::is_nothrow_constructible<DecFn, Functor>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
       (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
@@ -2981,7 +2980,7 @@ public:
     EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename Tp = remove_reference_t<Functor>)
       EMBED_DETAIL_REQUIRES_END(
         (!is_self<Functor, Self>::value)
-        && (!is_convertible_from_specialization<Self, Functor>::value)
+        && (!is_convertible_from_specialization<Self, remove_cv_t<Tp>>::value)
         && (!std::is_member_pointer<Tp>::value)
         && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
       )

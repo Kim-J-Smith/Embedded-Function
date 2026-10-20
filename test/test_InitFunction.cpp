@@ -1322,6 +1322,12 @@ TEST(InitFunction, SimilarSignaturePlus) {
 #else
         static_assert(sizeof(f8) != sizeof(f7), "BUG"); // not same buf
 #endif
+
+        const ebd::fn<void(NonTrivial)> f9;
+        ebd::fn<void(NonTrivial&&)> f10 = std::move(f9);
+        ebd::unique_fn<void(NonTrivial&&)> f11 = std::move(f9);
+        ASSERT_TRUE(f10.is_empty());
+        ASSERT_TRUE(f11.is_empty());
     }
     {
         ebd::unique_fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial) const> f1 =
@@ -1364,6 +1370,10 @@ TEST(InitFunction, SimilarSignaturePlus) {
 #else
         static_assert(sizeof(f8) != sizeof(f7), "BUG"); // not same buf
 #endif
+
+        const ebd::classic_fn<void(NonTrivial)> f9;
+        ebd::classic_fn<void(NonTrivial&&)> f10 = std::move(f9);
+        ASSERT_TRUE(f10.is_empty());
     }
     {
         ebd::__safe_fn<NonTrivial(NonTrivial, NonTrivial, NonTrivial) const> f1 =
@@ -1385,6 +1395,10 @@ TEST(InitFunction, SimilarSignaturePlus) {
 #else
         static_assert(sizeof(f8) != sizeof(f7), "BUG"); // not same buf
 #endif
+
+        const ebd::__safe_fn<void(NonTrivial)> f9;
+        ebd::__safe_fn<void(NonTrivial&&)> f10 = std::move(f9);
+        ASSERT_TRUE(f10.is_empty());
     }
     {
         // Non-ref <-> `&&` is OK.
@@ -1429,6 +1443,10 @@ TEST(InitFunction, SimilarSignaturePlus) {
         ebd::fn_ref<int(int)> f7 = f6;
         auto f8 = ebd::make_fn<ebd::fn_ref, int(int&&)>(f7);
         ASSERT_EQ(f8(42), 42);
+
+        const ebd::fn_ref<int(NonTrivial)> f9 = +[](NonTrivial) { return 42; };
+        ebd::fn_ref<int(NonTrivial&&)> f10 = std::move(f9);
+        ASSERT_EQ(f10(NonTrivial{}), 42);
     }
 }
 
