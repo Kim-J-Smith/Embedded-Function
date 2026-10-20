@@ -1458,3 +1458,42 @@ TEST(InitFunction, IncompleteRefShouldBeAccept) {
         ebd::fn_ref<void(Incomplete&&)> g = +[](Incomplete&&) {}; (void)g;
     }
 }
+
+// InitFunction[53]
+#if (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
+
+namespace {
+    struct FuzzStaticCall {
+        static int operator()(int n = 0) { return n; }
+    };
+}
+TEST(InitFunction, make_fn_FuzzStaticOperatorCall) {
+    {
+        auto f = ebd::make_fn(FuzzStaticCall{});
+        ASSERT_EQ(f(42), 42);
+    }
+    {
+        auto f = ebd::make_fn<ebd::fn>(FuzzStaticCall{});
+        ASSERT_EQ(f(42), 42);
+    }
+    {
+        auto f = ebd::make_fn<ebd::unique_fn>(FuzzStaticCall{});
+        ASSERT_EQ(f(42), 42);
+    }
+    {
+        auto f = ebd::make_fn<ebd::classic_fn>(FuzzStaticCall{});
+        ASSERT_EQ(f(42), 42);
+    }
+    {
+        auto f = ebd::make_fn<ebd::__safe_fn>(FuzzStaticCall{});
+        ASSERT_EQ(f(42), 42);
+    }
+    {
+        FuzzStaticCall obj{};
+        auto f = ebd::make_fn<ebd::fn_ref>(obj);
+        ASSERT_EQ(f(42), 42);
+    }
+}
+
+#endif // C++ >= 23
