@@ -289,27 +289,28 @@ In embedded MCU development, it is often necessary to pass a C-style free functi
 
 If the object encapsulated by the function wrapper is a valid function pointer which has exactly same signature with the wrapper, this mechanism returns the pointer; otherwise, it returns nullptr. Basically, it is equivalent to a highly restricted `target()` method.
 
+After converting from one wrapper type to another (e.g., from `ebd::fn` to `ebd::unique_fn`, or from `ebd::fn<int(), 16>` to `ebd::fn<int(), 32>`), `operator*` on the resulting wrapper returns `nullptr`.
+
 ### Example
 
 ```cpp
 void free_function() {}
 struct Functor { void operator()() {} };
 
-ebd::fn<void()> fn_ = &free_function;
-void(*free_function_pointer)() = *fn_;
-ASSERT_EQ(free_function_pointer, &free_function);
+ebd::fn<void()> f = &free_function;
+assert(*f == &free_function);
 
-fn_ = +[]() { /* ... */ }; // lambda -> function pointer
-free_function_pointer = *fn_;
-ASSERT_NE(free_function_pointer, nullptr); // NOT equal nullptr
+ebd::fn<void(), 64> f_big = f;
+assert(*f_big == nullptr);
 
-fn_ = []() { /* ... */ };
-free_function_pointer = *fn_;
-ASSERT_EQ(free_function_pointer, nullptr);
+f = +[]() { /* ... */ }; // lambda -> function pointer
+assert(*f != nullptr);
 
-fn_ = Functor{};
-free_function_pointer = *fn_;
-ASSERT_EQ(free_function_pointer, nullptr);
+f = []() { /* ... */ };
+assert(*f == nullptr);
+
+f = Functor{};
+assert(*f == nullptr);
 ```
 
 ## 📦 C++20 Module support
