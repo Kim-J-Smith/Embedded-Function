@@ -2019,16 +2019,15 @@ namespace management {
 
     // Clone trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static EMBED_INLINE void trivially_clone(erasure_base_t* dst, erasure_base_t const* src)
-    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
+    static EMBED_INLINE void
+    trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
       // Copying the whole `m_erasure` is unnecessary.
       std::memcpy(dst, src, sizeof(Functor));
     }
 
     // Move trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static void trivially_move(erasure_base_t* dst, erasure_base_t* src)
-      noexcept(noexcept(trivially_clone<Functor>(dst, src)))
+    static void trivially_move(erasure_base_t* dst, erasure_base_t* src) noexcept
     { trivially_clone<Functor>(dst, src); }
 
     // Using when M_erasure is empty.
@@ -2953,7 +2952,7 @@ public:
         is_convertible_from_specialization<Self, function<FSize, FAlign, FCfg, FSig>>::value
       )
     core_facade_impl(const function<FSize, FAlign, FCfg, FSig>& other)
-      noexcept(is_cfg_noexcept<Cfg>::value && is_cfg_noexcept<FCfg>::value)
+      noexcept(is_cfg_noexcept<FCfg>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
       std::memcpy(&m_erasure, &other.m_erasure, default_values::non_owning::buffer_size);
