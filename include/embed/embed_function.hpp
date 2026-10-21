@@ -796,15 +796,12 @@ inline namespace cxx {
    * @tparam  Config      Attributes of the wrapper. See @ref `config_package`.
    * @tparam  Signature   The signature of the wrapper, e.g., `Ret(Args...)`.
    *
-   * @note    This class is a thin facade that assembles all CRTP mixin structs
-   *          into a single type. Its constructors, destructor, and some
-   *          operator overloads (`operator*`, `operator()`) are implemented in
-   *          the base classes.
+   * @note    Member variables are defined in @ref `member_variable_impl`.
+   *          Method `operator()` is defined in @ref `operator_call_impl`.
+   *          Method `operator*` is defined in @ref `operator_dereference_impl`.
    */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
-  class EMBED_DETAIL_FORCE_EBO function {
-    static_assert(false, "Template atguments are invalid.");
-  };
+  class EMBED_DETAIL_FORCE_EBO function;
 
 /// @brief Here are some self-defined traits.
 inline namespace fn_traits {
@@ -2721,8 +2718,14 @@ namespace crtp_mixins {
 
 } // end namespace crtp_mixins
 
+  template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
+  class EMBED_DETAIL_FORCE_EBO function {
+    static_assert(false, "Template atguments are invalid.");
+  };
+
+  /// Specialization for owning function wrappers. ( @b IsView = @a false )
   template <std::size_t Buf, std::size_t Align, typename Sig, bool Cp, bool Tr, bool AsNt>
-  class EMBED_DETAIL_FORCE_EBO function<Buf, Align, config_package<Cp, /*IsView*/false, Tr, AsNt>, Sig> final
+  class EMBED_DETAIL_FORCE_EBO function<Buf, Align, config_package<Cp, false, Tr, AsNt>, Sig> final
     : protected crtp_mixins::member_variable_impl<
         Buf, Align, config_package<Cp, false, Tr, AsNt>, Sig
       >,
@@ -2988,8 +2991,9 @@ namespace crtp_mixins {
     is_copyable() noexcept { return internal_is_copyable; }
   };
 
+  // Specialization for non-owning function wrappers.
   template <std::size_t Buf, std::size_t Align, typename Sig, bool Cp, bool Tr, bool AsNt>
-  class EMBED_DETAIL_FORCE_EBO function<Buf, Align, config_package<Cp, /*IsView*/true, Tr, AsNt>, Sig> final
+  class EMBED_DETAIL_FORCE_EBO function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig> final
     : protected crtp_mixins::member_variable_impl<
         Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig
       >,
