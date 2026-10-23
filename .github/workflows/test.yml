@@ -9,6 +9,32 @@ on:
   workflow_dispatch:
 
 jobs:
+  # GCC 5
+  ubuntu-gcc-5:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Build Docker image with GCC + CMake + build-essential
+      - name: Build Docker image
+        shell: bash
+        run: |
+          docker build -t gcc5_4-cmake:ci ./test/script/docker/gcc-5.4
+
+      # Run GCC tests
+      - name: Run GCC tests
+        shell: bash
+        run: |
+          docker run --rm \
+                -v ${{ github.workspace }}:/src \
+                -w /src \
+                gcc5_4-cmake:ci \
+                bash ./test/script/docker/gcc-5.4/test.sh
+
   # GCC 13
   ubuntu-gcc-13:
     if: github.repository_owner == 'Kim-J-Smith'

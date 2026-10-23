@@ -37,6 +37,10 @@ set(
   # "EBD_TEST_TRY_BUG__MSVC_1944_1" # MSVC 19.44; Fixed in MSVC 19.50
 )
 
+# AddressSanitizer is enabled by default. Old toolchains such as GCC 5 ship a
+# runtime that hangs on abort(), which is used by the death tests.
+option(TEST_DISABLE_ASAN "Disable AddressSanitizer" OFF)
+
 # Include header search path
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -167,7 +171,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
   )
 
   # Sanitizer
-  if(NOT WIN32)
+  if(NOT WIN32 AND NOT TEST_DISABLE_ASAN)
     # Pointer to member function is not const with
     # `-fsanitize=undefined` or `-fsanitize=null`.
     target_compile_options(
@@ -201,7 +205,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   )
 
   # Sanitizer
-  if(NOT WIN32)
+  if(NOT WIN32 AND NOT TEST_DISABLE_ASAN)
     target_compile_options(
       ${PROJECT_NAME} PRIVATE
       -fsanitize=address,undefined
