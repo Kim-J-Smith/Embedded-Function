@@ -60,6 +60,13 @@ add_library(
     ${GTEST_SOURCE_FILES}
 )
 
+# GTest requires threads, which is a separate library before glibc 2.34.
+find_package(Threads REQUIRED)
+target_link_libraries(
+    gtest_lib
+    PUBLIC Threads::Threads
+)
+
 # Configuration of GTest file.
 set_target_properties(
     gtest_lib
