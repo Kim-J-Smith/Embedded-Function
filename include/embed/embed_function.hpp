@@ -2745,7 +2745,7 @@ namespace crtp_mixins {
       >
   {
   private:
-    template<std::size_t, std::size_t, typename, typename>
+    template <std::size_t, std::size_t, typename, typename>
     friend class function;
 
     template <bool, typename, typename>
@@ -2991,7 +2991,7 @@ namespace crtp_mixins {
     is_copyable() noexcept { return internal_is_copyable; }
   };
 
-  // Specialization for non-owning function wrappers.
+  /// Specialization for non-owning function wrappers. ( @b IsView = @a true )
   template <std::size_t Buf, std::size_t Align, typename Sig, bool Cp, bool Tr, bool AsNt>
   class EMBED_DETAIL_FORCE_EBO function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig> final
     : protected crtp_mixins::member_variable_impl<
@@ -3013,7 +3013,7 @@ namespace crtp_mixins {
       >
   {
   private:
-    template<std::size_t, std::size_t, typename, typename>
+    template <std::size_t, std::size_t, typename, typename>
     friend class function;
 
     template <bool, typename, typename>
@@ -3041,7 +3041,7 @@ namespace crtp_mixins {
     template <typename T>
     using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
 
-    // Non-owning function wrapper is unconditional copyable.
+    // Non-owning function wrapper is unconditionally copyable.
     static constexpr bool internal_is_copyable = true;
 
   public:
