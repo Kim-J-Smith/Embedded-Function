@@ -2720,7 +2720,7 @@ namespace crtp_mixins {
 
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function {
-    static_assert(false, "Template atguments are invalid.");
+    static_assert(always_false<Config>::value, "Template arguments are invalid.");
   };
 
   /// Specialization for owning function wrappers. ( @b IsView = @a false )
@@ -3041,6 +3041,7 @@ namespace crtp_mixins {
     template <typename T>
     using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
 
+    // Non-owning function wrapper is unconditional copyable.
     static constexpr bool internal_is_copyable = true;
 
   public:

@@ -71,11 +71,16 @@ Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) provide the ful
 #### Default / Nullptr Constructor
 
 ```cpp
+// Owning wrappers
 function() noexcept;
 function(std::nullptr_t) noexcept;
+
+// View wrappers
+function() = delete;
+function(std::nullptr_t) = delete;
 ```
 
-Creates an empty function wrapper. Owning wrappers only (deleted for views).
+Creates an empty function wrapper. Owning wrappers only; view wrappers delete both overloads because a view has no empty state.
 
 #### Copy / Move Constructor
 
@@ -120,7 +125,7 @@ template <typename Fn, typename U, typename... CArgs>
 explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args);
 ```
 
-Constructs the callable object in place within the internal buffer. Owning wrappers only (deleted for views).
+Constructs the callable object in place within the internal buffer. Owning wrappers only; these constructors are not declared for view wrappers.
 
 #### Constant Wrapper Constructor (C++26+)
 
