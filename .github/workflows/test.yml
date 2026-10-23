@@ -10,7 +10,7 @@ on:
 
 jobs:
   # GCC 5
-  ubuntu-gcc-5:
+  docker-debian-gcc-5:
     if: github.repository_owner == 'Kim-J-Smith'
     runs-on: ubuntu-latest
 
