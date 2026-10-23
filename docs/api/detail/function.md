@@ -6,30 +6,28 @@
 
 ## Class Structure
 
-`ebd::detail::function` is a thin facade. Its mode-specific constructors live in `crtp_mixins::core_facade_impl` (owning/view specializations) and are inherited via `using Base_CoreFacade::Base_CoreFacade;`, so the overload set depends on `Config::isView`. Storage (`m_erasure`, `m_command`) lives in `crtp_mixins::member_variable_impl`, inherited **protected** and therefore not public. On compilers that use the pre-P0136R1 inheriting-constructor rules (`__cpp_inheriting_constructors < 201511L`), the inherited set still excludes the default constructor (and the copy/move constructors, which `function` declares itself), so `function() noexcept` is declared directly.
+`ebd::detail::function` has two partial specializations, selected by the `isView` flag of `Config`: one for owning wrappers and one for non-owning views. Each specialization declares its mode-specific constructors directly (there are no inheriting constructors), so the overload set depends on `Config::isView`. Storage (`m_erasure`, `m_command`) lives in `crtp_mixins::member_variable_impl`, inherited **protected** and therefore not public. The primary template is only a diagnostic placeholder: every valid instantiation matches one of the partial specializations, and any other `Config` (for example, a type that is not a `config_package`) triggers a `static_assert`.
 
-The inheritance hierarchy (`function` is `final`; all bases live in `ebd::detail::crtp_mixins`):
+The inheritance hierarchy (both specializations are `final`; all bases live in `ebd::detail::crtp_mixins`):
 
 ```mermaid
 graph BT;
-  F["ebd::detail::function"]
-  CF["core_facade_impl<br/>(owning / view)"]
+  F["function<br/>(owning / view specialization)"]
   MV["member_variable_impl"]
   CC["core_components_impl<br/>(owning / view)"]
   ASC["assignment_self_clear"]
-  OC["operator_call_impl"]
+  OC["operator_call_impl<br/>(owning / view)"]
   OD["operator_dereference_impl"]
   LO["lifetime_operations_impl<br/>(view / owning)"]
   D["destructor_impl"]
   M["move_impl"]
   C["copy_impl"]
 
-  F -->|public| CF
+  F -->|protected| MV
+  F -->|public| CC
   F -->|public| OC
   F -->|public| OD
   F -->|public| LO
-  CF -->|protected| MV
-  CF -->|public| CC
   MV -->|public| ASC
   LO -->|public, owning| D
   LO -->|public, owning| M
@@ -73,20 +71,25 @@ Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) provide the ful
 #### Default / Nullptr Constructor
 
 ```cpp
+// Owning wrappers
 function() noexcept;
 function(std::nullptr_t) noexcept;
+
+// View wrappers
+function() = delete;
+function(std::nullptr_t) = delete;
 ```
 
-Creates an empty function wrapper. Owning wrappers only (deleted for views).
+Creates an empty function wrapper. Owning wrappers only; view wrappers delete both overloads because a view has no empty state.
 
 #### Copy / Move Constructor
 
 ```cpp
-function(const function& other) = default;
-function(function&& other) = default;
+function(const function& other);
+function(function&& other);
 ```
 
-The copy constructor is available only if `Config::isCopyable` or `Config::isView` is `true`.
+These are implicitly defined (the specializations do not declare them explicitly). They copy or move the base classes, with the actual work performed in `crtp_mixins::lifetime_operations_impl`. The copy constructor is available only if `Config::isCopyable` or `Config::isView` is `true`; for a move-only wrapper it is defined as deleted.
 
 #### Conversion Constructor
 
@@ -122,7 +125,7 @@ template <typename Fn, typename U, typename... CArgs>
 explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args);
 ```
 
-Constructs the callable object in place within the internal buffer. Owning wrappers only (deleted for views).
+Constructs the callable object in place within the internal buffer. Owning wrappers only; these constructors are not declared for view wrappers.
 
 #### Constant Wrapper Constructor (C++26+)
 
@@ -169,18 +172,18 @@ Assigns a null pointer, clearing the function wrapper. Owning wrappers only (del
 #### Copy Assignment
 
 ```cpp
-function& operator=(const function& other) = default;
+function& operator=(const function& other);
 ```
 
-Copies another function wrapper. Only available if `Config::isCopyable` or `Config::isView` is `true`.
+Implicitly defined. Copies another function wrapper. Only available if `Config::isCopyable` or `Config::isView` is `true`; for a move-only wrapper it is defined as deleted.
 
 #### Move Assignment
 
 ```cpp
-function& operator=(function&& other) = default;
+function& operator=(function&& other);
 ```
 
-Moves another function wrapper.
+Implicitly defined. Moves another function wrapper.
 
 ### Invocation
 

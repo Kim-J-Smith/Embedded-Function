@@ -788,7 +788,18 @@ inline namespace cxx {
 
 } // end namespace cxx
 
-  // Forward declaration.
+  /**
+   * @brief   Lightweight and heap-free wrapper for callable objects.
+   *
+   * @tparam  BufferSize  Size of the internal storage (in bytes).
+   * @tparam  Alignment   Alignment of the internal storage (in bytes).
+   * @tparam  Config      Attributes of the wrapper. See @ref `config_package`.
+   * @tparam  Signature   The signature of the wrapper, e.g., `Ret(Args...)`.
+   *
+   * @note    Member variables are defined in @ref `member_variable_impl`.
+   *          Method `operator()` is defined in @ref `operator_call_impl`.
+   *          Method `operator*` is defined in @ref `operator_dereference_impl`.
+   */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function;
 
@@ -2705,393 +2716,36 @@ namespace crtp_mixins {
     }
   };
 
-  template <bool IsView, typename Self, typename Sig, typename Cfg, std::size_t Size, std::size_t Align>
-  struct EMBED_DETAIL_FORCE_EBO core_facade_impl;
-
-  template <typename Self, typename Sig, typename Cfg, std::size_t Size, std::size_t Align>
-  struct core_facade_impl</*IsView*/false, Self, Sig, Cfg, Size, Align>
-  : protected member_variable_impl<Size, Align, Cfg, Sig>,
-    public core_components_impl</*IsView*/false, Cfg, Sig, Self>
-  {
-protected:
-    using Base_MemberVar = member_variable_impl<Size, Align, Cfg, Sig>;
-    using Base_CoreCompo = core_components_impl</*IsView*/false, Cfg, Sig, Self>;
-
-    using erasure_t = typename Base_MemberVar::erasure_t;
-    using command_t = typename Base_MemberVar::command_t;
-
-    using Base_MemberVar::m_erasure;
-    using Base_MemberVar::m_command;
-
-    template <typename T>     // [func.wrap.move.ctor]/1 is-callable-from
-    using is_callable_from    = is_callable_from_impl<T, Sig>;
-    template <typename... T>  // [func.wrap.ref.ctor]/1 is-invocable-using
-    using is_invocable_using  = is_invocable_using_impl<Sig, args_package<T...>>;
-
-    template <typename T>
-    using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
-    template <typename T>
-    using add_cvref_like_sig_t  = typename unwrap_signature<Sig>::template add_cvref_like<T>;
-
-public:
-    core_facade_impl() noexcept
-    : Base_MemberVar(nullptr, nullptr), Base_CoreCompo(nullptr) {}
-    core_facade_impl(std::nullptr_t) noexcept
-    : Base_MemberVar(nullptr, nullptr), Base_CoreCompo(nullptr) {}
-
-    // Use `placement new` to create new functor during construction. (Copy)
-    // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
-    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
-      EMBED_DETAIL_REQUIRES_END(
-        function<FSize, FAlign, FCfg, FSig>::internal_is_copyable
-        && is_convertible_from_specialization<Self, function<FSize, FAlign, FCfg, FSig>>::value
-      )
-    core_facade_impl(const function<FSize, FAlign, FCfg, FSig>& other)
-      noexcept(is_cfg_noexcept<Cfg>::value && is_cfg_noexcept<FCfg>::value)
-      : Base_MemberVar(nullptr, nullptr)
-    {
-      if (other.is_empty()) {
-        m_command.set_empty();
-      } else {
-        other.m_command.clone(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-      }
-    }
-
-    // Use `placement new` to create new functor during construction. (Move)
-    // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
-    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
-      EMBED_DETAIL_REQUIRES_END(
-        is_convertible_from_specialization<Self, function<FSize, FAlign, FCfg, FSig>>::value
-      )
-    core_facade_impl(function<FSize, FAlign, FCfg, FSig>&& other)
-      noexcept(is_cfg_noexcept<Cfg>::value && is_cfg_noexcept<FCfg>::value)
-      : Base_MemberVar(nullptr, nullptr)
-    {
-      if (other.is_empty()) {
-        m_command.set_empty();
-      } else {
-        other.m_command.move(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-        other.m_command.destroy(&other.m_erasure);
-        other.m_command.set_empty();
-      }
-    }
-
-    /// @brief Builds a Fn that targets a copy/move of the incoming function object.
-    /// @param functor - A callable object with parameters of type `Args...`
-    /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFn = decay_t<Functor>)
-      EMBED_DETAIL_REQUIRES_END(
-        (!is_convertible_from_specialization<Self, DecFn>::value)
-        && (!is_self<Functor, Self>::value)
-        && (!is_in_place_type<DecFn>::value)
-        && is_callable_from<Functor>::value
-      )
-    core_facade_impl(Functor&& functor)
-      noexcept(std::is_nothrow_constructible<DecFn, Functor>::value)
-      : Base_MemberVar(nullptr, nullptr)
-    {
-      (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
-
-      if (check_not_empty::not_empty(functor)) {
-        m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
-      } else {
-        m_command.set_empty();
-      }
-    }
-
-#if EMBED_CXX_VERSION >= 201703L
-
-    /// @brief In-place constructs the Fn within the internal storage with specified arguments.
-    /// @param args - The arguments for constructing the Fn.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename... CArgs)
-      EMBED_DETAIL_REQUIRES_END(
-        std::is_constructible<Fn, CArgs...>::value
-        && is_callable_from<Fn>::value
-      )
-    explicit core_facade_impl(std::in_place_type_t<Fn>, CArgs&&... args)
-      noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value)
-    {
-      // Mandates.
-      static_assert(std::is_same<Fn, decay_t<Fn>>::value, "decay_t<Fn> should be the same type as Fn.");
-      (void)assertions_for_functor<Size, Cfg, Sig, Fn, Fn, erasure_t>{};
-
-      m_command.template emplace_init<Fn>(&m_erasure, std::forward<CArgs>(args)...);
-    }
-
-    /// @brief In-place constructs the Fn within the internal storage with init_list and specified arguments.
-    /// @param il - The initializer_list for constructing the Fn.
-    /// @param args - The arguments for constructing the Fn.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename U, typename... CArgs)
-      EMBED_DETAIL_REQUIRES_END(
-        std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
-        && is_callable_from<Fn>::value
-      )
-    explicit core_facade_impl(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
-      noexcept(std::is_nothrow_constructible<Fn, std::initializer_list<U>&, CArgs...>::value)
-    {
-      // Mandates.
-      static_assert(std::is_same<Fn, decay_t<Fn>>::value, "decay_t<Fn> should be the same type as Fn.");
-      (void)assertions_for_functor<Size, Cfg, Sig, Fn, Fn, erasure_t>{};
-
-      m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
-    }
-
-#endif // C++ >= 17
-
-#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
-private:
-    /// @private `true` if the `Sig` is qualified with `&&`.
-    static constexpr bool RightRef = unwrap_signature<Sig>::hasRRef;
-public:
-
-    /// @implements <https://wg21.link/P2511>
-    // Create owning function wrapper with given `std::constant_wrapper` and object params.
-    template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<decay_t<Obj>>>
-      requires is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
-      && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
-    core_facade_impl(std::constant_wrapper<Val, Fn>, Obj&& obj)
-      noexcept(std::is_nothrow_constructible_v<Obj_cv, Obj&&>)
-    {
-      using Cw = std::constant_wrapper<Val, Fn>;
-
-      // Mandates.
-      (void)assertions_for_functor<Size, Cfg, Sig, Obj, Obj&&, erasure_t>{};
-      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
-        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
-        /// free functions and pointers to member functions are not considered constant expressions.
-        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
-      }
-
-      m_command.template cw_init<Cw>(&m_erasure, std::forward<Obj>(obj));
-    }
-
-    /// @implements <https://wg21.link/P2511>
-    // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
-    template <auto Val, typename Fn, typename Obj, typename... CArgs,
-      typename Obj_cv = add_cv_like_sig_t<Obj>>
-        requires std::is_constructible_v<Obj, CArgs...>
-        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
-        && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
-    explicit core_facade_impl(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
-      noexcept(std::is_nothrow_constructible_v<Obj, CArgs...>)
-    {
-      using Cw = std::constant_wrapper<Val, Fn>;
-
-      // Mandates.
-      static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
-      (void)assertions_for_functor<Size, Cfg, Sig, Obj, Obj, erasure_t>{};
-      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
-      }
-
-      m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, std::forward<CArgs>(args)...);
-    }
-
-    /// @implements <https://wg21.link/P2511>
-    // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
-    // The object is constructed in-place from `std::initializer_list` and the specified arguments.
-    template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U,
-      typename Obj_cv = add_cv_like_sig_t<Obj>>
-        requires std::is_constructible_v<Obj, std::initializer_list<U>&, CArgs...>
-        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
-        && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
-    explicit core_facade_impl(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
-        std::initializer_list<U> il, CArgs&&... args)
-      noexcept(std::is_nothrow_constructible_v<Obj, decltype(il)&, CArgs...>)
-    {
-      using Cw = std::constant_wrapper<Val, Fn>;
-
-      // Mandates.
-      static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
-      (void)assertions_for_functor<Size, Cfg, Sig, Obj, Obj, erasure_t>{};
-      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
-      }
-
-      m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, il, std::forward<CArgs>(args)...);
-    }
-
-#endif // C++ >= 26
-  };
-
-  template <typename Self, typename Sig, typename Cfg, std::size_t Size, std::size_t Align>
-  struct core_facade_impl</*IsView*/true, Self, Sig, Cfg, Size, Align>
-  : protected member_variable_impl<Size, Align, Cfg, Sig>,
-    public core_components_impl</*IsView*/true, Cfg, Sig, Self>
-  {
-protected:
-    using Base_MemberVar = member_variable_impl<Size, Align, Cfg, Sig>;
-    using Base_CoreCompo = core_components_impl</*IsView*/true, Cfg, Sig, Self>;
-
-    using erasure_t = typename Base_MemberVar::erasure_t;
-    using command_t = typename Base_MemberVar::command_t;
-
-    using Base_MemberVar::m_erasure;
-    using Base_MemberVar::m_command;
-
-    template <typename... T>  // [func.wrap.ref.ctor]/1 is-invocable-using
-    using is_invocable_using  = is_invocable_using_impl<Sig, args_package<T...>>;
-
-    template <typename T>
-    using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
-
-public:
-    core_facade_impl()                = delete; // no empty state in view mode
-    core_facade_impl(std::nullptr_t)  = delete; // no empty state in view mode
-
-    // Use `placement new` to create new functor during construction. (Copy)
-    // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
-    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
-      EMBED_DETAIL_REQUIRES_END(
-        is_convertible_from_specialization<Self, function<FSize, FAlign, FCfg, FSig>>::value
-      )
-    core_facade_impl(const function<FSize, FAlign, FCfg, FSig>& other)
-      noexcept(is_cfg_noexcept<FCfg>::value)
-      : Base_MemberVar(nullptr, nullptr)
-    {
-      std::memcpy(&m_erasure, &other.m_erasure, default_values::non_owning::buffer_size);
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
-    }
-
-    /// @brief Builds a function reference from function pointer.
-    /// @param function_ptr - A function pointer that is NOT a null pointer.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Func)
-      EMBED_DETAIL_REQUIRES_END(
-        std::is_function<Func>::value
-        && is_invocable_using<Func>::value
-      )
-    core_facade_impl(Func* EMBED_DETAIL_NONNULL function_ptr) noexcept {
-      (void)assertions_for_functor<Size, Cfg, Sig, Func*, Func*&&, erasure_t>{};
-
-      EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, "function pointer cannot be nullptr.");
-
-      m_command.template init</* IsStoredOrigin = */ true>(
-        &m_erasure, std::forward<Func*>(function_ptr));
-    }
-
-    /// @brief Builds a function reference from given functor.
-    /// @param functor - A callable object with parameters of type `Args...`
-    /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename Tp = remove_reference_t<Functor>)
-      EMBED_DETAIL_REQUIRES_END(
-        (!is_self<Functor, Self>::value)
-        && (!is_convertible_from_specialization<Self, remove_cv_t<Tp>>::value)
-        && (!std::is_member_pointer<Tp>::value)
-        && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
-      )
-    EMBED_CXX20_CONSTEXPR core_facade_impl(Functor&& functor EMBED_DETAIL_LIFETIMEBOUND) noexcept
-      : Base_MemberVar(nullptr)
-    {
-      (void)assertions_for_functor<Size, Cfg, Sig, Functor, Functor&&, erasure_t>{};
-
-      m_command.template init</* IsStoredOrigin = */ false>(
-        &m_erasure, std::forward<Functor>(functor));
-    }
-
-#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
-
-    // Create function reference with given `std::constant_wrapper` param.
-    template <auto Val, typename Fn>
-      requires is_invocable_using<const Fn&>::value
-    constexpr core_facade_impl(std::constant_wrapper<Val, Fn>) noexcept
-      : Base_MemberVar(nullptr)
-    {
-      using Cw = std::constant_wrapper<Val, Fn>;
-
-      // Mandates.
-      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
-      }
-
-      m_command.template cw_init<Cw>();
-    }
-
-    // Create function reference with given `std::constant_wrapper` and object params.
-    template <auto Val, typename Fn, typename Obj>
-      requires (!std::is_rvalue_reference_v<Obj&&>)
-        && is_invocable_using<const Fn&, add_cv_like_sig_t<remove_reference_t<Obj>>&>::value
-    constexpr core_facade_impl(std::constant_wrapper<Val, Fn>, Obj&& obj) noexcept
-      : Base_MemberVar(nullptr)
-    {
-      using Cw = std::constant_wrapper<Val, Fn>;
-
-      // Mandates.
-      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
-      }
-
-      m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
-    }
-
-    // Create function reference with given `std::constant_wrapper` and pointer params.
-    template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<Obj>>
-      requires std::is_convertible_v<Obj*, Obj_cv*>
-        && is_invocable_using<const Fn&, Obj_cv*>::value
-    constexpr core_facade_impl(std::constant_wrapper<Val, Fn>, Obj* obj) noexcept
-      : Base_MemberVar(nullptr)
-    {
-      using Cw = std::constant_wrapper<Val, Fn>;
-
-      // Mandates.
-      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
-        /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
-      }
-      if constexpr (std::is_member_pointer_v<Fn>) {
-        EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, "object pointer cannot be nullptr.");
-      }
-
-      m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
-    }
-
-#endif // C++ >= 26
-  };
-
 } // end namespace crtp_mixins
 
-  /**
-   * @brief   Lightweight and heap-free wrapper for callable objects.
-   *
-   * @tparam  BufferSize  Size of the internal storage (in bytes).
-   * @tparam  Alignment   Alignment of the internal storage (in bytes).
-   * @tparam  Config      Attributes of the wrapper. See @ref `config_package`.
-   * @tparam  Signature   The signature of the wrapper, e.g., `Ret(Args...)`.
-   *
-   * @note    This class is a thin facade that assembles all CRTP mixin structs
-   *          into a single type. Its constructors, destructor, and some
-   *          operator overloads (`operator*`, `operator()`) are implemented in
-   *          the base classes.
-   */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
-  class EMBED_DETAIL_FORCE_EBO function final
-    : public crtp_mixins::core_facade_impl<
-        /* IsView = */ Config::isView,
-        /* Self = */ function<BufferSize, Alignment, Config, Signature>,
-        /* Sig = */ Signature, /* Cfg = */ Config, BufferSize, Alignment
+  class EMBED_DETAIL_FORCE_EBO function {
+    static_assert(always_false<Config>::value, "Template arguments are invalid.");
+  };
+
+  /// Specialization for owning function wrappers. ( @b IsView = @a false )
+  template <std::size_t Buf, std::size_t Align, typename Sig, bool Cp, bool Tr, bool AsNt>
+  class EMBED_DETAIL_FORCE_EBO function<Buf, Align, config_package<Cp, false, Tr, AsNt>, Sig> final
+    : protected crtp_mixins::member_variable_impl<
+        Buf, Align, config_package<Cp, false, Tr, AsNt>, Sig
+      >,
+      public crtp_mixins::core_components_impl<
+        false, config_package<Cp, false, Tr, AsNt>, Sig,
+        function<Buf, Align, config_package<Cp, false, Tr, AsNt>, Sig>
       >,
       public crtp_mixins::operator_call_impl<
-        /* IsView = */ Config::isView, /* Signature = */ Signature,
-        /* Self = */ function<BufferSize, Alignment, Config, Signature>
+        false, Sig, function<Buf, Align, config_package<Cp, false, Tr, AsNt>, Sig>
       >,
       public crtp_mixins::operator_dereference_impl<
-        Signature, /* Self = */ function<BufferSize, Alignment, Config, Signature>,
-        /* IsView = */ Config::isView
+        Sig, function<Buf, Align, config_package<Cp, false, Tr, AsNt>, Sig>, false
       >,
       public crtp_mixins::lifetime_operations_impl<
-        /* IsView = */ Config::isView, /* IsCopyable = */ Config::isCopyable,
-        Config, /* Self = */ function<BufferSize, Alignment, Config, Signature>
+        false, Cp, config_package<Cp, false, Tr, AsNt>,
+        function<Buf, Align, config_package<Cp, false, Tr, AsNt>, Sig>
       >
   {
   private:
-
-    template<std::size_t, std::size_t, typename, typename>
+    template <std::size_t, std::size_t, typename, typename>
     friend class function;
 
     template <bool, typename, typename>
@@ -3112,65 +2766,413 @@ public:
     template <bool, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
 
-    template <bool, typename, typename, typename, std::size_t, std::size_t>
-    friend struct crtp_mixins::core_facade_impl;
+    using Cfg = config_package<Cp, false, Tr, AsNt>;
+    using Base_MemberVar = crtp_mixins::member_variable_impl<Buf, Align, Cfg, Sig>;
+    using Base_CoreCompo = crtp_mixins::core_components_impl</*IsView*/false, Cfg, Sig, function>;
 
-    using Base_CoreFacade =
-      crtp_mixins::core_facade_impl<Config::isView, function, Signature, Config, BufferSize, Alignment>;
-    using Base_CoreComponent =
-      crtp_mixins::core_components_impl<Config::isView, Config, Signature, function>;
+    using erasure_t = typename Base_MemberVar::erasure_t;
+    using command_t = typename Base_MemberVar::command_t;
 
-    using erasure_t = typename Base_CoreFacade::erasure_t;
-    using command_t = typename Base_CoreFacade::command_t;
+    using Base_MemberVar::m_erasure;
+    using Base_MemberVar::m_command;
 
-    // The `m_erasure` contains the type-erased object.
-    using Base_CoreFacade::m_erasure;
-    // The `m_command` is responsible for managing and invoking the `m_erasure`.
-    using Base_CoreFacade::m_command;
+    template <typename T>     // [func.wrap.move.ctor]/1 is-callable-from
+    using is_callable_from    = is_callable_from_impl<T, Sig>;
+    template <typename... T>  // [func.wrap.ref.ctor]/1 is-invocable-using
+    using is_invocable_using  = is_invocable_using_impl<Sig, args_package<T...>>;
 
-    // `true` if self is copyable.
-    static constexpr bool internal_is_copyable = Config::isCopyable || Config::isView;
+    template <typename T>
+    using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
+    template <typename T>
+    using add_cvref_like_sig_t  = typename unwrap_signature<Sig>::template add_cvref_like<T>;
+
+    static constexpr bool internal_is_copyable = Cp;
+
+  public:
+    function() noexcept
+    : Base_MemberVar(nullptr, nullptr), Base_CoreCompo(nullptr) {}
+    function(std::nullptr_t) noexcept
+    : Base_MemberVar(nullptr, nullptr), Base_CoreCompo(nullptr) {}
+
+    // Use `placement new` to create new functor during construction. (Copy)
+    // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
+    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
+      EMBED_DETAIL_REQUIRES_END(
+        function<FSize, FAlign, FCfg, FSig>::internal_is_copyable
+        && is_convertible_from_specialization<function, function<FSize, FAlign, FCfg, FSig>>::value
+      )
+    function(const function<FSize, FAlign, FCfg, FSig>& other)
+      noexcept(is_cfg_noexcept<Cfg>::value && is_cfg_noexcept<FCfg>::value)
+      : Base_MemberVar(nullptr, nullptr)
+    {
+      if (other.is_empty()) {
+        m_command.set_empty();
+      } else {
+        other.m_command.clone(&m_erasure, &other.m_erasure);
+        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+      }
+    }
+
+    // Use `placement new` to create new functor during construction. (Move)
+    // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
+    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
+      EMBED_DETAIL_REQUIRES_END(
+        is_convertible_from_specialization<function, function<FSize, FAlign, FCfg, FSig>>::value
+      )
+    function(function<FSize, FAlign, FCfg, FSig>&& other)
+      noexcept(is_cfg_noexcept<Cfg>::value && is_cfg_noexcept<FCfg>::value)
+      : Base_MemberVar(nullptr, nullptr)
+    {
+      if (other.is_empty()) {
+        m_command.set_empty();
+      } else {
+        other.m_command.move(&m_erasure, &other.m_erasure);
+        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+        other.m_command.destroy(&other.m_erasure);
+        other.m_command.set_empty();
+      }
+    }
+
+    /// @brief Builds a Fn that targets a copy/move of the incoming function object.
+    /// @param functor - A callable object with parameters of type `Args...`
+    /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFn = decay_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(
+        (!is_convertible_from_specialization<function, DecFn>::value)
+        && (!is_self<Functor, function>::value)
+        && (!is_in_place_type<DecFn>::value)
+        && is_callable_from<Functor>::value
+      )
+    function(Functor&& functor)
+      noexcept(std::is_nothrow_constructible<DecFn, Functor>::value)
+      : Base_MemberVar(nullptr, nullptr)
+    {
+      (void)assertions_for_functor<Buf, Cfg, Sig, Functor, Functor&&, erasure_t>{};
+
+      if (check_not_empty::not_empty(functor)) {
+        m_command.template init<>(&m_erasure, std::forward<Functor>(functor));
+      } else {
+        m_command.set_empty();
+      }
+    }
+
+#if EMBED_CXX_VERSION >= 201703L
+
+    /// @brief In-place constructs the Fn within the internal storage with specified arguments.
+    /// @param args - The arguments for constructing the Fn.
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename... CArgs)
+      EMBED_DETAIL_REQUIRES_END(
+        std::is_constructible<Fn, CArgs...>::value
+        && is_callable_from<Fn>::value
+      )
+    explicit function(std::in_place_type_t<Fn>, CArgs&&... args)
+      noexcept(std::is_nothrow_constructible<Fn, CArgs...>::value)
+    {
+      // Mandates.
+      static_assert(std::is_same<Fn, decay_t<Fn>>::value, "decay_t<Fn> should be the same type as Fn.");
+      (void)assertions_for_functor<Buf, Cfg, Sig, Fn, Fn, erasure_t>{};
+
+      m_command.template emplace_init<Fn>(&m_erasure, std::forward<CArgs>(args)...);
+    }
+
+    /// @brief In-place constructs the Fn within the internal storage with init_list and specified arguments.
+    /// @param il - The initializer_list for constructing the Fn.
+    /// @param args - The arguments for constructing the Fn.
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename U, typename... CArgs)
+      EMBED_DETAIL_REQUIRES_END(
+        std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
+        && is_callable_from<Fn>::value
+      )
+    explicit function(std::in_place_type_t<Fn>, std::initializer_list<U> il, CArgs&&... args)
+      noexcept(std::is_nothrow_constructible<Fn, std::initializer_list<U>&, CArgs...>::value)
+    {
+      // Mandates.
+      static_assert(std::is_same<Fn, decay_t<Fn>>::value, "decay_t<Fn> should be the same type as Fn.");
+      (void)assertions_for_functor<Buf, Cfg, Sig, Fn, Fn, erasure_t>{};
+
+      m_command.template emplace_init<Fn>(&m_erasure, il, std::forward<CArgs>(args)...);
+    }
+
+#endif // C++ >= 17
+
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
+  private:
+    /// @private `true` if the `Sig` is qualified with `&&`.
+    static constexpr bool RightRef = unwrap_signature<Sig>::hasRRef;
   public:
 
+    /// @implements <https://wg21.link/P2511>
+    // Create owning function wrapper with given `std::constant_wrapper` and object params.
+    template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<decay_t<Obj>>>
+      requires is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+      && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
+    function(std::constant_wrapper<Val, Fn>, Obj&& obj)
+      noexcept(std::is_nothrow_constructible_v<Obj_cv, Obj&&>)
+    {
+      using Cw = std::constant_wrapper<Val, Fn>;
+
+      // Mandates.
+      (void)assertions_for_functor<Buf, Cfg, Sig, Obj, Obj&&, erasure_t>{};
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
+        /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
+        /// free functions and pointers to member functions are not considered constant expressions.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+      }
+
+      m_command.template cw_init<Cw>(&m_erasure, std::forward<Obj>(obj));
+    }
+
+    /// @implements <https://wg21.link/P2511>
+    // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
+    template <auto Val, typename Fn, typename Obj, typename... CArgs,
+      typename Obj_cv = add_cv_like_sig_t<Obj>>
+        requires std::is_constructible_v<Obj, CArgs...>
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+        && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
+    explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>, CArgs&&... args)
+      noexcept(std::is_nothrow_constructible_v<Obj, CArgs...>)
+    {
+      using Cw = std::constant_wrapper<Val, Fn>;
+
+      // Mandates.
+      static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
+      (void)assertions_for_functor<Buf, Cfg, Sig, Obj, Obj, erasure_t>{};
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+      }
+
+      m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, std::forward<CArgs>(args)...);
+    }
+
+    /// @implements <https://wg21.link/P2511>
+    // Create owning function wrapper with given `std::constant_wrapper` and in-place object params.
+    // The object is constructed in-place from `std::initializer_list` and the specified arguments.
+    template <auto Val, typename Fn, typename Obj, typename... CArgs, typename U,
+      typename Obj_cv = add_cv_like_sig_t<Obj>>
+        requires std::is_constructible_v<Obj, std::initializer_list<U>&, CArgs...>
+        && is_invocable_using<const Fn&, conditional_t<RightRef, Obj_cv&&, Obj_cv&>>::value
+        && is_invocable_using<const Fn&, add_cvref_like_sig_t<decay_t<Obj>>>::value
+    explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
+        std::initializer_list<U> il, CArgs&&... args)
+      noexcept(std::is_nothrow_constructible_v<Obj, decltype(il)&, CArgs...>)
+    {
+      using Cw = std::constant_wrapper<Val, Fn>;
+
+      // Mandates.
+      static_assert(std::is_same_v<Obj, decay_t<Obj>>, "decay_t<Obj> should be the same type as Obj.");
+      (void)assertions_for_functor<Buf, Cfg, Sig, Obj, Obj, erasure_t>{};
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+      }
+
+      m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, il, std::forward<CArgs>(args)...);
+    }
+
+#endif // C++ >= 26
+
+    using Base_CoreCompo::operator=;
+
     // The return type.
-    using result_type = typename unwrap_signature<Signature>::ret;
+    using result_type = typename unwrap_signature<Sig>::ret;
 
     /// @brief Get the buffer size.
     EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
-    get_buffer_size() noexcept { return BufferSize; }
+    get_buffer_size() noexcept { return Buf; }
 
     /// @brief Get the alignment.
     EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
-    get_alignment() noexcept { return Alignment; }
+    get_alignment() noexcept { return Align; }
 
     /// @brief Return `true` if the function is copyable.
     EMBED_NODISCARD EMBED_INLINE static constexpr bool
     is_copyable() noexcept { return internal_is_copyable; }
+  };
 
-    /// @brief All following methods that end with `= default` are implemented in
-    /// the base class @e `crtp_mixins::lifetime_operations_impl`. They are trivial
-    /// if `Config::isView` equals `true`.
-    ~function()                                 = default;
-    function(const function& other)             = default;
-    function(function&& other)                  = default;
-    function& operator=(const function& other)  = default;
-    function& operator=(function&& other)       = default;
+  /// Specialization for non-owning function wrappers. ( @b IsView = @a true )
+  template <std::size_t Buf, std::size_t Align, typename Sig, bool Cp, bool Tr, bool AsNt>
+  class EMBED_DETAIL_FORCE_EBO function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig> final
+    : protected crtp_mixins::member_variable_impl<
+        Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig
+      >,
+      public crtp_mixins::core_components_impl<
+        true, config_package<Cp, true, Tr, AsNt>, Sig,
+        function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig>
+      >,
+      public crtp_mixins::operator_call_impl<
+        true, Sig, function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig>
+      >,
+      public crtp_mixins::operator_dereference_impl<
+        Sig, function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig>, true
+      >,
+      public crtp_mixins::lifetime_operations_impl<
+        true, Cp, config_package<Cp, true, Tr, AsNt>,
+        function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig>
+      >
+  {
+  private:
+    template <std::size_t, std::size_t, typename, typename>
+    friend class function;
 
-    /// Implemented in the indirect base class @e `crtp_mixins::core_components_impl`.
-    using Base_CoreComponent::operator=;
+    template <bool, typename, typename>
+    friend struct crtp_mixins::operator_call_impl;
 
-    /// Implemented in the direct base class @e `crtp_mixins::core_facade_impl`.
-    using Base_CoreFacade::Base_CoreFacade;
+    template <typename, typename, bool, typename>
+    friend struct crtp_mixins::operator_dereference_impl;
 
-#if !defined(__cpp_inheriting_constructors) || __cpp_inheriting_constructors < 201511L
-    // 12.9 [class.inhctor]/3 The candidate set of inherited constructors
-    // does not include the default constructor.
-    // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf>.
-    //
-    // P0136R1 removed 12.9 [class.inhctor]. (C++17)
-    // See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0136r1.html>.
-    function() noexcept : Base_CoreFacade(nullptr) {}
-#endif
+    template <bool, typename, typename, typename>
+    friend struct crtp_mixins::core_components_impl;
+
+    using Cfg = config_package<Cp, true, Tr, AsNt>;
+    using Base_MemberVar = crtp_mixins::member_variable_impl<Buf, Align, Cfg, Sig>;
+    using Base_CoreCompo = crtp_mixins::core_components_impl</*IsView*/true, Cfg, Sig, function>;
+
+    using erasure_t = typename Base_MemberVar::erasure_t;
+    using command_t = typename Base_MemberVar::command_t;
+
+    using Base_MemberVar::m_erasure;
+    using Base_MemberVar::m_command;
+
+    template <typename... T>  // [func.wrap.ref.ctor]/1 is-invocable-using
+    using is_invocable_using  = is_invocable_using_impl<Sig, args_package<T...>>;
+
+    template <typename T>
+    using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
+
+    // Non-owning function wrapper is unconditionally copyable.
+    static constexpr bool internal_is_copyable = true;
+
+  public:
+    function()                = delete; // no empty state in view mode
+    function(std::nullptr_t)  = delete; // no empty state in view mode
+
+    // Use `placement new` to create new functor during construction. (Copy)
+    // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
+    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
+      EMBED_DETAIL_REQUIRES_END(
+        is_convertible_from_specialization<function, function<FSize, FAlign, FCfg, FSig>>::value
+      )
+    function(const function<FSize, FAlign, FCfg, FSig>& other)
+      noexcept(is_cfg_noexcept<FCfg>::value)
+      : Base_MemberVar(nullptr, nullptr)
+    {
+      std::memcpy(&m_erasure, &other.m_erasure, default_values::non_owning::buffer_size);
+      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+    }
+
+    /// @brief Builds a function reference from function pointer.
+    /// @param function_ptr - A function pointer that is NOT a null pointer.
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Func)
+      EMBED_DETAIL_REQUIRES_END(
+        std::is_function<Func>::value
+        && is_invocable_using<Func>::value
+      )
+    function(Func* EMBED_DETAIL_NONNULL function_ptr) noexcept {
+      (void)assertions_for_functor<Buf, Cfg, Sig, Func*, Func*&&, erasure_t>{};
+
+      EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, "function pointer cannot be nullptr.");
+
+      m_command.template init</* IsStoredOrigin = */ true>(
+        &m_erasure, std::forward<Func*>(function_ptr));
+    }
+
+    /// @brief Builds a function reference from given functor.
+    /// @param functor - A callable object with parameters of type `Args...`
+    /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename Tp = remove_reference_t<Functor>)
+      EMBED_DETAIL_REQUIRES_END(
+        (!is_self<Functor, function>::value)
+        && (!is_convertible_from_specialization<function, remove_cv_t<Tp>>::value)
+        && (!std::is_member_pointer<Tp>::value)
+        && is_invocable_using<add_cv_like_sig_t<Tp>&>::value
+      )
+    EMBED_CXX20_CONSTEXPR function(Functor&& functor EMBED_DETAIL_LIFETIMEBOUND) noexcept
+      : Base_MemberVar(nullptr)
+    {
+      (void)assertions_for_functor<Buf, Cfg, Sig, Functor, Functor&&, erasure_t>{};
+
+      m_command.template init</* IsStoredOrigin = */ false>(
+        &m_erasure, std::forward<Functor>(functor));
+    }
+
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
+
+    // Create function reference with given `std::constant_wrapper` param.
+    template <auto Val, typename Fn>
+      requires is_invocable_using<const Fn&>::value
+    constexpr function(std::constant_wrapper<Val, Fn>) noexcept
+      : Base_MemberVar(nullptr)
+    {
+      using Cw = std::constant_wrapper<Val, Fn>;
+
+      // Mandates.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
+
+      m_command.template cw_init<Cw>();
+    }
+
+    // Create function reference with given `std::constant_wrapper` and object params.
+    template <auto Val, typename Fn, typename Obj>
+      requires (!std::is_rvalue_reference_v<Obj&&>)
+        && is_invocable_using<const Fn&, add_cv_like_sig_t<remove_reference_t<Obj>>&>::value
+    constexpr function(std::constant_wrapper<Val, Fn>, Obj&& obj) noexcept
+      : Base_MemberVar(nullptr)
+    {
+      using Cw = std::constant_wrapper<Val, Fn>;
+
+      // Mandates.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
+
+      m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
+    }
+
+    // Create function reference with given `std::constant_wrapper` and pointer params.
+    template <auto Val, typename Fn, typename Obj, typename Obj_cv = add_cv_like_sig_t<Obj>>
+      requires std::is_convertible_v<Obj*, Obj_cv*>
+        && is_invocable_using<const Fn&, Obj_cv*>::value
+    constexpr function(std::constant_wrapper<Val, Fn>, Obj* obj) noexcept
+      : Base_MemberVar(nullptr)
+    {
+      using Cw = std::constant_wrapper<Val, Fn>;
+
+      // Mandates.
+      if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
+        /// @bug GCC bug 100313.
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+      }
+      if constexpr (std::is_member_pointer_v<Fn>) {
+        EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, "object pointer cannot be nullptr.");
+      }
+
+      m_command.template cw_init<Cw, /*CallPointer*/true>(&m_erasure, obj);
+    }
+
+#endif // C++ >= 26
+
+    using Base_CoreCompo::operator=;
+
+    // The return type.
+    using result_type = typename unwrap_signature<Sig>::ret;
+
+    /// @brief Get the buffer size.
+    EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
+    get_buffer_size() noexcept { return Buf; }
+
+    /// @brief Get the alignment.
+    EMBED_NODISCARD EMBED_INLINE static constexpr std::size_t
+    get_alignment() noexcept { return Align; }
+
+    /// @brief Return `true` if the function is copyable.
+    EMBED_NODISCARD EMBED_INLINE static constexpr bool
+    is_copyable() noexcept { return internal_is_copyable; }
   };
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
