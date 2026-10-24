@@ -64,34 +64,26 @@ BENCHMARK_NOTBASE(nesting_ebd);
 static void nesting_std_moveonly(picobench::state& s) {
     NESTING_CHAIN(std::move_only_function, NESTING_MOVE)
 }
-#endif
 
 static void nesting_ebd_moveonly(picobench::state& s) {
     NESTING_CHAIN(ebd::unique_fn, NESTING_MOVE)
 }
 
 BENCHMARK_UNIT(Nesting.SimilarSignature.MoveOnly);
-#if __cpp_lib_move_only_function >= 202110L
 BENCHMARK_BASELINE(nesting_std_moveonly);
 BENCHMARK_NOTBASE(nesting_ebd_moveonly);
-#else
-BENCHMARK_BASELINE(nesting_ebd_moveonly);
-#endif
+#endif // C++ >= 23
 
 #if defined(__cpp_lib_function_ref)
 static void nesting_std_ref(picobench::state& s) {
     NESTING_CHAIN(std::function_ref, NESTING_BORROW)
 }
-#endif
 
 static void nesting_ebd_ref(picobench::state& s) {
     NESTING_CHAIN(ebd::fn_ref, NESTING_BORROW)
 }
 
 BENCHMARK_UNIT(Nesting.SimilarSignature.Reference);
-#if defined(__cpp_lib_function_ref)
 BENCHMARK_BASELINE(nesting_std_ref);
 BENCHMARK_NOTBASE(nesting_ebd_ref);
-#else
-BENCHMARK_BASELINE(nesting_ebd_ref);
-#endif
+#endif // C++ >= 26
