@@ -74,7 +74,8 @@ BENCHMARK_BASELINE(nesting_std_moveonly);
 BENCHMARK_NOTBASE(nesting_ebd_moveonly);
 #endif // C++ >= 23
 
-#if __cpp_lib_function_ref >= 202603L
+// The value of __cpp_lib_function_ref in C++26 is 202603L. (202604L after DR)
+#if __cpp_lib_function_ref >= 202306L // 202306L is for GCC16.0
 static void nesting_std_ref(picobench::state& s) {
     NESTING_CHAIN(std::function_ref, NESTING_BORROW)
 }
