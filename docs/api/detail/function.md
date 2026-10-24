@@ -263,7 +263,7 @@ Returns `true` if the function wrapper is copyable, `false` otherwise.
 function_ptr_t operator*() const noexcept;
 ```
 
-If the wrapped object is a function pointer, returns that pointer; otherwise, returns `nullptr`.
+If the wrapped object is a function pointer, returns that pointer; otherwise, returns `nullptr`. After converting from one wrapper type to another (e.g. from `ebd::fn` to `ebd::unique_fn`, or from `ebd::fn<int(), 16>` to `ebd::fn<int(), 32>`), the resulting wrapper returns `nullptr`.
 
 ## Non-member Functions
 
