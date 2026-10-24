@@ -1,7 +1,7 @@
 **🔧 Fixed Bugs**
 - Fixed a bug where wrappers could not be instantiated when a parameter is a reference to an incomplete type. (#233)
 - Fixed a bug where static operator() with default argument was mis-deduced as deducing-this. (#235)
-- Fixed undefined behavior caused by using an inactive union member in `clone` and during initialization. (236)
+- Fixed undefined behavior caused by using an inactive union member in `clone` and during initialization. (#236)
 - Fixed a bug where `is_convertible_from_specialization` did not remove cv qualifiers, so cv-qualified wrappers were not recognized as convertible. (#238)
 
 **⚠️ Breaking Changes**
