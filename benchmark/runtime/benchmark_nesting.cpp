@@ -74,7 +74,7 @@ BENCHMARK_BASELINE(nesting_std_moveonly);
 BENCHMARK_NOTBASE(nesting_ebd_moveonly);
 #endif // C++ >= 23
 
-#if defined(__cpp_lib_function_ref)
+#if __cpp_lib_function_ref >= 202603L
 static void nesting_std_ref(picobench::state& s) {
     NESTING_CHAIN(std::function_ref, NESTING_BORROW)
 }
