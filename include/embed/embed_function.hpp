@@ -1071,7 +1071,7 @@ inline namespace fn_traits {
   };
 
   // Reference type is sure to be register-passable.
-  // Avoid triggering hard error by `sizeof(T&)` when T is an incomplete type.
+  // Avoid triggering hard error by `sizeof(T&)` or `sizeof(T&&)` when T is an incomplete type.
   template <typename T> struct is_register_passable<T&, void> : std::true_type {};
   template <typename T> struct is_register_passable<T&&, void> : std::true_type {};
 
@@ -1105,8 +1105,7 @@ inline namespace fn_traits {
   struct has_same_invoker_params<args_package<T, Ts...>, args_package<U, Us...>, true>
   : bool_constant<
     std::is_same<smart_forward_t<T>, smart_forward_t<U>>::value
-    && has_same_invoker_params<
-      args_package<Ts...>, args_package<Us...>,
+    && has_same_invoker_params<args_package<Ts...>, args_package<Us...>,
       sizeof...(Ts) == sizeof...(Us)>::value
   > {};
 
