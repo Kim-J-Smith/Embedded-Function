@@ -1069,7 +1069,8 @@ TEST(InitFunction, ThrowInCopyCtor) {
 
     count = 0;
     try {
-        ebd::fn<int(int)> f2 = ThrowInCopy{}; // shouldn't crash
+        ThrowInCopy obj;
+        ebd::fn<int(int)> f2 = obj; // shouldn't crash
         (void)f2;
     } catch(...) {
         ASSERT_EQ(count, 1);
@@ -1101,6 +1102,17 @@ TEST(InitFunction, ThrowInMoveCtor) {
     } catch(...) {
         ASSERT_EQ(count, 0);
     }
+
+    count = 0;
+    try {
+        ebd::fn<int(int)> f2 = ThrowInCopy{}; // shouldn't crash
+        (void)f2;
+    } catch(...) {
+        ASSERT_EQ(count, 1);
+        count = 42;
+    }
+
+    ASSERT_EQ(count, 42);
 }
 
 #endif // EMBED_CXX_ENABLE_EXCEPTION && EMBED_CXX_VERSION >= 201703L
