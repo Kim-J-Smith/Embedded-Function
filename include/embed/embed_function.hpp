@@ -2348,21 +2348,6 @@ namespace crtp_mixins {
 
 #undef EMBED_DETAIL_OPERATOR_CALL_IMPL_DEFINE
 
-  // Implement the destructor.
-  template <typename Config, typename Self>
-  struct destructor_impl {
-    destructor_impl()                                   = default;
-    destructor_impl(destructor_impl&&)                  = default;
-    destructor_impl(const destructor_impl&)             = default;
-    destructor_impl& operator=(destructor_impl&&)       = default;
-    destructor_impl& operator=(const destructor_impl&)  = default;
-
-    ~destructor_impl() {
-      auto& self = static_cast<Self&>(*this);
-      self.m_command.destroy(&self.m_erasure);
-    }
-  };
-
   // Implement the move constructor and move assignment.
   template <typename Config, typename Self>
   struct move_impl {
@@ -2442,20 +2427,13 @@ namespace crtp_mixins {
   template <bool IsView, bool IsCopyable, typename Config, typename Self>
   struct EMBED_DETAIL_FORCE_EBO lifetime_operations_impl; // Undefined
 
-  // When `IsView` is true, the function should be trivially relocatable.
-  template <bool IsCopyable, typename Config, typename Self>
-  struct lifetime_operations_impl<
-    /* IsView = */ true, IsCopyable, Config, Self
-  > { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
-
   // Implement clone constructor, move constructor, destructor, clone assignment,
   // and move assignment when `IsView` is false and `IsCopyable` is false.
   template <typename Config, typename Self>
   struct lifetime_operations_impl<
     /* IsView = */ false, /* IsCopyable = */ false, Config, Self
   >
-    : public move_impl<Config, Self>,
-      public destructor_impl<Config, Self>
+    : public move_impl<Config, Self>
   {
     lifetime_operations_impl()                                      = default;
     ~lifetime_operations_impl()                                     = default;
@@ -2472,8 +2450,7 @@ namespace crtp_mixins {
     /* IsView = */ false, /* IsCopyable = */ true, Config, Self
   >
     : public move_impl<Config, Self>,
-      public copy_impl<Config, Self>,
-      public destructor_impl<Config, Self>
+      public copy_impl<Config, Self>
   { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
 
   // Implement the 'operator*' for function.
@@ -2754,8 +2731,6 @@ namespace crtp_mixins {
     friend struct crtp_mixins::copy_impl;
     template <typename, typename>
     friend struct crtp_mixins::move_impl;
-    template <typename, typename>
-    friend struct crtp_mixins::destructor_impl;
     template <typename, typename, bool>
     friend struct crtp_mixins::assignment_self_clear;
 
@@ -2788,6 +2763,13 @@ namespace crtp_mixins {
     static constexpr bool internal_is_copyable = Cp;
 
   public:
+    function(const function&)             = default;
+    function(function&&)                  = default;
+    function& operator=(const function&)  = default;
+    function& operator=(function&&)       = default;
+
+    ~function() { m_command.destroy(&m_erasure); }
+
     function() noexcept
     : Base_MemberVar(nullptr, nullptr), Base_CoreCompo(nullptr) {}
     function(std::nullptr_t) noexcept
@@ -3005,10 +2987,6 @@ namespace crtp_mixins {
       >,
       public crtp_mixins::operator_dereference_impl<
         Sig, function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig>, true
-      >,
-      public crtp_mixins::lifetime_operations_impl<
-        true, Cp, config_package<Cp, true, Tr, AsNt>,
-        function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig>
       >
   {
   private:

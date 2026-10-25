@@ -18,8 +18,7 @@ graph BT;
   ASC["assignment_self_clear"]
   OC["operator_call_impl<br/>(owning / view)"]
   OD["operator_dereference_impl"]
-  LO["lifetime_operations_impl<br/>(view / owning)"]
-  D["destructor_impl"]
+  LO["lifetime_operations_impl<br/>(owning)"]
   M["move_impl"]
   C["copy_impl"]
 
@@ -27,14 +26,15 @@ graph BT;
   F -->|public| CC
   F -->|public| OC
   F -->|public| OD
-  F -->|public| LO
+  F -->|public, owning| LO
   MV -->|public| ASC
-  LO -->|public, owning| D
-  LO -->|public, owning| M
-  LO -->|public, owning and copyable| C
+  LO -->|public| M
+  LO -->|public, copyable| C
 ```
 
-Edges marked `owning` exist only in owning mode; the view specialization of `lifetime_operations_impl` has no bases.
+`lifetime_operations_impl` exists only in the owning specialization; the view specialization has no lifetime-operations base. `copy_impl` is a base only when `Config::isCopyable` is `true`; a move-only owning wrapper derives from `move_impl` alone.
+
+The owning specialization also declares its copy/move constructors, copy/move assignments, and destructor directly. Destruction therefore happens in the most-derived class rather than in a CRTP base, so `destroy()` is not called when a constructor throws before the wrapper has been fully initialized.
 
 ## Template Parameters
 
@@ -85,11 +85,28 @@ Creates an empty function wrapper. Owning wrappers only; view wrappers delete bo
 #### Copy / Move Constructor
 
 ```cpp
+// Owning wrappers
+function(const function& other) = default;
+function(function&& other) = default;
+
+// View wrappers: implicitly defined
 function(const function& other);
 function(function&& other);
 ```
 
-These are implicitly defined (the specializations do not declare them explicitly). They copy or move the base classes, with the actual work performed in `crtp_mixins::lifetime_operations_impl`. The copy constructor is available only if `Config::isCopyable` or `Config::isView` is `true`; for a move-only wrapper it is defined as deleted.
+Owning wrappers explicitly default these operations; the actual work is performed by the `crtp_mixins::move_impl` and `crtp_mixins::copy_impl` base classes. The copy constructor is available only if `Config::isCopyable` is `true`; for a move-only wrapper it is defined as deleted. View wrappers declare neither, so their copy and move constructors are implicitly defined and trivial.
+
+#### Destructor
+
+```cpp
+// Owning wrappers
+~function();
+
+// View wrappers: implicitly defined
+~function();
+```
+
+The owning wrapper defines the destructor in the most-derived specialization; it calls `m_command.destroy(&m_erasure)` to destroy the stored callable. Keeping the destructor out of a base class ensures that it is not invoked when a constructor throws before construction of the wrapper has completed. View wrappers have an implicitly defined trivial destructor because they do not own the target.
 
 #### Conversion Constructor
 
@@ -172,18 +189,26 @@ Assigns a null pointer, clearing the function wrapper. Owning wrappers only (del
 #### Copy Assignment
 
 ```cpp
+// Owning wrappers
+function& operator=(const function& other) = default;
+
+// View wrappers: implicitly defined
 function& operator=(const function& other);
 ```
 
-Implicitly defined. Copies another function wrapper. Only available if `Config::isCopyable` or `Config::isView` is `true`; for a move-only wrapper it is defined as deleted.
+Owning wrappers explicitly default the copy assignment. The `crtp_mixins::assignment_self_clear` base destroys the current callable first, then `crtp_mixins::copy_impl` clones the source. It is available only if `Config::isCopyable` is `true`; for a move-only wrapper it is defined as deleted. View wrappers are always copyable, and their copy assignment is implicitly defined and trivial.
 
 #### Move Assignment
 
 ```cpp
+// Owning wrappers
+function& operator=(function&& other) = default;
+
+// View wrappers: implicitly defined
 function& operator=(function&& other);
 ```
 
-Implicitly defined. Moves another function wrapper.
+Owning wrappers explicitly default the move assignment. As with copy assignment, `assignment_self_clear` destroys the previous callable before `crtp_mixins::move_impl` transfers the source. View wrappers get an implicitly defined trivial move assignment.
 
 ### Invocation
 

@@ -97,7 +97,7 @@ No empty-state test appears in the generated code for `ebd`: the empty construct
 ```asm
 ; ebd: one dispatch through the manager vtable. Its third entry is NULL for a
 ; trivially destructible callable, so no indirect call is made.
-"ebd::...::destructor_impl<...>::~destructor_impl()":
+"ebd::...::function<...>::~function()":
         mov     rax, QWORD PTR [rdi+16]
         mov     rax, QWORD PTR [rax+16]
         test    rax, rax

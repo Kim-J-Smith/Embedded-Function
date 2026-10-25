@@ -111,7 +111,7 @@ GCC emits no empty-state test here: nothing compares `m_invoker` against a senti
 ; ebd: the payload is trivially destructible, so the NULL vtable slot is taken
    10210:	491c                	lw	a5,16(a0)
    10212:	479c                	lw	a5,8(a5)
-   10214:	c391                	beqz	a5,10218 <ebd::detail::crtp_mixins::destructor_impl<ebd::detail::fn_traits::config_package<true, false, true, false>, ebd::detail::function<16u, 16u, ebd::detail::fn_traits::config_package<true, false, true, false>, int (int, int) const> >::~destructor_impl()+0x8>
+   10214:	c391                	beqz	a5,10218 <ebd::detail::function<16u, 16u, ebd::detail::fn_traits::config_package<true, false, true, false>, int (int, int) const>::~function()+0x8>
    10216:	8782                	jr	a5
    10218:	8082                	ret
 
