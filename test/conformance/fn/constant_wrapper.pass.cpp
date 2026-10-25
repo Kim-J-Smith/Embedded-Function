@@ -55,6 +55,21 @@ struct LeftRightCallable {
     int add_42_right(int n) const && noexcept { return n + 42; };
 };
 
+#if EMBED_CXX_ENABLE_EXCEPTION
+struct ThrowInConstructor {
+    static inline int destroy_count = 0;
+    ThrowInConstructor(std::nullptr_t) noexcept {}
+    ~ThrowInConstructor() { destroy_count++; }
+
+    ThrowInConstructor() { throw 1; }
+    ThrowInConstructor(const ThrowInConstructor&) { throw 2; }
+    ThrowInConstructor(ThrowInConstructor&&) { throw 3; }
+    ThrowInConstructor(int) { throw 4; }
+
+    int get_42() const noexcept { return 42; }
+};
+#endif // has cpp exception
+
 static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable, int>);
 static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable&, int>);
 static_assert(std::is_invocable_v<decltype(&LeftRightCallable::add_42_left), LeftRightCallable&&, int>);
@@ -420,6 +435,44 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             static_assert(std::is_same_v<decltype(f_auto), decltype(f)>);
         }
     }
+
+#if EMBED_CXX_ENABLE_EXCEPTION
+    // non crash tests
+    {
+        try {
+            ThrowInConstructor::destroy_count = 0;
+            ThrowInConstructor obj(nullptr);
+            ebd::fn<int()> f(std::cw<&ThrowInConstructor::get_42>, obj);
+        } catch(int e) {
+            ASSERT_EQ(e, 2);
+            ASSERT_EQ(ThrowInConstructor::destroy_count, 1);
+        }
+        try {
+            ThrowInConstructor::destroy_count = 0;
+            ThrowInConstructor obj(nullptr);
+            ebd::fn<int()> f(std::cw<&ThrowInConstructor::get_42>, std::move(obj));
+        } catch(int e) {
+            ASSERT_EQ(e, 3);
+            ASSERT_EQ(ThrowInConstructor::destroy_count, 1);
+        }
+        try {
+            ThrowInConstructor::destroy_count = 0;
+            ebd::fn<int()> f(std::cw<&ThrowInConstructor::get_42>,
+                            std::in_place_type<ThrowInConstructor>);
+        } catch(int e) {
+            ASSERT_EQ(e, 1);
+            ASSERT_EQ(ThrowInConstructor::destroy_count, 0);
+        }
+        try {
+            ThrowInConstructor::destroy_count = 0;
+            ebd::fn<int()> f(std::cw<&ThrowInConstructor::get_42>,
+                            std::in_place_type<ThrowInConstructor>, 0);
+        } catch(int e) {
+            ASSERT_EQ(e, 4);
+            ASSERT_EQ(ThrowInConstructor::destroy_count, 0);
+        }
+    }
+#endif // has cpp exception
 }
 
 #endif // __cpp_lib_constant_wrapper >= 202603L
