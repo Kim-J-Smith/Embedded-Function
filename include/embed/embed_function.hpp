@@ -2427,12 +2427,6 @@ namespace crtp_mixins {
   template <bool IsView, bool IsCopyable, typename Config, typename Self>
   struct EMBED_DETAIL_FORCE_EBO lifetime_operations_impl; // Undefined
 
-  // When `IsView` is true, the function should be trivially relocatable.
-  template <bool IsCopyable, typename Config, typename Self>
-  struct lifetime_operations_impl<
-    /* IsView = */ true, IsCopyable, Config, Self
-  > { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
-
   // Implement clone constructor, move constructor, destructor, clone assignment,
   // and move assignment when `IsView` is false and `IsCopyable` is false.
   template <typename Config, typename Self>
@@ -2993,10 +2987,6 @@ namespace crtp_mixins {
       >,
       public crtp_mixins::operator_dereference_impl<
         Sig, function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig>, true
-      >,
-      public crtp_mixins::lifetime_operations_impl<
-        true, Cp, config_package<Cp, true, Tr, AsNt>,
-        function<Buf, Align, config_package<Cp, true, Tr, AsNt>, Sig>
       >
   {
   private:
