@@ -1050,6 +1050,7 @@ struct ThrowInCopy {
     ~ThrowInCopy() { count++; }
     ThrowInCopy(const ThrowInCopy&) noexcept(false) { throw 7; }
     ThrowInCopy(ThrowInCopy&&) noexcept(false) { throw 8; }
+    ThrowInCopy(int) noexcept(false) { throw 9; }
     int operator()(int) const { return 0; }
 };
 }
@@ -1065,6 +1066,28 @@ TEST(InitFunction, ThrowInCopyCtor) {
     } catch(...) {
         ASSERT_EQ(count, 0);
     }
+
+    count = 0;
+    try {
+        ebd::fn<int(int)> f2 = ThrowInCopy{}; // shouldn't crash
+        (void)f2;
+    } catch(...) {
+        ASSERT_EQ(count, 1);
+        count = 42;
+    }
+
+    ASSERT_EQ(count, 42);
+
+    count = 0;
+    try {
+        ebd::fn<int(int)> f2(std::in_place_type<ThrowInCopy>, 0); // shouldn't crash
+        (void)f2;
+    } catch(...) {
+        ASSERT_EQ(count, 0);
+        count = 42;
+    }
+
+    ASSERT_EQ(count, 42);
 }
 
 // InitFunction[46]
