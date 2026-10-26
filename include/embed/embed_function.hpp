@@ -169,7 +169,8 @@
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
 # include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
-# include <utility>     // std::move, std::forward, std::addressof, std::unreachable(C++23)
+# include <utility>     // std::move, std::forward, std::unreachable(C++23)
+# include <memory>      // std::addressof
 # include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
 # include <type_traits> // std::enable_if, ...

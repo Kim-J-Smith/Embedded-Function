@@ -1,5 +1,6 @@
 **🔧 Fixed Bugs**
 - Fixed undefined behavior when an owning wrapper constructor throws. The destructor is now defined in the most-derived wrapper class.
+- Added missing header file `<memory>` for `std::addressof`.
 
 **⚠️ Breaking Changes**
 - None.
