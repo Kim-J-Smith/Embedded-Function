@@ -788,18 +788,6 @@ inline namespace cxx {
 
 } // end namespace cxx
 
-  /**
-   * @brief   Lightweight and heap-free wrapper for callable objects.
-   *
-   * @tparam  BufferSize  Size of the internal storage (in bytes).
-   * @tparam  Alignment   Alignment of the internal storage (in bytes).
-   * @tparam  Config      Attributes of the wrapper. See @ref `config_package`.
-   * @tparam  Signature   The signature of the wrapper, e.g., `Ret(Args...)`.
-   *
-   * @note    Member variables are defined in @ref `member_variable_impl`.
-   *          Method `operator()` is defined in @ref `operator_call_impl`.
-   *          Method `operator*` is defined in @ref `operator_dereference_impl`.
-   */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function;
 
@@ -2676,10 +2664,20 @@ namespace crtp_mixins {
 
 } // end namespace crtp_mixins
 
+  /**
+   * @brief   Lightweight and heap-free wrapper for callable objects.
+   *
+   * @tparam  BufferSize  Size of the internal storage (in bytes).
+   * @tparam  Alignment   Alignment of the internal storage (in bytes).
+   * @tparam  Config      Attributes of the wrapper. See @ref `config_package`.
+   * @tparam  Signature   The signature of the wrapper, e.g., `Ret(Args...)`.
+   *
+   * @note    Member variables are defined in @ref `member_variable_impl`.
+   *          Method `operator()` is defined in @ref `operator_call_impl`.
+   *          Method `operator*` is defined in @ref `operator_dereference_impl`.
+   */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
-  class EMBED_DETAIL_FORCE_EBO function {
-    static_assert(always_false<Config>::value, "Template arguments are invalid.");
-  };
+  class EMBED_DETAIL_FORCE_EBO function;
 
   /// Specialization for owning function wrappers. ( @b IsView = @a false )
   template <std::size_t Buf, std::size_t Align, typename Sig, bool Cp, bool Tr, bool AsNt>
