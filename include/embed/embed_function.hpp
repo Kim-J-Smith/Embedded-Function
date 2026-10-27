@@ -788,18 +788,6 @@ inline namespace cxx {
 
 } // end namespace cxx
 
-  /**
-   * @brief   Lightweight and heap-free wrapper for callable objects.
-   *
-   * @tparam  BufferSize  Size of the internal storage (in bytes).
-   * @tparam  Alignment   Alignment of the internal storage (in bytes).
-   * @tparam  Config      Attributes of the wrapper. See @ref `config_package`.
-   * @tparam  Signature   The signature of the wrapper, e.g., `Ret(Args...)`.
-   *
-   * @note    Member variables are defined in @ref `member_variable_impl`.
-   *          Method `operator()` is defined in @ref `operator_call_impl`.
-   *          Method `operator*` is defined in @ref `operator_dereference_impl`.
-   */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
   class EMBED_DETAIL_FORCE_EBO function;
 
@@ -850,18 +838,6 @@ inline namespace fn_traits {
     // the copy constructor and move constructor are noexcept.
     static constexpr bool assertNoThrow = AssertObjectNoThrow;
   };
-
-  // Check whether the type is config_package or not.
-  template <typename T>
-  struct is_config_package : public std::false_type {};
-
-  // MSVC 19.33 and earlier have a bug where a bool parameter pack is not
-  // handled correctly. To work around this issue, we avoid using bool...
-  // in the template parameter list.
-  template <bool IsCopyable, bool IsView, bool IsThrowing, bool AssertObjectNoThrow>
-  struct is_config_package<
-    config_package<IsCopyable, IsView, IsThrowing, AssertObjectNoThrow>>
-  : public std::true_type {};
 
   // Uses empty class as the package of arguments.
   template <typename... Args>
@@ -924,10 +900,7 @@ inline namespace fn_traits {
 
   template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
   struct is_ebd_fn_impl<function<Buf, Align, Cfg, Sig>>
-  : public bool_constant<
-    unwrap_signature<Sig>::isSignature
-    && is_config_package<Cfg>::value
-  > {
+  : public bool_constant<unwrap_signature<Sig>::isSignature> {
     using signature = Sig;
     using config = Cfg;
   };
@@ -2545,9 +2518,6 @@ namespace crtp_mixins {
       typename unwrap_signature<Signature>::args>;
 
   protected:
-    // Assert the `Config` is config_package.
-    static_assert(is_config_package<Config>::value, EMBED_DETAIL_REPORT_IE("Config is invalid."));
-
     // Assert the `erasure_t` is trivial.
     static_assert(is_traditional_trivial<erasure_t>::value,
       EMBED_DETAIL_REPORT_IE("erasure_t should be trivial."));
@@ -2694,10 +2664,20 @@ namespace crtp_mixins {
 
 } // end namespace crtp_mixins
 
+  /**
+   * @brief   Lightweight and heap-free wrapper for callable objects.
+   *
+   * @tparam  BufferSize  Size of the internal storage (in bytes).
+   * @tparam  Alignment   Alignment of the internal storage (in bytes).
+   * @tparam  Config      Attributes of the wrapper. See @ref `config_package`.
+   * @tparam  Signature   The signature of the wrapper, e.g., `Ret(Args...)`.
+   *
+   * @note    Member variables are defined in @ref `member_variable_impl`.
+   *          Method `operator()` is defined in @ref `operator_call_impl`.
+   *          Method `operator*` is defined in @ref `operator_dereference_impl`.
+   */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
-  class EMBED_DETAIL_FORCE_EBO function {
-    static_assert(always_false<Config>::value, "Template arguments are invalid.");
-  };
+  class EMBED_DETAIL_FORCE_EBO function;
 
   /// Specialization for owning function wrappers. ( @b IsView = @a false )
   template <std::size_t Buf, std::size_t Align, typename Sig, bool Cp, bool Tr, bool AsNt>
