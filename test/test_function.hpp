@@ -52,6 +52,8 @@ inline int ebd_test_free_func_iii_add(int a, int b) { return a + b; }
 inline int ebd_test_free_func_iii_add_noexcept(int& a, int& b) noexcept { return a + b; }
 inline int ebd_test_free_func_iii_add_const(const int& a, const int& b) { return a + b; }
 
+inline int ebd_test_free_func_varidic_arg(int n, ...) noexcept { return n; }
+
 inline float ebd_test_free_func_fff_mul(float a, float b) { return a * b; }
 
 inline int ebd_test_free_func_noexcept() noexcept { return 0; }

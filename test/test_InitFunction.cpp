@@ -73,6 +73,12 @@ TEST(InitFunction, fn_freeFunction_i) {
             ASSERT_EQ(f2(i, j), i + j);
         }
     }
+
+    ebd::fn<int(int)> f3 = ebd_test_free_func_varidic_arg;
+    ASSERT_EQ(f3(42), 42);
+
+    auto f4 = ebd::make_fn<int(int)>(ebd_test_free_func_varidic_arg);
+    ASSERT_EQ(f4(42), 42);
 }
 
 // InitFunction[2]

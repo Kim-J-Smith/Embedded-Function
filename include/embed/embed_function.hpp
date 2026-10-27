@@ -934,18 +934,9 @@ inline namespace fn_traits {
 
   // Check whether the callable object is function pointer or not.
   template <typename T>
-  struct is_function_ptr : public std::false_type {};
-
-  template <typename Ret, typename... Args>
-  struct is_function_ptr<Ret(*)(Args...)>
-  : public std::true_type {};
-
-#if (EMBED_CXX_VERSION >= 201703L && \
-    defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L)
-  template <typename Ret, typename... Args>
-  struct is_function_ptr<Ret(*)(Args...) noexcept>
-  : public std::true_type {};
-#endif
+  struct is_function_ptr : public std::is_function<
+    typename std::remove_pointer<T>::type
+  > {};
 
   // Check to store origin type or not (store the pointer).
   template <typename T, bool IsView,
