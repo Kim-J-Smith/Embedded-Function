@@ -1,6 +1,7 @@
 **🔧 Fixed Bugs**
 - Fixed undefined behavior when an owning wrapper constructor throws. The destructor is now defined in the most-derived wrapper class.
 - Added missing header file `<memory>` for `std::addressof`.
+- Fixed a bug that caused `make_fn<Sig>(variadic_function)` to trigger a hard error.
 
 **⚠️ Breaking Changes**
 - None.
