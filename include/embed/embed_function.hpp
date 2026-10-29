@@ -317,7 +317,7 @@
 
 #if EMBED_HAS_CXX_ATTRIBUTE(clang::lifetimebound)
 # define EMBED_DETAIL_LIFETIMEBOUND [[clang::lifetimebound]]
-#elif EMBED_HAS_CXX_ATTRIBUTE(msvc::lifetimebound)
+#elif EMBED_HAS_CXX_ATTRIBUTE(msvc::lifetimebound) && defined(_PREFAST_)
 # define EMBED_DETAIL_LIFETIMEBOUND [[msvc::lifetimebound]]
 #else
 # define EMBED_DETAIL_LIFETIMEBOUND
