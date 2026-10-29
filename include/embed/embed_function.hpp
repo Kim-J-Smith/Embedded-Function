@@ -301,9 +301,12 @@
 # pragma clang diagnostic push
 # pragma clang diagnostic ignored "-Wnullability-completeness"
 # pragma clang diagnostic ignored "-Wnullability-extension"
-# define EMBED_DETAIL_NONNULL _Nonnull
+# define EMBED_DETAIL_NONNULL(T) T _Nonnull
+#elif defined(_MSC_VER) && defined(_PREFAST_)
+# include <sal.h>
+# define EMBED_DETAIL_NONNULL(T) _Notnull_ T
 #else
-# define EMBED_DETAIL_NONNULL
+# define EMBED_DETAIL_NONNULL(T) T
 #endif
 
 #if EMBED_HAS_CXX_ATTRIBUTE(msvc::intrinsic)
@@ -314,6 +317,8 @@
 
 #if EMBED_HAS_CXX_ATTRIBUTE(clang::lifetimebound)
 # define EMBED_DETAIL_LIFETIMEBOUND [[clang::lifetimebound]]
+#elif EMBED_HAS_CXX_ATTRIBUTE(msvc::lifetimebound) && defined(_PREFAST_)
+# define EMBED_DETAIL_LIFETIMEBOUND [[msvc::lifetimebound]]
 #else
 # define EMBED_DETAIL_LIFETIMEBOUND
 #endif
@@ -3018,7 +3023,7 @@ namespace crtp_mixins {
         std::is_function<Func>::value
         && is_invocable_using<Func>::value
       )
-    function(Func* EMBED_DETAIL_NONNULL function_ptr) noexcept {
+    function(EMBED_DETAIL_NONNULL(Func*) function_ptr) noexcept {
       (void)assertions_for_functor<Buf, Cfg, Sig, Func*, Func*&&, erasure_t>{};
 
       EMBED_DETAIL_ASSERT_MESSAGE(function_ptr != nullptr, "function pointer cannot be nullptr.");

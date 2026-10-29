@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RuleSet Name="MsvcFailTest" Description="C26815 (dangling temporary) and C6387 (null argument)" ToolsVersion="15.0">
+  <Rules AnalyzerId="Microsoft.Analyzers.NativeCodeAnalysis" RuleNamespace="Microsoft.Rules.Native">
+    <Rule Id="C26815" Action="Warning" />
+    <Rule Id="C6387" Action="Warning" />
+  </Rules>
+</RuleSet>

@@ -259,7 +259,15 @@ foreach(macros_ ${TEST_USE_MACROS})
 endforeach()
 
 if(MSVC)
-  set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} /wd6326 /analyze /WX")
+  set(
+    FAIL_TEST_INCLUDE_PATH_CMD ${FAIL_TEST_INCLUDE_PATH_CMD}
+    /wd6326
+    /analyze
+    "/analyze:plugin EspXEngine.dll"
+    "/analyze:rulesetdirectory\"${CMAKE_CURRENT_SOURCE_DIR}/script\""
+    "/analyze:ruleset msvc-lifetime.ruleset" # check lifetime and nullptr
+    /WX
+  )
 else()
   set(FAIL_TEST_INCLUDE_PATH_CMD "${FAIL_TEST_INCLUDE_PATH_CMD} -Wall -Werror")
 endif()
