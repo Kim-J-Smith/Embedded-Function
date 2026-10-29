@@ -976,17 +976,16 @@ inline namespace fn_traits {
         && is_invocable_r<Ret, f_inv_quals, Args...>::value;
   };
 
-  // Check the functor is callable with given arguments.
+  // Check the `Fn` is callable with given arguments.
   // [func.wrap.move.ctor]/1
-  template <typename Functor, typename Signature>
+  template <typename Fn, typename Signature>
   struct is_callable_from_impl {
     using unwrap_sig = unwrap_signature<Signature>;
     using ret       = typename unwrap_sig::ret;
     using args_pack = typename unwrap_sig::args;
-    using dec_func  = decay_t<Functor>;
 
     static constexpr bool value =
-      is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
+      is_callable_from_pkg<Signature, Fn, ret, args_pack>::value;
   };
 
   // Check the `Config` convertible.
@@ -2799,7 +2798,7 @@ namespace crtp_mixins {
         (!is_convertible_from_specialization<function, DecFn>::value)
         && (!is_self<Functor, function>::value)
         && (!is_in_place_type<DecFn>::value)
-        && is_callable_from<Functor>::value
+        && is_callable_from<DecFn>::value
       )
     function(Functor&& functor)
       noexcept(std::is_nothrow_constructible<DecFn, Functor>::value)
