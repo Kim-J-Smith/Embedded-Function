@@ -1466,10 +1466,6 @@ inline namespace fn_traits {
       "is set to `true`, then the move/copy constructors of it are also required to be noexcept");
 
     static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
-
-    /// TODO: Relax this constraint in future version.
-    static_assert(std::is_move_constructible<Functor>::value || Config::isView,
-      "The move constructor of the callable object should not be deleted.");
   };
 
   // Is type std::in_place_type_t<T>.
@@ -1987,12 +1983,23 @@ namespace management {
     }
 
     // Move type-erased object from `src` to `dst`.
-    template <typename Functor>
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
+      EMBED_DETAIL_REQUIRES_END(std::is_move_constructible<Functor>::value) // Moveable
     static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_move_constructible<Functor>::value) {
       auto* src_erasure = static_cast<erasure_t*>(src);
       auto& src_obj = src_erasure->template access<Functor>();
       create<Functor>(dst, std::move(src_obj));
+    }
+
+    // Clone type-erased object from `src` to `dst` as fallback.
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
+      EMBED_DETAIL_REQUIRES_END((!std::is_move_constructible<Functor>::value)) // Non-moveable
+    static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
+      auto* src_erasure = static_cast<erasure_t*>(src);
+      auto& src_obj = src_erasure->template access<Functor>();
+      create<Functor>(dst, src_obj);
     }
 
     // Clone trivial type-erased object from `src` to `dst`.
