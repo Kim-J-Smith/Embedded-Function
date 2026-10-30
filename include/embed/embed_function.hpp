@@ -976,17 +976,16 @@ inline namespace fn_traits {
         && is_invocable_r<Ret, f_inv_quals, Args...>::value;
   };
 
-  // Check the functor is callable with given arguments.
+  // Check the `Fn` is callable with given arguments.
   // [func.wrap.move.ctor]/1
-  template <typename Functor, typename Signature>
+  template <typename Fn, typename Signature>
   struct is_callable_from_impl {
     using unwrap_sig = unwrap_signature<Signature>;
     using ret       = typename unwrap_sig::ret;
     using args_pack = typename unwrap_sig::args;
-    using dec_func  = decay_t<Functor>;
 
     static constexpr bool value =
-      is_callable_from_pkg<Signature, dec_func, ret, args_pack>::value;
+      is_callable_from_pkg<Signature, Fn, ret, args_pack>::value;
   };
 
   // Check the `Config` convertible.
@@ -1467,10 +1466,6 @@ inline namespace fn_traits {
       "is set to `true`, then the move/copy constructors of it are also required to be noexcept");
 
     static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
-
-    /// TODO: Relax this constraint in future version.
-    static_assert(std::is_move_constructible<Functor>::value || Config::isView,
-      "The move constructor of the callable object should not be deleted.");
   };
 
   // Is type std::in_place_type_t<T>.
@@ -1988,12 +1983,23 @@ namespace management {
     }
 
     // Move type-erased object from `src` to `dst`.
-    template <typename Functor>
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
+      EMBED_DETAIL_REQUIRES_END(std::is_move_constructible<Functor>::value) // Moveable
     static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_move_constructible<Functor>::value) {
       auto* src_erasure = static_cast<erasure_t*>(src);
       auto& src_obj = src_erasure->template access<Functor>();
       create<Functor>(dst, std::move(src_obj));
+    }
+
+    // Clone type-erased object from `src` to `dst` as fallback.
+    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
+      EMBED_DETAIL_REQUIRES_END((!std::is_move_constructible<Functor>::value)) // Non-moveable
+    static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
+      auto* src_erasure = static_cast<erasure_t*>(src);
+      auto& src_obj = src_erasure->template access<Functor>();
+      create<Functor>(dst, src_obj);
     }
 
     // Clone trivial type-erased object from `src` to `dst`.
@@ -2799,7 +2805,7 @@ namespace crtp_mixins {
         (!is_convertible_from_specialization<function, DecFn>::value)
         && (!is_self<Functor, function>::value)
         && (!is_in_place_type<DecFn>::value)
-        && is_callable_from<Functor>::value
+        && is_callable_from<DecFn>::value
       )
     function(Functor&& functor)
       noexcept(std::is_nothrow_constructible<DecFn, Functor>::value)
