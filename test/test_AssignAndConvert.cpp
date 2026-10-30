@@ -533,6 +533,8 @@ TEST(AssignAndConvert, ThrowInCopyAssignment) {
     try {
         f1 = f2;
     } catch(...) {
+        ASSERT_TRUE(f1.is_empty());
+        ASSERT_FALSE(f2.is_empty());
         ASSERT_EQ(count, 1);
     }
 
@@ -549,6 +551,8 @@ TEST(AssignAndConvert, ThrowInMoveAssignment) {
     try {
         f1 = std::move(f2);
     } catch(...) {
+        ASSERT_TRUE(f1.is_empty());
+        ASSERT_FALSE(f2.is_empty());
         ASSERT_EQ(count, 1);
     }
 
