@@ -2007,7 +2007,7 @@ namespace management {
     static EMBED_INLINE void
     trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
       // Copying the whole `m_erasure` is unnecessary.
-      std::memcpy(dst, src, sizeof(Functor));
+      std::memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t const*>(src), sizeof(Functor));
     }
 
     // Move trivial type-erased object from `src` to `dst`.
@@ -3018,7 +3018,7 @@ namespace crtp_mixins {
       noexcept(is_cfg_noexcept<FCfg>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
-      std::memcpy(&m_erasure, &other.m_erasure, default_values::non_owning::buffer_size);
+      std::memcpy(&m_erasure, &other.m_erasure, sizeof(erasure_type::ErasureRefStorage));
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
