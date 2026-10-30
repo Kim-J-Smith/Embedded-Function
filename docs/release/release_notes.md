@@ -14,6 +14,7 @@
 - Removed unnecessary internal traits and adjusted some comments' position.
 - MSVC: Annotated the `fn_ref` callable constructor with `[[msvc::lifetimebound]]`.
 - MSVC: Added the `_Notnull_` SAL annotation from `<sal.h>` to the `fn_ref` function-pointer constructor.
+- Copyable function wrappers can now wrap callable objects with a deleted move constructor.
 
 **📌 Notes**
 - `operator bool` still works but may warn. It will be removed in a future release.
