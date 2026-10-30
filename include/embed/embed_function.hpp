@@ -3018,7 +3018,7 @@ namespace crtp_mixins {
       noexcept(is_cfg_noexcept<FCfg>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
-      std::memcpy(&m_erasure, &other.m_erasure, default_values::non_owning::buffer_size);
+      std::memcpy(&m_erasure, &other.m_erasure, sizeof(erasure_type::ErasureRefStorage));
       std::memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
