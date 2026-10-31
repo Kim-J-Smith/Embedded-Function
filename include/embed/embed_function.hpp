@@ -2679,7 +2679,9 @@ namespace crtp_mixins {
    *          Method `operator*` is defined in @ref `operator_dereference_impl`.
    */
   template <std::size_t BufferSize, std::size_t Alignment, typename Config, typename Signature>
-  class EMBED_DETAIL_FORCE_EBO function;
+  class EMBED_DETAIL_FORCE_EBO function {
+    static_assert(always_false<Config>::value, "Template arguments are invalid.");
+  };
 
   /// Specialization for owning function wrappers. ( @b IsView = @a false )
   template <std::size_t Buf, std::size_t Align, typename Sig, bool Cp, bool Tr, bool AsNt>
