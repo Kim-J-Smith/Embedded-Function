@@ -1070,6 +1070,7 @@ TEST(InitFunction, ThrowInCopyCtor) {
         ebd::fn<int(int)> f2 = f1;
         (void)f2;
     } catch(...) {
+        ASSERT_FALSE(f1.is_empty());
         ASSERT_EQ(count, 0);
     }
 
@@ -1106,6 +1107,7 @@ TEST(InitFunction, ThrowInMoveCtor) {
         ebd::fn<int(int)> f2 = std::move(f1);
         (void)f2;
     } catch(...) {
+        ASSERT_FALSE(f1.is_empty());
         ASSERT_EQ(count, 0);
     }
 
