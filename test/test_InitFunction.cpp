@@ -1051,12 +1051,21 @@ TEST(InitFunction, testQualifier_Stateful) {
 namespace {
 int count = 0;
 
-struct ThrowInCopy {
-    ThrowInCopy() = default;
-    ~ThrowInCopy() { count++; }
-    ThrowInCopy(const ThrowInCopy&) noexcept(false) { throw 7; }
-    ThrowInCopy(ThrowInCopy&&) noexcept(false) { throw 8; }
-    ThrowInCopy(int) noexcept(false) { throw 9; }
+struct ThrowInConstructor {
+    enum ExceptionNumber {
+        IN_COPY_CONSTRUCTOR,
+        IN_MOVE_CONSTRUCTOR,
+        IN_INT_CONSTRUCTOR,
+    };
+
+    ThrowInConstructor() = default;
+    ~ThrowInConstructor() { count++; }
+    ThrowInConstructor(const ThrowInConstructor&) noexcept(false)
+    { throw static_cast<int>(IN_COPY_CONSTRUCTOR); }
+    ThrowInConstructor(ThrowInConstructor&&) noexcept(false)
+    { throw static_cast<int>(IN_MOVE_CONSTRUCTOR); }
+    ThrowInConstructor(int) noexcept(false)
+    { throw static_cast<int>(IN_INT_CONSTRUCTOR); }
     int operator()(int) const { return 0; }
 };
 }
@@ -1064,22 +1073,24 @@ struct ThrowInCopy {
 // InitFunction[45]
 TEST(InitFunction, ThrowInCopyCtor) {
 
-    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInConstructor>);
     count = 0;
     try {
         ebd::fn<int(int)> f2 = f1;
         (void)f2;
-    } catch(...) {
+    } catch(int e) {
+        ASSERT_EQ(e, ThrowInConstructor::IN_COPY_CONSTRUCTOR);
         ASSERT_FALSE(f1.is_empty());
         ASSERT_EQ(count, 0);
     }
 
     count = 0;
     try {
-        ThrowInCopy obj;
+        ThrowInConstructor obj;
         ebd::fn<int(int)> f2 = obj; // shouldn't crash
         (void)f2;
-    } catch(...) {
+    } catch(int e) {
+        ASSERT_EQ(e, ThrowInConstructor::IN_COPY_CONSTRUCTOR);
         ASSERT_EQ(count, 1);
         count = 42;
     }
@@ -1088,9 +1099,10 @@ TEST(InitFunction, ThrowInCopyCtor) {
 
     count = 0;
     try {
-        ebd::fn<int(int)> f2(std::in_place_type<ThrowInCopy>, 0); // shouldn't crash
+        ebd::fn<int(int)> f2(std::in_place_type<ThrowInConstructor>, 0); // shouldn't crash
         (void)f2;
-    } catch(...) {
+    } catch(int e) {
+        ASSERT_EQ(e, ThrowInConstructor::IN_INT_CONSTRUCTOR);
         ASSERT_EQ(count, 0);
         count = 42;
     }
@@ -1101,21 +1113,23 @@ TEST(InitFunction, ThrowInCopyCtor) {
 // InitFunction[46]
 TEST(InitFunction, ThrowInMoveCtor) {
 
-    ebd::fn<int(int)> f1(std::in_place_type<ThrowInCopy>);
+    ebd::fn<int(int)> f1(std::in_place_type<ThrowInConstructor>);
     count = 0;
     try {
         ebd::fn<int(int)> f2 = std::move(f1);
         (void)f2;
-    } catch(...) {
+    } catch(int e) {
+        ASSERT_EQ(e, ThrowInConstructor::IN_MOVE_CONSTRUCTOR);
         ASSERT_FALSE(f1.is_empty());
         ASSERT_EQ(count, 0);
     }
 
     count = 0;
     try {
-        ebd::fn<int(int)> f2 = ThrowInCopy{}; // shouldn't crash
+        ebd::fn<int(int)> f2 = ThrowInConstructor{}; // shouldn't crash
         (void)f2;
-    } catch(...) {
+    } catch(int e) {
+        ASSERT_EQ(e, ThrowInConstructor::IN_MOVE_CONSTRUCTOR);
         ASSERT_EQ(count, 1);
         count = 42;
     }

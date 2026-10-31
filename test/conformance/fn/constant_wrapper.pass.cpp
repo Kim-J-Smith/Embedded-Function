@@ -57,14 +57,25 @@ struct LeftRightCallable {
 
 #if EMBED_CXX_ENABLE_EXCEPTION
 struct ThrowInConstructor {
+    enum ExceptionNumber {
+        IN_DEFAULT_CONSTRUCTOR,
+        IN_COPY_CONSTRUCTOR,
+        IN_MOVE_CONSTRUCTOR,
+        IN_INT_CONSTRUCTOR,
+    };
+
     static inline int destroy_count = 0;
     ThrowInConstructor(std::nullptr_t) noexcept {}
     ~ThrowInConstructor() { destroy_count++; }
 
-    ThrowInConstructor() { throw 1; }
-    ThrowInConstructor(const ThrowInConstructor&) { throw 2; }
-    ThrowInConstructor(ThrowInConstructor&&) { throw 3; }
-    ThrowInConstructor(int) { throw 4; }
+    ThrowInConstructor()
+    { throw static_cast<int>(IN_DEFAULT_CONSTRUCTOR); }
+    ThrowInConstructor(const ThrowInConstructor&)
+    { throw static_cast<int>(IN_COPY_CONSTRUCTOR); }
+    ThrowInConstructor(ThrowInConstructor&&)
+    { throw static_cast<int>(IN_MOVE_CONSTRUCTOR); }
+    ThrowInConstructor(int)
+    { throw static_cast<int>(IN_INT_CONSTRUCTOR); }
 
     int get_42() const noexcept { return 42; }
 };
@@ -444,7 +455,7 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ThrowInConstructor obj(nullptr);
             ebd::fn<int()> f(std::cw<&ThrowInConstructor::get_42>, obj);
         } catch(int e) {
-            ASSERT_EQ(e, 2);
+            ASSERT_EQ(e, ThrowInConstructor::IN_COPY_CONSTRUCTOR);
             ASSERT_EQ(ThrowInConstructor::destroy_count, 1);
         }
         try {
@@ -452,7 +463,7 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ThrowInConstructor obj(nullptr);
             ebd::fn<int()> f(std::cw<&ThrowInConstructor::get_42>, std::move(obj));
         } catch(int e) {
-            ASSERT_EQ(e, 3);
+            ASSERT_EQ(e, ThrowInConstructor::IN_MOVE_CONSTRUCTOR);
             ASSERT_EQ(ThrowInConstructor::destroy_count, 1);
         }
         try {
@@ -460,7 +471,7 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ebd::fn<int()> f(std::cw<&ThrowInConstructor::get_42>,
                             std::in_place_type<ThrowInConstructor>);
         } catch(int e) {
-            ASSERT_EQ(e, 1);
+            ASSERT_EQ(e, ThrowInConstructor::IN_DEFAULT_CONSTRUCTOR);
             ASSERT_EQ(ThrowInConstructor::destroy_count, 0);
         }
         try {
@@ -468,7 +479,7 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ebd::fn<int()> f(std::cw<&ThrowInConstructor::get_42>,
                             std::in_place_type<ThrowInConstructor>, 0);
         } catch(int e) {
-            ASSERT_EQ(e, 4);
+            ASSERT_EQ(e, ThrowInConstructor::IN_INT_CONSTRUCTOR);
             ASSERT_EQ(ThrowInConstructor::destroy_count, 0);
         }
     }
