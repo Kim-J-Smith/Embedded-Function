@@ -6,7 +6,7 @@ Please use [`ebd::fn`](./fn.md) instead.
 
 ### Migration Note
 
-The `safe_fn` alias still works but has been deprecated. If you migrate to `ebd::fn`, note that `AssertObjectNoThrow` changes to `false`, which means `ebd::fn` no longer requires the callable object's copy and move constructors, when present, to be `noexcept`; a deleted move constructor is allowed. Its destructor must still be `noexcept`, since `ebd::fn` owns (and therefore destroys) the target. If you need the `AssertObjectNoThrow=true` guarantee, use `ebd::basic_fn` directly:
+The `safe_fn` alias still works but has been deprecated. If you migrate to `ebd::fn`, note that `AssertObjectNoThrow` changes to `false`, which means `ebd::fn` no longer requires the callable object's copy constructor or its move constructor, when present, to be `noexcept`; a deleted move constructor is allowed. Its destructor must still be `noexcept`, since `ebd::fn` owns (and therefore destroys) the target. If you need the `AssertObjectNoThrow=true` guarantee, use `ebd::basic_fn` directly:
 
 ```cpp
 template <
