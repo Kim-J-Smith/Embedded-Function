@@ -2520,7 +2520,6 @@ namespace crtp_mixins {
       Config::isView, Size, Align, Config, Signature,
       typename unwrap_signature<Signature>::args>;
 
-  protected:
     // Assert the `erasure_t` is trivial.
     static_assert(is_traditional_trivial<erasure_t>::value,
       EMBED_DETAIL_REPORT_IE("erasure_t should be trivial."));

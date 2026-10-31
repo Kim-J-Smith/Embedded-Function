@@ -177,6 +177,8 @@ TEST(TestSwap, ThrowInSwap) {
         // RAII of tmp: destroy 1
         f2.swap(f1);
     } catch (...) {
+        ASSERT_TRUE(f2.is_empty());
+        ASSERT_FALSE(f1.is_empty());
         ASSERT_EQ(count, 2);
     }
 
