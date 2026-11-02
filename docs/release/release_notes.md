@@ -9,6 +9,7 @@
 
 **🛠️ Optimizations and Improvements**
 - Made the GCC 5.4 CI Docker image more robust when downloading CMake.
+- `detail::is_invocable_r` now follows `INVOKE<R>` semantics for array and function return types. Internal trait, no user-visible API change.
 
 **📌 Notes**
 - None.
