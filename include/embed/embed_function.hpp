@@ -658,10 +658,12 @@ inline namespace cxx {
   struct is_invocable_helper<void_t<typename Res::type>, Res, Ret, /* RetVoid = */ false> {
     using Res_t = typename Res::type;
 
-    static Res_t result() noexcept { return std::declval<Res_t>(); }
+    static Res_t result() noexcept { return {}; }
 
+    // Use `T` as return type to reject array type and function type.
+    // See <https://github.com/llvm/llvm-project/pull/234218>.
     template <typename T>
-    static void try_receive(T) noexcept {}
+    static T try_receive(T) noexcept { return {}; }
 
     template <typename, typename T>
     struct receive_status : std::false_type { using nothrow = std::false_type; };

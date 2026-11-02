@@ -1572,3 +1572,30 @@ TEST(InitFunction, make_fn_FuzzStaticOperatorCall) {
 }
 
 #endif // C++ >= 23
+
+// InitFunction[54]
+namespace {
+    struct DefaultCtorDelete {
+        DefaultCtorDelete() = delete;
+        DefaultCtorDelete(const DefaultCtorDelete&) = default;
+        DefaultCtorDelete(int) noexcept {}
+    };
+}
+TEST(InitFunction, DefaultCtorDeleteAsReturnType) {
+    using R = DefaultCtorDelete;
+    {
+        ebd::fn<R()> f = []() { return R{1}; }; (void)f;
+    }
+    {
+        ebd::unique_fn<R()> f = []() { return R{1}; }; (void)f;
+    }
+    {
+        ebd::classic_fn<R()> f = []() { return R{1}; }; (void)f;
+    }
+    {
+        ebd::__safe_fn<R()> f = []() { return R{1}; }; (void)f;
+    }
+    {
+        ebd::fn_ref<R()> f = +[]() { return R{1}; }; (void)f;
+    }
+}
