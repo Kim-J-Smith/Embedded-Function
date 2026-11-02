@@ -8,7 +8,7 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Made the GCC 5.4 CI Docker image more robust when downloading CMake.
 
 **📌 Notes**
 - None.
