@@ -132,3 +132,36 @@ TEST(DetailTraits, is_convertible_from_specialization) {
         ed::is_convertible_from_specialization<
             ebd::fn_ref<int(NonTrivial) const>, ebd::fn_ref<int(NonTrivial&&) const>>::value, "BUG");
 }
+
+TEST(DetailTraits, is_invocable_r) {
+    static_assert(!ed::is_invocable_r<int[3], int*(*)()>::value, "BUG");
+    static_assert(!ed::is_invocable_r<int[], int*(*)()>::value, "BUG");
+    static_assert(!ed::is_nothrow_invocable_r<int[3], int*(*)()>::value, "BUG");
+    static_assert(!ed::is_nothrow_invocable_r<int[], int*(*)()>::value, "BUG");
+
+    static_assert(!ed::is_invocable_r<int[3], int*(&)()>::value, "BUG");
+    static_assert(!ed::is_invocable_r<int[], int*(&)()>::value, "BUG");
+    static_assert(!ed::is_nothrow_invocable_r<int[3], int*(&)()>::value, "BUG");
+    static_assert(!ed::is_nothrow_invocable_r<int[], int*(&)()>::value, "BUG");
+
+    using FP = void(*)();
+    static_assert(!ed::is_invocable_r<void(), FP(*)()>::value, "BUG");
+    static_assert(!ed::is_invocable_r<void(), FP(&)()>::value, "BUG");
+    static_assert(!ed::is_nothrow_invocable_r<void(), FP(*)()>::value, "BUG");
+    static_assert(!ed::is_nothrow_invocable_r<void(), FP(&)()>::value, "BUG");
+
+    static_assert(ed::is_invocable_r<int, int(*)()>::value, "BUG");
+    static_assert(ed::is_invocable_r<int const, int(*)()>::value, "BUG");
+    static_assert(ed::is_invocable_r<int volatile, int(*)()>::value, "BUG");
+    static_assert(ed::is_invocable_r<int const volatile, int(*)()>::value, "BUG");
+
+    auto lbd = []() noexcept -> int { return 0; };
+    static_assert(ed::is_invocable_r<int, decltype(lbd)>::value, "BUG");
+    static_assert(ed::is_invocable_r<int const, decltype(lbd)>::value, "BUG");
+    static_assert(ed::is_invocable_r<int volatile, decltype(lbd)>::value, "BUG");
+    static_assert(ed::is_invocable_r<int const volatile, decltype(lbd)>::value, "BUG");
+    static_assert(ed::is_nothrow_invocable_r<int, decltype(lbd)>::value, "BUG");
+    static_assert(ed::is_nothrow_invocable_r<int const, decltype(lbd)>::value, "BUG");
+    static_assert(ed::is_nothrow_invocable_r<int volatile, decltype(lbd)>::value, "BUG");
+    static_assert(ed::is_nothrow_invocable_r<int const volatile, decltype(lbd)>::value, "BUG");
+}
