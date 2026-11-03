@@ -360,9 +360,6 @@ inline namespace cxx {
   template <typename T>
   using remove_cv_t = typename std::remove_cv<T>::type;
 
-  template <typename T>
-  using remove_volatile_t = typename std::remove_volatile<T>::type;
-
   template <bool Cond, typename IfTrue, typename IfFalse>
   using conditional_t = typename std::conditional<Cond, IfTrue, IfFalse>::type;
 
