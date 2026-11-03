@@ -47,7 +47,12 @@ test_clang() {
     echo; echo "-- FINISH ENVIRONMENT SETUP --"; echo;
     for test_use_macros in "${TEST_USE_MACROS_HELPER[@]}"; do
         for compiler_version in "${COMPILER_VERSIONS[@]}"; do
-            for cxx_standard in "${CXX_STANDARDS[@]}"; do
+            CXX_STANDARDS_RUN=("${CXX_STANDARDS[@]}")
+            # # TODO: Enable C++ 26 when Clang 24 is added to CI.
+            # if ((compiler_version >= 24)); then
+            #     CXX_STANDARDS_RUN+=("26")
+            # fi
+            for cxx_standard in "${CXX_STANDARDS_RUN[@]}"; do
                 config_cmake_and_run_test "$cxx_standard" "$compiler_version" "$test_use_macros"
             done
         done

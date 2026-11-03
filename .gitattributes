@@ -4,3 +4,6 @@
 *.cc linguist-language=C++
 *.cpp linguist-language=C++
 
+# LF
+*.sh text eol=lf
+Dockerfile text eol=lf
