@@ -30,6 +30,7 @@
 // workaround for GCC 16.0
 # undef __cpp_lib_constant_wrapper
 # define __cpp_lib_constant_wrapper 202603L
+# define EBD_TEST_DID_NOT_IMPLEMENT_P3978R3
 #endif
 
 #if __cplusplus >= 202302L && !defined(__cpp_lib_constant_wrapper) && MSVC_IS_OK
