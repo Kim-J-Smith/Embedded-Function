@@ -461,12 +461,15 @@ TEST(Conformance_fn, constant_wrapper_pass) {
             ebd::fn<void() const> f1 = std::cw<+[]() noexcept {}>;
             ASSERT_FALSE(f1.is_empty());
         }
+#if !defined(EBD_TEST_DID_NOT_IMPLEMENT_P3978R3)
         {
+            // See <https://github.com/Kim-J-Smith/Embedded-Function/pull/261>.
             ebd::fn<void() volatile> f = std::cw<static_cast<void(*)() noexcept>(nullptr)>;
             ASSERT_TRUE(f.is_empty());
             ebd::fn<void() volatile> f1 = std::cw<+[]() noexcept {}>;
             ASSERT_FALSE(f1.is_empty());
         }
+#endif // ^^^ implemented P3978R3
         {
             ebd::fn<void() noexcept> f = std::cw<static_cast<void(*)() noexcept>(nullptr)>;
             ASSERT_TRUE(f.is_empty());
