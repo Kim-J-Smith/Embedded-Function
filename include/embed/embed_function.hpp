@@ -360,6 +360,9 @@ inline namespace cxx {
   template <typename T>
   using remove_cv_t = typename std::remove_cv<T>::type;
 
+  template <typename T>
+  using remove_volatile_t = typename std::remove_volatile<T>::type;
+
   template <bool Cond, typename IfTrue, typename IfFalse>
   using conditional_t = typename std::conditional<Cond, IfTrue, IfFalse>::type;
 
@@ -660,10 +663,12 @@ inline namespace cxx {
 
     static Res_t result() noexcept { return {}; }
 
-    // Use `T` as return type to reject array type and function type.
+    // Use `T` as the return type to reject array and function types.
+    // Use `remove_volatile_t` because volatile-qualified parameter types
+    // are deprecated since C++20. ("-Wdeprecated-volatile" since Clang 21)
     // See <https://github.com/llvm/llvm-project/pull/234218>.
     template <typename T>
-    static T try_receive(T) noexcept { return {}; }
+    static remove_volatile_t<T> try_receive(remove_volatile_t<T>) noexcept { return {}; }
 
     template <typename, typename T>
     struct receive_status : std::false_type { using nothrow = std::false_type; };
