@@ -522,10 +522,21 @@ inline namespace cxx {
   struct invoke_result_of_normal {
     template<typename> static failure_type test(...) { return {}; }
     template<typename T> static success_type<
-      /* type = */ decltype(std::declval<T>()(
-        std::declval<ArgsType>()...)),
+      /* type = */ decltype(std::declval<T>()(std::declval<ArgsType>()...)),
       /* tag = */ tag_call_normal
     > test(int) { return {}; }
+
+#if defined(_MSC_VER) && !defined(__clang__) && (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
+
+    // MSVC 19.44 ~ 19.51 workaround. When T is qualified with `volatile`, MSVC
+    // only accepts `T::operator()(args...)` but not accepts `T{}(args...)`.
+    template<typename T, typename U = remove_reference_t<T>> static success_type<
+      /* type = */ decltype(U::operator()(std::declval<ArgsType>()...)),
+      /* tag = */ tag_call_normal
+    > test(long) { return {}; }
+
+#endif
 
     using type = decltype(test<Functor>(0));
   };
@@ -588,8 +599,22 @@ inline namespace cxx {
 
   template <typename NormalFunc, typename... Args>
   struct call_is_nothrow_impl<tag_call_normal, NormalFunc, Args...> {
-    static constexpr bool value = noexcept(
-      std::declval<NormalFunc>()(std::declval<Args>()...));
+    template <typename T> static bool_constant<
+      noexcept(std::declval<T>()(std::declval<Args>()...))
+    > check_nothrow(int) { return {}; }
+
+#if defined(_MSC_VER) && !defined(__clang__) && (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
+
+    // MSVC 19.44 ~ 19.51 workaround. When T is qualified with `volatile`, MSVC
+    // only accepts `T::operator()(args...)` but not accepts `T{}(args...)`.
+    template <typename T> static bool_constant<
+      noexcept(remove_reference_t<T>::operator()(std::declval<Args>()...))
+    > check_nothrow(long) { return {}; }
+
+#endif
+
+    static constexpr bool value = decltype(check_nothrow<NormalFunc>(0))::value;
   };
 
   template <typename MemObj, typename Arg>
@@ -1212,7 +1237,7 @@ inline namespace fn_traits {
 #if __STDC_HOSTED__
 
     template <typename Sig>
-    static bool not_empty(const ::std::function<Sig>& f) noexcept
+    static bool not_empty(const std::function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // __STDC_HOSTED__
@@ -1220,7 +1245,7 @@ inline namespace fn_traits {
 #if defined(__cpp_lib_move_only_function) && __cpp_lib_move_only_function >= 202110L
 
     template <typename Sig>
-    static bool not_empty(const ::std::move_only_function<Sig>& f) noexcept
+    static bool not_empty(const std::move_only_function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // ^^^ __cpp_lib_move_only_function >= 202110L
@@ -1228,10 +1253,25 @@ inline namespace fn_traits {
 #if defined(__cpp_lib_copyable_function) && __cpp_lib_copyable_function >= 202306L
 
     template <typename Sig>
-    static bool not_empty(const ::std::copyable_function<Sig>& f) noexcept
+    static bool not_empty(const std::copyable_function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // ^^^ __cpp_lib_copyable_function >= 202306L
+
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
+
+    template <auto Val, typename T>
+    static constexpr bool not_empty(const std::constant_wrapper<Val, T>&) noexcept {
+      // `std::constant_wrapper<Val, T>::value` does not equal to `Val` before P4206R0.
+      // [const.wrap.class]/2 `is_same_v<T, value_type>` should be true.
+      if constexpr (std::is_pointer_v<T> || std::is_member_pointer_v<T>) {
+        return std::constant_wrapper<Val, T>::value != nullptr;
+      } else {
+        return true;
+      }
+    }
+
+#endif // __cpp_lib_constant_wrapper >= 202603L
 
   };
 

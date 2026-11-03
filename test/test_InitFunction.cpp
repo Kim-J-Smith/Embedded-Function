@@ -736,6 +736,37 @@ TEST(InitFunction, static_operator_call) {
 
     ASSERT_EQ(f4(1, 0), 1);
     ASSERT_EQ(f4(1, 2), 3);
+
+    // Tests MSVC 19.44 ~ 19.51 bug. (static operator() with volatile)
+    {
+        ebd::fn<int(int, int) volatile> f = ebd_test_static_call_operator{};
+        ASSERT_EQ(f(42, 1), 43);
+        ebd::fn<int(int, int) volatile noexcept> g = ebd_test_static_call_operator{};
+        ASSERT_EQ(g(42, 1), 43);
+    }
+    {
+        ebd::unique_fn<int(int, int) volatile> f = ebd_test_static_call_operator{};
+        ASSERT_EQ(f(42, 1), 43);
+        ebd::unique_fn<int(int, int) volatile noexcept> g = ebd_test_static_call_operator{};
+        ASSERT_EQ(g(42, 1), 43);
+    }
+    {
+        ebd::classic_fn<int(int, int) volatile> f = ebd_test_static_call_operator{};
+        ASSERT_EQ(f(42, 1), 43);
+    }
+    {
+        ebd::__safe_fn<int(int, int) volatile> f = ebd_test_static_call_operator{};
+        ASSERT_EQ(f(42, 1), 43);
+        ebd::__safe_fn<int(int, int) volatile noexcept> g = ebd_test_static_call_operator{};
+        ASSERT_EQ(g(42, 1), 43);
+    }
+    {
+        ebd_test_static_call_operator obj{};
+        ebd::fn_ref<int(int, int) volatile> f = obj;
+        ASSERT_EQ(f(42, 1), 43);
+        ebd::fn_ref<int(int, int) volatile noexcept> g = obj;
+        ASSERT_EQ(g(42, 1), 43);
+    }
 }
 #endif // #if (EMBED_CXX_VERSION >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
 
