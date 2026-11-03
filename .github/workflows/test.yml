@@ -54,7 +54,10 @@ jobs:
 
   # GCC 14
   ubuntu-gcc-14:
-    if: github.repository_owner == 'Kim-J-Smith'
+    if: >-
+      github.repository_owner == 'Kim-J-Smith' &&
+      github.event_name == 'pull_request' &&
+      github.base_ref == 'main'
     runs-on: ubuntu-latest
 
     steps:
@@ -91,10 +94,7 @@ jobs:
 
   # GCC 16
   ubuntu-gcc-16:
-    if: >-
-      github.repository_owner == 'Kim-J-Smith' &&
-      github.event_name == 'pull_request' &&
-      github.base_ref == 'main'
+    if: github.repository_owner == 'Kim-J-Smith'
     runs-on: ubuntu-26.04
 
     steps:
@@ -128,7 +128,10 @@ jobs:
 
   # Clang 19
   ubuntu-clang-19:
-    if: github.repository_owner == 'Kim-J-Smith'
+    if: >-
+      github.repository_owner == 'Kim-J-Smith' &&
+      github.event_name == 'pull_request' &&
+      github.base_ref == 'main'
     runs-on: ubuntu-latest
 
     steps:
@@ -142,6 +145,63 @@ jobs:
         shell: bash
         run: |
           bash ./script/test-clang.sh 19
+
+  # Clang 20
+  ubuntu-clang-20:
+    if: >-
+      github.repository_owner == 'Kim-J-Smith' &&
+      github.event_name == 'pull_request' &&
+      github.base_ref == 'main'
+    runs-on: ubuntu-26.04
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run Clang tests
+      - name: Run Clang tests
+        working-directory: test
+        shell: bash
+        run: |
+          bash ./script/test-clang.sh 20
+
+  # Clang 21
+  ubuntu-clang-21:
+    if: >-
+      github.repository_owner == 'Kim-J-Smith' &&
+      github.event_name == 'pull_request' &&
+      github.base_ref == 'main'
+    runs-on: ubuntu-26.04
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run Clang tests
+      - name: Run Clang tests
+        working-directory: test
+        shell: bash
+        run: |
+          bash ./script/test-clang.sh 21
+
+  # Clang 22
+  ubuntu-clang-22:
+    if: github.repository_owner == 'Kim-J-Smith'
+    runs-on: ubuntu-26.04
+
+    steps:
+      # Get the code
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Run Clang tests
+      - name: Run Clang tests
+        working-directory: test
+        shell: bash
+        run: |
+          bash ./script/test-clang.sh 22
 
   # VS 2022
   windows-vs-2022:
