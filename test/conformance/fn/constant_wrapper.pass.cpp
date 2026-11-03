@@ -447,6 +447,34 @@ TEST(Conformance_fn, constant_wrapper_pass) {
         }
     }
 
+    {
+        // Empty check
+        {
+            ebd::fn<void()> f = std::cw<static_cast<void(*)() noexcept>(nullptr)>;
+            ASSERT_TRUE(f.is_empty());
+            ebd::fn<void()> f1 = std::cw<+[]() noexcept {}>;
+            ASSERT_FALSE(f1.is_empty());
+        }
+        {
+            ebd::fn<void() const> f = std::cw<static_cast<void(*)() noexcept>(nullptr)>;
+            ASSERT_TRUE(f.is_empty());
+            ebd::fn<void() const> f1 = std::cw<+[]() noexcept {}>;
+            ASSERT_FALSE(f1.is_empty());
+        }
+        {
+            ebd::fn<void() volatile> f = std::cw<static_cast<void(*)() noexcept>(nullptr)>;
+            ASSERT_TRUE(f.is_empty());
+            ebd::fn<void() volatile> f1 = std::cw<+[]() noexcept {}>;
+            ASSERT_FALSE(f1.is_empty());
+        }
+        {
+            ebd::fn<void() noexcept> f = std::cw<static_cast<void(*)() noexcept>(nullptr)>;
+            ASSERT_TRUE(f.is_empty());
+            ebd::fn<void() noexcept> f1 = std::cw<+[]() noexcept {}>;
+            ASSERT_FALSE(f1.is_empty());
+        }
+    }
+
 #if EMBED_CXX_ENABLE_EXCEPTION
     // non crash tests
     {

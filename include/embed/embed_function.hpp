@@ -1237,7 +1237,7 @@ inline namespace fn_traits {
 #if __STDC_HOSTED__
 
     template <typename Sig>
-    static bool not_empty(const ::std::function<Sig>& f) noexcept
+    static bool not_empty(const std::function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // __STDC_HOSTED__
@@ -1245,7 +1245,7 @@ inline namespace fn_traits {
 #if defined(__cpp_lib_move_only_function) && __cpp_lib_move_only_function >= 202110L
 
     template <typename Sig>
-    static bool not_empty(const ::std::move_only_function<Sig>& f) noexcept
+    static bool not_empty(const std::move_only_function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // ^^^ __cpp_lib_move_only_function >= 202110L
@@ -1253,10 +1253,25 @@ inline namespace fn_traits {
 #if defined(__cpp_lib_copyable_function) && __cpp_lib_copyable_function >= 202306L
 
     template <typename Sig>
-    static bool not_empty(const ::std::copyable_function<Sig>& f) noexcept
+    static bool not_empty(const std::copyable_function<Sig>& f) noexcept
     { return static_cast<bool>(f); }
 
 #endif // ^^^ __cpp_lib_copyable_function >= 202306L
+
+#if defined(__cpp_lib_constant_wrapper) && __cpp_lib_constant_wrapper >= 202603L
+
+    template <auto Val, typename T>
+    static constexpr bool not_empty(const std::constant_wrapper<Val, T>&) noexcept {
+      // `std::constant_wrapper<Val, T>::value` does not equal to `Val` before P4206R0.
+      // [const.wrap.class]/2 `is_same_v<T, value_type>` should be true.
+      if constexpr (std::is_pointer_v<T> || std::is_member_pointer_v<T>) {
+        return std::constant_wrapper<Val, T>::value != nullptr;
+      } else {
+        return true;
+      }
+    }
+
+#endif // __cpp_lib_constant_wrapper >= 202603L
 
   };
 
