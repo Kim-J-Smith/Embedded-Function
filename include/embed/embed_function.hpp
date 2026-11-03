@@ -522,10 +522,21 @@ inline namespace cxx {
   struct invoke_result_of_normal {
     template<typename> static failure_type test(...) { return {}; }
     template<typename T> static success_type<
-      /* type = */ decltype(std::declval<T>()(
-        std::declval<ArgsType>()...)),
+      /* type = */ decltype(std::declval<T>()(std::declval<ArgsType>()...)),
       /* tag = */ tag_call_normal
     > test(int) { return {}; }
+
+#if defined(_MSC_VER) && !defined(__clang__) && (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
+
+    // MSVC 19.44 ~ 19.51 workaround. When T is qualified with `volatile`, MSVC
+    // only accepts `T::operator()(args...)` but not accepts `T{}(args...)`.
+    template<typename T, typename U = remove_reference_t<T>> static success_type<
+      /* type = */ decltype(U::operator()(std::declval<ArgsType>()...)),
+      /* tag = */ tag_call_normal
+    > test(long) { return {}; }
+
+#endif
 
     using type = decltype(test<Functor>(0));
   };
@@ -588,8 +599,22 @@ inline namespace cxx {
 
   template <typename NormalFunc, typename... Args>
   struct call_is_nothrow_impl<tag_call_normal, NormalFunc, Args...> {
-    static constexpr bool value = noexcept(
-      std::declval<NormalFunc>()(std::declval<Args>()...));
+    template <typename T> static bool_constant<
+      noexcept(std::declval<T>()(std::declval<Args>()...))
+    > check_nothrow(int) { return {}; }
+
+#if defined(_MSC_VER) && !defined(__clang__) && (EMBED_CXX_VERSION >= 202302L && \
+    defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
+
+    // MSVC 19.44 ~ 19.51 workaround. When T is qualified with `volatile`, MSVC
+    // only accepts `T::operator()(args...)` but not accepts `T{}(args...)`.
+    template <typename T> static bool_constant<
+      noexcept(remove_reference_t<T>::operator()(std::declval<Args>()...))
+    > check_nothrow(long) { return {}; }
+
+#endif
+
+    static constexpr bool value = decltype(check_nothrow<NormalFunc>(0))::value;
   };
 
   template <typename MemObj, typename Arg>
