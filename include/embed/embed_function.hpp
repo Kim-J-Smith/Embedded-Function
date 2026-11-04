@@ -1904,7 +1904,8 @@ namespace invocation {
     struct inplace {                                                                  \
       template <typename Functor>                                                     \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
-        auto* erased = static_cast<erasure_t C V*>(base.ptr);                         \
+        /* The TI 20.2.0 compiler cannot deduce the cv-qualifiers of `auto*`. */      \
+        auto C V* erased = static_cast<erasure_t C V*>(base.ptr);                     \
         auto& fn = erased->template access<Functor>();                                \
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
@@ -2548,7 +2549,9 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
 
     // Zero initialize the `m_erasure` and `m_command`.
-    constexpr member_variable_impl(std::nullptr_t) noexcept
+    // The TI 20.2.0 compiler incorrectly rejects constexpr constructors in a base class when
+    // compiling as C++14, so this constructor is made constexpr only under C++20 and later.
+    EMBED_CXX20_CONSTEXPR member_variable_impl(std::nullptr_t) noexcept
     : m_erasure(erasure_t{}), m_command(command_t{}) {}
 
     member_variable_impl(std::nullptr_t, std::nullptr_t) noexcept {
