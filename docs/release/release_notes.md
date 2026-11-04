@@ -13,6 +13,7 @@
 - Added `Clang 20` / `Clang 21` / `Clang 22` CI coverage. 
 - Added a workaround for MSVC 19.44 ~ 19.51 so that `volatile`-qualified callables with a static `operator()` work as expected.
 - Best-effort improvements were made for TI 20.2.0.LTS compiler compatibility.
+- CI test scripts now allow skipping the environment setup step and configuring the build directory and parallel job count.
 
 **📌 Notes**
 - None.
