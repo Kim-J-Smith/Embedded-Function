@@ -529,7 +529,7 @@ inline namespace cxx {
 #if defined(_MSC_VER) && !defined(__clang__) && (EMBED_CXX_VERSION >= 202302L && \
     defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
 
-    // MSVC 19.44 ~ 19.51 workaround. When T is qualified with `volatile`, MSVC
+    // MSVC 19.44~19.51 workaround. When T is qualified with `volatile`, MSVC
     // only accepts `T::operator()(args...)` but not accepts `T{}(args...)`.
     template<typename T, typename U = remove_reference_t<T>> static success_type<
       /* type = */ decltype(U::operator()(std::declval<ArgsType>()...)),
@@ -606,7 +606,7 @@ inline namespace cxx {
 #if defined(_MSC_VER) && !defined(__clang__) && (EMBED_CXX_VERSION >= 202302L && \
     defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L)
 
-    // MSVC 19.44 ~ 19.51 workaround. When T is qualified with `volatile`, MSVC
+    // MSVC 19.44~19.51 workaround. When T is qualified with `volatile`, MSVC
     // only accepts `T::operator()(args...)` but not accepts `T{}(args...)`.
     template <typename T> static bool_constant<
       noexcept(remove_reference_t<T>::operator()(std::declval<Args>()...))
@@ -1787,7 +1787,10 @@ namespace erasure_type {
 
   // ABI for passing either pointer or value.
   union ErasurePass {
-    ErasureBase* const  ptr;
+    // Avoid qualifying `ptr` with top-level `const`. Because MSVC 19.10~19.26,
+    // ICC 16~19, TI 20.2.0.LTS, and some other compilers may incorrectly treat
+    // `ErasurePass` as Non-TrivialCopyable and trigger static assertion.
+    ErasureBase*        ptr;
     ErasureRefStorage   val;
 
     using Ptr_t = ErasureBase*;
@@ -1806,14 +1809,8 @@ namespace erasure_type {
     ErasurePass(ErasureRefStorage const volatile& erased) noexcept : val(const_cast<Val_t>(erased)) {}
   };
 
-#if defined(_MSC_VER) && !defined(__clang__) && _MSC_VER < 1927
-  // Disable this assertion as MSVC 19.10~19.26 workaround.
-#elif defined(__INTEL_COMPILER) && __INTEL_COMPILER < 2021
-  // Disable this assertion as ICC 16~19 workaround.
-#else
   static_assert(std::is_trivially_copyable<ErasurePass>::value,
     EMBED_DETAIL_REPORT_IE("ErasurePass is not TrviallyCopyable."));
-#endif
 
   static_assert(sizeof(ErasurePass) <= sizeof(void*) || sizeof(ErasurePass) <= sizeof(void(*)()),
     EMBED_DETAIL_REPORT_IE("ErasurePass is too large."));
@@ -1907,7 +1904,8 @@ namespace invocation {
     struct inplace {                                                                  \
       template <typename Functor>                                                     \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
-        auto* erased = static_cast<erasure_t C V*>(base.ptr);                         \
+        /* The TI 20.2.0 compiler cannot deduce the cv-qualifiers of `auto*`. */      \
+        auto C V* erased = static_cast<erasure_t C V*>(base.ptr);                     \
         auto& fn = erased->template access<Functor>();                                \
         using Fn = conditional_t<is_rvalue_ref,                                       \
           remove_reference_t<decltype(fn)>&&,                                         \
@@ -2551,7 +2549,9 @@ namespace crtp_mixins {
     EMBED_DETAIL_ALL_DEFAULT(member_variable_impl)
 
     // Zero initialize the `m_erasure` and `m_command`.
-    constexpr member_variable_impl(std::nullptr_t) noexcept
+    // The TI 20.2.0 compiler incorrectly rejects constexpr constructors in a base class when
+    // compiling as C++14, so this constructor is made constexpr only under C++20 and later.
+    EMBED_CXX20_CONSTEXPR member_variable_impl(std::nullptr_t) noexcept
     : m_erasure(erasure_t{}), m_command(command_t{}) {}
 
     member_variable_impl(std::nullptr_t, std::nullptr_t) noexcept {
