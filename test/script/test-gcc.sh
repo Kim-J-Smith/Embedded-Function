@@ -9,12 +9,16 @@ source "$SCRIPT_CURRENT_DIR"/common.sh
 BUILD_TYPE="Debug"
 COMPILER_VERSIONS=("$@")
 CXX_STANDARDS=("11" "14" "17" "20" "23")
+BUILD_DIR="${BUILD_DIR:-build}"
+PARALLEL_OPTION=(--parallel ${BUILD_JOBS:+"$BUILD_JOBS"})
 
 environment_setup() {
     sudo apt-get update -y
     sudo apt-get install -y --no-install-recommends cmake ninja-build
     sudo apt-get install -y --no-install-recommends "${COMPILER_VERSIONS[@]/#/g++-}"
     sudo apt-get install -y --no-install-recommends "${COMPILER_VERSIONS[@]/#/gcc-}"
+
+    echo; echo "-- FINISH ENVIRONMENT SETUP --"; echo;
 }
 
 # $1: C++ standard version
@@ -29,18 +33,17 @@ config_cmake_and_run_test() {
     echo "Test use macros: $3"
     echo "============================================================"
 
-    cmake -B build -S . -G Ninja \
+    cmake -B "$BUILD_DIR" -S . -G Ninja \
         -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
         -DCMAKE_CXX_STANDARD="$1" \
         -DCMAKE_CXX_COMPILER="g++-$2" \
         -DCMAKE_C_COMPILER="gcc-$2" \
         -DTEST_USE_MACROS="$3"
-    cmake --build build --config "$BUILD_TYPE" --target test --parallel
+    cmake --build "$BUILD_DIR" --config "$BUILD_TYPE" --target test "${PARALLEL_OPTION[@]}"
 }
 
 test_gcc() {
-    environment_setup
-    echo; echo "-- FINISH ENVIRONMENT SETUP --"; echo;
+    [[ "${NO_ENV_SETUP:-}" == "1" ]] || environment_setup
     for test_use_macros in "${TEST_USE_MACROS_HELPER[@]}"; do
         for compiler_version in "${COMPILER_VERSIONS[@]}"; do
             CXX_STANDARDS_RUN=("${CXX_STANDARDS[@]}")
@@ -51,7 +54,7 @@ test_gcc() {
                 config_cmake_and_run_test "$cxx_standard" "$compiler_version" "$test_use_macros"
             done
         done
-        rm -rf ./build/
+        rm -rf -- "$BUILD_DIR"
     done
 }
 
