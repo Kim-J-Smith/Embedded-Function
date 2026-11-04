@@ -12,6 +12,7 @@
 - `detail::is_invocable_r` now follows `INVOKE<R>` semantics for array and function return types. Internal trait, no user-visible API change.
 - Added `Clang 20` / `Clang 21` / `Clang 22` CI coverage. 
 - Added a workaround for MSVC 19.44 ~ 19.51 so that `volatile`-qualified callables with a static `operator()` work as expected.
+- Best-effort improvements for TI 20.2.0.LTS compiler compatibility.
 
 **📌 Notes**
 - None.
