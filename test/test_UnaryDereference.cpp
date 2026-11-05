@@ -17,6 +17,7 @@ TEST(UnaryDereference, fn_freeFunction) {
 
     auto f5 = ebd::make_fn(+[]{ return 1; });
     ASSERT_EQ(*f5 == nullptr, false);
+    ASSERT_EQ((*f5)(), 1);
 
     auto f6 = ebd::make_fn(&ebd_test_member_fn::mem_fn_ii_add);
     ASSERT_EQ(*f6 == nullptr, true);
@@ -28,6 +29,10 @@ TEST(UnaryDereference, fn_freeFunction) {
 TEST(UnaryDereference, fn_ref_freeFunction) {
     ebd::fn_ref<void()> f1 = ebd_test_free_func_v;
     ASSERT_EQ(*f1, &ebd_test_free_func_v);
+
+    ebd::fn_ref<int(int, int) const> f2 = +[](int a, int b) { return a + b; };
+    ASSERT_TRUE(*f2 != nullptr);
+    ASSERT_EQ((*f2)(42, 1), 43);
 }
 
 #if ( EMBED_CXX_VERSION >= 201703L && defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L )

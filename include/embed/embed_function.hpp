@@ -2471,37 +2471,51 @@ namespace crtp_mixins {
       public copy_impl<Config, Self>
   { EMBED_DETAIL_ALL_DEFAULT(lifetime_operations_impl) };
 
-  // Implement the 'operator*' for function.
+  /**
+   * @brief   If the value stored in `m_erasure` is a pointer to function, which
+   *          has exactly same function type with `Signature`, then return that
+   *          pointer. Otherwise, return `nullptr`.
+   *
+   * @note    [expr.eq]/4 Two function pointers compare equal, if and only if
+   *          both of them point to the same function.
+   *          See <https://eel.is/c++draft/expr.eq#4.2>.
+   *
+   * @warning Some implementations do not comply with the standard.
+   *          For example, in MSVC release mode, `/OPT:NOICF` is needed to
+   *          avoid unexpected behaviour.
+   */
   template <typename Signature, typename Self, bool IsView,
     typename ArgsPackage = typename unwrap_signature<Signature>::args>
   struct operator_dereference_impl;
 
-  template <typename Signature, typename Self, bool IsView, typename... Args>
-  struct operator_dereference_impl<Signature, Self, IsView, args_package<Args...>> {
+  template <typename Signature, typename Self, typename... Args>
+  struct operator_dereference_impl<Signature, Self, /*IsView=*/false, args_package<Args...>> {
   private:
     using function_ptr_t = typename unwrap_signature<Signature>::pure_sig_noex*;
-
   public:
-    /**
-     * @brief   If the value stored in m_erasure is a pointer to a free function,
-     *          return that pointer. Otherwise, return `nullptr`.
-     * 
-     * @note    [expr.eq]/4 Two function pointers compare equal, if and only if
-     *          both of them point to the same function.
-     *          See <https://eel.is/c++draft/expr.eq#4.2>.
-     * 
-     * @warning Some implementations do not comply with the standard.
-     *          For example, in MSVC release mode, `/OPT:NOICF` is needed to
-     *          avoid unexpected behaviour.
-     */
     function_ptr_t operator*() const noexcept {
       using invoker_impl_t = typename Self::command_t::invoker_impl_t;
-      using invoker_t = conditional_t<IsView,
-        typename invoker_impl_t::view, typename invoker_impl_t::inplace>;
-
+      using invoker_t = typename invoker_impl_t::inplace;
       const auto& self = static_cast<const Self&>(*this);
       if (self.m_command.m_invoker == &invoker_t::template invoke<function_ptr_t>) {
         return self.m_erasure.template access<function_ptr_t>();
+      }
+      return nullptr;
+    }
+  };
+
+  template <typename Signature, typename Self, typename... Args>
+  struct operator_dereference_impl<Signature, Self, /*IsView=*/true, args_package<Args...>> {
+  private:
+    using function_ptr_t = typename unwrap_signature<Signature>::pure_sig_noex*;
+  public:
+    function_ptr_t operator*() const noexcept {
+      using invoker_impl_t = typename Self::command_t::invoker_impl_t;
+      using invoker_t = typename invoker_impl_t::view;
+      const auto& self = static_cast<const Self&>(*this);
+      if (self.m_command.m_invoker == &invoker_t::template invoke<function_ptr_t>) {
+        // Using `access<function_ptr_t>()` is undefined behavior here.
+        return reinterpret_cast<function_ptr_t>(self.m_erasure.m_core.ref_storage.fill_func_ptr);
       }
       return nullptr;
     }
