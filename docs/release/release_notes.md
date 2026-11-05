@@ -14,6 +14,7 @@
 - Added a workaround for MSVC 19.44 ~ 19.51 so that `volatile`-qualified callables with a static `operator()` work as expected.
 - Best-effort improvements were made for TI 20.2.0.LTS compiler compatibility.
 - CI test scripts now allow skipping the environment setup step and configuring the build directory and parallel job count.
+- Renamed some internal macros to enhance readability.
 
 **📌 Notes**
 - None.
