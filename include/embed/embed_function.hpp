@@ -223,10 +223,6 @@
   EMBED_DETAIL_FN_EXPAND_IMPL(F, )
 #endif
 
-/// @brief Similar to `requires` in C++20.
-/// Using SFINAE trait `enable_if_t` to require the template arguments.
-#define EMBED_DETAIL_REQUIRES(...) ::ebd::detail::enable_if_t<__VA_ARGS__, int> = 0
-
 #if defined(_MSC_VER) && !defined(__clang__)
 # define EMBED_DETAIL_FORCE_EBO __declspec(empty_bases)
 #else
@@ -248,16 +244,22 @@
     class_name& operator=(class_name&&)       = default;\
     class_name& operator=(const class_name&)  = default;
 
-/// @brief Unify the two SFINAE writing methods of "enable_if" and "requires",
-/// eliminating the need to maintain two sets of code.
-/// @attention @b EMBED_DETAIL_TEMPLATE_BEGIN and @b EMBED_DETAIL_REQUIRES_END
-/// MUST be used simultaneously and cannot be used separately.
+/**
+ * @brief     Unify the two SFINAE writing methods of "enable_if" and
+ *            "requires", eliminating the need to maintain two sets of code.
+ *
+ * @attention @b EMBED_TEMPLATE and @b EMBED_REQUIRES MUST be used
+ *            simultaneously and cannot be used separately.
+ *
+ * @note      No "DETAIL" in name for readability because they are used widely.
+ */
 #if !defined(__cpp_concepts) || ( __cpp_concepts < 201907L )
-# define EMBED_DETAIL_TEMPLATE_BEGIN(...) template <__VA_ARGS__,
-# define EMBED_DETAIL_REQUIRES_END(...) EMBED_DETAIL_REQUIRES(__VA_ARGS__)>
+// Using SFINAE trait `enable_if_t` to require the template arguments.
+# define EMBED_TEMPLATE(...) template <__VA_ARGS__,
+# define EMBED_REQUIRES(...) ::ebd::detail::enable_if_t<__VA_ARGS__, int> = 0>
 #else
-# define EMBED_DETAIL_TEMPLATE_BEGIN(...) template <__VA_ARGS__>
-# define EMBED_DETAIL_REQUIRES_END(...) requires __VA_ARGS__
+# define EMBED_TEMPLATE(...) template <__VA_ARGS__>
+# define EMBED_REQUIRES(...) requires __VA_ARGS__
 #endif
 
 #define EMBED_DETAIL_TEXT(text) EMBED_DETAIL_TEXT_IMPL(text)
@@ -402,14 +404,14 @@ inline namespace cxx {
   using unwrap_once_t = typename unwrap_ref_wrapper<T>::unwrap_once;
 
   // (nonstandard) Unwrap and forward std::reference_wrapper.
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
-    EMBED_DETAIL_REQUIRES_END(std::is_same<T, unwrap_once_t<T>>::value)
+  EMBED_TEMPLATE(typename T)
+    EMBED_REQUIRES(std::is_same<T, unwrap_once_t<T>>::value)
   EMBED_DETAIL_MSVC_INTRINSIC EMBED_INLINE constexpr T&&
   unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept
   { return static_cast<T&&>(obj); }
 
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename T, typename Under = unwrap_once_t<T>)
-    EMBED_DETAIL_REQUIRES_END((!std::is_same<T, Under>::value))
+  EMBED_TEMPLATE(typename T, typename Under = unwrap_once_t<T>)
+    EMBED_REQUIRES((!std::is_same<T, Under>::value))
   EMBED_INLINE EMBED_CXX20_CONSTEXPR unwrap_ref_wrapper_t<T>&&
   unwrap_ref_fwd(remove_reference_t<T>& obj) noexcept {
     return unwrap_ref_fwd<Under>(obj.get());
@@ -771,8 +773,8 @@ inline namespace cxx {
   }
 
   // See <https://cppreference.com/w/cpp/utility/functional/invoke.html>.
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename Ret, typename Callee, typename... Args)
-    EMBED_DETAIL_REQUIRES_END(
+  EMBED_TEMPLATE(typename Ret, typename Callee, typename... Args)
+    EMBED_REQUIRES(
       is_invocable_r<Ret, Callee, Args...>::value
       && std::is_void<Ret>::value
     ) // requires the `Callee` to be invacable while `Ret` is `void`
@@ -786,8 +788,8 @@ inline namespace cxx {
       std::forward<Args>(args)...);
   }
 
-  EMBED_DETAIL_TEMPLATE_BEGIN(typename Ret, typename Callee, typename... Args)
-    EMBED_DETAIL_REQUIRES_END(
+  EMBED_TEMPLATE(typename Ret, typename Callee, typename... Args)
+    EMBED_REQUIRES(
       is_invocable_r<Ret, Callee, Args...>::value
       && (!std::is_void<Ret>::value)
     ) // requires the `Callee` to be invacable while `Ret` is NOT `void`
@@ -1229,9 +1231,10 @@ inline namespace fn_traits {
     template <typename T>
     static constexpr bool not_empty(const T&) noexcept { return true; }
 
-    template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig,
-      EMBED_DETAIL_REQUIRES(!Cfg::isView) /*OWNING*/> static
-    EMBED_CXX14_CONSTEXPR bool not_empty(const function<Buf, Align, Cfg, Sig>& f) noexcept
+    EMBED_TEMPLATE(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
+      EMBED_REQUIRES((!Cfg::isView)) // OWNING
+    EMBED_CXX14_CONSTEXPR static bool
+    not_empty(const function<Buf, Align, Cfg, Sig>& f) noexcept
     { return !f.is_empty(); }
 
 #if __STDC_HOSTED__
@@ -1917,16 +1920,16 @@ namespace invocation {
     /* Using when Config::isView == true. */                                          \
     struct view {                                                                     \
       /* Using when the `Functor` is function pointer. */                             \
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)                                   \
-        EMBED_DETAIL_REQUIRES_END(is_stored_origin<Functor, true>::value)             \
+      EMBED_TEMPLATE(typename Functor)                                                \
+        EMBED_REQUIRES(is_stored_origin<Functor, true>::value)                        \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
         auto* fn = reinterpret_cast<Functor>(base.val.fill_func_ptr);                 \
         return cxx::invoke_r<Ret>(fn, std::forward<Args>(args)...);                   \
       }                                                                               \
                                                                                       \
       /* Using when the `Functor` is NOT function pointer. */                         \
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)                                   \
-        EMBED_DETAIL_REQUIRES_END((!is_stored_origin<Functor, true>::value))          \
+      EMBED_TEMPLATE(typename Functor)                                                \
+        EMBED_REQUIRES((!is_stored_origin<Functor, true>::value))                     \
       static Ret invoke(erasure_pass_t base, smart_forward_t<Args>... args) NOEXCEPT {\
         auto& fn = *static_cast<Functor C V*>(base.val.fill_ptr);                     \
         using Fn = remove_reference_t<decltype(fn)>&;                                 \
@@ -2025,8 +2028,8 @@ namespace management {
     }
 
     // Move type-erased object from `src` to `dst`.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
-      EMBED_DETAIL_REQUIRES_END(std::is_move_constructible<Functor>::value) // Moveable
+    EMBED_TEMPLATE(typename Functor)
+      EMBED_REQUIRES(std::is_move_constructible<Functor>::value) // Moveable
     static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_move_constructible<Functor>::value) {
       auto* src_erasure = static_cast<erasure_t*>(src);
@@ -2035,8 +2038,8 @@ namespace management {
     }
 
     // Clone type-erased object from `src` to `dst` as fallback.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor)
-      EMBED_DETAIL_REQUIRES_END((!std::is_move_constructible<Functor>::value)) // Non-moveable
+    EMBED_TEMPLATE(typename Functor)
+      EMBED_REQUIRES((!std::is_move_constructible<Functor>::value)) // Non-moveable
     static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
       auto* src_erasure = static_cast<erasure_t*>(src);
@@ -2072,32 +2075,32 @@ namespace management {
       /// `std::memcpy`; otherwise, this would be undefined behaviour.
 
       // Using when the Functor is copyable and not trivially copyable.
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
+      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
+        EMBED_REQUIRES(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
       static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {&clone<Functor>, &move<Functor>, &destroy<Functor>};
         return &vtable;
       }
 
       // Using when the Functor is move-only and not trivially copyable.
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
+      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
+        EMBED_REQUIRES((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
       static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {nullptr, &move<Functor>, &destroy<Functor>};
         return &vtable;
       }
 
       // Using when the Functor is copyable and trivially copyable.
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END(IsCopyable && std::is_trivially_copyable<Functor>::value)
+      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
+        EMBED_REQUIRES(IsCopyable && std::is_trivially_copyable<Functor>::value)
       static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {&trivially_clone<Functor>, &trivially_move<Functor>, nullptr};
         return &vtable;
       }
 
       // Using when the Functor is move-only and trivially copyable.
-      EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, bool IsCopyable)
-        EMBED_DETAIL_REQUIRES_END((!IsCopyable) && std::is_trivially_copyable<Functor>::value)
+      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
+        EMBED_REQUIRES((!IsCopyable) && std::is_trivially_copyable<Functor>::value)
       static manager_type get_manager() noexcept {
         static constexpr VTable vtable = {nullptr, &trivially_move<Functor>, nullptr};
         return &vtable;
@@ -2154,8 +2157,8 @@ namespace command {
     }
 
     // Initialize owning function wrapper. (Enable if Functor is NOT stateless.)
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFunctor = decay_t<Functor>)
-      EMBED_DETAIL_REQUIRES_END((!is_stateless</*IsView*/false, DecFunctor, Args...>::value))
+    EMBED_TEMPLATE(typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_REQUIRES((!is_stateless</*IsView*/false, DecFunctor, Args...>::value))
     void init(erasure_base_t* target, Functor&& obj)
     noexcept(std::is_nothrow_constructible<DecFunctor, Functor&&>::value) {
       manager_impl_t::template create<DecFunctor>(target, std::forward<Functor>(obj));
@@ -2164,8 +2167,8 @@ namespace command {
     }
 
     // Initialize owning function wrapper. (Enable if Functor is stateless.)
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFunctor = decay_t<Functor>)
-      EMBED_DETAIL_REQUIRES_END(is_stateless</*IsView*/false, DecFunctor, Args...>::value)
+    EMBED_TEMPLATE(typename Functor, typename DecFunctor = decay_t<Functor>)
+      EMBED_REQUIRES(is_stateless</*IsView*/false, DecFunctor, Args...>::value)
     EMBED_CXX20_CONSTEXPR void init(erasure_base_t*, Functor&&) noexcept {
       using invoker_impl_target_t = conditional_t<
         is_statically_callable<DecFunctor, Args...>::value,
@@ -2230,8 +2233,8 @@ namespace command {
     invoker_t m_invoker;
 
     // Initialize non-owning function wrapper. (FP)
-    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor)
-      EMBED_DETAIL_REQUIRES_END(IsStoredOrigin) // requires the type of `Functor` is function pointer
+    EMBED_TEMPLATE(bool IsStoredOrigin, typename Functor)
+      EMBED_REQUIRES(IsStoredOrigin) // requires the type of `Functor` is function pointer
     void init(erasure_base_t* target, Functor&& obj) noexcept {
       // Since the `is_stored_origin<Functor>` is true, then it must
       // be function pointer which have nothing about ownership.
@@ -2241,8 +2244,8 @@ namespace command {
     }
 
     // Initialize non-owning function wrapper. (Not FP and not stateless)
-    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(bool IsStoredOrigin, typename Functor)
+      EMBED_REQUIRES(
         (!IsStoredOrigin) && (!is_stateless</*IsView*/true, decay_t<Functor>, Args...>::value)
       ) // requires the type of `Functor` is neither function pointer or stateless functor
     EMBED_CXX20_CONSTEXPR void init(erasure_base_t* target, Functor&& obj) noexcept {
@@ -2252,8 +2255,8 @@ namespace command {
     }
 
     // Initialize non-owning function wrapper. (Not FP and is stateless)
-    EMBED_DETAIL_TEMPLATE_BEGIN(bool IsStoredOrigin, typename Functor)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(bool IsStoredOrigin, typename Functor)
+      EMBED_REQUIRES(
         (!IsStoredOrigin) && is_stateless</*IsView*/true, decay_t<Functor>, Args...>::value
       ) // requires the type of `Functor` is not function pointer but stateless functor
     EMBED_CXX20_CONSTEXPR void init(erasure_base_t*, Functor&&) noexcept {
@@ -2706,12 +2709,13 @@ namespace crtp_mixins {
     EMBED_CXX14_CONSTEXPR explicit operator bool()  = delete; // no empty state in view mode
     void clear()                                    = delete; // no empty state in view mode
     core_components_impl& operator=(std::nullptr_t) = delete; // no empty state in view mode
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename T)
-    EMBED_DETAIL_REQUIRES_END(
-      (!std::is_pointer<T>::value)
-      && (!is_constant_wrapper<T>::value)
-      && (!is_convertible_from_specialization<Self, T>::value)
-    ) core_components_impl& operator=(T)            = delete;
+    EMBED_TEMPLATE(typename T)
+      EMBED_REQUIRES(
+        (!std::is_pointer<T>::value)
+        && (!is_constant_wrapper<T>::value)
+        && (!is_convertible_from_specialization<Self, T>::value)
+      )
+    core_components_impl& operator=(T)              = delete;
 
     // Swap the contents of two function objects. (View mode)
     void swap(core_components_impl& fn_raw) noexcept {
@@ -2819,8 +2823,8 @@ namespace crtp_mixins {
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
-    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
+      EMBED_REQUIRES(
         function<FSize, FAlign, FCfg, FSig>::internal_is_copyable
         && is_convertible_from_specialization<function, function<FSize, FAlign, FCfg, FSig>>::value
       )
@@ -2838,8 +2842,8 @@ namespace crtp_mixins {
 
     // Use `placement new` to create new functor during construction. (Move)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
-    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
+      EMBED_REQUIRES(
         is_convertible_from_specialization<function, function<FSize, FAlign, FCfg, FSig>>::value
       )
     function(function<FSize, FAlign, FCfg, FSig>&& other)
@@ -2859,8 +2863,8 @@ namespace crtp_mixins {
     /// @brief Builds a Fn that targets a copy/move of the incoming function object.
     /// @param functor - A callable object with parameters of type `Args...`
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename DecFn = decay_t<Functor>)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(typename Functor, typename DecFn = decay_t<Functor>)
+      EMBED_REQUIRES(
         (!is_convertible_from_specialization<function, DecFn>::value)
         && (!is_self<Functor, function>::value)
         && (!is_in_place_type<DecFn>::value)
@@ -2883,8 +2887,8 @@ namespace crtp_mixins {
 
     /// @brief In-place constructs the Fn within the internal storage with specified arguments.
     /// @param args - The arguments for constructing the Fn.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename... CArgs)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(typename Fn, typename... CArgs)
+      EMBED_REQUIRES(
         std::is_constructible<Fn, CArgs...>::value
         && is_callable_from<Fn>::value
       )
@@ -2901,8 +2905,8 @@ namespace crtp_mixins {
     /// @brief In-place constructs the Fn within the internal storage with init_list and specified arguments.
     /// @param il - The initializer_list for constructing the Fn.
     /// @param args - The arguments for constructing the Fn.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Fn, typename U, typename... CArgs)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(typename Fn, typename U, typename... CArgs)
+      EMBED_REQUIRES(
         std::is_constructible<Fn, std::initializer_list<U>&, CArgs...>::value
         && is_callable_from<Fn>::value
       )
@@ -3069,8 +3073,8 @@ namespace crtp_mixins {
 
     // Use `placement new` to create new functor during construction. (Copy)
     // From `function<Buffer_small, ...>` to `function<Buffer_big, ...>`.
-    EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(std::size_t FSize, std::size_t FAlign, typename FCfg, typename FSig)
+      EMBED_REQUIRES(
         is_convertible_from_specialization<function, function<FSize, FAlign, FCfg, FSig>>::value
       )
     function(const function<FSize, FAlign, FCfg, FSig>& other)
@@ -3083,8 +3087,8 @@ namespace crtp_mixins {
 
     /// @brief Builds a function reference from function pointer.
     /// @param function_ptr - A function pointer that is NOT a null pointer.
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Func)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(typename Func)
+      EMBED_REQUIRES(
         std::is_function<Func>::value
         && is_invocable_using<Func>::value
       )
@@ -3100,8 +3104,8 @@ namespace crtp_mixins {
     /// @brief Builds a function reference from given functor.
     /// @param functor - A callable object with parameters of type `Args...`
     /// and returns a value convertible to `Ret`. (The Signature is `Ret(Args...)`)
-    EMBED_DETAIL_TEMPLATE_BEGIN(typename Functor, typename Tp = remove_reference_t<Functor>)
-      EMBED_DETAIL_REQUIRES_END(
+    EMBED_TEMPLATE(typename Functor, typename Tp = remove_reference_t<Functor>)
+      EMBED_REQUIRES(
         (!is_self<Functor, function>::value)
         && (!is_convertible_from_specialization<function, remove_cv_t<Tp>>::value)
         && (!std::is_member_pointer<Tp>::value)
@@ -3195,32 +3199,32 @@ namespace crtp_mixins {
   };
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
-  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
-    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_TEMPLATE(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
+    EMBED_REQUIRES((!Cfg::isView)) // no empty state in view mode
   EMBED_NODISCARD constexpr bool
   operator==(const function<Buf, Align, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return fn.is_empty();
   }
 
   // `true` if the wrapper has no target, `false` otherwise. (noexcept)
-  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
-    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_TEMPLATE(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
+    EMBED_REQUIRES((!Cfg::isView)) // no empty state in view mode
   EMBED_NODISCARD constexpr bool
   operator==(std::nullptr_t, const function<Buf, Align, Cfg, Sig>& fn) noexcept {
     return fn.is_empty();
   }
 
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
-  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
-    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_TEMPLATE(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
+    EMBED_REQUIRES((!Cfg::isView)) // no empty state in view mode
   EMBED_NODISCARD constexpr bool
   operator!=(const function<Buf, Align, Cfg, Sig>& fn, std::nullptr_t) noexcept {
     return !fn.is_empty();
   }
 
   // `true` if the wrapper does have target, `false` otherwise. (noexcept)
-  EMBED_DETAIL_TEMPLATE_BEGIN(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
-    EMBED_DETAIL_REQUIRES_END((!Cfg::isView)) // no empty state in view mode
+  EMBED_TEMPLATE(std::size_t Buf, std::size_t Align, typename Cfg, typename Sig)
+    EMBED_REQUIRES((!Cfg::isView)) // no empty state in view mode
   EMBED_NODISCARD constexpr bool
   operator!=(std::nullptr_t, const function<Buf, Align, Cfg, Sig>& fn) noexcept {
     return !fn.is_empty();
@@ -3406,7 +3410,7 @@ using safe_fn EMBED_DEPRECATED("Use fn instead") = basic_fn<
 
 /// @brief make_fn[0]: Make function with specified signature for copyable functor.
 /// @return `fn<Signature, sizeof(Functor), Alignment>`
-EMBED_DETAIL_TEMPLATE_BEGIN(
+EMBED_TEMPLATE(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   typename Class = detail::remove_cvref_t<Functor>,
@@ -3414,14 +3418,14 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Functor>, Functor>::value,
   std::size_t Alignment = detail::enough_alignment<alignof(Class)>::value
 )
-EMBED_DETAIL_REQUIRES_END(
-  // [Require] Functor cannot be the function pointer or pointer to member function.
-  std::is_class<Class>::value
-  // [Require] Functor must be copyable.
-  && std::is_copy_constructible<Functor>::value
-  // [Require] First template argument must be signature.
-  && detail::unwrap_signature<Signature>::isSignature
-)
+  EMBED_REQUIRES(
+    // [Require] Functor cannot be the function pointer or pointer to member function.
+    std::is_class<Class>::value
+    // [Require] Functor must be copyable.
+    && std::is_copy_constructible<Functor>::value
+    // [Require] First template argument must be signature.
+    && detail::unwrap_signature<Signature>::isSignature
+  )
 EMBED_NODISCARD inline fn<Signature, sizeof(Class), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
@@ -3431,21 +3435,21 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[1]: Make function with specified signature for move-only functor.
 /// @return `unique_fn<Signature, sizeof(Functor), Alignment>`
-EMBED_DETAIL_TEMPLATE_BEGIN(
+EMBED_TEMPLATE(
   typename Signature, // [User specify] function signature.
   typename Functor,   // [Auto] Functor type.
   // [Auto] Get the nothrow guarantee of functor.
   bool NoThrow = std::is_nothrow_move_constructible<Functor>::value,
   std::size_t Alignment = detail::enough_alignment<alignof(Functor)>::value
 )
-EMBED_DETAIL_REQUIRES_END(
-  // [Require] Functor must be movable.
-  std::is_move_constructible<Functor>::value
-  // [Require] Functor must be non-copyable.
-  && (!std::is_copy_constructible<Functor>::value)
-  // [Require] First template argument must be signature.
-  && detail::unwrap_signature<Signature>::isSignature
-)
+  EMBED_REQUIRES(
+    // [Require] Functor must be movable.
+    std::is_move_constructible<Functor>::value
+    // [Require] Functor must be non-copyable.
+    && (!std::is_copy_constructible<Functor>::value)
+    // [Require] First template argument must be signature.
+    && detail::unwrap_signature<Signature>::isSignature
+  )
 EMBED_NODISCARD inline unique_fn<Signature, sizeof(Functor), Alignment>
 make_fn(Functor&& functor) noexcept(NoThrow) {
   return detail::make_function_impl<
@@ -3455,15 +3459,15 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 
 /// @brief make_fn[2]: Make an empty function with specified signature and buffer size.
 /// @return `fn<Signature, BufferSize>`
-EMBED_DETAIL_TEMPLATE_BEGIN(
+EMBED_TEMPLATE(
   typename Signature, // [User specify] function signature.
   std::size_t BufferSize = detail::default_values::owning::buffer_size,
   std::size_t Alignment = detail::default_values::owning::alignment
 )
-EMBED_DETAIL_REQUIRES_END(
-  // [Require] First template argument must be signature.
-  detail::unwrap_signature<Signature>::isSignature
-)
+  EMBED_REQUIRES(
+    // [Require] First template argument must be signature.
+    detail::unwrap_signature<Signature>::isSignature
+  )
 EMBED_NODISCARD inline fn<Signature, BufferSize, Alignment>
 make_fn(std::nullptr_t = nullptr) noexcept {
   return detail::make_function_impl<
@@ -3500,17 +3504,17 @@ make_fn(Ret (*func_ptr) (Args...) noexcept) noexcept {
 
 /// @brief make_fn[4]: Make function for function pointer with specified signature.
 /// @return `fn<Signature, sizeof(FunctionPtr)>`
-EMBED_DETAIL_TEMPLATE_BEGIN(
+EMBED_TEMPLATE(
   typename Signature, // [User specify] function signature.
   // [Auto] The type of the function pointer.
   typename FunctionPtr = typename detail::unwrap_signature<Signature>::pure_sig_noex*
 )
-EMBED_DETAIL_REQUIRES_END(
-  // [Require] First template argument must be signature.
-  detail::unwrap_signature<Signature>::isSignature
-  // [Require] The `FunctionPtr` must be the function pointer.
-  && detail::is_function_ptr<FunctionPtr>::value
-)
+  EMBED_REQUIRES(
+    // [Require] First template argument must be signature.
+    detail::unwrap_signature<Signature>::isSignature
+    // [Require] The `FunctionPtr` must be the function pointer.
+    && detail::is_function_ptr<FunctionPtr>::value
+  )
 EMBED_NODISCARD inline fn<Signature, sizeof(FunctionPtr)>
 make_fn(FunctionPtr func_ptr) noexcept {
   return detail::make_function_impl<
@@ -3546,7 +3550,7 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
 /// @note Auto deduce signature and buffer size.
 /// @return `fn<Signature, BufferSize>` or `unique_fn<Signature, BufferSize>`
-EMBED_DETAIL_TEMPLATE_BEGIN(
+EMBED_TEMPLATE(
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
   // [Auto] The basic type of the functor.
   typename Class = detail::remove_cvref_t<Lambda>,
@@ -3564,14 +3568,14 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   // [Auto] Get the nothrow guarantee in construction of functor.
   bool NoThrow = std::is_nothrow_constructible<detail::decay_t<Lambda>, Lambda>::value
 )
-EMBED_DETAIL_REQUIRES_END(
-  // [Require] The functor must be unique callable.
-  detail::is_unique_callable<Class>::value
-  // [Require] The signature must be valid.
-  && detail::unwrap_signature<Signature>::isSignature
-  // [Require] The Lambda cannot be ebd::detail::function.
-  && (!detail::is_ebd_fn<Class>::value)
-)
+  EMBED_REQUIRES(
+    // [Require] The functor must be unique callable.
+    detail::is_unique_callable<Class>::value
+    // [Require] The signature must be valid.
+    && detail::unwrap_signature<Signature>::isSignature
+    // [Require] The Lambda cannot be ebd::detail::function.
+    && (!detail::is_ebd_fn<Class>::value)
+  )
 EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
   return detail::make_function_impl<Fn, NoThrow>(std::forward<Lambda>(fn));
 }
@@ -3601,19 +3605,19 @@ EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
 
 /// @brief make_fn[9]: Make function for member function pointer with specified signature.
 /// @return `fn<Signature, sizeof(MemFuncPtr)>`
-EMBED_DETAIL_TEMPLATE_BEGIN(
+EMBED_TEMPLATE(
   typename Signature, // [User specify] function signature.
   // [Auto] Deduce the type of member function pointer.
   typename MemFuncPtr = detail::get_member_fn_type_t<Signature>,
   // [Auto] Deduce the size of member function pointer.
   std::size_t BufferSize = sizeof(MemFuncPtr)
 )
-EMBED_DETAIL_REQUIRES_END(
-  // [Require] Signature must be valid.
-  detail::unwrap_signature<Signature>::isSignature
-  // [Require] Member function pointer must be valid.
-  && std::is_member_function_pointer<MemFuncPtr>::value
-)
+  EMBED_REQUIRES(
+    // [Require] Signature must be valid.
+    detail::unwrap_signature<Signature>::isSignature
+    // [Require] Member function pointer must be valid.
+    && std::is_member_function_pointer<MemFuncPtr>::value
+  )
 EMBED_NODISCARD inline fn<Signature, BufferSize>
 make_fn(MemFuncPtr memfunc_ptr) noexcept {
   return detail::make_function_impl<
@@ -3771,7 +3775,7 @@ noexcept(NoThrow) {
 /// @brief make_fn[16]: Make function with specified wrapper.
 /// @tparam Fn - Can be `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`.
 /// @return `Fn<Signature, BufferSize, Alignment>`
-EMBED_DETAIL_TEMPLATE_BEGIN(
+EMBED_TEMPLATE(
   // User can specify the wrapper kind `Fn` and signature `SpecifiedSig`.
   template <class, std::size_t, std::size_t> class Fn,
   typename SpecifiedSig = void,
@@ -3796,10 +3800,10 @@ EMBED_DETAIL_TEMPLATE_BEGIN(
   typename FnWrapper = Fn<Signature, BufferSize, Alignment>,
   bool NoThrow = std::is_nothrow_constructible<FnWrapper, Args...>::value
 )
-EMBED_DETAIL_REQUIRES_END(
-  detail::is_ebd_fn<FnWrapper>::value
-  && detail::unwrap_signature<Signature>::isSignature
-)
+  EMBED_REQUIRES(
+    detail::is_ebd_fn<FnWrapper>::value
+    && detail::unwrap_signature<Signature>::isSignature
+  )
 EMBED_NODISCARD EMBED_CXX20_CONSTEXPR inline
 FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
   return detail::make_function_impl<
@@ -3814,8 +3818,8 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 // When all other make_fn() fail to match the input parameters,
 // this function will be called as the fall back to avoid the
 // awful template error flood.
-EMBED_DETAIL_TEMPLATE_BEGIN(typename Unused = void)
-  EMBED_DETAIL_REQUIRES_END((!detail::unwrap_signature<Unused>::isSignature))
+EMBED_TEMPLATE(typename Unused = void)
+  EMBED_REQUIRES((!detail::unwrap_signature<Unused>::isSignature))
 EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused>(); }
 
 template <template <class, std::size_t, std::size_t> class Unused>
@@ -3826,12 +3830,11 @@ EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(
 
 #undef EMBED_DETAIL_FN_EXPAND
 #undef EMBED_DETAIL_FN_EXPAND_IMPL
-#undef EMBED_DETAIL_REQUIRES
 #undef EMBED_DETAIL_FORCE_EBO
 #undef EMBED_DETAIL_VIRTUAL_INHERITANCE
 #undef EMBED_DETAIL_ALL_DEFAULT
-#undef EMBED_DETAIL_TEMPLATE_BEGIN
-#undef EMBED_DETAIL_REQUIRES_END
+#undef EMBED_TEMPLATE // detail macro
+#undef EMBED_REQUIRES // detail macro
 #undef EMBED_DETAIL_TEXT
 #undef EMBED_DETAIL_TEXT_IMPL
 #undef EMBED_DETAIL_ALIAS
