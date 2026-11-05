@@ -28,6 +28,7 @@
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
+#define EMBEDDED_FUNCTION_VERSION 2005003L // XYYYZZZ (version x.y.z)
 
 #if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(push)

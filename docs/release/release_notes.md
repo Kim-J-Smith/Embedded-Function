@@ -6,6 +6,7 @@
 
 **✨ New Features**
 - Owning function wrappers now correctly detect the empty state of a `std::constant_wrapper` that holds a null pointer.
+- Added the `EMBEDDED_FUNCTION_VERSION` macro, encoded as `XYYYZZZ` (for example, `2.5.3` is `2005003L`), for compile-time version checks.
 
 **🛠️ Optimizations and Improvements**
 - Made the GCC 5.4 CI Docker image more robust when downloading CMake.
