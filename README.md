@@ -36,6 +36,7 @@
 - [Performance optimization](#-performance-optimization)
 - [Benchmark](#️-benchmark)
 - [CMake integration](#️-cmake-integration)
+- [Version macro](#-version-macro)
 - [Future learning & evolution reference](#-future-learning--evolution-reference)
 - [Similar implementations](#-similar-implementations)
 
@@ -466,6 +467,10 @@ Alternatively, after installing with `cmake -B build && cmake --install build`, 
 find_package(embedded_function CONFIG REQUIRED)
 target_link_libraries(${YOUR_TARGET_NAME} PRIVATE embedded_function::functions)
 ```
+
+## 🔢 Version macro
+
+`EMBEDDED_FUNCTION_VERSION` is defined as an `XYYYZZZ` encoded integer (for example, `2.5.3` is `2005003L`) for compile-time version checks.
 
 ## 🧭 Future learning & evolution reference
 
