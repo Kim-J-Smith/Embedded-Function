@@ -1,5 +1,5 @@
 **🔧 Fixed Bugs**
-- None.
+- Fixed undefined behavior in `operator*` for non-onwing function wrappers (`fn_ref`).
 
 **⚠️ Breaking Changes**
 - None.
