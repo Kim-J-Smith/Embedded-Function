@@ -169,12 +169,12 @@
 #if EMBED_CXX_VERSION >= 201103L
 # include <cstddef>     // std::size_t
 # include <cstring>     // std::memcpy, std::memset
-# include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
-# include <utility>     // std::move, std::forward, std::unreachable(C++23)
-# include <memory>      // std::addressof
-# include <functional>  // std::bad_function_call
 # include <exception>   // std::terminate
+# include <functional>  // std::bad_function_call
+# include <memory>      // std::addressof
+# include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
 # include <type_traits> // std::enable_if, ...
+# include <utility>     // std::move, std::forward, std::unreachable(C++23)
 # if EMBED_CXX_VERSION >= 201703L
 #  include <initializer_list>
 # endif // C++ >= 17
