@@ -778,7 +778,7 @@ inline namespace cxx {
     EMBED_REQUIRES(
       is_invocable_r<Ret, Callee, Args...>::value
       && std::is_void<Ret>::value
-    ) // requires the `Callee` to be invacable while `Ret` is `void`
+    ) // requires the `Callee` to be invocable while `Ret` is `void`
   EMBED_CXX14_CONSTEXPR void invoke_r(Callee&& fn, Args&&... args)
   noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
@@ -793,7 +793,7 @@ inline namespace cxx {
     EMBED_REQUIRES(
       is_invocable_r<Ret, Callee, Args...>::value
       && (!std::is_void<Ret>::value)
-    ) // requires the `Callee` to be invacable while `Ret` is NOT `void`
+    ) // requires the `Callee` to be invocable while `Ret` is NOT `void`
   EMBED_CXX14_CONSTEXPR Ret invoke_r(Callee&& fn, Args&&... args)
   noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value) {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
@@ -1120,13 +1120,13 @@ inline namespace fn_traits {
     function<BufTo, AlignTo, CfgTo, SigTo>, function<BufFrom, AlignFrom, CfgFrom, SigFrom>
   > {
     // Get the unwrap trait.
-    using unwrap_to = unwrap_signature<SigTo>;
+    using unwrap_to   = unwrap_signature<SigTo>;
     using unwrap_from = unwrap_signature<SigFrom>;
 
     // Get the return type and arguments package.
-    using sig_to_ret = typename unwrap_to::ret;
-    using sig_from_ret = typename unwrap_from::ret;
-    using sig_to_args = typename unwrap_to::args;
+    using sig_to_ret    = typename unwrap_to::ret;
+    using sig_from_ret  = typename unwrap_from::ret;
+    using sig_to_args   = typename unwrap_to::args;
     using sig_from_args = typename unwrap_from::args;
 
     // Check the return type of `From` and `To` are same and argument types are "similar".
@@ -1511,7 +1511,7 @@ inline namespace fn_traits {
 
     static_assert(lifetime_throw_is_ok<Config::isView, Config::assertNoThrow, Functor>::value,
       "The destructor of the callable object must be noexcept. If the `AssertObjectNoThrow` "
-      "is set to `true`, then the move/copy constructors of it are also required to be noexcept");
+      "is set to `true`, then the move/copy constructors of it are also required to be noexcept.");
 
     static_assert(copyable_is_ok<Functor, Config>::value, "The callable object must be copyable.");
   };
@@ -1639,7 +1639,7 @@ inline namespace fn_traits {
 
   // Log error for make_fn.
   template <typename Unused>
-  EMBED_CXX14_CONSTEXPR void make_fn_log_error() noexcept {
+  void make_fn_log_error() noexcept {
     static_assert(always_false<Unused>::value,
       "`make_fn()` CANNOT infer the template arguments of `ebd::basic_fn` from the given "
       "arguments.\nYou can specify the signature and try again:\n\n"
@@ -1814,7 +1814,7 @@ namespace erasure_type {
   };
 
   static_assert(std::is_trivially_copyable<ErasurePass>::value,
-    EMBED_DETAIL_REPORT_IE("ErasurePass is not TrviallyCopyable."));
+    EMBED_DETAIL_REPORT_IE("ErasurePass is not TriviallyCopyable."));
 
   static_assert(sizeof(ErasurePass) <= sizeof(void*) || sizeof(ErasurePass) <= sizeof(void(*)()),
     EMBED_DETAIL_REPORT_IE("ErasurePass is too large."));
@@ -1890,8 +1890,7 @@ namespace invocation {
     using erasure_base_t = erasure_type::ErasureBase;                                 \
     using erasure_t = erasure_type::Erasure<Config::isView, Size, Align>;             \
     using erasure_pass_t = erasure_type::ErasurePass C;                               \
-    static constexpr bool is_rvalue_ref =                                             \
-      std::is_rvalue_reference<int REF>::value;                                       \
+    static constexpr bool is_rvalue_ref = std::is_rvalue_reference<int REF>::value;   \
     using invoker_type =                                                              \
       Ret (*) (erasure_pass_t erased, smart_forward_t<Args>... args) NOEXCEPT;        \
                                                                                       \
@@ -1969,7 +1968,7 @@ namespace management {
   template <std::size_t Size, std::size_t Align, typename Config, typename Signature>
   struct ManagerImpl {
   private:
-    using invoke_impl_t = invocation::InvokerImpl<Size, Align, Config, Signature>;
+    using invoke_impl_t   = invocation::InvokerImpl<Size, Align, Config, Signature>;
     using erasure_base_t  = typename invoke_impl_t::erasure_base_t;
     using erasure_t       = typename invoke_impl_t::erasure_t;
 
@@ -2030,7 +2029,7 @@ namespace management {
 
     // Move type-erased object from `src` to `dst`.
     EMBED_TEMPLATE(typename Functor)
-      EMBED_REQUIRES(std::is_move_constructible<Functor>::value) // Moveable
+      EMBED_REQUIRES(std::is_move_constructible<Functor>::value) // Movable
     static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_move_constructible<Functor>::value) {
       auto* src_erasure = static_cast<erasure_t*>(src);
@@ -2040,7 +2039,7 @@ namespace management {
 
     // Clone type-erased object from `src` to `dst` as fallback.
     EMBED_TEMPLATE(typename Functor)
-      EMBED_REQUIRES((!std::is_move_constructible<Functor>::value)) // Non-moveable
+      EMBED_REQUIRES((!std::is_move_constructible<Functor>::value)) // Non-movable
     static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
     noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
       auto* src_erasure = static_cast<erasure_t*>(src);
@@ -2122,8 +2121,8 @@ namespace command {
   // Command Table for inplace mode.
   template <std::size_t Size, std::size_t Align, typename Config, typename Signature, typename... Args>
   struct CommandTable</* IsView = */ false, Size, Align, Config, Signature, args_package<Args...>> {
-    using invoker_impl_t = invocation::InvokerImpl<Size, Align, Config, Signature>;
-    using manager_impl_t = management::ManagerImpl<Size, Align, Config, Signature>;
+    using invoker_impl_t  = invocation::InvokerImpl<Size, Align, Config, Signature>;
+    using manager_impl_t  = management::ManagerImpl<Size, Align, Config, Signature>;
     using invoker_t       = typename invoker_impl_t::invoker_type;
     using erasure_base_t  = typename invoker_impl_t::erasure_base_t;
     using erasure_pass_t  = typename invoker_impl_t::erasure_pass_t;
@@ -2199,7 +2198,7 @@ namespace command {
     /// @brief Initialize the wrapper from given std::constant_wrapper and functor.
 
     // This method cannot be `constexpr` because `create` uses placement
-    // new and 'unsigned char' is not similar to 'DecFunctor'.
+    // new and `unsigned char` is not similar to `DecFunctor`.
     template <typename Cw, typename Functor, typename DecFunctor = decay_t<Functor>>
     void cw_init(erasure_base_t* target, Functor&& obj)
         noexcept(std::is_nothrow_constructible_v<DecFunctor, Functor&&>) {
@@ -2223,8 +2222,8 @@ namespace command {
   // Command Table for view mode.
   template <std::size_t Size, std::size_t Align, typename Config, typename Signature, typename... Args>
   struct CommandTable</* IsView = */ true, Size, Align, Config, Signature, args_package<Args...>> {
-    using invoker_impl_t = invocation::InvokerImpl<Size, Align, Config, Signature>;
-    using manager_impl_t = management::ManagerImpl<Size, Align, Config, Signature>;
+    using invoker_impl_t  = invocation::InvokerImpl<Size, Align, Config, Signature>;
+    using manager_impl_t  = management::ManagerImpl<Size, Align, Config, Signature>;
     using invoker_t       = typename invoker_impl_t::invoker_type;
     using erasure_base_t  = typename invoker_impl_t::erasure_base_t;
     using erasure_pass_t  = typename invoker_impl_t::erasure_pass_t;
@@ -2313,9 +2312,9 @@ namespace crtp_mixins {
    * through a const-qualified path yields type `const CommandTable` rather
    * than `CommandTable`, causing the lookup to miss the recorded target.
    * As a result, indirect calls are not devirtualized early enough for inlining.
-   * 
+   *
    * See <https://github.com/Kim-J-Smith/Embedded-Function/issues/133>.
-   * 
+   *
    * This helper casts away `const` to work around this limitation.
    */
   template <typename Self, typename CRTP_Base>
@@ -2603,11 +2602,11 @@ namespace crtp_mixins {
     // Assert each parameter type is a complete class.
     static_assert(
       each_param_is_complete_here(typename unwrap_signature<Signature>::args{}),
-      "each parameter type must be a complete class");
+      "Each parameter type must be a complete class.");
 
-    // Assert the noexcept-qualifier in `Signature` matchs the `Config`.
+    // Assert the noexcept-qualifier in `Signature` matches the `Config`.
     static_assert(!Config::isThrowing || !unwrap_signature<Signature>::isNoexcept,
-      "the `Signature` cannot be qualified with `noexcept` because it may throw exception");
+      "The `Signature` cannot be qualified with `noexcept` because it may throw an exception.");
 
     // Assert the `Signature` is valid in non-owning mode.
     static_assert(view_mode_qualifier_is_ok<Config::isView, Signature>::value,
@@ -2787,7 +2786,7 @@ namespace crtp_mixins {
     template <bool, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
 
-    using Cfg = config_package<Cp, false, Tr, AsNt>;
+    using Cfg            = config_package<Cp, false, Tr, AsNt>;
     using Base_MemberVar = crtp_mixins::member_variable_impl<Buf, Align, Cfg, Sig>;
     using Base_CoreCompo = crtp_mixins::core_components_impl</*IsView*/false, Cfg, Sig, function>;
 
@@ -2945,7 +2944,7 @@ namespace crtp_mixins {
         /// @bug GCC bug 100313: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100313>.
         /// When using `-fsanitize=undefined` or `-fsanitize=null` with GCC, pointers to inline
         /// free functions and pointers to member functions are not considered constant expressions.
-        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper.");
       }
 
       m_command.template cw_init<Cw>(&m_erasure, std::forward<Obj>(obj));
@@ -2968,7 +2967,7 @@ namespace crtp_mixins {
       (void)assertions_for_functor<Buf, Cfg, Sig, Obj, Obj, erasure_t>{};
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper.");
       }
 
       m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, std::forward<CArgs>(args)...);
@@ -2993,7 +2992,7 @@ namespace crtp_mixins {
       (void)assertions_for_functor<Buf, Cfg, Sig, Obj, Obj, erasure_t>{};
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper");
+        static_assert(Cw::value != nullptr, "Cannot create fn from null constant_wrapper.");
       }
 
       m_command.template cw_inplace_init<Cw, Obj>(&m_erasure, il, std::forward<CArgs>(args)...);
@@ -3049,7 +3048,7 @@ namespace crtp_mixins {
     template <bool, typename, typename, typename>
     friend struct crtp_mixins::core_components_impl;
 
-    using Cfg = config_package<Cp, true, Tr, AsNt>;
+    using Cfg            = config_package<Cp, true, Tr, AsNt>;
     using Base_MemberVar = crtp_mixins::member_variable_impl<Buf, Align, Cfg, Sig>;
     using Base_CoreCompo = crtp_mixins::core_components_impl</*IsView*/true, Cfg, Sig, function>;
 
@@ -3134,7 +3133,7 @@ namespace crtp_mixins {
       // Mandates.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper.");
       }
 
       m_command.template cw_init<Cw>();
@@ -3152,7 +3151,7 @@ namespace crtp_mixins {
       // Mandates.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper.");
       }
 
       m_command.template cw_init<Cw, /*CallPointer*/false>(&m_erasure, std::addressof(obj));
@@ -3170,7 +3169,7 @@ namespace crtp_mixins {
       // Mandates.
       if constexpr (std::is_pointer_v<Fn> || std::is_member_pointer_v<Fn>) {
         /// @bug GCC bug 100313.
-        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper");
+        static_assert(Cw::value != nullptr, "Cannot create fn_ref from null constant_wrapper.");
       }
       if constexpr (std::is_member_pointer_v<Fn>) {
         EMBED_DETAIL_ASSERT_MESSAGE(obj != nullptr, "object pointer cannot be nullptr.");
@@ -3256,32 +3255,32 @@ namespace crtp_mixins {
  * by directly specifying all configuration parameters. It is intended for
  * advanced use cases where none of the predefined aliases (`fn`, `unique_fn`,
  * `classic_fn`, `fn_ref`) satisfy the required combination of copyability,
- * view semantics, exception behavior, and no‑throw assertions.
+ * view semantics, exception behavior, and no-throw assertions.
  *
  * @tparam Signature              Function signature, e.g., `void(int, char)`,
  *                                `int(int, float) const`, `void() &&`, etc.
  *
  * @tparam BufferSize             Size of the internal storage (in bytes).
  *                                The value will be automatically aligned.
- * 
+ *
  * @tparam Alignment              Alignment of the internal storage (in bytes).
  *
  * @tparam IsCopyable             If `true`, the stored callable object must be
- *                                copy‑constructible; otherwise, move‑only is
+ *                                copy-constructible; otherwise, move-only is
  *                                sufficient (copyable is still accepted but
  *                                only move operations will be used).
  *
- * @tparam IsView                 If `true`, the wrapper acts as a non‑owning
+ * @tparam IsView                 If `true`, the wrapper acts as a non-owning
  *                                view (no copy/move/destroy of the target).
  *                                The stored object is either stored directly
- *                                (if is function pointer) or by pointer.
+ *                                (if it is a function pointer) or by pointer.
  *                                *Empty state has been removed in view mode.*
  *
  * @tparam IsThrowing             If `true`, calling an empty wrapper throws
  *                                `std::bad_function_call` (if exceptions are
  *                                enabled); otherwise, `std::terminate` is
  *                                called. When @arg `IsView` is `true`, this
- *                                config argument will be ignored cause there
+ *                                config argument will be ignored because there
  *                                is no empty state in view mode.
  *
  * @tparam AssertObjectNoThrow    If `true`, an owning wrapper additionally
@@ -3293,7 +3292,7 @@ namespace crtp_mixins {
  *                                `unique_fn`, `classic_fn`, `fn_ref`) unless you
  *                                need a combination not covered by them.
  *
- * @example                       A move-only, non‑throwing wrapper:
+ * @example                       A move-only, non-throwing wrapper:
  * ```cpp
  * template <typename Signature, std::size_t BufferSize, std::size_t Alignment>
  * using unique_safe_fn = ebd::basic_fn<Signature, BufferSize, Alignment,
@@ -3821,10 +3820,10 @@ FnWrapper make_fn(Args&&... args) noexcept(NoThrow) {
 // awful template error flood.
 EMBED_TEMPLATE(typename Unused = void)
   EMBED_REQUIRES((!detail::unwrap_signature<Unused>::isSignature))
-EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused>(); }
+void make_fn(...) { detail::make_fn_log_error<Unused>(); }
 
 template <template <class, std::size_t, std::size_t> class Unused>
-EMBED_CXX14_CONSTEXPR void make_fn(...) { detail::make_fn_log_error<Unused<void(), 0, 8>>(); }
+void make_fn(...) { detail::make_fn_log_error<Unused<void(), 0, 8>>(); }
 #endif
 
 } // end namespace ebd
