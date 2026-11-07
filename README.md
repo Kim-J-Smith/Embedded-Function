@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.5.3-yellow?style=for-the-badge&logo=github" alt="Version - 2.5.3">
+  <img src="https://img.shields.io/badge/Version-2.5.4-yellow?style=for-the-badge&logo=github" alt="Version - 2.5.4">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -453,7 +453,7 @@ include(FetchContent)
 FetchContent_Declare(
   embedded_function
   GIT_REPOSITORY https://github.com/Kim-J-Smith/Embedded-Function.git
-  GIT_TAG        v2.5.3
+  GIT_TAG        v2.5.4
   GIT_SHALLOW    TRUE
 )
 
@@ -470,7 +470,7 @@ target_link_libraries(${YOUR_TARGET_NAME} PRIVATE embedded_function::functions)
 
 ## 🔢 Version macro
 
-`EMBEDDED_FUNCTION_VERSION` is defined as an `XYYYZZZ` encoded integer (for example, `2.5.3` is `2005003L`) for compile-time version checks.
+`EMBEDDED_FUNCTION_VERSION` is defined as an `XYYYZZZ` encoded integer (for example, `2.5.4` is `2005004L`) for compile-time version checks.
 
 ## 🧭 Future learning & evolution reference
 
