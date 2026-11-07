@@ -30,6 +30,7 @@
 // workaround for GCC 16.0
 # undef __cpp_lib_constant_wrapper
 # define __cpp_lib_constant_wrapper 202603L
+// See <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3978r3.pdf>.
 # define EBD_TEST_DID_NOT_IMPLEMENT_P3978R3
 #endif
 
