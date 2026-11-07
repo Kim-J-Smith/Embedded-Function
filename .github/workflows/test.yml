@@ -8,6 +8,9 @@ on:
     types: [ opened, synchronize, reopened ]
   workflow_dispatch:
 
+# CI GCC 14 / GCC 15 / Clang 19 / Clang 20 / Clang 21 are only actually
+# run when a PR is opened against the `main` branch, to save resources.
+
 jobs:
   # GCC 5
   docker-debian-gcc-5:
