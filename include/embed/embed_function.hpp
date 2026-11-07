@@ -534,6 +534,7 @@ inline namespace cxx {
 
     // MSVC 19.44~19.51 workaround. When T is qualified with `volatile`, MSVC
     // only accepts `T::operator()(args...)` but not accepts `T{}(args...)`.
+    // See <https://developercommunity.visualstudio.com/t/MSVC-C-compiler-rejects-static-operato/11177751>.
     template<typename T, typename U = remove_reference_t<T>> static success_type<
       /* type = */ decltype(U::operator()(std::declval<ArgsType>()...)),
       /* tag = */ tag_call_normal
@@ -611,6 +612,7 @@ inline namespace cxx {
 
     // MSVC 19.44~19.51 workaround. When T is qualified with `volatile`, MSVC
     // only accepts `T::operator()(args...)` but not accepts `T{}(args...)`.
+    // See <https://developercommunity.visualstudio.com/t/MSVC-C-compiler-rejects-static-operato/11177751>.
     template <typename T> static bool_constant<
       noexcept(remove_reference_t<T>::operator()(std::declval<Args>()...))
     > check_nothrow(long) { return {}; }
