@@ -171,7 +171,7 @@
 # include <cstring>     // std::memcpy, std::memset
 # include <exception>   // std::terminate
 # include <functional>  // std::bad_function_call
-# include <memory>      // std::addressof
+# include <memory>      // std::addressof, std::assume_aligned(C++20)
 # include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
 # include <type_traits> // std::enable_if, ...
 # include <utility>     // std::move, std::forward, std::unreachable(C++23)
@@ -1732,6 +1732,21 @@ inline namespace fn_traits {
       Alignment > default_values::owning::alignment ? Alignment : default_values::owning::alignment;
   };
 
+  // Passing typed pointers to `memcpy` (which takes `void*`) loses their
+  // alignment information, so re-assume it with `assume_aligned`.
+  // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/272>.
+  template <typename T, typename U>
+  EMBED_INLINE void aligned_memcpy(T* dst, U const* src, std::size_t size) noexcept {
+#if defined(__cpp_lib_assume_aligned) && __cpp_lib_assume_aligned >= 201811L
+    dst = std::assume_aligned<alignof(T)>(dst);
+    src = std::assume_aligned<alignof(U)>(src);
+#elif EMBED_HAS_BUILTIN(__builtin_assume_aligned) || (defined(__GNUC__) && __GNUC__ >= 5)
+    dst = static_cast<T*>(__builtin_assume_aligned(dst, alignof(T)));
+    src = static_cast<U const*>(__builtin_assume_aligned(src, alignof(U)));
+#endif
+    std::memcpy(dst, src, size);
+  }
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of
@@ -2054,7 +2069,7 @@ namespace management {
     static EMBED_INLINE void
     trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
       // Copying the whole `m_erasure` is unnecessary.
-      std::memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t const*>(src), sizeof(Functor));
+      aligned_memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t const*>(src), sizeof(Functor));
     }
 
     // Move trivial type-erased object from `src` to `dst`.
@@ -2387,7 +2402,7 @@ namespace crtp_mixins {
 
       // Move from `other` to `self`.
       other.m_command.move(&self.m_erasure, &other.m_erasure);
-      std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+      aligned_memcpy(&self.m_command, &other.m_command, sizeof(command_t));
       other.m_command.destroy(&other.m_erasure);
       other.m_command.set_empty();
     }
@@ -2403,7 +2418,7 @@ namespace crtp_mixins {
         self.m_command.set_empty();
 
         other.m_command.move(&self.m_erasure, &other.m_erasure);
-        std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+        aligned_memcpy(&self.m_command, &other.m_command, sizeof(command_t));
 
         other.m_command.destroy(&other.m_erasure);
         other.m_command.set_empty();
@@ -2428,7 +2443,7 @@ namespace crtp_mixins {
 
       // Copy from `other` to `self`.
       other.m_command.clone(&self.m_erasure, &other.m_erasure);
-      std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+      aligned_memcpy(&self.m_command, &other.m_command, sizeof(command_t));
     }
 
     copy_impl& operator=(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
@@ -2441,7 +2456,7 @@ namespace crtp_mixins {
         self.m_command.set_empty();
 
         other.m_command.clone(&self.m_erasure, &other.m_erasure);
-        std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+        aligned_memcpy(&self.m_command, &other.m_command, sizeof(command_t));
       }
       return *this;
     }
@@ -2682,19 +2697,19 @@ namespace crtp_mixins {
       // Move source from `self` to `tmp_fn`.
       self.m_command.move(&tmp_fn.m_erasure, &self.m_erasure);
       self.m_command.destroy(&self.m_erasure);
-      std::memcpy(&tmp_fn.m_command, &self.m_command, sizeof(command_t));
+      aligned_memcpy(&tmp_fn.m_command, &self.m_command, sizeof(command_t));
       self.m_command.set_empty();
 
       // Move source from `fn` to `self`.
       fn.m_command.move(&self.m_erasure, &fn.m_erasure);
       fn.m_command.destroy(&fn.m_erasure);
-      std::memcpy(&self.m_command, &fn.m_command, sizeof(command_t));
+      aligned_memcpy(&self.m_command, &fn.m_command, sizeof(command_t));
       fn.m_command.set_empty();
 
       // Move source from `tmp_fn` to `fn`.
       tmp_fn.m_command.move(&fn.m_erasure, &tmp_fn.m_erasure);
       tmp_fn.m_command.destroy(&tmp_fn.m_erasure);
-      std::memcpy(&fn.m_command, &tmp_fn.m_command, sizeof(command_t));
+      aligned_memcpy(&fn.m_command, &tmp_fn.m_command, sizeof(command_t));
       tmp_fn.m_command.set_empty();
     }
   };
@@ -2838,7 +2853,7 @@ namespace crtp_mixins {
         m_command.set_empty();
       } else {
         other.m_command.clone(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+        aligned_memcpy(&m_command, &other.m_command, sizeof(command_t));
       }
     }
 
@@ -2856,7 +2871,7 @@ namespace crtp_mixins {
         m_command.set_empty();
       } else {
         other.m_command.move(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+        aligned_memcpy(&m_command, &other.m_command, sizeof(command_t));
         other.m_command.destroy(&other.m_erasure);
         other.m_command.set_empty();
       }
@@ -3083,8 +3098,8 @@ namespace crtp_mixins {
       noexcept(is_cfg_noexcept<FCfg>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
-      std::memcpy(&m_erasure, &other.m_erasure, sizeof(erasure_type::ErasureRefStorage));
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+      aligned_memcpy(&m_erasure, &other.m_erasure, sizeof(erasure_type::ErasureRefStorage));
+      aligned_memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
     /// @brief Builds a function reference from function pointer.
