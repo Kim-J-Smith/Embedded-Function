@@ -1732,11 +1732,11 @@ inline namespace fn_traits {
       Alignment > default_values::owning::alignment ? Alignment : default_values::owning::alignment;
   };
 
+  // Passing typed pointers to `memcpy` (which takes `void*`) loses their
+  // alignment information, so re-assume it with `assume_aligned`.
+  // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/272>.
   template <typename T, typename U>
-  EMBED_INLINE void aligned_memcpy(T* dst, U const* src, std::size_t size) {
-    // Passing typed pointers to `memcpy` (which takes `void*`) loses their
-    // alignment information, so re-assume it with `assume_aligned`.
-    // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/272>.
+  EMBED_INLINE void aligned_memcpy(T* dst, U const* src, std::size_t size) noexcept {
 #if defined(__cpp_lib_assume_aligned) && __cpp_lib_assume_aligned >= 201811L
     dst = std::assume_aligned<alignof(T)>(dst);
     src = std::assume_aligned<alignof(U)>(src);
