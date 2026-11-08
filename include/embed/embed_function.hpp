@@ -1745,7 +1745,7 @@ inline namespace fn_traits {
     src = static_cast<U const*>(__builtin_assume_aligned(src, alignof(U)));
 #endif
     std::memcpy(dst, src, size);
-  };
+  }
 
 } // end namespace fn_traits
 
