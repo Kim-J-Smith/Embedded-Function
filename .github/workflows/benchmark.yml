@@ -16,6 +16,11 @@ on:
       - '.github/workflows/benchmark.yml'
   workflow_dispatch:
 
+# Cancel superseded runs on the same PR or branch to save CI resources.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Ubuntu check
   benchmark-on-ubuntu:

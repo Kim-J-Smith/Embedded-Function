@@ -9,6 +9,11 @@ on:
       - 'include/**'
       - '.github/workflows/example-pass.yml'
 
+# Cancel superseded runs on the same PR or branch to save CI resources.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-examples:
     if: github.repository_owner == 'Kim-J-Smith'

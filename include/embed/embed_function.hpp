@@ -540,7 +540,7 @@ inline namespace cxx {
       /* tag = */ tag_call_normal
     > test(long) { return {}; }
 
-#endif
+#endif // MSVC && C++ >= 23
 
     using type = decltype(test<Functor>(0));
   };
@@ -617,7 +617,7 @@ inline namespace cxx {
       noexcept(remove_reference_t<T>::operator()(std::declval<Args>()...))
     > check_nothrow(long) { return {}; }
 
-#endif
+#endif // MSVC && C++ >= 23
 
     static constexpr bool value = decltype(check_nothrow<NormalFunc>(0))::value;
   };
