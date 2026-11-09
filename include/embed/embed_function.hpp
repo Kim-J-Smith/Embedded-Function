@@ -2066,16 +2066,17 @@ namespace management {
 
     // Clone trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static EMBED_INLINE void
-    trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
+    static void trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
       // Copying the whole `m_erasure` is unnecessary.
       aligned_memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t const*>(src), sizeof(Functor));
     }
 
     // Move trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static void trivially_move(erasure_base_t* dst, erasure_base_t* src) noexcept
-    { trivially_clone<Functor>(dst, src); }
+    static void trivially_move(erasure_base_t* dst, erasure_base_t* src) noexcept {
+      // Moving the whole `m_erasure` is unnecessary.
+      aligned_memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t*>(src), sizeof(Functor));
+    }
 
     // Using when M_erasure is empty.
     struct empty {
@@ -2148,13 +2149,11 @@ namespace command {
     manager_t m_manager;
     invoker_t m_invoker;
 
-    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src) const
-    noexcept(Config::assertNoThrow) {
+    void clone(erasure_base_t* dst, erasure_base_t const* src) const noexcept(Config::assertNoThrow) {
       if (m_manager->clone != nullptr) { m_manager->clone(dst, src); }
     }
 
-    void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
-    noexcept(Config::assertNoThrow) {
+    void move(erasure_base_t* dst, erasure_base_t* src) const noexcept(Config::assertNoThrow) {
       if (m_manager->move != nullptr) { m_manager->move(dst, src); }
     }
 
