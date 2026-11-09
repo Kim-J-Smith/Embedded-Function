@@ -2066,16 +2066,17 @@ namespace management {
 
     // Clone trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static EMBED_INLINE void
-    trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
+    static void trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
       // Copying the whole `m_erasure` is unnecessary.
       aligned_memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t const*>(src), sizeof(Functor));
     }
 
     // Move trivial type-erased object from `src` to `dst`.
     template <typename Functor>
-    static void trivially_move(erasure_base_t* dst, erasure_base_t* src) noexcept
-    { trivially_clone<Functor>(dst, src); }
+    static void trivially_move(erasure_base_t* dst, erasure_base_t* src) noexcept {
+      // Moving the whole `m_erasure` is unnecessary.
+      aligned_memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t*>(src), sizeof(Functor));
+    }
 
     // Using when M_erasure is empty.
     struct empty {
@@ -2148,13 +2149,11 @@ namespace command {
     manager_t m_manager;
     invoker_t m_invoker;
 
-    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src) const
-    noexcept(Config::assertNoThrow) {
+    void clone(erasure_base_t* dst, erasure_base_t const* src) const noexcept(Config::assertNoThrow) {
       if (m_manager->clone != nullptr) { m_manager->clone(dst, src); }
     }
 
-    void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
-    noexcept(Config::assertNoThrow) {
+    void move(erasure_base_t* dst, erasure_base_t* src) const noexcept(Config::assertNoThrow) {
       if (m_manager->move != nullptr) { m_manager->move(dst, src); }
     }
 
@@ -2398,11 +2397,10 @@ namespace crtp_mixins {
       // Get the real `self` and `other`.
       auto& self = static_cast<Self&>(*this);
       auto&& other = static_cast<Self&&>(other_raw);
-      using command_t = typename Self::command_t;
 
       // Move from `other` to `self`.
       other.m_command.move(&self.m_erasure, &other.m_erasure);
-      aligned_memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+      self.m_command = other.m_command;
       other.m_command.destroy(&other.m_erasure);
       other.m_command.set_empty();
     }
@@ -2411,14 +2409,13 @@ namespace crtp_mixins {
       // Get the real `self` and `other`.
       auto& self = static_cast<Self&>(*this);
       auto&& other = static_cast<Self&&>(other_raw);
-      using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
         // Self-destroy already done in `crtp_mixins::assignment_self_clear`.
         self.m_command.set_empty();
 
         other.m_command.move(&self.m_erasure, &other.m_erasure);
-        aligned_memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+        self.m_command = other.m_command;
 
         other.m_command.destroy(&other.m_erasure);
         other.m_command.set_empty();
@@ -2439,24 +2436,22 @@ namespace crtp_mixins {
       // Get the real `self` and `other`.
       auto& self = static_cast<Self&>(*this);
       auto& other = static_cast<const Self&>(other_raw);
-      using command_t = typename Self::command_t;
 
       // Copy from `other` to `self`.
       other.m_command.clone(&self.m_erasure, &other.m_erasure);
-      aligned_memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+      self.m_command = other.m_command;
     }
 
     copy_impl& operator=(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
       auto& self = static_cast<Self&>(*this);
       auto& other = static_cast<const Self&>(other_raw);
-      using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
         // Self-destroy already done in `crtp_mixins::assignment_self_clear`.
         self.m_command.set_empty();
 
         other.m_command.clone(&self.m_erasure, &other.m_erasure);
-        aligned_memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+        self.m_command = other.m_command;
       }
       return *this;
     }
@@ -2692,24 +2687,23 @@ namespace crtp_mixins {
       }
 
       Self tmp_fn; // RAII for temporary object.
-      using command_t = typename Self::command_t;
 
       // Move source from `self` to `tmp_fn`.
       self.m_command.move(&tmp_fn.m_erasure, &self.m_erasure);
       self.m_command.destroy(&self.m_erasure);
-      aligned_memcpy(&tmp_fn.m_command, &self.m_command, sizeof(command_t));
+      tmp_fn.m_command = self.m_command;
       self.m_command.set_empty();
 
       // Move source from `fn` to `self`.
       fn.m_command.move(&self.m_erasure, &fn.m_erasure);
       fn.m_command.destroy(&fn.m_erasure);
-      aligned_memcpy(&self.m_command, &fn.m_command, sizeof(command_t));
+      self.m_command = fn.m_command;
       fn.m_command.set_empty();
 
       // Move source from `tmp_fn` to `fn`.
       tmp_fn.m_command.move(&fn.m_erasure, &tmp_fn.m_erasure);
       tmp_fn.m_command.destroy(&tmp_fn.m_erasure);
-      aligned_memcpy(&fn.m_command, &tmp_fn.m_command, sizeof(command_t));
+      fn.m_command = tmp_fn.m_command;
       tmp_fn.m_command.set_empty();
     }
   };
