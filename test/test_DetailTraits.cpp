@@ -187,7 +187,7 @@ namespace {
 }
 
 namespace std {
-    template <> // technically invalid
+    template <> // gray areas in the C++ standard
     struct less<StatefuleOp> {
         bool last_res = false;
         bool operator()(const StatefuleOp& a, const StatefuleOp& b) noexcept {
@@ -196,7 +196,7 @@ namespace std {
         }
     };
 
-    template <> // technically invalid
+    template <> // gray areas in the C++ standard
     struct plus<StatefuleOp> {
         plus() noexcept { StatefuleOp_flag = 42; }
         StatefuleOp operator()(const StatefuleOp& a, const StatefuleOp& b) const noexcept {
