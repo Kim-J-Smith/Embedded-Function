@@ -22,7 +22,7 @@
 /// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD [ATTENTION ABI BREAKING]
 /// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
 
-/// @b EMBED_FN_HOOK_DEBUG(message) [ATTENTION ODR VIOLATION]
+/// @b EMBED_FN_HOOK_DEBUG(message) [ATTENTION ODR VIOLATION] [NO THROW]
 /// If this macro is defined, it will be called to print debug message in debug mode.
 /// @example `fputs(message, stderr)`
 
@@ -953,16 +953,16 @@ inline namespace fn_traits {
   { EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!"); }
 
   // Throw std::bad_function_call or just call std::terminate().
-  template<bool IsThrowing>
-  [[noreturn]] enable_if_t<!IsThrowing>
-  throw_or_terminate() noexcept {
+  EMBED_TEMPLATE(bool IsThrowing)
+    EMBED_REQUIRES((!IsThrowing))
+  [[noreturn]] void throw_or_terminate() noexcept {
     report_empty_call();
     std::terminate();
   }
 
-  template<bool IsThrowing>
-  [[noreturn]] enable_if_t<IsThrowing>
-  throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__) {
+  EMBED_TEMPLATE(bool IsThrowing)
+    EMBED_REQUIRES(IsThrowing)
+  [[noreturn]] void throw_or_terminate() {
     report_empty_call();
 #if !EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__
     std::terminate();
@@ -1744,7 +1744,7 @@ inline namespace fn_traits {
   // alignment information, so re-assume it with `assume_aligned`.
   // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/272>.
   template <typename T, typename U>
-  EMBED_INLINE void aligned_memcpy(T* dst, U const* src, std::size_t size) noexcept {
+  EMBED_INLINE static void aligned_memcpy(T* dst, U const* src, std::size_t size) noexcept {
 #if defined(__cpp_lib_assume_aligned) && __cpp_lib_assume_aligned >= 201811L
     dst = std::assume_aligned<alignof(T)>(dst);
     src = std::assume_aligned<alignof(U)>(src);
@@ -2420,7 +2420,7 @@ namespace crtp_mixins {
 
       if (this != std::addressof(other_raw)) {
         // Self-destroy already done in `crtp_mixins::assignment_self_clear`.
-        self.m_command.set_empty();
+        self.m_command.set_empty(); // Keep `self` empty if `move` throws.
 
         other.m_command.move(&self.m_erasure, &other.m_erasure);
         self.m_command = other.m_command;
@@ -2456,7 +2456,7 @@ namespace crtp_mixins {
 
       if (this != std::addressof(other_raw)) {
         // Self-destroy already done in `crtp_mixins::assignment_self_clear`.
-        self.m_command.set_empty();
+        self.m_command.set_empty(); // Keep `self` empty if `clone` throws.
 
         other.m_command.clone(&self.m_erasure, &other.m_erasure);
         self.m_command = other.m_command;
