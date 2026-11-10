@@ -39,6 +39,22 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION"
 
+      # Detect pre-release (version-X.Y.Z-rcN)
+      - name: Detect pre-release
+        id: detect-prerelease
+        run: |
+          VERSION="${{ steps.get-version-num.outputs.version }}"
+          case "$VERSION" in
+            *-rc*|*-alpha*|*-beta*)
+              echo "prerelease=true" >> $GITHUB_OUTPUT
+              echo "make_latest=false" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "prerelease=false" >> $GITHUB_OUTPUT
+              echo "make_latest=true" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
       # Create docs/release/release_notes.md if it doesn't exist.
       - name: Create release_notes.md if it doesn't exist
         run: |
@@ -58,6 +74,7 @@ jobs:
             release_packages/header_only.zip
             release_packages/header_only.tar.gz
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.detect-prerelease.outputs.prerelease }}
+          make_latest: ${{ steps.detect-prerelease.outputs.make_latest }}
         env:
           GITHUB_TOKEN: ${{ github.token }}

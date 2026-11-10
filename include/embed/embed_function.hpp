@@ -1,9 +1,9 @@
 /**
- * @file        embed_function.hpp
- *
- * @date        2026-10-14
- *
- * @version     2.5.4
+ *     ___________________  @file     embed_function.hpp
+ *    /   _____/    _____/
+ *   /   ___/ /    /___     @date     2026-10-14
+ *  /   /____/    ____/
+ * /________/____/          @version  2.5.4
  *
  * @copyright   Copyright (c) 2025-2026 Kim-J-Smith
  *              All rights reserved.
