@@ -1576,11 +1576,19 @@ inline namespace fn_traits {
   using get_correct_signature_t =
     typename get_correct_signature<Fn<Sig, sizeof(int*), alignof(int*)>, Sig>::type;
 
-  // Check if `T` is the standard stateless function object type.
+  /**
+   * @brief Check if `T` is the standard stateless function object type.
+   *
+   * @note  Providing stateful specializations of standard template classes, especially
+   *        standard operators (e.g., `std::plus`, `std::less`) is neither explicitly
+   *        permitted nor explicitly prohibited by the standard. To be safe, use is_empty
+   *        and is_trivial to ensure safety. ([namespace.std] [utility.arg.requirements])
+   */
   template <typename T> struct is_standard_stateless_function_object : std::false_type {};
 
 #define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(func_obj) \
-  template <typename T> struct is_standard_stateless_function_object<std::func_obj<T>> : std::true_type {};
+  template <typename T> struct is_standard_stateless_function_object<std::func_obj<T>> : bool_constant<\
+    std::is_empty<std::func_obj<T>>::value && is_traditional_trivial<std::func_obj<T>>::value> {};
 #define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(func_obj) \
   template <> struct is_standard_stateless_function_object<std::func_obj> : std::true_type {};
 
