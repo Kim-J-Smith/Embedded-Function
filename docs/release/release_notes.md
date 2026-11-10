@@ -1,5 +1,5 @@
 **🔧 Fixed Bugs**
-- None.
+- Fixed a bug where user-provided stateful specializations of standard function objects were incorrectly treated as stateless, causing the stored object to be ignored and a new instance to be constructed on every call.
 
 **⚠️ Breaking Changes**
 - None.
