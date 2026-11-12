@@ -66,7 +66,7 @@ The `Config` parameter is a `config_package` struct with the following boolean f
 
 ### Constructor
 
-Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) provide the full set below. View wrappers (`ebd::fn_ref`) delete the empty-state constructors and do not declare the in-place constructors, binding functors by reference and storing function pointers directly instead.
+Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) provide the full set below. View wrappers (`ebd::fn_ref`) delete the empty-state constructors and do not declare the in-place constructors, binding functors by reference or storing function pointers directly instead.
 
 #### Default / Nullptr Constructor
 
