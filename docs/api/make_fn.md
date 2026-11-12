@@ -119,7 +119,7 @@ template <typename Lambda,
 EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow);
 ```
 
-Creates a wrapper from a lambda or other functor with exactly one viable `operator()`. The signature is deduced automatically; the buffer size and alignment are deduced from `sizeof(Class)` and `alignof(Class)` respectively. For a functor with a by-value explicit object parameter (`this T self`, C++23), the deduced signature is `const`-qualified (e.g. `fn<int(int) const>`), since the object is copied and can be invoked as `const`.
+Creates a wrapper from a lambda or other functor with exactly one viable `operator()`. The signature is deduced automatically; the buffer size is deduced from `sizeof(Class)`, and the alignment is `alignof(Class)` raised to at least `detail::default_values::owning::alignment`. For a functor with a by-value explicit object parameter (`this T self`, C++23), the deduced signature is `const`-qualified (e.g. `fn<int(int) const>`), since the object is copied and can be invoked as `const`.
 
 ### make_fn[8]: Pointer to member function
 
@@ -173,7 +173,7 @@ make_fn(std::in_place_type_t<Functor>, std::initializer_list<U> il, CArgs&&... a
 noexcept(std::is_nothrow_constructible<Functor, std::initializer_list<U>&, CArgs...>::value);
 ```
 
-Constructs the callable directly inside the wrapper buffer. The returned wrapper type is deduced from the functor, and the buffer size and alignment are deduced from `sizeof(Functor)` and `alignof(Functor)` respectively.
+Constructs the callable directly inside the wrapper buffer. The returned wrapper type is deduced from the functor. The buffer size is deduced from `sizeof(Functor)`, and the alignment is `alignof(Functor)` raised to at least `detail::default_values::owning::alignment`.
 
 ### make_fn[12]: From `std::constant_wrapper` (C++26+)
 
@@ -192,7 +192,7 @@ template <auto Val, typename Fn, typename Tp,
 EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>, Tp&& obj) noexcept(NoThrow);
 ```
 
-Creates an owning `ebd::fn`, or `ebd::unique_fn` when `detail::decay_t<Tp>` is not copy-constructible, from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The object binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature. The cv/ref-qualifiers of that first parameter are transferred to the deduced signature (see Notes). The object is stored inside the wrapper buffer, so the buffer size and alignment are deduced from `sizeof(Tp)` and `alignof(Tp)` respectively. The `noexcept` specification is deduced from whether the object is nothrow-constructible from `Tp&&`.
+Creates an owning `ebd::fn`, or `ebd::unique_fn` when `detail::decay_t<Tp>` is not copy-constructible, from a `std::constant_wrapper` together with an object (`obj` or `&obj`). The argument binds to the **first parameter** of the wrapped callable (the *instance* for a member function or member object pointer, or the *first argument* of a free function), and that parameter is removed from the deduced signature. The cv/ref-qualifiers of that first parameter are transferred to the deduced signature (see Notes). The argument is stored inside the wrapper buffer: the object itself for `obj`, or the pointer for `&obj`. The buffer size and alignment are deduced from `sizeof(Tp)` and `alignof(Tp)`, with the alignment raised to at least `detail::default_values::owning::alignment`. The `noexcept` specification is deduced from whether the object is nothrow-constructible from `Tp&&`.
 
 ### make_fn[14]: In-place object with `std::constant_wrapper` (C++26+)
 
@@ -203,7 +203,7 @@ EMBED_NODISCARD auto make_fn(std::constant_wrapper<Val, Fn>,
                              std::in_place_type_t<Obj>, CArgs&&... args) noexcept(NoThrow);
 ```
 
-Creates an owning wrapper by constructing the object in place inside the wrapper buffer from `args`, and binding it to the **first parameter** of the wrapped callable. Returns `ebd::fn`, or `ebd::unique_fn` when `Obj` is not copy-constructible. The buffer size and alignment are deduced from `sizeof(Obj)` and `alignof(Obj)` respectively. `Obj` must be constructible from `args`, and the same qualifier deduction as the other `std::constant_wrapper` overloads applies (see Notes).
+Creates an owning wrapper by constructing the object in place inside the wrapper buffer from `args`, and binding it to the **first parameter** of the wrapped callable. Returns `ebd::fn`, or `ebd::unique_fn` when `Obj` is not copy-constructible. The buffer size is deduced from `sizeof(Obj)`, and the alignment is `alignof(Obj)` raised to at least `detail::default_values::owning::alignment`. `Obj` must be constructible from `args`, and the same qualifier deduction as the other `std::constant_wrapper` overloads applies (see Notes).
 
 ### make_fn[15]: In-place object with `std::constant_wrapper` and `std::initializer_list` (C++26+)
 
@@ -239,7 +239,7 @@ template <template <class, std::size_t, std::size_t> class Fn,
 EMBED_NODISCARD inline FnWrapper make_fn(Args&&... args) noexcept(NoThrow);
 ```
 
-Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. Accepts multiple arguments: the wrapper type and signature are deduced from `make_fn(args...)`, and the buffer size is taken from the deduced result (when an argument is another ebd wrapper that is not directly config-convertible, the buffer is sized to fit that wrapper object for indirect wrapping). For owning wrappers the alignment is taken from the deduced result, while view wrappers use the non-owning default alignment. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(args...)`. This also enables in-place construction with a specific wrapper, e.g. `make_fn<ebd::fn>(std::in_place_type<Functor>, 0)`.
+Creates a wrapper with an explicitly chosen wrapper template such as `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, or `ebd::fn_ref`. Accepts multiple arguments: the wrapper type and signature are deduced from `make_fn(args...)`, and the buffer size is taken from the deduced result (when an argument is another ebd wrapper that is not directly config-convertible, the buffer is sized to fit that wrapper object for indirect wrapping). For owning wrappers the alignment is taken from the deduced result, while view wrappers use the non-owning default alignment. If `SpecifiedSig` is omitted, the signature is deduced from `make_fn(args...)`. This also enables in-place construction with a specific wrapper, e.g. `make_fn<ebd::fn>(std::in_place_type<Functor>, 0)`. In-place construction is available only when the selected wrapper is owning (`ebd::fn_ref` has no in-place constructor).
 
 ## Usage Examples
 
@@ -362,7 +362,7 @@ int total = cw_il();
 - When the callable is ambiguous, such as an overloaded function, specify the signature explicitly.
 - The explicit-wrapper overload accepts multiple arguments and works with `ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`, and `ebd::fn_ref`. The buffer size is deduced from the `make_fn(args...)` result instead of `sizeof(Functor)`.
 - `ebd::fn_view` is still available as a deprecated alias of `ebd::fn_ref`.
-- When deduction fails, the fallback overload triggers a static assertion with guidance.
+- When deduction fails, the fallback overload (available on all supported compilers except MSVC) triggers a static assertion with guidance.
 - The `std::constant_wrapper` overloads (C++26+) return `ebd::fn`, or `ebd::unique_fn` when the bound object is not copy-constructible.
 - For the `std::constant_wrapper` overloads, the cv/ref-qualifiers of the first parameter are transferred to the deduced signature: a by-value first parameter yields a `const`-qualified signature, while a reference first parameter preserves its cv/ref-qualifiers. A member function without a ref-qualifier yields a signature without a ref-qualifier even though its instance parameter is a reference. For example, `ebd::make_fn(std::cw<&free_func_add_ii>, a)` yields `fn<int(int) const>` because the first parameter `int` is not a reference type (a `noexcept` callable additionally keeps `noexcept` in the deduced signature); `ebd::make_fn(std::cw<&MyClass::method>, obj)` yields `fn<void(int, int)>` for a `void method(int, int)` member function; and an `&`-qualified `void method(int, int) const &` yields `fn<void(int, int) const &>`.
 - The `std::constant_wrapper` + object constructors additionally require the callable to be invocable with the object carrying the cv/ref-qualifiers of the signature, so a non-const `&`-qualified callable cannot be stored into a non-ref-qualified signature such as `ebd::fn<int(int)>` (a `const &`-qualified callable is still accepted, since it can bind an rvalue). The deduced signature above always satisfies this requirement.
