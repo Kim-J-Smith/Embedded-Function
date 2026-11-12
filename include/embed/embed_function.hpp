@@ -1527,7 +1527,7 @@ inline namespace fn_traits {
   template <typename T>
   struct is_in_place_type<std::in_place_type_t<T>> : public std::true_type {};
 
-#endif
+#endif // C++ >= 17
 
   // <https://eel.is/c++draft/func.wrap#ref.ctor-1>.
   // [func.wrap.ref.ctor]/1 is-invocable-using
@@ -1582,7 +1582,8 @@ inline namespace fn_traits {
    * @note  Providing stateful specializations of standard template classes, especially
    *        standard operators (e.g., `std::plus`, `std::less`) is neither explicitly
    *        permitted nor explicitly prohibited by the standard. To be safe, use is_empty
-   *        and is_trivial to ensure safety. ([namespace.std] [utility.arg.requirements])
+   *        and is_traditional_trivial to ensure safety.
+   *        ([namespace.std] [utility.arg.requirements])
    */
   template <typename T> struct is_standard_stateless_function_object : std::false_type {};
 
@@ -2030,7 +2031,7 @@ namespace management {
       ::new (static_cast<erasure_t*>(target)->access()) Functor(std::forward<CArgs>(args)...);
     }
 
-#endif
+#endif // C++ >= 17
 
     // Destroy a type-erased object.
     template <typename Functor>
@@ -2157,14 +2158,17 @@ namespace command {
     manager_t m_manager;
     invoker_t m_invoker;
 
+    // Preconditions: m_manager, dst and src must not be null. dst must not equal src (restrict).
     void clone(erasure_base_t* dst, erasure_base_t const* src) const noexcept(Config::assertNoThrow) {
       if (m_manager->clone != nullptr) { m_manager->clone(dst, src); }
     }
 
+    // Preconditions: m_manager, dst and src must not be null. dst must not equal src (restrict).
     void move(erasure_base_t* dst, erasure_base_t* src) const noexcept(Config::assertNoThrow) {
       if (m_manager->move != nullptr) { m_manager->move(dst, src); }
     }
 
+    // Preconditions: m_manager, dst must not be null.
     void destroy(erasure_base_t* dst) const noexcept {
       if (m_manager->destroy != nullptr) { m_manager->destroy(dst); }
     }
@@ -2305,9 +2309,9 @@ namespace command {
           typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
         static_assert(!requires { typename std::constant_wrapper<
               std::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
-          "[func.wrap.ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to "
-          "`fn(args...)`, otherwise the intended behavior for a non-owning "
-          "function wrapper (fn_ref) constructed from `cw<fn>` would be ambiguous."
+          "`cw<fn>(args...)` must be equivalent to `fn(args...)`, otherwise the "
+          "intended behavior for a non-owning function wrapper constructed from "
+          "`cw<fn>` would be ambiguous. ([func.wrap.ref.ctor]/11.2)"
         );
       }
     }
@@ -3384,7 +3388,8 @@ using unique_fn = basic_fn<
 >;
 
 /// @brief Classic owning polymorphic function wrapper. (like `std::function`)
-/// @throws `std::bad_function_call` if invoked in an empty state.
+/// @throws `std::bad_function_call` if invoked in an empty state and exceptions
+///         are enabled; otherwise, `std::terminate` is called.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 ///         And the buffer size will be aligned automatically.
@@ -3477,7 +3482,7 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 }
 
 /// @brief make_fn[2]: Make an empty function with specified signature and buffer size.
-/// @return `fn<Signature, BufferSize>`
+/// @return `fn<Signature, BufferSize, Alignment>`
 EMBED_TEMPLATE(
   typename Signature, // [User specify] function signature.
   std::size_t BufferSize = detail::default_values::owning::buffer_size,
@@ -3568,7 +3573,8 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
 /// @note Auto deduce signature and buffer size.
-/// @return `fn<Signature, BufferSize>` or `unique_fn<Signature, BufferSize>`
+/// @return `fn<Signature, BufferSize, Alignment>` or
+///         `unique_fn<Signature, BufferSize, Alignment>`
 EMBED_TEMPLATE(
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
   // [Auto] The basic type of the functor.
@@ -3615,7 +3621,9 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 
 /// @brief make_fn[8]: Make function for pointer to member function.
 /// (auto deduce signature and buffer size)
-/// @return `fn<Ret(Class, Args...) const, sizeof(Ret(Class::*)(Args...))>`
+/// @return `fn<Ret(QualifiedClass, Args...) const NOEXCEPT, sizeof(memfunc)>`,
+///         where `QualifiedClass` is `Class` with the member function's
+///         cv/ref-qualifiers applied.
 ///         The deduced signature preserves the `noexcept` qualifier of the
 ///         member function when noexcept is part of the type system (C++17+).
 EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)
