@@ -1,9 +1,9 @@
 /**
- * @file        embed_function.hpp
- *
- * @date        2026-10-14
- *
- * @version     2.5.3
+ *     ___________________  @file     embed_function.hpp
+ *    /   _____/    _____/
+ *   /   ___/ /    /___     @date     2026-10-14
+ *  /   /____/    ____/
+ * /________/____/          @version  2.5.4
  *
  * @copyright   Copyright (c) 2025-2026 Kim-J-Smith
  *              All rights reserved.
@@ -22,13 +22,13 @@
 /// @b EMBED_FN_CONFIG_DISABLE_SMART_FORWARD [ATTENTION ABI BREAKING]
 /// If this macro is defined, `smart_forward_t` will fall back to Perfect Forwarding.
 
-/// @b EMBED_FN_HOOK_DEBUG(message) [ATTENTION ODR VIOLATION]
+/// @b EMBED_FN_HOOK_DEBUG(message) [ATTENTION ODR VIOLATION] [NO THROW]
 /// If this macro is defined, it will be called to print debug message in debug mode.
 /// @example `fputs(message, stderr)`
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
-#define EMBEDDED_FUNCTION_VERSION 2005003L // XYYYZZZ (version x.y.z)
+#define EMBEDDED_FUNCTION_VERSION 2005004L // XYYYZZZ (version x.y.z)
 
 #if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(push)
@@ -171,7 +171,7 @@
 # include <cstring>     // std::memcpy, std::memset
 # include <exception>   // std::terminate
 # include <functional>  // std::bad_function_call
-# include <memory>      // std::addressof
+# include <memory>      // std::addressof, std::assume_aligned(C++20)
 # include <new>         // IWYU pragma: keep (placement new, std::launder(C++17))
 # include <type_traits> // std::enable_if, ...
 # include <utility>     // std::move, std::forward, std::unreachable(C++23)
@@ -540,7 +540,7 @@ inline namespace cxx {
       /* tag = */ tag_call_normal
     > test(long) { return {}; }
 
-#endif
+#endif // MSVC && C++ >= 23
 
     using type = decltype(test<Functor>(0));
   };
@@ -617,7 +617,7 @@ inline namespace cxx {
       noexcept(remove_reference_t<T>::operator()(std::declval<Args>()...))
     > check_nothrow(long) { return {}; }
 
-#endif
+#endif // MSVC && C++ >= 23
 
     static constexpr bool value = decltype(check_nothrow<NormalFunc>(0))::value;
   };
@@ -953,16 +953,16 @@ inline namespace fn_traits {
   { EMBED_DETAIL_FAIL_MESSAGE("Empty function has been called!"); }
 
   // Throw std::bad_function_call or just call std::terminate().
-  template<bool IsThrowing>
-  [[noreturn]] enable_if_t<!IsThrowing>
-  throw_or_terminate() noexcept {
+  EMBED_TEMPLATE(bool IsThrowing)
+    EMBED_REQUIRES((!IsThrowing))
+  [[noreturn]] void throw_or_terminate() noexcept {
     report_empty_call();
     std::terminate();
   }
 
-  template<bool IsThrowing>
-  [[noreturn]] enable_if_t<IsThrowing>
-  throw_or_terminate() noexcept(!EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__) {
+  EMBED_TEMPLATE(bool IsThrowing)
+    EMBED_REQUIRES(IsThrowing)
+  [[noreturn]] void throw_or_terminate() {
     report_empty_call();
 #if !EMBED_CXX_ENABLE_EXCEPTION || !__STDC_HOSTED__
     std::terminate();
@@ -1527,7 +1527,7 @@ inline namespace fn_traits {
   template <typename T>
   struct is_in_place_type<std::in_place_type_t<T>> : public std::true_type {};
 
-#endif
+#endif // C++ >= 17
 
   // <https://eel.is/c++draft/func.wrap#ref.ctor-1>.
   // [func.wrap.ref.ctor]/1 is-invocable-using
@@ -1576,11 +1576,20 @@ inline namespace fn_traits {
   using get_correct_signature_t =
     typename get_correct_signature<Fn<Sig, sizeof(int*), alignof(int*)>, Sig>::type;
 
-  // Check if `T` is the standard stateless function object type.
+  /**
+   * @brief Check if `T` is the standard stateless function object type.
+   *
+   * @note  Providing stateful specializations of standard template classes, especially
+   *        standard operators (e.g., `std::plus`, `std::less`) is neither explicitly
+   *        permitted nor explicitly prohibited by the standard. To be safe, use is_empty
+   *        and is_traditional_trivial to ensure safety.
+   *        ([namespace.std] [utility.arg.requirements])
+   */
   template <typename T> struct is_standard_stateless_function_object : std::false_type {};
 
 #define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_1(func_obj) \
-  template <typename T> struct is_standard_stateless_function_object<std::func_obj<T>> : std::true_type {};
+  template <typename T> struct is_standard_stateless_function_object<std::func_obj<T>> : bool_constant<\
+    std::is_empty<std::func_obj<T>>::value && is_traditional_trivial<std::func_obj<T>>::value> {};
 #define EMBED_DETAIL_STD_FUNC_OBJ_DEFINE_0(func_obj) \
   template <> struct is_standard_stateless_function_object<std::func_obj> : std::true_type {};
 
@@ -1732,6 +1741,21 @@ inline namespace fn_traits {
       Alignment > default_values::owning::alignment ? Alignment : default_values::owning::alignment;
   };
 
+  // Passing typed pointers to `memcpy` (which takes `void*`) loses their
+  // alignment information, so re-assume it with `assume_aligned`.
+  // See <https://github.com/Kim-J-Smith/Embedded-Function/issues/272>.
+  template <typename T, typename U>
+  EMBED_INLINE static void aligned_memcpy(T* dst, U const* src, std::size_t size) noexcept {
+#if defined(__cpp_lib_assume_aligned) && __cpp_lib_assume_aligned >= 201811L
+    dst = std::assume_aligned<alignof(T)>(dst);
+    src = std::assume_aligned<alignof(U)>(src);
+#elif EMBED_HAS_BUILTIN(__builtin_assume_aligned) || (defined(__GNUC__) && __GNUC__ >= 5)
+    dst = static_cast<T*>(__builtin_assume_aligned(dst, alignof(T)));
+    src = static_cast<U const*>(__builtin_assume_aligned(src, alignof(U)));
+#endif
+    std::memcpy(dst, src, size);
+  }
+
 } // end namespace fn_traits
 
 // In the namespace "erasure_type", we define a series of
@@ -1823,6 +1847,155 @@ namespace erasure_type {
 
 } // end namespace erasure_type
 
+// In the namespace "management", we define a series of
+// types for objects that implement the behaviour of management.
+namespace management {
+
+  template <std::size_t Size, std::size_t Align, typename Config>
+  struct ManagerImpl {
+    using erasure_base_t  = erasure_type::ErasureBase;
+    using erasure_t       = erasure_type::Erasure<Config::isView, Size, Align>;
+
+    struct VTable {
+      void (*clone) (erasure_base_t*, erasure_base_t const*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
+      void (*move) (erasure_base_t*, erasure_base_t*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
+      void (*destroy) (erasure_base_t*) EMBED_CXX17_NOEXCEPT_(true);
+    };
+
+    using manager_type = VTable const*;
+
+    // Use placement new to create a type-erased object.
+    template <typename Functor, typename Object>
+    static void create(erasure_base_t* target, Object&& obj)
+    noexcept(std::is_nothrow_constructible<Functor, Object&&>::value) {
+      ::new (static_cast<erasure_t*>(target)->access()) Functor(std::forward<Object>(obj));
+    }
+
+    /// @brief Store the object pointer from function reference without placement new.
+    /// @note Avoid using placement new to make the function constexpr in C++20.
+    template <typename Object>
+    static EMBED_CXX20_CONSTEXPR void
+    ref_create(erasure_base_t* target, Object* obj) noexcept {
+      auto* pure_ptr = const_cast<remove_cv_t<Object>*>(obj);
+      static_cast<erasure_t*>(target)->m_core.ref_storage.fill_ptr = pure_ptr;
+    }
+
+#if EMBED_CXX_VERSION >= 201703L
+
+    // In-place create target object. (Cooperate with std::in_place_type)
+    template <typename Functor, typename... CArgs>
+    static void emplace_create(erasure_base_t* target, CArgs&&... args)
+    noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
+      ::new (static_cast<erasure_t*>(target)->access()) Functor(std::forward<CArgs>(args)...);
+    }
+
+#endif // C++ >= 17
+
+    // Destroy a type-erased object.
+    template <typename Functor>
+    static void destroy(erasure_base_t* victim)
+    noexcept(std::is_nothrow_destructible<Functor>::value) {
+      auto* victim_ = static_cast<erasure_t*>(victim);
+      // `access` shouldn't be qualified with `EMBED_NODISCARD` because of MSVC bug.
+      // MSVC /analyze triggers "warning C6031: Return value ignored" as a bug here.
+      victim_->template access<Functor>().~Functor();
+    }
+
+    // Clone type-erased object from `src` to `dst`.
+    /// @attention `clone` will never change @a src.
+    template <typename Functor>
+    static void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
+    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
+      auto* src_erasure = static_cast<erasure_t const*>(src);
+      auto& src_obj = src_erasure->template access<Functor>();
+      create<Functor>(dst, src_obj);
+    }
+
+    // Move type-erased object from `src` to `dst`.
+    EMBED_TEMPLATE(typename Functor)
+      EMBED_REQUIRES(std::is_move_constructible<Functor>::value) // Movable
+    static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    noexcept(std::is_nothrow_move_constructible<Functor>::value) {
+      auto* src_erasure = static_cast<erasure_t*>(src);
+      auto& src_obj = src_erasure->template access<Functor>();
+      create<Functor>(dst, std::move(src_obj));
+    }
+
+    // Clone type-erased object from `src` to `dst` as fallback.
+    EMBED_TEMPLATE(typename Functor)
+      EMBED_REQUIRES((!std::is_move_constructible<Functor>::value)) // Non-movable
+    static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
+    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
+      auto* src_erasure = static_cast<erasure_t*>(src);
+      auto& src_obj = src_erasure->template access<Functor>();
+      create<Functor>(dst, src_obj);
+    }
+
+    // Clone trivial type-erased object from `src` to `dst`.
+    template <typename Functor>
+    static void trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
+      // Copying the whole `m_erasure` is unnecessary.
+      aligned_memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t const*>(src), sizeof(Functor));
+    }
+
+    // Move trivial type-erased object from `src` to `dst`.
+    template <typename Functor>
+    static void trivially_move(erasure_base_t* dst, erasure_base_t* src) noexcept {
+      // Moving the whole `m_erasure` is unnecessary.
+      aligned_memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t*>(src), sizeof(Functor));
+    }
+
+    // Using when M_erasure is empty.
+    struct empty {
+      static manager_type get_manager() noexcept {
+        static constexpr VTable vtable = {nullptr, nullptr, nullptr};
+        return &vtable;
+      }
+    };
+
+    // Using when Config::isView == false.
+    struct inplace {
+      /// @attention [basic.types.general]
+      /// Only trivially copyable objects can be copied or moved by
+      /// `std::memcpy`; otherwise, this would be undefined behaviour.
+
+      // Using when the Functor is copyable and not trivially copyable.
+      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
+        EMBED_REQUIRES(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
+      static manager_type get_manager() noexcept {
+        static constexpr VTable vtable = {&clone<Functor>, &move<Functor>, &destroy<Functor>};
+        return &vtable;
+      }
+
+      // Using when the Functor is move-only and not trivially copyable.
+      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
+        EMBED_REQUIRES((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
+      static manager_type get_manager() noexcept {
+        static constexpr VTable vtable = {nullptr, &move<Functor>, &destroy<Functor>};
+        return &vtable;
+      }
+
+      // Using when the Functor is copyable and trivially copyable.
+      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
+        EMBED_REQUIRES(IsCopyable && std::is_trivially_copyable<Functor>::value)
+      static manager_type get_manager() noexcept {
+        static constexpr VTable vtable = {&trivially_clone<Functor>, &trivially_move<Functor>, nullptr};
+        return &vtable;
+      }
+
+      // Using when the Functor is move-only and trivially copyable.
+      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
+        EMBED_REQUIRES((!IsCopyable) && std::is_trivially_copyable<Functor>::value)
+      static manager_type get_manager() noexcept {
+        static constexpr VTable vtable = {nullptr, &trivially_move<Functor>, nullptr};
+        return &vtable;
+      }
+
+    }; // end inplace
+  };
+
+} // end namespace management
+
 // In the namespace "invocation", we define a series of
 // types for objects that implement the behaviour of invocation.
 namespace invocation {
@@ -1888,10 +2061,11 @@ namespace invocation {
   template <std::size_t Size, std::size_t Align, typename Config,                     \
     typename Ret, typename... Args>                                                   \
   struct InvokerImpl<Size, Align, Config, Ret(Args...) C V REF NOEXCEPT> {            \
-  public:                                                                             \
-    using erasure_base_t = erasure_type::ErasureBase;                                 \
-    using erasure_t = erasure_type::Erasure<Config::isView, Size, Align>;             \
-    using erasure_pass_t = erasure_type::ErasurePass C;                               \
+    /* `manager_impl_t` is used to keep consistency. */                               \
+    using manager_impl_t  = management::ManagerImpl<Size, Align, Config>;             \
+    using erasure_base_t  = typename manager_impl_t::erasure_base_t;                  \
+    using erasure_t       = typename manager_impl_t::erasure_t;                       \
+    using erasure_pass_t  = erasure_type::ErasurePass C;                              \
     static constexpr bool is_rvalue_ref = std::is_rvalue_reference<int REF>::value;   \
     using invoker_type =                                                              \
       Ret (*) (erasure_pass_t erased, smart_forward_t<Args>... args) NOEXCEPT;        \
@@ -1963,156 +2137,6 @@ namespace invocation {
 
 } // end namespace invocation
 
-// In the namespace "management", we define a series of
-// types for objects that implement the behaviour of management.
-namespace management {
-
-  template <std::size_t Size, std::size_t Align, typename Config, typename Signature>
-  struct ManagerImpl {
-  private:
-    using invoke_impl_t   = invocation::InvokerImpl<Size, Align, Config, Signature>;
-    using erasure_base_t  = typename invoke_impl_t::erasure_base_t;
-    using erasure_t       = typename invoke_impl_t::erasure_t;
-
-    struct VTable {
-      void (*clone) (erasure_base_t*, erasure_base_t const*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
-      void (*move) (erasure_base_t*, erasure_base_t*) EMBED_CXX17_NOEXCEPT_(Config::assertNoThrow);
-      void (*destroy) (erasure_base_t*) EMBED_CXX17_NOEXCEPT_(true);
-    };
-  public:
-    using manager_type = VTable const*;
-
-    // Use placement new to create a type-erased object.
-    template <typename Functor, typename Object>
-    static void create(erasure_base_t* target, Object&& obj)
-    noexcept(std::is_nothrow_constructible<Functor, Object&&>::value) {
-      ::new (static_cast<erasure_t*>(target)->access()) Functor(std::forward<Object>(obj));
-    }
-
-    /// @brief Store the object pointer from function reference without placement new.
-    /// @note Avoid using placement new to make the function constexpr in C++20.
-    template <typename Object>
-    static EMBED_CXX20_CONSTEXPR void
-    ref_create(erasure_base_t* target, Object* obj) noexcept {
-      auto* pure_ptr = const_cast<remove_cv_t<Object>*>(obj);
-      static_cast<erasure_t*>(target)->m_core.ref_storage.fill_ptr = pure_ptr;
-    }
-
-#if EMBED_CXX_VERSION >= 201703L
-
-    // In-place create target object. (Cooperate with std::in_place_type)
-    template <typename Functor, typename... CArgs>
-    static void emplace_create(erasure_base_t* target, CArgs&&... args)
-    noexcept(std::is_nothrow_constructible<Functor, CArgs&&...>::value) {
-      ::new (static_cast<erasure_t*>(target)->access()) Functor(std::forward<CArgs>(args)...);
-    }
-
-#endif
-
-    // Destroy a type-erased object.
-    template <typename Functor>
-    static void destroy(erasure_base_t* victim)
-    noexcept(std::is_nothrow_destructible<Functor>::value) {
-      auto* victim_ = static_cast<erasure_t*>(victim);
-      // `access` shouldn't be qualified with `EMBED_NODISCARD` because of MSVC bug.
-      // MSVC /analyze triggers "warning C6031: Return value ignored" as a bug here.
-      victim_->template access<Functor>().~Functor();
-    }
-
-    // Clone type-erased object from `src` to `dst`.
-    /// @attention `clone` will never change @a src.
-    template <typename Functor>
-    static void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src)
-    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
-      auto* src_erasure = static_cast<erasure_t const*>(src);
-      auto& src_obj = src_erasure->template access<Functor>();
-      create<Functor>(dst, src_obj);
-    }
-
-    // Move type-erased object from `src` to `dst`.
-    EMBED_TEMPLATE(typename Functor)
-      EMBED_REQUIRES(std::is_move_constructible<Functor>::value) // Movable
-    static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
-    noexcept(std::is_nothrow_move_constructible<Functor>::value) {
-      auto* src_erasure = static_cast<erasure_t*>(src);
-      auto& src_obj = src_erasure->template access<Functor>();
-      create<Functor>(dst, std::move(src_obj));
-    }
-
-    // Clone type-erased object from `src` to `dst` as fallback.
-    EMBED_TEMPLATE(typename Functor)
-      EMBED_REQUIRES((!std::is_move_constructible<Functor>::value)) // Non-movable
-    static void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src)
-    noexcept(std::is_nothrow_copy_constructible<Functor>::value) {
-      auto* src_erasure = static_cast<erasure_t*>(src);
-      auto& src_obj = src_erasure->template access<Functor>();
-      create<Functor>(dst, src_obj);
-    }
-
-    // Clone trivial type-erased object from `src` to `dst`.
-    template <typename Functor>
-    static EMBED_INLINE void
-    trivially_clone(erasure_base_t* dst, erasure_base_t const* src) noexcept {
-      // Copying the whole `m_erasure` is unnecessary.
-      std::memcpy(static_cast<erasure_t*>(dst), static_cast<erasure_t const*>(src), sizeof(Functor));
-    }
-
-    // Move trivial type-erased object from `src` to `dst`.
-    template <typename Functor>
-    static void trivially_move(erasure_base_t* dst, erasure_base_t* src) noexcept
-    { trivially_clone<Functor>(dst, src); }
-
-    // Using when M_erasure is empty.
-    struct empty {
-      static manager_type get_manager() noexcept {
-        static constexpr VTable vtable = {nullptr, nullptr, nullptr};
-        return &vtable;
-      }
-    };
-
-    // Using when Config::isView == false.
-    struct inplace {
-      /// @attention [basic.types.general]
-      /// Only trivially copyable objects can be copied or moved by
-      /// `std::memcpy`; otherwise, this would be undefined behaviour.
-
-      // Using when the Functor is copyable and not trivially copyable.
-      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
-        EMBED_REQUIRES(IsCopyable && (!std::is_trivially_copyable<Functor>::value))
-      static manager_type get_manager() noexcept {
-        static constexpr VTable vtable = {&clone<Functor>, &move<Functor>, &destroy<Functor>};
-        return &vtable;
-      }
-
-      // Using when the Functor is move-only and not trivially copyable.
-      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
-        EMBED_REQUIRES((!IsCopyable) && (!std::is_trivially_copyable<Functor>::value))
-      static manager_type get_manager() noexcept {
-        static constexpr VTable vtable = {nullptr, &move<Functor>, &destroy<Functor>};
-        return &vtable;
-      }
-
-      // Using when the Functor is copyable and trivially copyable.
-      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
-        EMBED_REQUIRES(IsCopyable && std::is_trivially_copyable<Functor>::value)
-      static manager_type get_manager() noexcept {
-        static constexpr VTable vtable = {&trivially_clone<Functor>, &trivially_move<Functor>, nullptr};
-        return &vtable;
-      }
-
-      // Using when the Functor is move-only and trivially copyable.
-      EMBED_TEMPLATE(typename Functor, bool IsCopyable)
-        EMBED_REQUIRES((!IsCopyable) && std::is_trivially_copyable<Functor>::value)
-      static manager_type get_manager() noexcept {
-        static constexpr VTable vtable = {nullptr, &trivially_move<Functor>, nullptr};
-        return &vtable;
-      }
-
-    }; // end inplace
-  };
-
-} // end namespace management
-
 namespace command {
 
   /// @note CommandTable is trivial
@@ -2124,7 +2148,7 @@ namespace command {
   template <std::size_t Size, std::size_t Align, typename Config, typename Signature, typename... Args>
   struct CommandTable</* IsView = */ false, Size, Align, Config, Signature, args_package<Args...>> {
     using invoker_impl_t  = invocation::InvokerImpl<Size, Align, Config, Signature>;
-    using manager_impl_t  = management::ManagerImpl<Size, Align, Config, Signature>;
+    using manager_impl_t  = management::ManagerImpl<Size, Align, Config>;
     using invoker_t       = typename invoker_impl_t::invoker_type;
     using erasure_base_t  = typename invoker_impl_t::erasure_base_t;
     using erasure_pass_t  = typename invoker_impl_t::erasure_pass_t;
@@ -2133,16 +2157,17 @@ namespace command {
     manager_t m_manager;
     invoker_t m_invoker;
 
-    void clone(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t const* EMBED_RESTRICT src) const
-    noexcept(Config::assertNoThrow) {
+    // Preconditions: m_manager, dst and src must not be null. dst must not equal src (restrict).
+    void clone(erasure_base_t* dst, erasure_base_t const* src) const noexcept(Config::assertNoThrow) {
       if (m_manager->clone != nullptr) { m_manager->clone(dst, src); }
     }
 
-    void move(erasure_base_t* EMBED_RESTRICT dst, erasure_base_t* EMBED_RESTRICT src) const
-    noexcept(Config::assertNoThrow) {
+    // Preconditions: m_manager, dst and src must not be null. dst must not equal src (restrict).
+    void move(erasure_base_t* dst, erasure_base_t* src) const noexcept(Config::assertNoThrow) {
       if (m_manager->move != nullptr) { m_manager->move(dst, src); }
     }
 
+    // Preconditions: m_manager, dst must not be null.
     void destroy(erasure_base_t* dst) const noexcept {
       if (m_manager->destroy != nullptr) { m_manager->destroy(dst); }
     }
@@ -2225,7 +2250,7 @@ namespace command {
   template <std::size_t Size, std::size_t Align, typename Config, typename Signature, typename... Args>
   struct CommandTable</* IsView = */ true, Size, Align, Config, Signature, args_package<Args...>> {
     using invoker_impl_t  = invocation::InvokerImpl<Size, Align, Config, Signature>;
-    using manager_impl_t  = management::ManagerImpl<Size, Align, Config, Signature>;
+    using manager_impl_t  = management::ManagerImpl<Size, Align, Config>;
     using invoker_t       = typename invoker_impl_t::invoker_type;
     using erasure_base_t  = typename invoker_impl_t::erasure_base_t;
     using erasure_pass_t  = typename invoker_impl_t::erasure_pass_t;
@@ -2283,9 +2308,9 @@ namespace command {
           typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
         static_assert(!requires { typename std::constant_wrapper<
               std::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
-          "[func.wrap.ref.ctor]/11.2 `cw<fn>(args...)` must be equivalent to "
-          "`fn(args...)`, otherwise the intended behavior for a non-owning "
-          "function wrapper (fn_ref) constructed from `cw<fn>` would be ambiguous."
+          "`cw<fn>(args...)` must be equivalent to `fn(args...)`, otherwise the "
+          "intended behavior for a non-owning function wrapper constructed from "
+          "`cw<fn>` would be ambiguous. ([func.wrap.ref.ctor]/11.2)"
         );
       }
     }
@@ -2383,11 +2408,10 @@ namespace crtp_mixins {
       // Get the real `self` and `other`.
       auto& self = static_cast<Self&>(*this);
       auto&& other = static_cast<Self&&>(other_raw);
-      using command_t = typename Self::command_t;
 
       // Move from `other` to `self`.
       other.m_command.move(&self.m_erasure, &other.m_erasure);
-      std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+      self.m_command = other.m_command;
       other.m_command.destroy(&other.m_erasure);
       other.m_command.set_empty();
     }
@@ -2396,14 +2420,13 @@ namespace crtp_mixins {
       // Get the real `self` and `other`.
       auto& self = static_cast<Self&>(*this);
       auto&& other = static_cast<Self&&>(other_raw);
-      using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
         // Self-destroy already done in `crtp_mixins::assignment_self_clear`.
-        self.m_command.set_empty();
+        self.m_command.set_empty(); // Keep `self` empty if `move` throws.
 
         other.m_command.move(&self.m_erasure, &other.m_erasure);
-        std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+        self.m_command = other.m_command;
 
         other.m_command.destroy(&other.m_erasure);
         other.m_command.set_empty();
@@ -2424,24 +2447,22 @@ namespace crtp_mixins {
       // Get the real `self` and `other`.
       auto& self = static_cast<Self&>(*this);
       auto& other = static_cast<const Self&>(other_raw);
-      using command_t = typename Self::command_t;
 
       // Copy from `other` to `self`.
       other.m_command.clone(&self.m_erasure, &other.m_erasure);
-      std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+      self.m_command = other.m_command;
     }
 
     copy_impl& operator=(const copy_impl& other_raw) noexcept(Config::assertNoThrow) {
       auto& self = static_cast<Self&>(*this);
       auto& other = static_cast<const Self&>(other_raw);
-      using command_t = typename Self::command_t;
 
       if (this != std::addressof(other_raw)) {
         // Self-destroy already done in `crtp_mixins::assignment_self_clear`.
-        self.m_command.set_empty();
+        self.m_command.set_empty(); // Keep `self` empty if `clone` throws.
 
         other.m_command.clone(&self.m_erasure, &other.m_erasure);
-        std::memcpy(&self.m_command, &other.m_command, sizeof(command_t));
+        self.m_command = other.m_command;
       }
       return *this;
     }
@@ -2677,24 +2698,23 @@ namespace crtp_mixins {
       }
 
       Self tmp_fn; // RAII for temporary object.
-      using command_t = typename Self::command_t;
 
       // Move source from `self` to `tmp_fn`.
       self.m_command.move(&tmp_fn.m_erasure, &self.m_erasure);
       self.m_command.destroy(&self.m_erasure);
-      std::memcpy(&tmp_fn.m_command, &self.m_command, sizeof(command_t));
+      tmp_fn.m_command = self.m_command;
       self.m_command.set_empty();
 
       // Move source from `fn` to `self`.
       fn.m_command.move(&self.m_erasure, &fn.m_erasure);
       fn.m_command.destroy(&fn.m_erasure);
-      std::memcpy(&self.m_command, &fn.m_command, sizeof(command_t));
+      self.m_command = fn.m_command;
       fn.m_command.set_empty();
 
       // Move source from `tmp_fn` to `fn`.
       tmp_fn.m_command.move(&fn.m_erasure, &tmp_fn.m_erasure);
       tmp_fn.m_command.destroy(&tmp_fn.m_erasure);
-      std::memcpy(&fn.m_command, &tmp_fn.m_command, sizeof(command_t));
+      fn.m_command = tmp_fn.m_command;
       tmp_fn.m_command.set_empty();
     }
   };
@@ -2838,7 +2858,7 @@ namespace crtp_mixins {
         m_command.set_empty();
       } else {
         other.m_command.clone(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+        aligned_memcpy(&m_command, &other.m_command, sizeof(command_t));
       }
     }
 
@@ -2856,7 +2876,7 @@ namespace crtp_mixins {
         m_command.set_empty();
       } else {
         other.m_command.move(&m_erasure, &other.m_erasure);
-        std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+        aligned_memcpy(&m_command, &other.m_command, sizeof(command_t));
         other.m_command.destroy(&other.m_erasure);
         other.m_command.set_empty();
       }
@@ -3083,8 +3103,8 @@ namespace crtp_mixins {
       noexcept(is_cfg_noexcept<FCfg>::value)
       : Base_MemberVar(nullptr, nullptr)
     {
-      std::memcpy(&m_erasure, &other.m_erasure, sizeof(erasure_type::ErasureRefStorage));
-      std::memcpy(&m_command, &other.m_command, sizeof(command_t));
+      aligned_memcpy(&m_erasure, &other.m_erasure, sizeof(erasure_type::ErasureRefStorage));
+      aligned_memcpy(&m_command, &other.m_command, sizeof(command_t));
     }
 
     /// @brief Builds a function reference from function pointer.
@@ -3367,7 +3387,8 @@ using unique_fn = basic_fn<
 >;
 
 /// @brief Classic owning polymorphic function wrapper. (like `std::function`)
-/// @throws `std::bad_function_call` if invoked in an empty state.
+/// @throws `std::bad_function_call` if invoked in an empty state and exceptions
+///         are enabled; otherwise, `std::terminate` is called.
 /// @tparam Signature - Function signature. Seems like `Ret(Args...)`.
 /// @tparam BufferSize - Buffer size. Used for storing the callable object.
 ///         And the buffer size will be aligned automatically.
@@ -3460,7 +3481,7 @@ make_fn(Functor&& functor) noexcept(NoThrow) {
 }
 
 /// @brief make_fn[2]: Make an empty function with specified signature and buffer size.
-/// @return `fn<Signature, BufferSize>`
+/// @return `fn<Signature, BufferSize, Alignment>`
 EMBED_TEMPLATE(
   typename Signature, // [User specify] function signature.
   std::size_t BufferSize = detail::default_values::owning::buffer_size,
@@ -3551,7 +3572,8 @@ noexcept(Cfg::isView || Cfg::assertNoThrow) {
 
 /// @brief make_fn[7]: Make a function from lambda or unique-operator() functor.
 /// @note Auto deduce signature and buffer size.
-/// @return `fn<Signature, BufferSize>` or `unique_fn<Signature, BufferSize>`
+/// @return `fn<Signature, BufferSize, Alignment>` or
+///         `unique_fn<Signature, BufferSize, Alignment>`
 EMBED_TEMPLATE(
   typename Lambda, // [Auto] The lambda or functor that overloads operator() only once.
   // [Auto] The basic type of the functor.
@@ -3598,7 +3620,9 @@ EMBED_NODISCARD inline Fn make_fn(Lambda&& fn) noexcept(NoThrow) {
 
 /// @brief make_fn[8]: Make function for pointer to member function.
 /// (auto deduce signature and buffer size)
-/// @return `fn<Ret(Class, Args...) const, sizeof(Ret(Class::*)(Args...))>`
+/// @return `fn<Ret(QualifiedClass, Args...) const NOEXCEPT, sizeof(memfunc)>`,
+///         where `QualifiedClass` is `Class` with the member function's
+///         cv/ref-qualifiers applied.
 ///         The deduced signature preserves the `noexcept` qualifier of the
 ///         member function when noexcept is part of the type system (C++17+).
 EMBED_DETAIL_FN_EXPAND(EMBED_DETAIL_MAKE_FN_DEFINE)

@@ -40,7 +40,7 @@ The owning specialization also declares its copy/move constructors, copy/move as
 
 | Parameter | Description |
 |-----------|-------------|
-| `BufferSize` | Specifies the size reserved to store the callable object. Must be at least `sizeof(void*)`. |
+| `BufferSize` | Specifies the size reserved to store the callable object. Must be large enough to hold the callable object. |
 | `Alignment` | Specifies the alignment of the internal storage. |
 | `Config` | Specifies the configuration attributes of the wrapper. Must be a `config_package` type. |
 | `Signature` | The function signature of the wrapper, e.g., `Ret(Args...)` or `Ret(Args...) const`. |
@@ -66,7 +66,7 @@ The `Config` parameter is a `config_package` struct with the following boolean f
 
 ### Constructor
 
-Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) provide the full set below. View wrappers (`ebd::fn_ref`) delete the empty-state constructors and do not declare the in-place constructors, binding functors/function pointers by reference instead.
+Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`) provide the full set below. View wrappers (`ebd::fn_ref`) delete the empty-state constructors and do not declare the in-place constructors, binding functors by reference or storing function pointers directly instead.
 
 #### Default / Nullptr Constructor
 
@@ -172,7 +172,7 @@ explicit function(std::constant_wrapper<Val, Fn>, std::in_place_type_t<Obj>,
 Constructs from a `std::constant_wrapper` (P3948), available when `__cpp_lib_constant_wrapper >= 202603L`:
 
 - View wrappers (`ebd::fn_ref`): construct from a bare `std::constant_wrapper`, from a `std::constant_wrapper` plus an lvalue object (bound by reference, removed from the signature), or from a `std::constant_wrapper` plus an object pointer (`Tp*`, non-null for member pointers). All are `constexpr`; the in-place forms are owning-only.
-- Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`): construct from a `std::constant_wrapper` plus an object, or construct the object in place from `std::in_place_type_t<Obj>` plus arguments (optionally with a leading `std::initializer_list`). The object is stored in the buffer and passed as the callable's first argument; it must be decayed (`std::is_same_v<Obj, std::decay_t<Obj>>`), constructible from the arguments, and satisfy the buffer size/alignment constraints. These constructors are **not** `constexpr` (placement `new`), their `noexcept` follows the object's construction, and the callable must be invocable with the object carrying the signature's cv/ref-qualifiers (so a non-const `&`-qualified callable needs a ref-qualified signature such as `ebd::fn<int(int) &>`).
+- Owning wrappers (`ebd::fn`, `ebd::unique_fn`, `ebd::classic_fn`): construct from a `std::constant_wrapper` plus an object (or object pointer), or construct the object in place from `std::in_place_type_t<Obj>` plus arguments (optionally with a leading `std::initializer_list`). The non-in-place form stores the decayed argument type; for the in-place forms, the object is stored in the buffer and passed as the callable's first argument. In those in-place forms, the object type `Obj` itself must be decayed (`std::is_same_v<Obj, std::decay_t<Obj>>`), constructible from the arguments, and satisfy the buffer size/alignment constraints. These constructors are **not** `constexpr` (placement `new`), their `noexcept` follows the object's construction, and the callable must be invocable with the object carrying the signature's cv/ref-qualifiers (so a non-const `&`-qualified callable needs a ref-qualified signature such as `ebd::fn<int(int) &>`).
 
 A `static_assert` rejects null `Val` when `Fn` is a (member) function pointer.
 
@@ -213,10 +213,14 @@ Owning wrappers explicitly default the move assignment. As with copy assignment,
 ### Invocation
 
 ```cpp
+// Owning wrappers.
 Ret operator()(Args... args) C V REF NOEXCEPT;
+
+// Non-owning (view) wrappers.
+Ret operator()(Args... args) const V NOEXCEPT;
 ```
 
-Invokes the wrapped callable object with the given arguments. The cv-qualifiers and ref-qualifiers match those in the signature.
+Invokes the wrapped callable object with the given arguments. For owning wrappers, the cv-qualifiers and ref-qualifiers match those in the signature. Non-owning wrappers make `operator()` unconditionally `const`.
 
 ### State Management
 
@@ -251,7 +255,7 @@ Clears the function wrapper, destroying the wrapped callable object if necessary
 #### swap
 
 ```cpp
-void swap(function& fn) noexcept(Config::assertNoThrow);
+void swap(function& fn) noexcept(Config::isView || Config::assertNoThrow);
 ```
 
 Swaps the contents of two function wrappers. A free ADL `swap()` for the same type is also available, see [swap (Non-member Functions)](#swap-1).
@@ -288,7 +292,7 @@ Returns `true` if the function wrapper is copyable, `false` otherwise.
 function_ptr_t operator*() const noexcept;
 ```
 
-If the wrapped object is a function pointer, returns that pointer; otherwise, returns `nullptr`. After converting from one wrapper type to another (e.g. from `ebd::fn` to `ebd::unique_fn`, or from `ebd::fn<int(), 16>` to `ebd::fn<int(), 32>`), the resulting wrapper returns `nullptr`.
+If the stored object is a function pointer whose return and parameter types match the wrapper's signature (including `noexcept`), returns that pointer; otherwise, returns `nullptr`. After converting from one wrapper type to another (e.g. from `ebd::fn` to `ebd::unique_fn`, or from `ebd::fn<int(), 16>` to `ebd::fn<int(), 32>`), the resulting wrapper returns `nullptr`.
 
 ## Non-member Functions
 
@@ -308,7 +312,7 @@ template <std::size_t Buf, std::size_t Align, typename Cfg, typename Sig>
 bool operator!=(std::nullptr_t, const function<Buf, Align, Cfg, Sig>& fn) noexcept;
 ```
 
-Compare a function wrapper with `nullptr` to check if it is empty.
+Compare an owning function wrapper with `nullptr` to check if it is empty. These operators are not available for view wrappers (`ebd::fn_ref`).
 
 ### swap
 

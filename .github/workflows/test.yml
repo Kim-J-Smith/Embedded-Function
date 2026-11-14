@@ -8,6 +8,11 @@ on:
     types: [ opened, synchronize, reopened ]
   workflow_dispatch:
 
+# Cancel superseded runs on the same PR or branch to save CI resources.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # CI GCC 14 / GCC 15 / Clang 19 / Clang 20 / Clang 21 are only actually
 # run when a PR is opened against the `main` branch, to save resources.
 

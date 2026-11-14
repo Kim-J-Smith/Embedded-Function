@@ -1,22 +1,17 @@
 **🔧 Fixed Bugs**
-- Fixed undefined behavior in `operator*` for non-owning function wrappers (`fn_ref`). (#264)
+- Fixed a bug where user-provided stateful specializations of standard function objects were incorrectly treated as stateless, causing the stored object to be ignored and a new instance to be constructed on every call.
 
 **⚠️ Breaking Changes**
 - None.
 
 **✨ New Features**
-- Owning function wrappers now correctly detect the empty state of a `std::constant_wrapper` that holds a null pointer. (#261)
-- Added the `EMBEDDED_FUNCTION_VERSION` macro, encoded as `XYYYZZZ` (for example, `2.5.3` is `2005003L`), for compile-time version checks. (#266)
+- None.
 
 **🛠️ Optimizations and Improvements**
-- Made the GCC 5.4 CI Docker image more robust when downloading CMake. (#257)
-- `detail::is_invocable_r` now follows `INVOKE<R>` semantics for array and function return types. Internal trait, no user-visible API change. (#258)
-- Added `Clang 20` / `Clang 21` / `Clang 22` CI coverage. (#260)
-- Added a workaround for MSVC 19.44 ~ 19.51 so that `volatile`-qualified callables with a static `operator()` work as expected. (#261)
-- Best-effort improvements were made for TI 20.2.0.LTS compiler compatibility. (#262)
-- CI test scripts now allow skipping the environment setup step and configuring the build directory and parallel job count. (#263)
-- Renamed some internal macros to enhance readability. (#265)
-- Fixed typos and adjusted assertion message styles. No functional change. (#267)
+- Added `aligned_memcpy` to preserve pointer alignment and avoid byte-by-byte copies on strict-alignment targets such as RISC-V, using it only where an aligned byte copy is actually needed.
+- CI now cancels superseded runs on the same pull request to save runner resources, while runs triggered by pushes or manual dispatches are not canceled.
+- CD now publishes `-rc` / `-alpha` / `-beta` versions as GitHub pre-releases, so a pre-release no longer takes over the latest stable release.
+- Removed the internal `Signature` template parameter from the management layer, so manager vtables and `clone` / `move` / `destroy` code are shared by wrappers with different signatures, reducing code size.
 
 **📌 Notes**
 - None.

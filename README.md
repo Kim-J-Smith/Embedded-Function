@@ -1,7 +1,7 @@
 # Embedded Function
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.5.3-yellow?style=for-the-badge&logo=github" alt="Version - 2.5.3">
+  <img src="https://img.shields.io/badge/Version-2.5.4-yellow?style=for-the-badge&logo=github" alt="Version - 2.5.4">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=for-the-badge" alt="License - MIT">
   <img src="https://img.shields.io/badge/C++-11/14/17/20/23/26-blue?style=for-the-badge&logo=c%2B%2B" alt="C++ - 11/14/17/20/23/26">
 </p>
@@ -169,7 +169,7 @@ auto main() -> int {
 | :----------- | :---: | :---: | :---: | :---: | :---: | :---: |
 | [`ebd::fn`](./docs/api/fn.md)    |  Yes  |   No  | No (`std::terminate()`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Copyable callable wrapper |
 | [`ebd::unique_fn`](./docs/api/unique_fn.md)    |  No  |   No  | No (`std::terminate()`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Move-only callable wrapper |
-| [`ebd::classic_fn`](./docs/api/classic_fn.md)    |  Yes  |   No  | Yes (`std::bad_function_call`) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Classic wrapper (like `std::function`) |
+| [`ebd::classic_fn`](./docs/api/classic_fn.md)    |  Yes  |   No  | Yes (`std::bad_function_call`; `std::terminate` without exceptions) | No | Configurable (aligned, default: `sizeof(void(Class::*)())`) | Classic wrapper (like `std::function`) |
 | [`ebd::fn_ref`](./docs/api/fn_ref.md)    |  Yes  |   Yes  | No (**NO EMPTY STATE**) | No | Fixed | Lightweight non-owning  reference(view) of callables |
 | [`ebd::basic_fn`](./docs/api/basic_fn.md) | - | - | - | - | - | Customized by the user |
 
@@ -177,7 +177,7 @@ auto main() -> int {
 
 1. **Ownership & Copy**: `fn`/`classic_fn` own callables (copyable), `unique_fn` owns but is move-only, `fn_ref` is non-owning (view).
 
-2. **Exception Behavior**: `fn`/`unique_fn` terminate on empty calls (no exceptions); `classic_fn` throws `std::bad_function_call` (like `std::function`).
+2. **Exception Behavior**: `fn`/`unique_fn` terminate on empty calls (no exceptions); `classic_fn` throws `std::bad_function_call` (like `std::function`) when exceptions are enabled, and terminates otherwise.
 
 3. **Buffer Configuration**: `fn`/`unique_fn`/`classic_fn` support configurable buffer sizes (aligned), while `fn_ref` uses a fixed buffer (unused template param).
 
@@ -225,7 +225,7 @@ graph TB;
 
 ### Brief introduction
 
-In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature, buffer size and alignment of the callable object and create a `ebd::fn` or `ebd::fn_ref` object. (Return `ebd::unique_fn` only when the callable object is of the move-only type.)
+In order to simplify the use of `ebd::fn`, function `ebd::make_fn()` is provided, which can automatically deduce the signature, buffer size and alignment of the callable object and create an owning `ebd::fn`, or an `ebd::unique_fn` when the callable object is move-only. A different wrapper type, such as `ebd::fn_ref`, can be selected explicitly.
 
 > __NOTE__: 
 > The [Concepts](https://cppreference.com/w/cpp/language/constraints.html) language feature is available for use provided that the compiler is configured to support the C++20 standard. On platforms that do not support C++20, `enable_if` will be used instead.
@@ -267,7 +267,7 @@ auto f = ebd::make_fn<ebd::fn_ref[, Signature]>(Callable_Object);
 
 ```cpp
 // In place build functor within buffer. Functor should be unambiguously callable (non-overload).
-// Since C++17.
+// Since C++17. FnWrapper must be an owning wrapper (ebd::fn, ebd::unique_fn, or ebd::classic_fn).
 auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, CArgs...);
 auto f = ebd::make_fn[<FnWrapper[, Signature]>](std::in_place_type<Functor>, {/*std::initializer_list*/}, CArgs...);
 ```
@@ -453,7 +453,7 @@ include(FetchContent)
 FetchContent_Declare(
   embedded_function
   GIT_REPOSITORY https://github.com/Kim-J-Smith/Embedded-Function.git
-  GIT_TAG        v2.5.3
+  GIT_TAG        v2.5.4
   GIT_SHALLOW    TRUE
 )
 
@@ -470,7 +470,7 @@ target_link_libraries(${YOUR_TARGET_NAME} PRIVATE embedded_function::functions)
 
 ## 🔢 Version macro
 
-`EMBEDDED_FUNCTION_VERSION` is defined as an `XYYYZZZ` encoded integer (for example, `2.5.3` is `2005003L`) for compile-time version checks.
+`EMBEDDED_FUNCTION_VERSION` is defined as an `XYYYZZZ` encoded integer (for example, `2.5.4` is `2005004L`) for compile-time version checks.
 
 ## 🧭 Future learning & evolution reference
 
