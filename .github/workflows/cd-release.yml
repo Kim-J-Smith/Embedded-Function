@@ -39,7 +39,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION"
 
-      # Detect pre-release (version-X.Y.Z-rcN)
+      # Detect pre-release (version-X.Y.Z{-rc|-alpha|-beta}N)
       - name: Detect pre-release
         id: detect-prerelease
         run: |
