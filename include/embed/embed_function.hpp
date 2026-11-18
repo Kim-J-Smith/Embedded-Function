@@ -3080,11 +3080,11 @@ namespace crtp_mixins {
     using Base_MemberVar::m_erasure;
     using Base_MemberVar::m_command;
 
-    template <typename... T>  // [func.wrap.ref.ctor]/1 is-invocable-using
-    using is_invocable_using  = is_invocable_using_impl<Sig, args_package<T...>>;
+    template <typename... T> // [func.wrap.ref.ctor]/1 is-invocable-using
+    using is_invocable_using = is_invocable_using_impl<Sig, args_package<T...>>;
 
     template <typename T>
-    using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
+    using add_cv_like_sig_t = typename unwrap_signature<Sig>::template add_cv_like<T>;
 
     // Non-owning function wrapper is unconditionally copyable.
     static constexpr bool internal_is_copyable = true;
