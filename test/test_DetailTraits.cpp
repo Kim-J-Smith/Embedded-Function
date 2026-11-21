@@ -315,3 +315,21 @@ TEST(DetailTraits, is_standard_stateless_function_object) {
         ASSERT_EQ(StatefuleOp_flag,  0);
     }
 }
+
+// See <https://github.com/Kim-J-Smith/Embedded-Function/issues/287>.
+namespace {
+    template <class T> class Issue287 {};
+    template <std::size_t N> class Issue287Pad {};
+    template <std::size_t N>
+    using signature = void(Issue287<Issue287Pad<N>>);
+}
+TEST(DetailTraits, is_complete_here) {
+    using ed::is_complete_here;
+    using ed::each_param_is_complete_here;
+
+    static_assert(is_complete_here<Issue287<Issue287Pad<0>>>(), "BUG");
+    static_assert(ed::is_complete_here<Issue287<Issue287Pad<1>>>(), "BUG");
+
+    static_assert(each_param_is_complete_here(typename ed::unwrap_signature<signature<3>>::args{}), "BUG");
+    static_assert(ed::each_param_is_complete_here(typename ed::unwrap_signature<signature<4>>::args{}), "BUG");
+}
