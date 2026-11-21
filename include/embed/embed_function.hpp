@@ -3,7 +3,7 @@
  *
  * @date        2026-10-14
  *
- * @version     2.5.4
+ * @version     2.5.5
  *
  * @copyright   Copyright (c) 2025-2026 Kim-J-Smith
  *              All rights reserved.
@@ -28,7 +28,7 @@
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
-#define EMBEDDED_FUNCTION_VERSION 2005004L // XYYYZZZ (version x.y.z)
+#define EMBEDDED_FUNCTION_VERSION 2005005L // XYYYZZZ (version x.y.z)
 
 #if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(push)
@@ -1036,16 +1036,18 @@ inline namespace fn_traits {
   // Use template parameter `Val` to avoid violating ODR.
   template <typename T, bool Val = std::meta::is_complete_type(^^T)>
   consteval bool is_complete_here() noexcept { return Val; }
-#elif defined(__clang__) && EMBED_HAS_BUILTIN(__is_complete_type)
-  // Use template parameter `Val` to avoid violating ODR.
-  template <typename T, bool Val = __is_complete_type(T)>
-  constexpr bool is_complete_here() noexcept { return Val; }
 #else
-  template <typename T, typename = void>
+  template <typename T>
   constexpr bool is_complete_here_impl(...) noexcept {
     return std::is_reference<T>::value || std::is_function<T>::value;
   }
 
+  // Do not replace this overload set with a concept: `sizeof(T)` is invalid for
+  // an incomplete `T`, so identical atomic constraints with the same template
+  // arguments can be satisfied differently at different points in the program;
+  // such a program is ill-formed, no diagnostic required ([temp.constr.atomic]/3).
+  // See <https://eel.is/c++draft/temp.constr#atomic-3.sentence-5>
+  // and <https://eel.is/c++draft/ifndr:temp.constr.atomic.sat.result.diff>.
   template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
   constexpr bool is_complete_here_impl(int) noexcept { return true; }
 
@@ -3080,11 +3082,11 @@ namespace crtp_mixins {
     using Base_MemberVar::m_erasure;
     using Base_MemberVar::m_command;
 
-    template <typename... T>  // [func.wrap.ref.ctor]/1 is-invocable-using
-    using is_invocable_using  = is_invocable_using_impl<Sig, args_package<T...>>;
+    template <typename... T> // [func.wrap.ref.ctor]/1 is-invocable-using
+    using is_invocable_using = is_invocable_using_impl<Sig, args_package<T...>>;
 
     template <typename T>
-    using add_cv_like_sig_t     = typename unwrap_signature<Sig>::template add_cv_like<T>;
+    using add_cv_like_sig_t = typename unwrap_signature<Sig>::template add_cv_like<T>;
 
     // Non-owning function wrapper is unconditionally copyable.
     static constexpr bool internal_is_copyable = true;
