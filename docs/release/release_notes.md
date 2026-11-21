@@ -8,7 +8,7 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- Made the GCC 5.4 CI Docker image more robust when downloading CMake: `curl` is now used instead of `wget`, the GitHub mirror is tried first, and the archive is verified against its official SHA-256.
+- None.
 
 **📌 Notes**
 - None.
