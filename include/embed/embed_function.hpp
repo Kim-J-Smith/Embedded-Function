@@ -1036,16 +1036,18 @@ inline namespace fn_traits {
   // Use template parameter `Val` to avoid violating ODR.
   template <typename T, bool Val = std::meta::is_complete_type(^^T)>
   consteval bool is_complete_here() noexcept { return Val; }
-#elif defined(__clang__) && EMBED_HAS_BUILTIN(__is_complete_type)
-  // Use template parameter `Val` to avoid violating ODR.
-  template <typename T, bool Val = __is_complete_type(T)>
-  constexpr bool is_complete_here() noexcept { return Val; }
 #else
-  template <typename T, typename = void>
+  template <typename T>
   constexpr bool is_complete_here_impl(...) noexcept {
     return std::is_reference<T>::value || std::is_function<T>::value;
   }
 
+  // Do not replace this overload set with a concept: `sizeof(T)` is invalid for
+  // an incomplete `T`, so identical atomic constraints with the same template
+  // arguments can be satisfied differently at different points in the program;
+  // such a program is ill-formed, no diagnostic required ([temp.constr.atomic]/3).
+  // See <https://eel.is/c++draft/temp.constr#atomic-3.sentence-5>
+  // and <https://eel.is/c++draft/ifndr:temp.constr.atomic.sat.result.diff>.
   template <typename T, typename = enable_if_t<sizeof(T) && std::is_object<T>::value>>
   constexpr bool is_complete_here_impl(int) noexcept { return true; }
 

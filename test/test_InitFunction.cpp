@@ -1630,3 +1630,28 @@ TEST(InitFunction, DefaultCtorDeleteAsReturnType) {
         ebd::fn_ref<R()> f = +[]() { return R{1}; }; (void)f;
     }
 }
+
+// InitFunction[55]
+// See <https://github.com/Kim-J-Smith/Embedded-Function/issues/287>.
+namespace {
+    template <class T> class Issue287 {};
+    template <std::size_t N> class Issue287Pad {};
+}
+TEST(InitFunction, IncompleteTypeForClangBuiltin) {
+    {
+        ebd::fn<void(Issue287<Issue287Pad<0>>)> f1; (void)f1;
+        ebd::fn<void(std::vector<Issue287Pad<0>>)> f2; (void)f2;
+    }
+    {
+        ebd::unique_fn<void(Issue287<Issue287Pad<1>>)> f1; (void)f1;
+        ebd::unique_fn<void(std::vector<Issue287Pad<1>>)> f2; (void)f2;
+    }
+    {
+        ebd::classic_fn<void(Issue287<Issue287Pad<2>>)> f1; (void)f1;
+        ebd::classic_fn<void(std::vector<Issue287Pad<2>>)> f2; (void)f2;
+    }
+    {
+        ebd::__safe_fn<void(Issue287<Issue287Pad<3>>)> f1; (void)f1;
+        ebd::__safe_fn<void(std::vector<Issue287Pad<3>>)> f2; (void)f2;
+    }
+}
