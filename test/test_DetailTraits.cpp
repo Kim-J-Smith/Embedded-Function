@@ -332,4 +332,16 @@ TEST(DetailTraits, is_complete_here) {
 
     static_assert(each_param_is_complete_here(typename ed::unwrap_signature<signature<3>>::args{}), "BUG");
     static_assert(ed::each_param_is_complete_here(typename ed::unwrap_signature<signature<4>>::args{}), "BUG");
+
+    static_assert(is_complete_here<int>(), "BUG");
+    static_assert(is_complete_here<long>(), "BUG");
+    static_assert(is_complete_here<long long>(), "BUG");
+    static_assert(is_complete_here<short>(), "BUG");
+    static_assert(is_complete_here<float>(), "BUG");
+    static_assert(is_complete_here<double>(), "BUG");
+
+    class Undefined;
+    static_assert(is_complete_here<void*>(), "BUG");
+    static_assert(is_complete_here<void()>(), "BUG");
+    static_assert(is_complete_here<Undefined&>(), "BUG");
 }
