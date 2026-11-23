@@ -782,7 +782,8 @@ inline namespace cxx {
       && std::is_void<Ret>::value
     ) // requires the `Callee` to be invocable while `Ret` is `void`
   EMBED_CXX14_CONSTEXPR void invoke_r(Callee&& fn, Args&&... args)
-  noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value) {
+    noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value)
+  {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
 
@@ -797,11 +798,23 @@ inline namespace cxx {
       && (!std::is_void<Ret>::value)
     ) // requires the `Callee` to be invocable while `Ret` is NOT `void`
   EMBED_CXX14_CONSTEXPR Ret invoke_r(Callee&& fn, Args&&... args)
-  noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value) {
+    noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value)
+  {
     using invoke_t  = typename invoke_result<Callee, Args...>::type;
     using tag_t     = typename invoke_result<Callee, Args...>::tag;
 
     return invoke_impl<invoke_t>(tag_t{}, std::forward<Callee>(fn),
+      std::forward<Args>(args)...);
+  }
+
+  template <typename Callee, typename... Args,
+    typename Result = invoke_result<Callee, Args...>,
+    typename Ret = typename Result::type,
+    typename Tag = typename Result::tag>
+  EMBED_CXX14_CONSTEXPR Ret invoke(Callee&& fn, Args&&... args)
+    noexcept(is_nothrow_invocable_r<Ret, Callee, Args...>::value)
+  {
+    return invoke_impl<Ret>(Tag{}, std::forward<Callee>(fn),
       std::forward<Args>(args)...);
   }
 
@@ -2309,7 +2322,7 @@ namespace command {
       if constexpr (sizeof...(Args) > 0 && (requires {
           typename std::constant_wrapper<remove_cvref_t<Args>::value>; } && ...)) {
         static_assert(!requires { typename std::constant_wrapper<
-              std::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
+              cxx::invoke(Cw::value, remove_cvref_t<Args>::value...)>; },
           "`cw<fn>(args...)` must be equivalent to `fn(args...)`, otherwise the "
           "intended behavior for a non-owning function wrapper constructed from "
           "`cw<fn>` would be ambiguous. ([func.wrap.ref.ctor]/11.2)"
