@@ -3,7 +3,7 @@
  *
  * @date        2026-10-14
  *
- * @version     2.5.5
+ * @version     2.5.6
  *
  * @copyright   Copyright (c) 2025-2026 Kim-J-Smith
  *              All rights reserved.
@@ -28,7 +28,7 @@
 
 #ifndef EMBED_INCLUDED_EMBED_FUNCTION_HPP_
 #define EMBED_INCLUDED_EMBED_FUNCTION_HPP_
-#define EMBEDDED_FUNCTION_VERSION 2005005L // XYYYZZZ (version x.y.z)
+#define EMBEDDED_FUNCTION_VERSION 2005006L // XYYYZZZ (version x.y.z)
 
 #if defined(_MSC_VER) && !defined(__clang__)
 # pragma warning(push)
