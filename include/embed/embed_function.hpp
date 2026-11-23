@@ -775,7 +775,9 @@ inline namespace cxx {
     );
   }
 
+  // Implement `INVOKE` (invoke) and `INVOKE<R>` (invoke_r) semantics.
   // See <https://cppreference.com/w/cpp/utility/functional/invoke.html>.
+
   EMBED_TEMPLATE(typename Ret, typename Callee, typename... Args)
     EMBED_REQUIRES(
       is_invocable_r<Ret, Callee, Args...>::value
