@@ -8,7 +8,7 @@
 - None.
 
 **🛠️ Optimizations and Improvements**
-- None.
+- Added the internal `ebd::detail::cxx::invoke` and replaced `std::invoke` with it to unify code style, with new tests covering `invoke` semantics.
 
 **📌 Notes**
 - None.

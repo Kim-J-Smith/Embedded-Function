@@ -182,6 +182,119 @@ TEST(DetailTraits, is_invocable_r) {
 }
 
 namespace {
+    constexpr int DetailTraits_invoke_free_fn(int n) noexcept { return n + 1; }
+    int DetailTraits_invoke_free_fn_throw(int n) { return n + 2; }
+
+    struct DetailTraits_invoke_target {
+        int value;
+
+        constexpr explicit DetailTraits_invoke_target(int v) noexcept : value(v) {}
+        constexpr int add(int n) const noexcept { return value + n; }
+        int& ref() noexcept { return value; }
+        void set(int n) noexcept { value = n; }
+    };
+
+    struct DetailTraits_invoke_functor {
+        int factor;
+        constexpr int operator()(int n) const noexcept { return factor * n; }
+    };
+
+    template <typename Func, typename... Args>
+    struct DetailTraits_can_invoke {
+        template <typename F, typename... A>
+        static auto test(int) -> decltype(
+            ed::invoke(std::declval<F>(), std::declval<A>()...), std::true_type{});
+        template <typename...>
+        static std::false_type test(long);
+
+        static const bool value = decltype(test<Func, Args...>(0))::value;
+    };
+} // namespace
+
+TEST(DetailTraits, invoke) {
+    // Callable objects.
+    static_assert(
+        std::is_same<decltype(ed::invoke(DetailTraits_invoke_free_fn, 0)), int>::value, "BUG");
+    ASSERT_EQ(ed::invoke(DetailTraits_invoke_free_fn, 1), 2);
+    ASSERT_EQ(ed::invoke(DetailTraits_invoke_free_fn_throw, 1), 3);
+
+    DetailTraits_invoke_functor functor{2};
+    ASSERT_EQ(ed::invoke(functor, 21), 42);
+    ASSERT_EQ(ed::invoke(DetailTraits_invoke_functor{3}, 4), 12);
+
+    // Pointer to member function.
+    DetailTraits_invoke_target target(10);
+    const DetailTraits_invoke_target ctarget(20);
+    ASSERT_EQ(ed::invoke(&DetailTraits_invoke_target::add, target, 1), 11);
+    ASSERT_EQ(ed::invoke(&DetailTraits_invoke_target::add, &target, 2), 12);
+    ASSERT_EQ(ed::invoke(&DetailTraits_invoke_target::add, std::ref(target), 3), 13);
+    ASSERT_EQ(ed::invoke(&DetailTraits_invoke_target::add, ctarget, 4), 24);
+
+    int& ref_result = ed::invoke(&DetailTraits_invoke_target::ref, target);
+    ref_result = 31;
+    ASSERT_EQ(target.value, 31);
+
+    // Pointer to member object.
+    int DetailTraits_invoke_target::* pm = &DetailTraits_invoke_target::value;
+    static_assert(
+        std::is_same<decltype(ed::invoke(pm, target)), int&>::value, "BUG");
+    ASSERT_EQ(ed::invoke(pm, target), 31);
+    ASSERT_EQ(ed::invoke(pm, &target), 31);
+    ASSERT_EQ(ed::invoke(pm, std::ref(target)), 31);
+
+    ed::invoke(pm, target) = 7;
+    ASSERT_EQ(target.value, 7);
+
+    // Pointer-like object argument.
+    std::unique_ptr<DetailTraits_invoke_target> ptr(new DetailTraits_invoke_target(30));
+    ASSERT_EQ(ed::invoke(&DetailTraits_invoke_target::add, ptr, 1), 31);
+    ASSERT_EQ(ed::invoke(pm, ptr), 30);
+
+    // `void` return type.
+    static_assert(
+        std::is_same<
+            decltype(ed::invoke(&DetailTraits_invoke_target::set, target, 0)),
+            void
+        >::value, "BUG");
+    ed::invoke(&DetailTraits_invoke_target::set, target, 8);
+    ASSERT_EQ(target.value, 8);
+
+    // SFINAE friendliness.
+    static_assert(!DetailTraits_can_invoke<int, int>::value, "BUG");
+    static_assert(
+        DetailTraits_can_invoke<
+            decltype(&DetailTraits_invoke_target::add),
+            DetailTraits_invoke_target&, int
+        >::value, "BUG");
+    static_assert(
+        !DetailTraits_can_invoke<
+            decltype(&DetailTraits_invoke_target::add), int, int
+        >::value, "BUG");
+
+#if (EMBED_CXX_VERSION >= 201703L && \
+    defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510L)
+    static_assert(noexcept(ed::invoke(DetailTraits_invoke_free_fn, 0)), "BUG");
+    static_assert(!noexcept(ed::invoke(DetailTraits_invoke_free_fn_throw, 0)), "BUG");
+    static_assert(
+        noexcept(ed::invoke(&DetailTraits_invoke_target::add, target, 0)), "BUG");
+    static_assert(noexcept(ed::invoke(pm, target)), "BUG");
+#endif
+
+    // Constant evaluation.
+#if EMBED_CXX_VERSION >= 201402L
+    static_assert(ed::invoke(DetailTraits_invoke_free_fn, 41) == 42, "BUG");
+
+    constexpr DetailTraits_invoke_target cxtarget(5);
+    static_assert(
+        ed::invoke(&DetailTraits_invoke_target::add, cxtarget, 1) == 6, "BUG");
+
+    constexpr int DetailTraits_invoke_target::* cx_pm =
+        &DetailTraits_invoke_target::value;
+    static_assert(ed::invoke(cx_pm, cxtarget) == 5, "BUG");
+#endif
+}
+
+namespace {
     struct StatefuleOp { int m; };
     int StatefuleOp_flag = 0;
 }
